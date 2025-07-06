@@ -4,7 +4,7 @@ import { NewsArticle, NewsCategory, SentimentLabel, NewsQueryParams, NewsStatist
 import { NewsSource, NewsSourceManager } from '../models/NewsSource'
 import { fmpNewsService } from './external/fmpNewsService'
 import { newsApiService } from './external/newsApiService'
-import { alphaVantageService } from './external/alphaVantageService'
+
 import { polygonService } from './external/polygonService'
 
 import { cacheService } from './cacheService'
@@ -12,6 +12,7 @@ import { newsProcessorService } from './newsProcessorService'
 import { marketauxService } from './external/marketauxService'
 import { cryptoPanicService } from './external/cryptoPanicService'
 import { finnhubService } from './external/finnhubService'
+import { alphaVantageServiceEnhanced } from './external/alphaVantageService'
 
 interface ServiceResult {
   articles: NewsArticle[]
@@ -39,7 +40,7 @@ class AggregatedNewsService {
   private serviceMap = new Map<string, ExternalNewsService>([
     ['fmp', fmpNewsService],
     ['newsapi', newsApiService],
-    ['alphavantage', alphaVantageService],
+    ['alphavantage', alphaVantageServiceEnhanced],
     ['polygon', polygonService],
     ['marketaux', marketauxService],
     ['finnhub', finnhubService],         // ✅ Novo

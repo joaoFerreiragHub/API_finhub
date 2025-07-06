@@ -1,11 +1,12 @@
 // services/newsService.ts
 
 import { NewsArticle, NewsQueryParams, NewsCategory, SentimentLabel } from '../types/news'
-import { alphaVantageService } from './external/alphaVantageService'
+
 import { fmpNewsService } from './external/fmpNewsService'
 import { newsApiService } from './external/newsApiService'
 import { polygonService } from './external/polygonService'
 import { SourceConfig } from '../models/NewsSource'
+import { alphaVantageServiceEnhanced } from './external/alphaVantageService'
 
 interface NewsSearchParams {
   query: string
@@ -85,9 +86,9 @@ class NewsService {
       const promises = []
 
       // Alpha Vantage
-      if (alphaVantageService.isConfigured()) {
+      if (alphaVantageServiceEnhanced.isConfigured()) {
         promises.push(
-          alphaVantageService.getNews(params, this.defaultConfig)
+          alphaVantageServiceEnhanced.getNews(params, this.defaultConfig)
             .catch(error => {
               console.error('Error from Alpha Vantage:', error)
               return []
@@ -318,7 +319,7 @@ class NewsService {
       {
         name: 'Alpha Vantage',
         type: 'alphavantage',
-        enabled: alphaVantageService.isConfigured(),
+        enabled: alphaVantageServiceEnhanced.isConfigured(),
         status: 'healthy' as const,
         lastCheck: new Date().toISOString()
       },
