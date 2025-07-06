@@ -4,9 +4,8 @@ import { NewsArticle, NewsCategory, SentimentLabel, NewsQueryParams, NewsStatist
 import { NewsSource, NewsSourceManager } from '../models/NewsSource'
 import { fmpNewsService } from './external/fmpNewsService'
 import { newsApiService } from './external/newsApiService'
-
 import { polygonService } from './external/polygonService'
-
+import { yahooFinanceService } from './external/yahooFinanceService' // ✅ NOVO
 import { cacheService } from './cacheService'
 import { newsProcessorService } from './newsProcessorService'
 import { marketauxService } from './external/marketauxService'
@@ -42,9 +41,10 @@ class AggregatedNewsService {
     ['newsapi', newsApiService],
     ['alphavantage', alphaVantageServiceEnhanced],
     ['polygon', polygonService],
+    ['yahoo', yahooFinanceService],      // ✅ NOVO
     ['marketaux', marketauxService],
-    ['finnhub', finnhubService],         // ✅ Novo
-    ['cryptopanic', cryptoPanicService]  // ✅ Novo
+    ['finnhub', finnhubService],
+    ['cryptopanic', cryptoPanicService]
   ])
 
   constructor() {
@@ -578,7 +578,7 @@ class AggregatedNewsService {
           maxArticles: 50,
           refreshInterval: 300000, // 5 minutes in milliseconds
           enabled: true,
-          priority: 9
+          priority: 10
         },
         status: {
           isActive: true,
@@ -594,11 +594,54 @@ class AggregatedNewsService {
         },
         categories: ['market', 'earnings', 'economy'],
         reliability: 5,
-        priority: 9,
+        priority: 10,
         metadata: {
           description: 'Premium financial API',
           tags: ['finance', 'premium'],
           version: '3.0'
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // ✅ NOVO: Yahoo Finance Source
+      {
+        id: 'yahoo-1',
+        name: 'Yahoo Finance',
+        type: 'yahoo',
+        enabled: true,
+        config: {
+          endpoint: 'https://query2.finance.yahoo.com',
+          rateLimit: { 
+            requestsPerMinute: 100, 
+            requestsPerDay: 5000,
+            burstLimit: 20
+          },
+          timeout: 10000,
+          retries: 3,
+          maxArticles: 30,
+          refreshInterval: 300000, // 5 minutes
+          enabled: true,
+          priority: 9
+        },
+        status: {
+          isActive: true,
+          health: 'healthy',
+          lastCheck: new Date(),
+          lastSuccess: new Date(),
+          errorCount: 0,
+          successRate: 92,
+          averageResponseTime: 750,
+          requestsToday: 78,
+          requestsThisHour: 8,
+          limitReached: false
+        },
+        categories: ['market', 'earnings', 'economy', 'crypto'],
+        reliability: 5,
+        priority: 9,
+        metadata: {
+          description: 'Yahoo Finance - Free, reliable financial news',
+          tags: ['finance', 'free', 'reliable'],
+          version: '1.0'
         },
         createdAt: new Date(),
         updatedAt: new Date()
