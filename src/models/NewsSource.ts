@@ -17,7 +17,7 @@ export interface NewsSource {
   updatedAt: Date
 }
 
-export type SourceType = 'fmp' | 'newsapi' | 'alphavantage' | 'polygon' | 'rss' | 'scraper' | 'webhook'
+export type SourceType = 'fmp' | 'newsapi' | 'alphavantage' | 'polygon' | 'yahoo' | 'rss' | 'scraper' | 'webhook'
 
 export interface SourceConfig {
   apiKey?: string
@@ -152,6 +152,17 @@ export const DefaultSourceConfigs: Record<SourceType, Partial<SourceConfig>> = {
     retries: 3,
     maxArticles: 50,
     refreshInterval: 20
+  },
+  yahoo: {
+    endpoint: 'https://query2.finance.yahoo.com',
+    rateLimit: {
+      requestsPerMinute: 100,
+      requestsPerDay: 5000
+    },
+    timeout: 10000,
+    retries: 3,
+    maxArticles: 30,
+    refreshInterval: 300 // 5 minutes
   },
   rss: {
     endpoint: '', // será definido por cada feed
