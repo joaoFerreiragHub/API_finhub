@@ -13,7 +13,8 @@ import {
   getStats,
 } from '../controllers/brand.controller'
 import { authenticate } from '../middlewares/auth'
-import { requireAdmin } from '../middlewares/roleGuard'
+import { requireAdminScope } from '../middlewares/roleGuard'
+import { auditAdminAction } from '../middlewares/adminAudit'
 
 const router = Router()
 
@@ -62,48 +63,123 @@ router.get('/:slug', getBrandBySlug)
  * @desc    Estatísticas gerais de brands
  * @access  Private (Admin)
  */
-router.get('/admin/stats', authenticate, requireAdmin, getStats)
+router.get(
+  '/admin/stats',
+  authenticate,
+  auditAdminAction({
+    action: 'brand.stats.read',
+    resourceType: 'brand',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getStats
+)
 
 /**
  * @route   POST /api/brands
  * @desc    Criar nova brand
  * @access  Private (Admin)
  */
-router.post('/', authenticate, requireAdmin, createBrand)
+router.post(
+  '/',
+  authenticate,
+  auditAdminAction({
+    action: 'brand.create',
+    resourceType: 'brand',
+    scope: 'admin.brands.write',
+  }),
+  requireAdminScope('admin.brands.write'),
+  createBrand
+)
 
 /**
  * @route   PATCH /api/brands/:id
  * @desc    Atualizar brand
  * @access  Private (Admin)
  */
-router.patch('/:id', authenticate, requireAdmin, updateBrand)
+router.patch(
+  '/:id',
+  authenticate,
+  auditAdminAction({
+    action: 'brand.update',
+    resourceType: 'brand',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => String(req.params.id ?? ''),
+  }),
+  requireAdminScope('admin.brands.write'),
+  updateBrand
+)
 
 /**
  * @route   DELETE /api/brands/:id
  * @desc    Eliminar brand
  * @access  Private (Admin)
  */
-router.delete('/:id', authenticate, requireAdmin, deleteBrand)
+router.delete(
+  '/:id',
+  authenticate,
+  auditAdminAction({
+    action: 'brand.delete',
+    resourceType: 'brand',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => String(req.params.id ?? ''),
+  }),
+  requireAdminScope('admin.brands.write'),
+  deleteBrand
+)
 
 /**
  * @route   PATCH /api/brands/:id/toggle-active
  * @desc    Ativar/Desativar brand
  * @access  Private (Admin)
  */
-router.patch('/:id/toggle-active', authenticate, requireAdmin, toggleActive)
+router.patch(
+  '/:id/toggle-active',
+  authenticate,
+  auditAdminAction({
+    action: 'brand.toggle_active',
+    resourceType: 'brand',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => String(req.params.id ?? ''),
+  }),
+  requireAdminScope('admin.brands.write'),
+  toggleActive
+)
 
 /**
  * @route   PATCH /api/brands/:id/toggle-featured
  * @desc    Destacar/Remover destaque de brand
  * @access  Private (Admin)
  */
-router.patch('/:id/toggle-featured', authenticate, requireAdmin, toggleFeatured)
+router.patch(
+  '/:id/toggle-featured',
+  authenticate,
+  auditAdminAction({
+    action: 'brand.toggle_featured',
+    resourceType: 'brand',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => String(req.params.id ?? ''),
+  }),
+  requireAdminScope('admin.brands.write'),
+  toggleFeatured
+)
 
 /**
  * @route   PATCH /api/brands/:id/toggle-verified
  * @desc    Verificar/Remover verificação de brand
  * @access  Private (Admin)
  */
-router.patch('/:id/toggle-verified', authenticate, requireAdmin, toggleVerified)
+router.patch(
+  '/:id/toggle-verified',
+  authenticate,
+  auditAdminAction({
+    action: 'brand.toggle_verified',
+    resourceType: 'brand',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => String(req.params.id ?? ''),
+  }),
+  requireAdminScope('admin.brands.write'),
+  toggleVerified
+)
 
 export default router

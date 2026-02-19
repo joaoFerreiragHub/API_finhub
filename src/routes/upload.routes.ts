@@ -9,7 +9,8 @@ import {
   getUploadStats,
 } from '../controllers/upload.controller'
 import { authenticate } from '../middlewares/auth'
-import { requireAdmin } from '../middlewares/roleGuard'
+import { requireAdminScope } from '../middlewares/roleGuard'
+import { auditAdminAction } from '../middlewares/adminAudit'
 import { imageUploader, videoUploader, audioUploader, documentUploader } from '../config/upload.config'
 
 const router = Router()
@@ -72,13 +73,34 @@ router.delete('/', authenticate, deleteFile)
  * @access  Private (Admin)
  * @params  type: image|video|audio|document
  */
-router.get('/list/:type', authenticate, requireAdmin, listFiles)
+router.get(
+  '/list/:type',
+  authenticate,
+  auditAdminAction({
+    action: 'upload.files.list',
+    resourceType: 'upload',
+    scope: 'admin.uploads.read',
+    getResourceId: (req) => String(req.params.type ?? ''),
+  }),
+  requireAdminScope('admin.uploads.read'),
+  listFiles
+)
 
 /**
  * @route   GET /api/upload/stats
  * @desc    Estatísticas de uploads
  * @access  Private (Admin)
  */
-router.get('/stats', authenticate, requireAdmin, getUploadStats)
+router.get(
+  '/stats',
+  authenticate,
+  auditAdminAction({
+    action: 'upload.stats.read',
+    resourceType: 'upload',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getUploadStats
+)
 
 export default router

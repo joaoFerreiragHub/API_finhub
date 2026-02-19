@@ -23,6 +23,7 @@ import cryptoRoutes from './crypto.routes'
 import etfRoutes from './etf.routes'
 import etfYahooRoutes from './etfYahoo.routes'
 import reitRoutes from './reit.routes'
+import adminRoutes from './admin.routes'
 
 const router = Router()
 
@@ -59,7 +60,8 @@ router.get('/', (req, res) => {
         crypto: '/api/crypto',
         etfs: '/api/etfs',
         reits: '/api/reits',
-      }
+      },
+      admin: '/api/admin',
     },
     timestamp: new Date().toISOString()
   })
@@ -105,5 +107,8 @@ router.use('/crypto', cryptoRoutes)
 router.use('/etfs', etfYahooRoutes)
 router.use('/etfs', etfRoutes)
 router.use('/reits', reitRoutes)
+
+// Rotas administrativas
+router.use('/admin', adminRoutes)
 
 export default router

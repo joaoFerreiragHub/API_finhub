@@ -10,6 +10,8 @@ export interface IUser extends Document {
   username: string
   avatar?: string
   role: UserRole
+  adminScopes?: string[]
+  adminReadOnly: boolean
 
   // Creator specific
   bio?: string
@@ -74,6 +76,14 @@ const UserSchema = new Schema<IUser>(
       enum: ['visitor', 'free', 'premium', 'creator', 'admin'],
       default: 'free',
     },
+    adminScopes: {
+      type: [String],
+      default: undefined,
+    },
+    adminReadOnly: {
+      type: Boolean,
+      default: false,
+    },
 
     // Creator specific
     bio: {
@@ -112,6 +122,7 @@ const UserSchema = new Schema<IUser>(
 UserSchema.index({ email: 1 })
 UserSchema.index({ username: 1 })
 UserSchema.index({ role: 1 })
+UserSchema.index({ role: 1, adminReadOnly: 1 })
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {
