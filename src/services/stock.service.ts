@@ -1,11 +1,11 @@
 // src/services/stock.service.ts
 import axios from 'axios'
 
-const BASE_URL = process.env.FMP_BASE_URL
+const FMP_STABLE = 'https://financialmodelingprep.com/stable'
 const API_KEY = process.env.FMP_API_KEY
 
 export async function fetchCompanyOverview(symbol: string) {
-  const url = `${BASE_URL}/profile/${symbol}?apikey=${API_KEY}`
+  const url = `${FMP_STABLE}/profile?symbol=${symbol}&apikey=${API_KEY}`
 
   try {
     const response = await axios.get(url)

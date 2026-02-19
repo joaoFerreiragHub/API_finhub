@@ -15,7 +15,7 @@ import { fetchEarningsHistory, fetchFundamentals, fetchMarketContext, fetchSenti
 const MODEL_PERFORMANCE_CACHE = new Map()
 
 export const getPredictions = async (req: Request, res: Response) => {
-  const { symbol } = req.params
+  const symbol = String(req.params.symbol ?? "")
 
   try {
     console.log(`🤖 Iniciando predições ML para ${symbol}...`)
@@ -199,7 +199,7 @@ export const getPredictions = async (req: Request, res: Response) => {
 // ================================
 
 export const getEarningsPrediction = async (req: Request, res: Response) => {
-  const { symbol } = req.params
+  const symbol = String(req.params.symbol ?? "")
 
   try {
     const [fundamentals, earnings] = await Promise.all([

@@ -3,8 +3,7 @@
 import axios from 'axios'
 import { getSectorConfig, calculateDynamicBenchmarks } from '../utils/sectorConfig'
 
-const FMP = 'https://financialmodelingprep.com/api/v3'
-const FMPv4 = 'https://financialmodelingprep.com/api/v4'
+const FMP_STABLE = 'https://financialmodelingprep.com/stable'
 const API_KEY = process.env.FMP_API_KEY
 
 const fetch = (url: string) => axios.get(url).then((res) => res.data)
@@ -18,11 +17,11 @@ export async function fetchFundamentals(symbol: string) {
     console.log(`📊 Fetching fundamentals for ${symbol}`)
     
     const [income, ratios, cashFlow, growth, profile] = await Promise.all([
-      fetch(`${FMP}/income-statement/${symbol}?period=quarter&limit=12&apikey=${API_KEY}`),
-      fetch(`${FMP}/ratios/${symbol}?period=quarter&limit=12&apikey=${API_KEY}`),
-      fetch(`${FMP}/cash-flow-statement/${symbol}?period=quarter&limit=12&apikey=${API_KEY}`),
-      fetch(`${FMP}/financial-growth/${symbol}?period=quarter&limit=8&apikey=${API_KEY}`),
-      fetch(`${FMP}/profile/${symbol}?apikey=${API_KEY}`)
+      fetch(`${FMP_STABLE}/income-statement?symbol=${symbol}&period=quarter&limit=12&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/ratios?symbol=${symbol}&period=quarter&limit=12&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/cash-flow-statement?symbol=${symbol}&period=quarter&limit=12&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/financial-growth?symbol=${symbol}&period=quarter&limit=8&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/profile?symbol=${symbol}&apikey=${API_KEY}`)
     ])
 
     // ✅ FIX: Extract sector consistently
@@ -74,11 +73,11 @@ export async function fetchMarketContext(symbol: string) {
     console.log(`🌍 Fetching market context for ${symbol}`)
     
     const [profile, peers, sectorPE, sectorPerf, economicData] = await Promise.all([
-      fetch(`${FMP}/profile/${symbol}?apikey=${API_KEY}`),
-      fetch(`${FMPv4}/stock_peers?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMPv4}/sector_price_earning_ratio?date=${new Date().toISOString().split('T')[0]}&exchange=NASDAQ&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMP}/sectors-performance?apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMPv4}/economic?name=GDP,UNEMPLOYMENT,INFLATION&apikey=${API_KEY}`).catch(() => [])
+      fetch(`${FMP_STABLE}/profile?symbol=${symbol}&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/stock-peers?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/sector-pe-snapshot?date=${new Date().toISOString().split('T')[0]}&exchange=NASDAQ&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/sector-performance-snapshot?apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/economic-indicators?name=GDP&apikey=${API_KEY}`).catch(() => [])
     ])
 
     // ✅ FIX: Extract sector consistently
@@ -167,11 +166,11 @@ export async function fetchSentimentData(symbol: string) {
     console.log(`😊 Fetching sentiment data for ${symbol}`)
     
     const [analysts, priceTargets, upgrades, insider, socialSentiment] = await Promise.all([
-      fetch(`${FMP}/analyst-stock-recommendations/${symbol}?apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMPv4}/price-target?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMPv4}/upgrades-downgrades?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMPv4}/insider-trading?symbol=${symbol}&page=0&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMPv4}/social-sentiments/trending?type=bullish&source=stocktwits&apikey=${API_KEY}`).catch(() => [])
+      fetch(`${FMP_STABLE}/grades?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/price-target-consensus?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/grades-historical?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/insider-trading/latest?symbol=${symbol}&page=0&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/sector-performance-snapshot?apikey=${API_KEY}`).catch(() => [])
     ])
 
     console.log(`✅ Sentiment data fetched for ${symbol}`)
@@ -227,11 +226,11 @@ export async function fetchTechnicalData(symbol: string) {
     console.log(`📈 Fetching technical data for ${symbol}`)
     
     const [prices, rsi, sma50, sma200, volume] = await Promise.all([
-      fetch(`${FMP}/historical-price-full/${symbol}?from=${getDateMonthsAgo(6)}&to=${new Date().toISOString().split('T')[0]}&apikey=${API_KEY}`),
-      fetch(`${FMP}/technical_indicator/1day/${symbol}?type=rsi&period=14&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMP}/technical_indicator/1day/${symbol}?type=sma&period=50&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMP}/technical_indicator/1day/${symbol}?type=sma&period=200&apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMP}/historical-price-full/${symbol}?from=${getDateMonthsAgo(3)}&to=${new Date().toISOString().split('T')[0]}&apikey=${API_KEY}`)
+      fetch(`${FMP_STABLE}/historical-price-eod/full?symbol=${symbol}&from=${getDateMonthsAgo(6)}&to=${new Date().toISOString().split('T')[0]}&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/technical-indicators/rsi?symbol=${symbol}&periodLength=14&timeframe=1day&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/technical-indicators/sma?symbol=${symbol}&periodLength=50&timeframe=1day&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/technical-indicators/sma?symbol=${symbol}&periodLength=200&timeframe=1day&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/historical-price-eod/full?symbol=${symbol}&from=${getDateMonthsAgo(3)}&to=${new Date().toISOString().split('T')[0]}&apikey=${API_KEY}`)
     ])
 
     // ✅ FIX: Extract historical data safely
@@ -306,9 +305,9 @@ export async function fetchEarningsHistory(symbol: string) {
     console.log(`💰 Fetching earnings history for ${symbol}`)
     
     const [surprises, calendar, estimates] = await Promise.all([
-      fetch(`${FMP}/earnings-surprises/${symbol}?apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMP}/historical/earning_calendar/${symbol}?apikey=${API_KEY}`).catch(() => []),
-      fetch(`${FMP}/analyst-estimates/${symbol}?apikey=${API_KEY}`).catch(() => [])
+      fetch(`${FMP_STABLE}/earnings?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/earning-calendar?symbol=${symbol}&apikey=${API_KEY}`).catch(() => []),
+      fetch(`${FMP_STABLE}/analyst-estimates?symbol=${symbol}&apikey=${API_KEY}`).catch(() => [])
     ])
 
     console.log(`✅ Earnings history fetched for ${symbol}`)

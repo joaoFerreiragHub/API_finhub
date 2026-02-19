@@ -567,7 +567,7 @@ class AggregatedNewsService {
         type: 'fmp',
         enabled: true,
         config: {
-          endpoint: 'https://financialmodelingprep.com/api/v3',
+          endpoint: 'https://financialmodelingprep.com/stable',
           rateLimit: { 
             requestsPerMinute: 60, 
             requestsPerDay: 250,

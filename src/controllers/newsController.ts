@@ -140,7 +140,7 @@ class NewsController {
   async getNewsById(req: Request, res: Response): Promise<void> {
     console.log('Received request for /api/news/:id with params:', req.params)
     try {
-      const { id } = req.params
+      const id = String(req.params.id ?? "")
       
       if (!id) {
         res.status(400).json(
@@ -188,7 +188,7 @@ class NewsController {
   async getNewsByTicker(req: Request, res: Response): Promise<void> {
     console.log('Received request for /api/news/ticker/:symbol with params:', req.params, 'and query:', req.query)
     try {
-      const { symbol } = req.params
+      const symbol = String(req.params.symbol ?? "")
       const { limit = 20, offset = 0, from, to } = req.query
 
       if (!symbol) {
@@ -236,7 +236,7 @@ class NewsController {
   async getNewsByCategory(req: Request, res: Response): Promise<void> {
     console.log('Received request for /api/news/category/:category with params:', req.params, 'and query:', req.query)
     try {
-      const { category } = req.params
+      const category = String(req.params.category ?? "")
       const { limit = 20, offset = 0, from, to } = req.query
 
       const validCategories: NewsCategory[] = ['market', 'crypto', 'economy', 'earnings', 'general']
@@ -428,7 +428,7 @@ class NewsController {
   async getNewsBySentiment(req: Request, res: Response): Promise<void> {
     console.log('Received request for /api/news/sentiment/:sentiment with params:', req.params, 'and query:', req.query)
     try {
-      const { sentiment } = req.params
+      const sentiment = String(req.params.sentiment ?? "")
       const { limit = 20, offset = 0 } = req.query
 
       const validSentiments: SentimentLabel[] = ['positive', 'negative', 'neutral']

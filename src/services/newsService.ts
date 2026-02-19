@@ -5,6 +5,7 @@ import { NewsArticle, NewsQueryParams, NewsCategory, SentimentLabel } from '../t
 import { fmpNewsService } from './external/fmpNewsService'
 import { newsApiService } from './external/newsApiService'
 import { polygonService } from './external/polygonService'
+import { rssNewsService } from './external/rssNewsService'
 import { SourceConfig } from '../models/NewsSource'
 import { alphaVantageServiceEnhanced } from './external/alphaVantageService'
 
@@ -128,6 +129,15 @@ class NewsService {
             })
         )
       }
+
+      // RSS (InfoMoney BR + ECO PT) - Sempre ativo
+      promises.push(
+        rssNewsService.getNews(params, this.defaultConfig)
+          .catch(error => {
+            console.error('Error from RSS:', error)
+            return []
+          })
+      )
 
       const results = await Promise.all(promises)
       

@@ -1,5 +1,5 @@
 // src/server.ts
-import 'dotenv/config'
+import './config/env'
 import { connectToDatabase } from './config/database'
 import app from './app'
 

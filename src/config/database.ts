@@ -1,8 +1,6 @@
 // src/config/database.ts
+import './env'
 import mongoose from 'mongoose'
-import dotenv from 'dotenv'
-
-dotenv.config()
 
 export async function connectToDatabase() {
   const uri = process.env.MONGODB_URI

@@ -14,7 +14,7 @@ function simplifyRating(rating: string): 'A' | 'B' | 'C' | 'D' | 'F' {
   
 export const getQuickAnalysis = async (req: Request, res: Response) => {
   
-  const { symbol } = req.params
+  const symbol = String(req.params.symbol ?? "")
   console.log(`🎯 getQuickAnalysis chamado com símbolo: "${symbol}"`)
   try {
     const [

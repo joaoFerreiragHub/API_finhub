@@ -110,7 +110,7 @@ export interface UpdateNewsSourceDto {
 // Configurações predefinidas para cada tipo de fonte
 export const DefaultSourceConfigs: Record<SourceType, Partial<SourceConfig>> = {
   fmp: {
-    endpoint: 'https://financialmodelingprep.com/api/v3',
+    endpoint: 'https://financialmodelingprep.com/stable',
     rateLimit: {
       requestsPerMinute: 60,
       requestsPerDay: 250 // free tier
@@ -207,7 +207,7 @@ export const PredefinedSources: CreateNewsSourceDto[] = [
       type: 'fmp',
       config: {
         ...DefaultSourceConfigs.fmp,
-        endpoint: 'https://financialmodelingprep.com/api/v3',
+        endpoint: 'https://financialmodelingprep.com/stable',
         filters: {
           categories: ['market', 'earnings', 'economy'],
           minWordCount: 50

@@ -9,8 +9,6 @@ import { buildIndicadoresResult } from './financial/resultBuilder'
 import { calculateDerivedMetrics } from './financial/derivedMetricsCalculator'
 
 
-const FMP = 'https://financialmodelingprep.com/api/v3'
-const FMPv4 = 'https://financialmodelingprep.com/api/v4'
 const FMP_STABLE = 'https://financialmodelingprep.com/stable'
 const API_KEY = process.env.FMP_API_KEY
 
@@ -29,8 +27,9 @@ type CashFlowStatement = {
 
 // 1. Perfil da empresa
 export async function fetchProfile(symbol: string) {
-  const data = await fetch(`${FMP}/profile/${symbol}?apikey=${API_KEY}`)
-  const company = data[0]
+  const data = await fetch(`${FMP_STABLE}/profile?symbol=${symbol}&apikey=${API_KEY}`)
+  const company = data?.[0]
+  if (!company) throw new Error(`Perfil não encontrado para ${symbol}`)
   return {
     symbol: company.symbol,
     name: company.companyName,
@@ -69,8 +68,8 @@ export async function fetchScores(symbol: string) {
 
   // 🔄 BUSCAR DADOS COM TRATAMENTO INDIVIDUAL DE ERROS
   const [ratios, rating, financialScores] = await Promise.all([
-    safeFetch(`${FMP}/ratios-ttm/${symbol}?apikey=${API_KEY}`, 'Ratios TTM'),
-    safeFetch(`${FMP}/rating/${symbol}?apikey=${API_KEY}`, 'Rating'),
+    safeFetch(`${FMP_STABLE}/ratios-ttm?symbol=${symbol}&apikey=${API_KEY}`, 'Ratios TTM'),
+    safeFetch(`${FMP_STABLE}/ratings-snapshot?symbol=${symbol}&apikey=${API_KEY}`, 'Rating'),
     safeFetch(`${FMP_STABLE}/financial-scores?symbol=${symbol}&apikey=${API_KEY}`, 'Financial Scores')
   ])
 
@@ -85,25 +84,39 @@ export async function fetchScores(symbol: string) {
 
 // 3. Peers + quotes
 export async function fetchPeers(symbol: string) {
-  const peersData = await fetch(`${FMPv4}/stock_peers?symbol=${symbol}&apikey=${API_KEY}`)
-  const peers = peersData[0]?.peersList?.slice(0, 5) || []
-  const quotes = peers.length > 0
-    ? await fetch(`${FMP}/quote/${peers.join(',')}?apikey=${API_KEY}`)
-    : []
-  return { peers, quotes }
+  try {
+    const peersData = await fetch(`${FMP_STABLE}/stock-peers?symbol=${symbol}&apikey=${API_KEY}`)
+    const peers = peersData?.[0]?.peersList?.slice(0, 5) || []
+    const quotes = peers.length > 0
+      ? await fetch(`${FMP_STABLE}/quote?symbol=${peers.join(',')}&apikey=${API_KEY}`)
+      : []
+    return { peers, quotes }
+  } catch (error) {
+    console.warn(`⚠️ fetchPeers falhou para ${symbol}`)
+    return { peers: [], quotes: [] }
+  }
 }
 
 // 4. Alertas de risco
 export async function fetchAlerts(symbol: string) {
+  const safeFetch = async (url: string, description: string) => {
+    try {
+      return await fetch(url)
+    } catch (error) {
+      console.warn(`⚠️ ${description} falhou para ${symbol}`)
+      return null
+    }
+  }
+
   const [ratiosRes, incomeRes, cashflowRes] = await Promise.all([
-    fetch(`${FMP}/ratios-ttm/${symbol}?apikey=${API_KEY}`),
-    fetch(`${FMP}/income-statement/${symbol}?limit=3&apikey=${API_KEY}`),
-    fetch(`${FMP}/cash-flow-statement/${symbol}?limit=3&apikey=${API_KEY}`)
+    safeFetch(`${FMP_STABLE}/ratios-ttm?symbol=${symbol}&apikey=${API_KEY}`, 'Ratios TTM'),
+    safeFetch(`${FMP_STABLE}/income-statement?symbol=${symbol}&limit=3&apikey=${API_KEY}`, 'Income Statement'),
+    safeFetch(`${FMP_STABLE}/cash-flow-statement?symbol=${symbol}&limit=3&apikey=${API_KEY}`, 'Cash Flow')
   ])
 
-  const ratios = ratiosRes[0]
-  const income: IncomeStatement[] = incomeRes
-  const cashflow: CashFlowStatement[] = cashflowRes
+  const ratios = ratiosRes?.[0] || {}
+  const income: IncomeStatement[] = incomeRes || []
+  const cashflow: CashFlowStatement[] = cashflowRes || []
     const alerts = []
 
 
@@ -165,10 +178,10 @@ export async function fetchRadar(symbol: string) {
 
   // 🔄 BUSCAR DADOS COM TRATAMENTO INDIVIDUAL DE ERROS
   const [ratiosRes, metricsRes, scoresRes, growthRes] = await Promise.all([
-    safeFetch(`${FMP}/ratios-ttm/${symbol}?apikey=${API_KEY}`, 'Ratios TTM'),
-    safeFetch(`${FMP}/key-metrics-ttm/${symbol}?apikey=${API_KEY}`, 'Key Metrics TTM'),
+    safeFetch(`${FMP_STABLE}/ratios-ttm?symbol=${symbol}&apikey=${API_KEY}`, 'Ratios TTM'),
+    safeFetch(`${FMP_STABLE}/key-metrics-ttm?symbol=${symbol}&apikey=${API_KEY}`, 'Key Metrics TTM'),
     safeFetch(`${FMP_STABLE}/financial-scores?symbol=${symbol}&apikey=${API_KEY}`, 'Financial Scores'),
-    safeFetch(`${FMP}/financial-growth/${symbol}?apikey=${API_KEY}`, 'Financial Growth')
+    safeFetch(`${FMP_STABLE}/financial-growth?symbol=${symbol}&apikey=${API_KEY}`, 'Financial Growth')
   ])
 
   const ratios = ratiosRes?.[0] || {}

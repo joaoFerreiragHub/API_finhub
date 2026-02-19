@@ -3,8 +3,6 @@
 import axios from 'axios'
 import { RawFinancialData, EarningsCalendarEntry, HistoricalRatiosEntry } from './types'
 
-const FMP = 'https://financialmodelingprep.com/api/v3'
-const FMPv4 = 'https://financialmodelingprep.com/api/v4'
 const FMP_STABLE = 'https://financialmodelingprep.com/stable'
 const API_KEY = process.env.FMP_API_KEY
 
@@ -34,21 +32,21 @@ export async function fetchRawFinancialData(symbol: string): Promise<RawFinancia
       assetTurnoverDataRes, // 🆕 NOVO  
       cashConversionRes, // 🆕 NOVO
     ] = await Promise.all([
-      fetch(`${FMP}/ratios-ttm/${symbol}?apikey=${API_KEY}`),
-      fetch(`${FMP}/key-metrics-ttm/${symbol}?apikey=${API_KEY}`),
-      fetch(`${FMP}/income-statement/${symbol}?limit=3&apikey=${API_KEY}`), // 🔧 3 anos
-      fetch(`${FMP}/financial-growth/${symbol}?period=annual&apikey=${API_KEY}`),
-      fetch(`${FMP}/profile/${symbol}?apikey=${API_KEY}`),
-      fetch(`${FMP}/cash-flow-statement/${symbol}?limit=3&apikey=${API_KEY}`), // 🔧 3 anos
-      fetch(`${FMP}/balance-sheet-statement/${symbol}?limit=3&apikey=${API_KEY}`), // 🔧 3 anos
-      fetch(`${FMP}/ratios/${symbol}?limit=5&apikey=${API_KEY}`), // 🔧 5 anos
-      fetch(`${FMP}/quote-short/${symbol}?apikey=${API_KEY}`),
-      fetch(`${FMP}/historical/earning_calendar/${symbol}?limit=12&apikey=${API_KEY}`), // 🔧 12 quarters
-      fetch(`${FMP}/key-metrics/${symbol}?limit=5&apikey=${API_KEY}`), // 🔧 5 anos
-      fetch(`${FMPv4}/shares_float?symbol=${symbol}&apikey=${API_KEY}`), // 🆕 SHARES FLOAT
-      fetch(`${FMP}/ratios/${symbol}?limit=5&apikey=${API_KEY}`), // Já existe, usar para inventory turnover
-      fetch(`${FMP}/key-metrics/${symbol}?limit=5&apikey=${API_KEY}`), // Já existe, usar para asset turnover
-      fetch(`${FMP}/ratios/${symbol}?limit=5&apikey=${API_KEY}`) // Usar para cash conversion cycle
+      fetch(`${FMP_STABLE}/ratios-ttm?symbol=${symbol}&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/key-metrics-ttm?symbol=${symbol}&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/income-statement?symbol=${symbol}&limit=3&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/financial-growth?symbol=${symbol}&period=annual&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/profile?symbol=${symbol}&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/cash-flow-statement?symbol=${symbol}&limit=3&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/balance-sheet-statement?symbol=${symbol}&limit=3&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/ratios?symbol=${symbol}&limit=5&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/quote?symbol=${symbol}&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/earnings-calendar?symbol=${symbol}&limit=12&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/key-metrics?symbol=${symbol}&limit=5&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/shares-float?symbol=${symbol}&apikey=${API_KEY}`),
+      fetch(`${FMP_STABLE}/ratios?symbol=${symbol}&limit=5&apikey=${API_KEY}`), // inventory turnover
+      fetch(`${FMP_STABLE}/key-metrics?symbol=${symbol}&limit=5&apikey=${API_KEY}`), // asset turnover
+      fetch(`${FMP_STABLE}/ratios?symbol=${symbol}&limit=5&apikey=${API_KEY}`) // cash conversion cycle
     ])
 
     // 🔧 PROCESSAMENTO INTELIGENTE DOS INCOME STATEMENTS

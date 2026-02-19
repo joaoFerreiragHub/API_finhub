@@ -3,6 +3,9 @@
 import { Request, Response, NextFunction } from 'express'
 import { ResponseBuilder, ErrorCodes } from '../types/responses'
 
+const getParamValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? (value[0] ?? '') : (value ?? '')
+
 // FIXED: Return Promise<void> instead of Response
 export const validateQuery = (allowedParams: string[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -174,7 +177,8 @@ export const validateParams = (requiredParams: string[]) => {
       // Validações específicas por parâmetro
       
       // Validar ID se presente
-      if (req.params.id && req.params.id.trim().length === 0) {
+      const idParam = getParamValue(req.params.id)
+      if (idParam && idParam.trim().length === 0) {
         res.status(400).json(
           ResponseBuilder.error(
             ErrorCodes.VALIDATION_ERROR,
@@ -186,7 +190,7 @@ export const validateParams = (requiredParams: string[]) => {
       
       // Validar símbolo de ticker se presente
       if (req.params.symbol) {
-        const symbol = req.params.symbol.toUpperCase()
+        const symbol = getParamValue(req.params.symbol).toUpperCase()
         // Validar formato básico do ticker (2-5 letras)
         if (!/^[A-Z]{1,5}$/.test(symbol)) {
           res.status(400).json(
@@ -204,8 +208,9 @@ export const validateParams = (requiredParams: string[]) => {
       
       // Validar categoria se presente nos parâmetros
       if (req.params.category) {
+        const category = getParamValue(req.params.category)
         const validCategories = ['market', 'crypto', 'economy', 'earnings', 'general']
-        if (!validCategories.includes(req.params.category)) {
+        if (!validCategories.includes(category)) {
           res.status(400).json(
             ResponseBuilder.error(
               ErrorCodes.VALIDATION_ERROR,
@@ -218,8 +223,9 @@ export const validateParams = (requiredParams: string[]) => {
       
       // Validar sentimento se presente nos parâmetros
       if (req.params.sentiment) {
+        const sentiment = getParamValue(req.params.sentiment)
         const validSentiments = ['positive', 'negative', 'neutral']
-        if (!validSentiments.includes(req.params.sentiment)) {
+        if (!validSentiments.includes(sentiment)) {
           res.status(400).json(
             ResponseBuilder.error(
               ErrorCodes.VALIDATION_ERROR,

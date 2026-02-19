@@ -36,7 +36,7 @@ interface FMPRequestParams {
 }
 
 class FMPNewsService {
-  private readonly baseUrl = 'https://financialmodelingprep.com/api'
+  private readonly baseUrl = 'https://financialmodelingprep.com'
   private apiKey: string
   private readonly rateLimitDelay = 200
   private lastRequestTime = 0
@@ -201,21 +201,23 @@ class FMPNewsService {
 
       const response = await this.makeRequest<{
         content: FMPGeneralNewsResponse[]
-      }>('/v3/fmp/articles', requestParams)
+      }>('/stable/fmp-articles', requestParams)
       
       const articles = response.content
       
       if (!Array.isArray(articles)) {
-        console.warn('❌ FMP general news: content is not an array:', typeof articles)
-        return []
+        console.warn('FMP general news: content is not an array:', typeof articles)
+        console.log('Trying alternative FMP endpoint after invalid general feed payload...')
+        return await this.fetchAlternativeNews(params, config)
       }
       
       if (articles.length === 0) {
-        console.warn('⚠️ FMP general news: empty content')
-        return []
+        console.warn('FMP general news: empty content')
+        console.log('Trying alternative FMP endpoint after empty general feed...')
+        return await this.fetchAlternativeNews(params, config)
       }
       
-      console.log(`✅ FMP general news: got ${articles.length} articles`)
+      console.log(`FMP general news: got ${articles.length} articles`)
       return articles.map((item, index) => this.convertGeneralNews(item, index))
       
 
@@ -240,7 +242,7 @@ class FMPNewsService {
     }
 
     // Tentar endpoint de stock news sem ticker específico
-    const response = await this.makeRequest<FMPStockNewsResponse[]>('/v3/stock_news', requestParams)
+    const response = await this.makeRequest<FMPStockNewsResponse[]>('/stable/news/stock-latest', requestParams)
     
     if (!Array.isArray(response)) {
       throw new Error('Alternative endpoint returned non-array')
@@ -264,7 +266,7 @@ class FMPNewsService {
       }
 
       // Endpoint correto para notícias de stocks
-      const response = await this.makeRequest<FMPStockNewsResponse[]>('/v3/stock_news', requestParams)
+      const response = await this.makeRequest<FMPStockNewsResponse[]>('/stable/news/stock-latest', requestParams)
       
       if (!Array.isArray(response)) {
         console.warn('❌ FMP stock news: response is not an array:', typeof response)
@@ -286,7 +288,7 @@ class FMPNewsService {
       console.log('🧪 Testing FMP connection...')
       
       // Teste simples com limite pequeno
-      const response = await this.makeRequest<any>('/v3/stock_news', { limit: 1 })
+      const response = await this.makeRequest<any>('/stable/news/stock-latest', { limit: 1 })
       
       console.log('✅ FMP connection test successful:', response)
       return true
@@ -532,14 +534,14 @@ class FMPNewsService {
         status: 'healthy',
         latency: Date.now() - startTime,
         timestamp: new Date().toISOString(),
-        endpoint: '/v3/stock_news'
+        endpoint: '/stable/news/stock-latest'
       }
     } catch (error) {
       return {
         status: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
-        endpoint: '/v3/stock_news'
+        endpoint: '/stable/news/stock-latest'
       }
     }
   }

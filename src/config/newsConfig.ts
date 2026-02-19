@@ -17,6 +17,10 @@ export interface NewsAPIConfig {
       apiKey: string
       enabled: boolean
     }
+    rss?: {
+      enabled: boolean
+      feeds: string[] // 'infomoney', 'eco', etc.
+    }
   }
   
   // FIXED: Use process.env instead of import.meta.env for Node.js
@@ -36,6 +40,10 @@ export interface NewsAPIConfig {
     polygon: {
       apiKey: process.env.POLYGON_API_KEY || '',
       enabled: Boolean(process.env.POLYGON_API_KEY)
+    },
+    rss: {
+      enabled: true, // RSS sempre ativo (não precisa API key)
+      feeds: ['infomoney', 'eco'] // Feeds ativos por padrão
     }
   }
   
@@ -49,7 +57,8 @@ export interface NewsAPIConfig {
       newsApi: true,
       alphaVantage: false, // Requer API key premium
       polygon: false, // Requer API key
-      yahoo: false // Requer implementação backend
+      yahoo: false, // Requer implementação backend
+      rss: true // RSS sempre ativo (InfoMoney BR + ECO PT)
     },
     rateLimiting: {
       fmp: 1000, // 1 request per second

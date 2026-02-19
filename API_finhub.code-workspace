@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../FinHub-Vite"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "FinHub-Vite"
+	}
+}
