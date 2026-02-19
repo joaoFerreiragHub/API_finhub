@@ -1,5 +1,5 @@
 import { Request } from 'express'
-import { IUser } from '../models/User'
+import { IUser, UserAccountStatus, UserRole } from '../models/User'
 
 /**
  * Request estendido com user autenticado
@@ -14,7 +14,8 @@ export interface AuthRequest extends Request {
 export interface JWTPayload {
   userId: string
   email: string
-  role: string
+  role: UserRole
+  tokenVersion: number
 }
 
 /**
@@ -27,7 +28,8 @@ export interface AuthResponse {
     name: string
     username: string
     avatar?: string
-    role: string
+    role: UserRole
+    accountStatus: UserAccountStatus
   }
   tokens: {
     accessToken: string

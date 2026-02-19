@@ -1,4 +1,5 @@
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken'
+import { UserRole } from '../models/User'
 
 const JWT_SECRET: Secret = process.env.JWT_SECRET || 'your-super-secret-key-change-in-production'
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn']
@@ -8,7 +9,8 @@ const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN || '30d') as 
 export interface TokenPayload {
   userId: string
   email: string
-  role: string
+  role: UserRole
+  tokenVersion: number
 }
 
 /**

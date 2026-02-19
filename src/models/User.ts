@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose'
 import bcrypt from 'bcryptjs'
 
 export type UserRole = 'visitor' | 'free' | 'premium' | 'creator' | 'admin'
+export type UserAccountStatus = 'active' | 'suspended' | 'banned'
 
 export interface IUser extends Document {
   email: string
@@ -12,6 +13,14 @@ export interface IUser extends Document {
   role: UserRole
   adminScopes?: string[]
   adminReadOnly: boolean
+  accountStatus: UserAccountStatus
+  statusReason?: string
+  statusChangedAt?: Date
+  statusChangedBy?: mongoose.Types.ObjectId
+  tokenVersion: number
+  lastForcedLogoutAt?: Date
+  lastLoginAt?: Date
+  lastActiveAt?: Date
 
   // Creator specific
   bio?: string
@@ -84,6 +93,43 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    accountStatus: {
+      type: String,
+      enum: ['active', 'suspended', 'banned'],
+      default: 'active',
+      index: true,
+    },
+    statusReason: {
+      type: String,
+      default: null,
+      maxlength: 500,
+    },
+    statusChangedAt: {
+      type: Date,
+      default: null,
+    },
+    statusChangedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastForcedLogoutAt: {
+      type: Date,
+      default: null,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
+    },
+    lastActiveAt: {
+      type: Date,
+      default: null,
+    },
 
     // Creator specific
     bio: {
@@ -123,6 +169,9 @@ UserSchema.index({ email: 1 })
 UserSchema.index({ username: 1 })
 UserSchema.index({ role: 1 })
 UserSchema.index({ role: 1, adminReadOnly: 1 })
+UserSchema.index({ accountStatus: 1, role: 1 })
+UserSchema.index({ lastLoginAt: -1 })
+UserSchema.index({ accountStatus: 1, lastLoginAt: -1 })
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {
