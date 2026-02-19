@@ -5,6 +5,10 @@
   "repository": "https://github.com/joaoFerreiragHub/finhub_API.git",
   "author": "joaoFerreiragHub <96747056+joaoFerreiragHub@users.noreply.github.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=20 <23",
+    "npm": ">=10"
+  },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "start:dev": "ts-node --transpile-only src/server.ts",

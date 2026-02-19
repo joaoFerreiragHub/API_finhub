@@ -34,12 +34,6 @@ No diretório do backend (`API_finhub`):
 npm install rss-parser
 ```
 
-ou
-
-```bash
-yarn add rss-parser
-```
-
 ### 2. Verificar Instalação
 
 Execute o servidor e verifique os logs:
