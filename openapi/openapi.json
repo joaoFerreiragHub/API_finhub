@@ -393,6 +393,142 @@
         }
       }
     },
+    "/api/notifications/preferences": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Obter preferencias de notificacoes",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Preferencias atuais",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationPreferencesResponse" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Atualizar preferencias de notificacoes",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NotificationPreferencesUpdateInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferencias atualizadas",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationPreferencesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/subscriptions": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Listar subscriptions por creator",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Lista paginada de subscriptions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreatorSubscriptionListResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/subscriptions/{creatorId}": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Obter status de subscription por creator",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "creatorId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status da subscription",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreatorSubscriptionStatus" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Ativar subscription para novo conteudo de creator",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "creatorId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Subscription criada",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreatorSubscriptionMutationResult" }
+              }
+            }
+          },
+          "200": {
+            "description": "Subscription atualizada/idempotente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreatorSubscriptionMutationResult" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Notifications"],
+        "summary": "Desativar subscription para novo conteudo de creator",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "creatorId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription desativada/idempotente",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreatorSubscriptionMutationResult" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/notifications/{id}/read": {
       "patch": {
         "tags": ["Notifications"],
@@ -645,6 +781,111 @@
           "message": { "type": "string" }
         },
         "required": ["message"]
+      },
+      "NotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "follow": { "type": "boolean" },
+          "comment": { "type": "boolean" },
+          "reply": { "type": "boolean" },
+          "rating": { "type": "boolean" },
+          "like": { "type": "boolean" },
+          "mention": { "type": "boolean" },
+          "content_published": { "type": "boolean" }
+        },
+        "required": [
+          "follow",
+          "comment",
+          "reply",
+          "rating",
+          "like",
+          "mention",
+          "content_published"
+        ]
+      },
+      "NotificationPreferencesResponse": {
+        "type": "object",
+        "properties": {
+          "notificationPreferences": {
+            "$ref": "#/components/schemas/NotificationPreferences"
+          }
+        },
+        "required": ["notificationPreferences"]
+      },
+      "NotificationPreferencesUpdateInput": {
+        "type": "object",
+        "properties": {
+          "follow": { "type": "boolean" },
+          "comment": { "type": "boolean" },
+          "reply": { "type": "boolean" },
+          "rating": { "type": "boolean" },
+          "like": { "type": "boolean" },
+          "mention": { "type": "boolean" },
+          "content_published": { "type": "boolean" }
+        }
+      },
+      "CreatorSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "username": { "type": "string" },
+          "avatar": { "type": "string" }
+        },
+        "required": ["id"]
+      },
+      "CreatorSubscriptionStatus": {
+        "type": "object",
+        "properties": {
+          "creatorId": { "type": "string" },
+          "eventType": { "type": "string", "enum": ["content_published"] },
+          "isSubscribed": { "type": "boolean" },
+          "hasOverride": { "type": "boolean" },
+          "isFollowing": { "type": "boolean" },
+          "followedAt": { "type": "string", "format": "date-time" },
+          "creator": { "$ref": "#/components/schemas/CreatorSummary" }
+        },
+        "required": ["creatorId", "eventType", "isSubscribed", "hasOverride"]
+      },
+      "CreatorSubscriptionMutationResult": {
+        "type": "object",
+        "properties": {
+          "creatorId": { "type": "string" },
+          "eventType": { "type": "string", "enum": ["content_published"] },
+          "isSubscribed": { "type": "boolean" },
+          "hasOverride": { "type": "boolean" },
+          "updated": { "type": "boolean" },
+          "created": { "type": "boolean" },
+          "creator": { "$ref": "#/components/schemas/CreatorSummary" }
+        },
+        "required": [
+          "creatorId",
+          "eventType",
+          "isSubscribed",
+          "hasOverride",
+          "updated",
+          "created"
+        ]
+      },
+      "CreatorSubscriptionListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CreatorSubscriptionStatus" }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "integer" },
+              "limit": { "type": "integer" },
+              "total": { "type": "integer" },
+              "pages": { "type": "integer" }
+            },
+            "required": ["page", "limit", "total", "pages"]
+          }
+        },
+        "required": ["items", "pagination"]
       },
       "RatingInput": {
         "type": "object",

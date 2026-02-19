@@ -2,6 +2,12 @@ import { Router } from 'express'
 import {
   getUserNotifications,
   getUnreadNotifications,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  getCreatorSubscriptions,
+  getCreatorSubscriptionStatus,
+  subscribeToCreator,
+  unsubscribeFromCreator,
   markAsRead,
   markAllAsRead,
   deleteNotification,
@@ -46,6 +52,48 @@ router.get('/count', authenticate, getUnreadCount)
  * @access  Private (Auth)
  */
 router.get('/stats', authenticate, getNotificationStats)
+
+/**
+ * @route   GET /api/notifications/preferences
+ * @desc    Obter preferencias de notificacao
+ * @access  Private (Auth)
+ */
+router.get('/preferences', authenticate, getNotificationPreferences)
+
+/**
+ * @route   PATCH /api/notifications/preferences
+ * @desc    Atualizar preferencias de notificacao
+ * @access  Private (Auth)
+ */
+router.patch('/preferences', authenticate, updateNotificationPreferences)
+
+/**
+ * @route   GET /api/notifications/subscriptions
+ * @desc    Listar subscriptions por creator
+ * @access  Private (Auth)
+ */
+router.get('/subscriptions', authenticate, getCreatorSubscriptions)
+
+/**
+ * @route   GET /api/notifications/subscriptions/:creatorId
+ * @desc    Obter status de subscription por creator
+ * @access  Private (Auth)
+ */
+router.get('/subscriptions/:creatorId', authenticate, getCreatorSubscriptionStatus)
+
+/**
+ * @route   PUT /api/notifications/subscriptions/:creatorId
+ * @desc    Ativar subscription por creator
+ * @access  Private (Auth)
+ */
+router.put('/subscriptions/:creatorId', authenticate, subscribeToCreator)
+
+/**
+ * @route   DELETE /api/notifications/subscriptions/:creatorId
+ * @desc    Desativar subscription por creator
+ * @access  Private (Auth)
+ */
+router.delete('/subscriptions/:creatorId', authenticate, unsubscribeFromCreator)
 
 /**
  * @route   PATCH /api/notifications/read-all

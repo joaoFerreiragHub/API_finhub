@@ -106,6 +106,26 @@ function Wait-UnreadAtLeast {
   throw "Timeout no check de notificacoes: $Label (esperado >= $Expected)"
 }
 
+function Assert-UnreadStable {
+  param(
+    [string]$Token,
+    [int]$Expected,
+    [string]$Label,
+    [int]$TimeoutSec = 6
+  )
+
+  $start = Get-Date
+  while ((New-TimeSpan -Start $start -End (Get-Date)).TotalSeconds -lt $TimeoutSec) {
+    $current = Get-UnreadCount -Token $Token
+    if ($current -gt $Expected) {
+      throw "Unread aumentou inesperadamente em $Label (esperado <= $Expected, atual: $current)"
+    }
+    Start-Sleep -Milliseconds 700
+  }
+
+  return $Expected
+}
+
 Write-Host "1) Health/ready/metrics/openapi"
 Invoke-TestRequest -Method 'GET' -Path '/healthz' -ExpectedStatus @(200) | Out-Null
 Invoke-TestRequest -Method 'GET' -Path '/readyz' -ExpectedStatus @(200) | Out-Null
@@ -299,7 +319,51 @@ Assert-Condition ($creatorCountAfterReadAll -eq 0) "Unread count devia ser 0 apo
 
 Invoke-TestRequest -Method 'DELETE' -Path '/api/notifications/read' -Token $creatorToken -ExpectedStatus @(200) | Out-Null
 
-Write-Host "11) Evento content_published para follower"
+Write-Host "11) Preferencias e subscriptions por creator"
+$prefsBefore = Invoke-TestRequest -Method 'GET' -Path '/api/notifications/preferences' -Token $followerToken -ExpectedStatus @(200)
+Assert-Condition ($prefsBefore.Json.notificationPreferences.content_published -in @($true, $false)) "preferences invalidas"
+
+$prefsOff = Invoke-TestRequest -Method 'PATCH' -Path '/api/notifications/preferences' -Token $followerToken -Body @{
+  content_published = $false
+} -ExpectedStatus @(200)
+Assert-Condition ($prefsOff.Json.notificationPreferences.content_published -eq $false) "nao desativou content_published"
+
+$prefsOn = Invoke-TestRequest -Method 'PATCH' -Path '/api/notifications/preferences' -Token $followerToken -Body @{
+  content_published = $true
+} -ExpectedStatus @(200)
+Assert-Condition ($prefsOn.Json.notificationPreferences.content_published -eq $true) "nao reativou content_published"
+
+$subscriptionInitial = Invoke-TestRequest -Method 'GET' -Path "/api/notifications/subscriptions/$creatorId" -Token $followerToken -ExpectedStatus @(200)
+Assert-Condition ($subscriptionInitial.Json.isFollowing -eq $true) "status subscription devia indicar isFollowing=true"
+Assert-Condition ($subscriptionInitial.Json.isSubscribed -eq $true) "status subscription default devia estar ativo"
+
+$subscriptionList = Invoke-TestRequest -Method 'GET' -Path '/api/notifications/subscriptions' -Token $followerToken -ExpectedStatus @(200)
+Assert-Condition ((Get-CollectionCount $subscriptionList.Json.items) -ge 1) "lista de subscriptions devia conter pelo menos 1 item"
+
+$followerBaseMuted = Get-UnreadCount -Token $followerToken
+Invoke-TestRequest -Method 'DELETE' -Path "/api/notifications/subscriptions/$creatorId" -Token $followerToken -ExpectedStatus @(200) | Out-Null
+$subscriptionMuted = Invoke-TestRequest -Method 'GET' -Path "/api/notifications/subscriptions/$creatorId" -Token $followerToken -ExpectedStatus @(200)
+Assert-Condition ($subscriptionMuted.Json.isSubscribed -eq $false) "subscription devia ficar desativada"
+
+$draftArticleMuted = Invoke-TestRequest -Method 'POST' -Path '/api/articles' -Token $creatorToken -Body @{
+  title = "Artigo muted publish $suffix"
+  description = 'Descricao muted'
+  content = 'Conteudo muted'
+  category = 'finance'
+  tags = @('publish-event', 'muted')
+  status = 'draft'
+} -ExpectedStatus @(201)
+$draftArticleMutedId = Get-JsonId $draftArticleMuted.Json
+Assert-Condition (-not [string]::IsNullOrWhiteSpace($draftArticleMutedId)) "draftArticleMutedId vazio"
+
+Invoke-TestRequest -Method 'PATCH' -Path "/api/articles/$draftArticleMutedId/publish" -Token $creatorToken -ExpectedStatus @(200) | Out-Null
+Assert-UnreadStable -Token $followerToken -Expected $followerBaseMuted -Label 'content_published muted' | Out-Null
+
+Invoke-TestRequest -Method 'PUT' -Path "/api/notifications/subscriptions/$creatorId" -Token $followerToken -ExpectedStatus @(200, 201) | Out-Null
+$subscriptionEnabled = Invoke-TestRequest -Method 'GET' -Path "/api/notifications/subscriptions/$creatorId" -Token $followerToken -ExpectedStatus @(200)
+Assert-Condition ($subscriptionEnabled.Json.isSubscribed -eq $true) "subscription devia ficar ativa"
+
+Write-Host "12) Evento content_published para follower"
 $followerBase = Get-UnreadCount -Token $followerToken
 
 $draftArticle = Invoke-TestRequest -Method 'POST' -Path '/api/articles' -Token $creatorToken -Body @{
@@ -334,7 +398,7 @@ Assert-Condition (-not [string]::IsNullOrWhiteSpace($publishedNotifId)) "Nao enc
 
 Invoke-TestRequest -Method 'DELETE' -Path "/api/notifications/$publishedNotifId" -Token $followerToken -ExpectedStatus @(200) | Out-Null
 
-Write-Host "12) Contrato legado removido"
+Write-Host "13) Contrato legado removido"
 Invoke-TestRequest -Method 'GET' -Path "/api/users/$creatorId/visibility" -ExpectedStatus @(404) | Out-Null
 
 Write-Host ""

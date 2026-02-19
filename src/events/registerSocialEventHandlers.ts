@@ -112,7 +112,10 @@ const handleContentPublished = async (event: ContentPublishedEvent) => {
       continue
     }
 
-    const canNotify = await shouldNotify(followerId, 'content_published')
+    const canNotify = await userPreferenceService.canReceiveCreatorContentNotification(
+      followerId,
+      event.creatorId
+    )
     if (!canNotify) {
       continue
     }
