@@ -14,6 +14,7 @@ import {
   restrictContent,
   unhideContent,
 } from '../controllers/adminContent.controller'
+import { getAdminMetricsOverview } from '../controllers/adminMetrics.controller'
 import {
   addUserInternalNote,
   banUser,
@@ -44,6 +45,23 @@ router.get(
   }),
   requireAdminScope('admin.audit.read'),
   listAdminAuditLogs
+)
+
+/**
+ * @route   GET /api/admin/metrics/overview
+ * @desc    Dashboard consolidado de metricas administrativas
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/metrics/overview',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.metrics.overview.read',
+    resourceType: 'admin_metrics',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getAdminMetricsOverview
 )
 
 /**
