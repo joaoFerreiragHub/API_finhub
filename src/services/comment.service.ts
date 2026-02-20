@@ -161,6 +161,7 @@ export class CommentService {
       targetType,
       targetId: new mongoose.Types.ObjectId(targetId),
       depth: 0,
+      moderationStatus: 'visible',
     }
 
     const [comments, total] = await Promise.all([
@@ -190,6 +191,7 @@ export class CommentService {
   async getReplies(commentId: string): Promise<CommentTreeNode[]> {
     const replies = await Comment.find({
       parentComment: new mongoose.Types.ObjectId(commentId),
+      moderationStatus: 'visible',
     })
       .sort('createdAt')
       .populate('user', 'name username avatar')
@@ -241,6 +243,7 @@ export class CommentService {
   private async countReplies(commentId: string): Promise<number> {
     const directReplies = await Comment.find({
       parentComment: new mongoose.Types.ObjectId(commentId),
+      moderationStatus: 'visible',
     })
 
     let total = directReplies.length
@@ -372,7 +375,11 @@ export class CommentService {
    */
   private async updateTargetCommentCount(targetType: CommentTargetType, targetId: string) {
     const objectId = new mongoose.Types.ObjectId(targetId)
-    const count = await Comment.countDocuments({ targetType, targetId: objectId })
+    const count = await Comment.countDocuments({
+      targetType,
+      targetId: objectId,
+      moderationStatus: 'visible',
+    })
 
     const model = commentTargetModels[targetType]
     if (!model) {

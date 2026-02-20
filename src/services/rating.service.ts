@@ -166,6 +166,7 @@ export class RatingService {
     const query = {
       targetType,
       targetId: new mongoose.Types.ObjectId(targetId),
+      moderationStatus: 'visible',
     }
 
     const [ratings, total] = await Promise.all([
@@ -314,7 +315,7 @@ export class RatingService {
       ratingModelWithStatics.getDistribution(targetType, objectId),
       Rating.aggregate([
         {
-          $match: { targetType, targetId: objectId },
+          $match: { targetType, targetId: objectId, moderationStatus: 'visible' },
         },
         {
           $group: {

@@ -1,11 +1,17 @@
 import mongoose from 'mongoose'
 import { Article } from '../models/Article'
 import { Book } from '../models/Book'
-import { ContentModerationAction, ContentModerationEvent } from '../models/ContentModerationEvent'
+import {
+  ContentModerationAction,
+  ContentModerationEvent,
+  ModeratableContentType,
+} from '../models/ContentModerationEvent'
 import { ContentModerationStatus, ContentType, PublishStatus } from '../models/BaseContent'
+import { Comment } from '../models/Comment'
 import { Course } from '../models/Course'
 import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
+import { Rating } from '../models/Rating'
 import { Video } from '../models/Video'
 
 interface ContentModel {
@@ -14,7 +20,8 @@ interface ContentModel {
   countDocuments(query: Record<string, unknown>): Promise<number>
 }
 
-const CONTENT_TYPES: ContentType[] = ['article', 'video', 'course', 'live', 'podcast', 'book']
+const BASE_CONTENT_TYPES: ContentType[] = ['article', 'video', 'course', 'live', 'podcast', 'book']
+const CONTENT_TYPES: ModeratableContentType[] = [...BASE_CONTENT_TYPES, 'comment', 'review']
 const MODERATION_STATUSES: ContentModerationStatus[] = ['visible', 'hidden', 'restricted']
 const PUBLISH_STATUSES: PublishStatus[] = ['draft', 'published', 'archived']
 
@@ -32,7 +39,7 @@ const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 100
 
 export interface AdminContentQueueFilters {
-  contentType?: ContentType
+  contentType?: ModeratableContentType
   moderationStatus?: ContentModerationStatus
   publishStatus?: PublishStatus
   creatorId?: string
@@ -46,7 +53,7 @@ export interface PaginationOptions {
 
 export interface ModerateContentInput {
   actorId: string
-  contentType: ContentType
+  contentType: ModeratableContentType
   contentId: string
   action: ContentModerationAction
   reason: string
@@ -54,7 +61,7 @@ export interface ModerateContentInput {
 }
 
 export interface ContentHistoryFilters {
-  contentType: ContentType
+  contentType: ModeratableContentType
   contentId: string
 }
 
@@ -99,8 +106,20 @@ const toPublishStatus = (value: unknown): PublishStatus => {
   return 'published'
 }
 
-const isValidContentType = (value: unknown): value is ContentType =>
-  typeof value === 'string' && CONTENT_TYPES.includes(value as ContentType)
+const isValidContentType = (value: unknown): value is ModeratableContentType =>
+  typeof value === 'string' && CONTENT_TYPES.includes(value as ModeratableContentType)
+
+const isBaseContentType = (value: ModeratableContentType): value is ContentType =>
+  BASE_CONTENT_TYPES.includes(value as ContentType)
+
+const toExcerpt = (text: unknown, maxLength = 96): string => {
+  const raw = typeof text === 'string' ? text.trim() : ''
+  if (!raw) return ''
+  if (raw.length <= maxLength) return raw
+  return `${raw.slice(0, maxLength - 3)}...`
+}
+
+const publishedOnlyQuery = { _id: { $exists: false } }
 
 export const isValidModerationStatus = (value: unknown): value is ContentModerationStatus =>
   typeof value === 'string' && MODERATION_STATUSES.includes(value as ContentModerationStatus)
@@ -108,7 +127,7 @@ export const isValidModerationStatus = (value: unknown): value is ContentModerat
 export const isValidPublishStatus = (value: unknown): value is PublishStatus =>
   typeof value === 'string' && PUBLISH_STATUSES.includes(value as PublishStatus)
 
-export const isValidContentTypeFilter = (value: unknown): value is ContentType =>
+export const isValidContentTypeFilter = (value: unknown): value is ModeratableContentType =>
   isValidContentType(value)
 
 export class AdminContentService {
@@ -133,30 +152,10 @@ export class AdminContentService {
       toObjectId(filters.creatorId, 'creatorId')
     }
 
-    const query = this.buildQueueQuery(filters)
     const types = filters.contentType ? [filters.contentType] : CONTENT_TYPES
 
     const listResults = await Promise.all(
-      types.map(async (contentType) => {
-        const model = this.getModel(contentType)
-        const [items, total] = await Promise.all([
-          model
-            .find(query)
-            .select(
-              'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType'
-            )
-            .sort({ updatedAt: -1 })
-            .populate('creator', 'name username email role')
-            .populate('moderatedBy', 'name username email role')
-            .lean(),
-          model.countDocuments(query),
-        ])
-
-        return {
-          total,
-          items: (items as any[]).map((item) => this.mapQueueItem(contentType, item)),
-        }
-      })
+      types.map(async (contentType) => this.listQueueByType(contentType, filters))
     )
 
     const total = listResults.reduce((sum, result) => sum + result.total, 0)
@@ -209,6 +208,28 @@ export class AdminContentService {
 
     await content.save()
 
+    const metadata =
+      input.contentType === 'comment'
+        ? {
+            changed,
+            publishStatus: 'published',
+            targetType: String(content.targetType ?? ''),
+            targetId: String(content.targetId ?? ''),
+            parentComment: content.parentComment ? String(content.parentComment) : null,
+          }
+        : input.contentType === 'review'
+          ? {
+              changed,
+              publishStatus: 'published',
+              targetType: String(content.targetType ?? ''),
+              targetId: String(content.targetId ?? ''),
+              rating: typeof content.rating === 'number' ? content.rating : null,
+            }
+          : {
+              changed,
+              publishStatus: toPublishStatus(content.status),
+            }
+
     await ContentModerationEvent.create({
       contentType: input.contentType,
       contentId: String(content._id),
@@ -218,26 +239,19 @@ export class AdminContentService {
       toStatus,
       reason,
       note,
-      metadata: {
-        changed,
-        publishStatus: toPublishStatus(content.status),
-      },
+      metadata,
     })
 
-    const populated = await model
-      .findById(content._id)
-      .select(
-        'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType'
-      )
-      .populate('creator', 'name username email role')
-      .populate('moderatedBy', 'name username email role')
-      .lean()
+    const queueItem = await this.getQueueItemById(input.contentType, String(content._id))
+    if (!queueItem) {
+      throw new AdminContentServiceError(500, 'Erro ao carregar conteudo apos moderacao.')
+    }
 
     return {
       changed,
       fromStatus,
       toStatus,
-      content: this.mapQueueItem(input.contentType, populated as any),
+      content: queueItem,
     }
   }
 
@@ -289,7 +303,130 @@ export class AdminContentService {
     }
   }
 
-  private getModel(contentType: ContentType): ContentModel {
+  private async listQueueByType(
+    contentType: ModeratableContentType,
+    filters: AdminContentQueueFilters
+  ): Promise<{ total: number; items: any[] }> {
+    if (isBaseContentType(contentType)) {
+      return this.listBaseQueue(contentType, filters)
+    }
+
+    if (contentType === 'comment') {
+      return this.listCommentQueue(filters)
+    }
+
+    return this.listReviewQueue(filters)
+  }
+
+  private async listBaseQueue(contentType: ContentType, filters: AdminContentQueueFilters) {
+    const model = this.getModel(contentType)
+    const query = this.buildBaseQueueQuery(filters)
+
+    const [items, total] = await Promise.all([
+      model
+        .find(query)
+        .select(
+          'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType'
+        )
+        .sort({ updatedAt: -1 })
+        .populate('creator', 'name username email role')
+        .populate('moderatedBy', 'name username email role')
+        .lean(),
+      model.countDocuments(query),
+    ])
+
+    return {
+      total,
+      items: (items as any[]).map((item) => this.mapBaseQueueItem(contentType, item)),
+    }
+  }
+
+  private async listCommentQueue(filters: AdminContentQueueFilters) {
+    const query = this.buildCommentQueueQuery(filters)
+
+    const [items, total] = await Promise.all([
+      Comment.find(query)
+        .select(
+          'content targetType targetId parentComment moderationStatus moderationReason moderationNote moderatedBy moderatedAt user createdAt updatedAt'
+        )
+        .sort({ updatedAt: -1 })
+        .populate('user', 'name username email role')
+        .populate('moderatedBy', 'name username email role')
+        .lean(),
+      Comment.countDocuments(query),
+    ])
+
+    return {
+      total,
+      items: (items as any[]).map((item) => this.mapCommentQueueItem(item)),
+    }
+  }
+
+  private async listReviewQueue(filters: AdminContentQueueFilters) {
+    const query = this.buildReviewQueueQuery(filters)
+
+    const [items, total] = await Promise.all([
+      Rating.find(query)
+        .select(
+          'rating review targetType targetId moderationStatus moderationReason moderationNote moderatedBy moderatedAt user createdAt updatedAt'
+        )
+        .sort({ updatedAt: -1 })
+        .populate('user', 'name username email role')
+        .populate('moderatedBy', 'name username email role')
+        .lean(),
+      Rating.countDocuments(query),
+    ])
+
+    return {
+      total,
+      items: (items as any[]).map((item) => this.mapReviewQueueItem(item)),
+    }
+  }
+
+  private async getQueueItemById(contentType: ModeratableContentType, contentId: string) {
+    if (isBaseContentType(contentType)) {
+      const model = this.getModel(contentType)
+      const item = await model
+        .findById(contentId)
+        .select(
+          'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType'
+        )
+        .populate('creator', 'name username email role')
+        .populate('moderatedBy', 'name username email role')
+        .lean()
+
+      return item ? this.mapBaseQueueItem(contentType, item) : null
+    }
+
+    if (contentType === 'comment') {
+      const item = await Comment.findById(contentId)
+        .select(
+          'content targetType targetId parentComment moderationStatus moderationReason moderationNote moderatedBy moderatedAt user createdAt updatedAt'
+        )
+        .populate('user', 'name username email role')
+        .populate('moderatedBy', 'name username email role')
+        .lean()
+
+      return item ? this.mapCommentQueueItem(item as any) : null
+    }
+
+    const item = await Rating.findById(contentId)
+      .select(
+        'rating review targetType targetId moderationStatus moderationReason moderationNote moderatedBy moderatedAt user createdAt updatedAt'
+      )
+      .populate('user', 'name username email role')
+      .populate('moderatedBy', 'name username email role')
+      .lean()
+
+    return item ? this.mapReviewQueueItem(item as any) : null
+  }
+
+  private getModel(contentType: ModeratableContentType): ContentModel {
+    if (!isBaseContentType(contentType)) {
+      if (contentType === 'comment') return Comment as unknown as ContentModel
+      return Rating as unknown as ContentModel
+    }
+
     const model = contentModelByType[contentType]
     if (!model) {
       throw new AdminContentServiceError(400, 'contentType invalido.')
@@ -297,7 +434,7 @@ export class AdminContentService {
     return model
   }
 
-  private buildQueueQuery(filters: AdminContentQueueFilters): Record<string, unknown> {
+  private buildBaseQueueQuery(filters: AdminContentQueueFilters): Record<string, unknown> {
     const query: Record<string, unknown> = {}
 
     if (filters.moderationStatus) {
@@ -314,11 +451,55 @@ export class AdminContentService {
 
     if (filters.search && filters.search.trim().length > 0) {
       const searchRegex = new RegExp(escapeRegExp(filters.search.trim()), 'i')
-      query.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-        { slug: searchRegex },
-      ]
+      query.$or = [{ title: searchRegex }, { description: searchRegex }, { slug: searchRegex }]
+    }
+
+    return query
+  }
+
+  private buildCommentQueueQuery(filters: AdminContentQueueFilters): Record<string, unknown> {
+    if (filters.publishStatus && filters.publishStatus !== 'published') {
+      return publishedOnlyQuery
+    }
+
+    const query: Record<string, unknown> = {}
+
+    if (filters.moderationStatus) {
+      query.moderationStatus = filters.moderationStatus
+    }
+
+    if (filters.creatorId) {
+      query.user = new mongoose.Types.ObjectId(filters.creatorId)
+    }
+
+    if (filters.search && filters.search.trim().length > 0) {
+      const searchRegex = new RegExp(escapeRegExp(filters.search.trim()), 'i')
+      query.$or = [{ content: searchRegex }, { targetType: searchRegex }]
+    }
+
+    return query
+  }
+
+  private buildReviewQueueQuery(filters: AdminContentQueueFilters): Record<string, unknown> {
+    if (filters.publishStatus && filters.publishStatus !== 'published') {
+      return publishedOnlyQuery
+    }
+
+    const query: Record<string, unknown> = {
+      review: { $regex: /\S/ },
+    }
+
+    if (filters.moderationStatus) {
+      query.moderationStatus = filters.moderationStatus
+    }
+
+    if (filters.creatorId) {
+      query.user = new mongoose.Types.ObjectId(filters.creatorId)
+    }
+
+    if (filters.search && filters.search.trim().length > 0) {
+      const searchRegex = new RegExp(escapeRegExp(filters.search.trim()), 'i')
+      query.$or = [{ review: searchRegex }, { targetType: searchRegex }]
     }
 
     return query
@@ -330,7 +511,7 @@ export class AdminContentService {
     return 'visible'
   }
 
-  private mapQueueItem(contentType: ContentType, item: any) {
+  private mapBaseQueueItem(contentType: ContentType, item: any) {
     return {
       id: String(item._id),
       contentType,
@@ -345,6 +526,56 @@ export class AdminContentService {
       moderatedAt: item.moderatedAt ?? null,
       moderatedBy: item.moderatedBy ?? null,
       creator: item.creator ?? null,
+      createdAt: item.createdAt ?? null,
+      updatedAt: item.updatedAt ?? null,
+    }
+  }
+
+  private mapCommentQueueItem(item: any) {
+    const contentText = toExcerpt(item.content, 96)
+    const targetType = String(item.targetType ?? '')
+    const targetId = item.targetId ? String(item.targetId) : ''
+    const parentComment = item.parentComment ? String(item.parentComment) : null
+
+    return {
+      id: String(item._id),
+      contentType: 'comment',
+      title: contentText || 'Comentario sem texto',
+      slug: String(item._id),
+      description: `Comentario em ${targetType}:${targetId}${parentComment ? ` (reply ${parentComment})` : ''}`,
+      category: targetType || 'comment',
+      status: 'published',
+      moderationStatus: toModerationStatus(item.moderationStatus),
+      moderationReason: item.moderationReason ?? null,
+      moderationNote: item.moderationNote ?? null,
+      moderatedAt: item.moderatedAt ?? null,
+      moderatedBy: item.moderatedBy ?? null,
+      creator: item.user ?? null,
+      createdAt: item.createdAt ?? null,
+      updatedAt: item.updatedAt ?? null,
+    }
+  }
+
+  private mapReviewQueueItem(item: any) {
+    const reviewText = toExcerpt(item.review, 96)
+    const targetType = String(item.targetType ?? '')
+    const targetId = item.targetId ? String(item.targetId) : ''
+    const ratingValue = typeof item.rating === 'number' ? item.rating : null
+
+    return {
+      id: String(item._id),
+      contentType: 'review',
+      title: ratingValue !== null ? `Review ${ratingValue}/5` : 'Review',
+      slug: String(item._id),
+      description: reviewText || `Review em ${targetType}:${targetId}`,
+      category: targetType || 'review',
+      status: 'published',
+      moderationStatus: toModerationStatus(item.moderationStatus),
+      moderationReason: item.moderationReason ?? null,
+      moderationNote: item.moderationNote ?? null,
+      moderatedAt: item.moderatedAt ?? null,
+      moderatedBy: item.moderatedBy ?? null,
+      creator: item.user ?? null,
       createdAt: item.createdAt ?? null,
       updatedAt: item.updatedAt ?? null,
     }

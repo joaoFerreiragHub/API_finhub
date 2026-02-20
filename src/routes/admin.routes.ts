@@ -1,6 +1,13 @@
 import { Router } from 'express'
 import { listAdminAuditLogs } from '../controllers/adminAudit.controller'
 import {
+  listAdminAssistedSessionHistory,
+  listAdminAssistedSessions,
+  requestAdminAssistedSession,
+  revokeAdminAssistedSession,
+  startAdminAssistedSession,
+} from '../controllers/adminAssistedSession.controller'
+import {
   hideContent,
   listAdminContentQueue,
   listContentModerationHistory,
@@ -37,6 +44,94 @@ router.get(
   }),
   requireAdminScope('admin.audit.read'),
   listAdminAuditLogs
+)
+
+/**
+ * @route   GET /api/admin/support/sessions
+ * @desc    Listar sessoes assistidas do admin autenticado
+ * @access  Private (Admin com escopo admin.support.session.assist)
+ */
+router.get(
+  '/support/sessions',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.support.sessions.list',
+    resourceType: 'assisted_session',
+    scope: 'admin.support.session.assist',
+  }),
+  requireAdminScope('admin.support.session.assist'),
+  listAdminAssistedSessions
+)
+
+/**
+ * @route   POST /api/admin/support/sessions/request
+ * @desc    Criar pedido de sessao assistida para um utilizador alvo
+ * @access  Private (Admin com escopo admin.support.session.assist)
+ */
+router.post(
+  '/support/sessions/request',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.support.sessions.request',
+    resourceType: 'assisted_session',
+    scope: 'admin.support.session.assist',
+  }),
+  requireAdminScope('admin.support.session.assist'),
+  requestAdminAssistedSession
+)
+
+/**
+ * @route   POST /api/admin/support/sessions/:sessionId/start
+ * @desc    Iniciar sessao assistida apos consentimento
+ * @access  Private (Admin com escopo admin.support.session.assist)
+ */
+router.post(
+  '/support/sessions/:sessionId/start',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.support.sessions.start',
+    resourceType: 'assisted_session',
+    scope: 'admin.support.session.assist',
+    getResourceId: (req) => req.params.sessionId,
+  }),
+  requireAdminScope('admin.support.session.assist'),
+  startAdminAssistedSession
+)
+
+/**
+ * @route   POST /api/admin/support/sessions/:sessionId/revoke
+ * @desc    Revogar sessao assistida ativa/pendente/aprovada
+ * @access  Private (Admin com escopo admin.support.session.assist)
+ */
+router.post(
+  '/support/sessions/:sessionId/revoke',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.support.sessions.revoke',
+    resourceType: 'assisted_session',
+    scope: 'admin.support.session.assist',
+    getResourceId: (req) => req.params.sessionId,
+  }),
+  requireAdminScope('admin.support.session.assist'),
+  revokeAdminAssistedSession
+)
+
+/**
+ * @route   GET /api/admin/support/sessions/:sessionId/history
+ * @desc    Listar auditoria detalhada de uma sessao assistida
+ * @access  Private (Admin com escopo admin.support.session.assist)
+ */
+router.get(
+  '/support/sessions/:sessionId/history',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.support.sessions.history.list',
+    resourceType: 'assisted_session_audit_log',
+    scope: 'admin.support.session.assist',
+    getResourceId: (req) => req.params.sessionId,
+  }),
+  requireAdminScope('admin.support.session.assist'),
+  listAdminAssistedSessionHistory
 )
 
 /**

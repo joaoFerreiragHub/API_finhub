@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose'
+import { ContentModerationStatus } from './BaseContent'
 
 export type CommentTargetType =
   // Conteúdos
@@ -41,6 +42,11 @@ export interface IComment extends Document {
   // Status
   isEdited: boolean
   isPinned: boolean // Pode ser pinado pelo creator/admin
+  moderationStatus: ContentModerationStatus
+  moderationReason?: string
+  moderationNote?: string
+  moderatedBy?: mongoose.Types.ObjectId
+  moderatedAt?: Date
 
   createdAt: Date
   updatedAt: Date
@@ -114,6 +120,31 @@ const CommentSchema = new Schema<IComment>(
       default: false,
       index: true,
     },
+    moderationStatus: {
+      type: String,
+      enum: ['visible', 'hidden', 'restricted'],
+      default: 'visible',
+      index: true,
+    },
+    moderationReason: {
+      type: String,
+      default: null,
+      maxlength: 500,
+    },
+    moderationNote: {
+      type: String,
+      default: null,
+      maxlength: 2000,
+    },
+    moderatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    moderatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -126,6 +157,7 @@ CommentSchema.index({ parentComment: 1 })
 CommentSchema.index({ user: 1 })
 CommentSchema.index({ createdAt: -1 })
 CommentSchema.index({ isPinned: -1, createdAt: -1 }) // Pinados primeiro
+CommentSchema.index({ moderationStatus: 1, updatedAt: -1 })
 
 // Validação: Não permitir depth > 3
 CommentSchema.pre('save', function (next) {
@@ -140,7 +172,7 @@ CommentSchema.statics.countComments = async function (
   targetType: CommentTargetType,
   targetId: mongoose.Types.ObjectId
 ) {
-  return await this.countDocuments({ targetType, targetId })
+  return await this.countDocuments({ targetType, targetId, moderationStatus: 'visible' })
 }
 
 // Método estático: Buscar comentários principais (depth 0)
@@ -155,6 +187,7 @@ CommentSchema.statics.getMainComments = async function (
     targetType,
     targetId,
     depth: 0,
+    moderationStatus: 'visible',
   })
     .sort(sort)
     .skip(skip)
@@ -167,6 +200,7 @@ CommentSchema.statics.getMainComments = async function (
 CommentSchema.statics.getReplies = async function (parentCommentId: mongoose.Types.ObjectId) {
   return await this.find({
     parentComment: parentCommentId,
+    moderationStatus: 'visible',
   })
     .sort('createdAt')
     .populate('user', 'name username avatar')

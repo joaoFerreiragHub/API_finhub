@@ -7,8 +7,8 @@ import {
   isValidModerationStatus,
   isValidPublishStatus,
 } from '../services/adminContent.service'
-import { ContentModerationAction } from '../models/ContentModerationEvent'
-import { ContentModerationStatus, ContentType, PublishStatus } from '../models/BaseContent'
+import { ContentModerationAction, ModeratableContentType } from '../models/ContentModerationEvent'
+import { ContentModerationStatus, PublishStatus } from '../models/BaseContent'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -88,7 +88,7 @@ const applyContentAction = async (
 
   const result = await adminContentService.moderateContent({
     actorId: req.user.id,
-    contentType: contentType as ContentType,
+    contentType: contentType as ModeratableContentType,
     contentId: req.params.contentId,
     action,
     reason,
@@ -134,7 +134,7 @@ export const listAdminContentQueue = async (req: AuthRequest, res: Response) => 
 
     const result = await adminContentService.listQueue(
       {
-        contentType: contentTypeRaw as ContentType | undefined,
+        contentType: contentTypeRaw as ModeratableContentType | undefined,
         moderationStatus: moderationStatusRaw as ContentModerationStatus | undefined,
         publishStatus: publishStatusRaw as PublishStatus | undefined,
         creatorId: typeof req.query.creatorId === 'string' ? req.query.creatorId : undefined,
@@ -167,7 +167,7 @@ export const listContentModerationHistory = async (req: AuthRequest, res: Respon
 
     const result = await adminContentService.listHistory(
       {
-        contentType: contentType as ContentType,
+        contentType: contentType as ModeratableContentType,
         contentId: req.params.contentId,
       },
       {

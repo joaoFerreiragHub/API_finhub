@@ -11,6 +11,15 @@ export interface TokenPayload {
   email: string
   role: UserRole
   tokenVersion: number
+  assistedSession?: AssistedSessionTokenPayload
+}
+
+export interface AssistedSessionTokenPayload {
+  sessionId: string
+  adminUserId: string
+  targetUserId: string
+  scope: 'read_only'
+  expiresAt: string
 }
 
 /**

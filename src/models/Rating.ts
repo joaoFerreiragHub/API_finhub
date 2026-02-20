@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose'
+import { ContentModerationStatus } from './BaseContent'
 
 export type RatingTargetType =
   | 'article'
@@ -34,6 +35,11 @@ export interface IRating extends Document {
   likes: number
   dislikes: number
   reactions: IRatingReaction[]
+  moderationStatus: ContentModerationStatus
+  moderationReason?: string
+  moderationNote?: string
+  moderatedBy?: mongoose.Types.ObjectId
+  moderatedAt?: Date
 
   createdAt: Date
   updatedAt: Date
@@ -109,6 +115,31 @@ const RatingSchema = new Schema<IRating>(
       type: [RatingReactionSchema],
       default: [],
     },
+    moderationStatus: {
+      type: String,
+      enum: ['visible', 'hidden', 'restricted'],
+      default: 'visible',
+      index: true,
+    },
+    moderationReason: {
+      type: String,
+      default: null,
+      maxlength: 500,
+    },
+    moderationNote: {
+      type: String,
+      default: null,
+      maxlength: 2000,
+    },
+    moderatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    moderatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -120,6 +151,7 @@ RatingSchema.index({ user: 1, targetType: 1, targetId: 1 }, { unique: true })
 RatingSchema.index({ targetType: 1, targetId: 1 })
 RatingSchema.index({ rating: -1 })
 RatingSchema.index({ likes: -1, dislikes: 1 })
+RatingSchema.index({ moderationStatus: 1, updatedAt: -1 })
 
 // Metodo estatico: Calcular media de ratings de um target
 RatingSchema.statics.calculateAverage = async function (
@@ -128,7 +160,7 @@ RatingSchema.statics.calculateAverage = async function (
 ) {
   const result = await this.aggregate([
     {
-      $match: { targetType, targetId },
+      $match: { targetType, targetId, moderationStatus: 'visible' },
     },
     {
       $group: {
@@ -156,7 +188,7 @@ RatingSchema.statics.getDistribution = async function (
 ) {
   const result = await this.aggregate([
     {
-      $match: { targetType, targetId },
+      $match: { targetType, targetId, moderationStatus: 'visible' },
     },
     {
       $group: {

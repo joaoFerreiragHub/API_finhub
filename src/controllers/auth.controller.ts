@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { User, UserAccountStatus } from '../models/User'
 import { generateTokens, verifyRefreshToken } from '../utils/jwt'
 import { AuthRequest, AuthResponse, LoginDTO, RegisterDTO, RefreshTokenDTO } from '../types/auth'
+import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
 
 const ACCOUNT_STATUS_MESSAGES: Record<Exclude<UserAccountStatus, 'active'>, string> = {
   suspended: 'Conta suspensa. Contacta o suporte para mais detalhes.',
@@ -20,6 +21,9 @@ const mapAuthResponseUser = (user: {
   avatar?: string
   role: AuthResponse['user']['role']
   accountStatus: AuthResponse['user']['accountStatus']
+  adminReadOnly?: boolean
+  adminScopes?: string[]
+  assistedSession?: AuthResponse['user']['assistedSession']
 }): AuthResponse['user'] => ({
   id: user.id,
   email: user.email,
@@ -28,6 +32,9 @@ const mapAuthResponseUser = (user: {
   avatar: user.avatar,
   role: user.role,
   accountStatus: user.accountStatus,
+  adminReadOnly: Boolean(user.adminReadOnly),
+  adminScopes: Array.isArray(user.adminScopes) ? user.adminScopes : [],
+  assistedSession: user.assistedSession,
 })
 
 const buildAccountStatusError = (status: Exclude<UserAccountStatus, 'active'>) => ({
@@ -90,6 +97,8 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
         avatar: user.avatar,
         role: user.role,
         accountStatus: user.accountStatus,
+        adminReadOnly: user.adminReadOnly,
+        adminScopes: user.adminScopes,
       }),
       tokens,
     }
@@ -157,6 +166,8 @@ export const login = async (req: Request<{}, {}, LoginDTO>, res: Response) => {
         avatar: user.avatar,
         role: user.role,
         accountStatus: user.accountStatus,
+        adminReadOnly: user.adminReadOnly,
+        adminScopes: user.adminScopes,
       }),
       tokens,
     }
@@ -190,6 +201,14 @@ export const refresh = async (req: Request<{}, {}, RefreshTokenDTO>, res: Respon
       return res.status(401).json({
         error: 'Sessao invalida. Faz login novamente.',
       })
+    }
+
+    let assistedSession = decoded.assistedSession
+    if (assistedSession) {
+      assistedSession = await assistedSessionService.validateActiveClaim(
+        assistedSession,
+        decoded.userId
+      )
     }
 
     const user = await User.findById(decoded.userId)
@@ -227,12 +246,19 @@ export const refresh = async (req: Request<{}, {}, RefreshTokenDTO>, res: Respon
       email: user.email,
       role: user.role,
       tokenVersion: user.tokenVersion,
+      assistedSession,
     })
 
     return res.status(200).json({
       tokens,
     })
   } catch (error: any) {
+    if (error instanceof AssistedSessionServiceError) {
+      return res.status(error.statusCode).json({
+        error: error.message,
+      })
+    }
+
     console.error('Refresh error:', error)
     return res.status(401).json({
       error: 'Refresh token invalido ou expirado.',
@@ -262,6 +288,9 @@ export const me = async (req: AuthRequest, res: Response) => {
         avatar: req.user.avatar,
         role: req.user.role,
         accountStatus: req.user.accountStatus,
+        adminReadOnly: req.user.adminReadOnly,
+        adminScopes: req.user.adminScopes ?? [],
+        assistedSession: req.assistedSession,
         bio: req.user.bio,
         socialLinks: req.user.socialLinks,
         followers: req.user.followers,

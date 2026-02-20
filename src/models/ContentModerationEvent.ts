@@ -2,9 +2,10 @@ import mongoose, { Document, Schema } from 'mongoose'
 import { ContentModerationStatus, ContentType } from './BaseContent'
 
 export type ContentModerationAction = 'hide' | 'unhide' | 'restrict'
+export type ModeratableContentType = ContentType | 'comment' | 'review'
 
 export interface IContentModerationEvent extends Document {
-  contentType: ContentType
+  contentType: ModeratableContentType
   contentId: string
   actor: mongoose.Types.ObjectId
   action: ContentModerationAction
@@ -20,7 +21,7 @@ const ContentModerationEventSchema = new Schema<IContentModerationEvent>(
   {
     contentType: {
       type: String,
-      enum: ['article', 'video', 'course', 'live', 'podcast', 'book'],
+      enum: ['article', 'video', 'course', 'live', 'podcast', 'book', 'comment', 'review'],
       required: true,
       index: true,
     },

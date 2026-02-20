@@ -50,6 +50,14 @@ export const auditAdminAction = (options: AuditAdminActionOptions) => {
         options.getMetadata?.(req, res) ??
         ({
           durationMs: Date.now() - startedAtMs,
+          assistedSession: req.assistedSession
+            ? {
+                sessionId: req.assistedSession.sessionId,
+                adminUserId: req.assistedSession.adminUserId,
+                targetUserId: req.assistedSession.targetUserId,
+                scope: req.assistedSession.scope,
+              }
+            : null,
         } as Record<string, unknown>)
 
       void adminAuditService
