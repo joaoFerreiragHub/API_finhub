@@ -1,6 +1,13 @@
 import { Router } from 'express'
 import { listAdminAuditLogs } from '../controllers/adminAudit.controller'
 import {
+  hideContent,
+  listAdminContentQueue,
+  listContentModerationHistory,
+  restrictContent,
+  unhideContent,
+} from '../controllers/adminContent.controller'
+import {
   addUserInternalNote,
   banUser,
   forceLogoutUser,
@@ -30,6 +37,95 @@ router.get(
   }),
   requireAdminScope('admin.audit.read'),
   listAdminAuditLogs
+)
+
+/**
+ * @route   GET /api/admin/content/queue
+ * @desc    Listar fila unificada de moderacao de conteudo
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/queue',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.queue.list',
+    resourceType: 'content',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminContentQueue
+)
+
+/**
+ * @route   GET /api/admin/content/:contentType/:contentId/history
+ * @desc    Listar historico de moderacao de um conteudo
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/:contentType/:contentId/history',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.history.list',
+    resourceType: 'content_moderation_event',
+    scope: 'admin.content.read',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.read'),
+  listContentModerationHistory
+)
+
+/**
+ * @route   POST /api/admin/content/:contentType/:contentId/hide
+ * @desc    Ocultar conteudo da superficie publica
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/:contentType/:contentId/hide',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.hide',
+    resourceType: 'content',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  hideContent
+)
+
+/**
+ * @route   POST /api/admin/content/:contentType/:contentId/unhide
+ * @desc    Reativar conteudo para visibilidade publica
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/:contentType/:contentId/unhide',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.unhide',
+    resourceType: 'content',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  unhideContent
+)
+
+/**
+ * @route   POST /api/admin/content/:contentType/:contentId/restrict
+ * @desc    Restringir conteudo por acao administrativa
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/:contentType/:contentId/restrict',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.restrict',
+    resourceType: 'content',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  restrictContent
 )
 
 /**

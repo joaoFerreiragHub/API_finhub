@@ -56,6 +56,7 @@ export class VideoService {
     const skip = (page - 1) * limit
 
     const query: Record<string, unknown> = {}
+    query.moderationStatus = { $nin: ['hidden', 'restricted'] }
     if (!filters.status) {
       query.status = 'published'
     }
@@ -121,7 +122,10 @@ export class VideoService {
    * Obter video por slug
    */
   async getBySlug(slug: string) {
-    const video = await Video.findOne({ slug }).populate('creator', 'name username avatar bio')
+    const video = await Video.findOne({
+      slug,
+      moderationStatus: { $nin: ['hidden', 'restricted'] },
+    }).populate('creator', 'name username avatar bio')
 
     if (!video) {
       throw new Error('Video nao encontrado')

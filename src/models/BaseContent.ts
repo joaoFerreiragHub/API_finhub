@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose'
 
 export type ContentType = 'article' | 'video' | 'course' | 'live' | 'podcast' | 'book'
+export type ContentModerationStatus = 'visible' | 'hidden' | 'restricted'
 export type ContentCategory =
   | 'finance'
   | 'investing'
@@ -41,6 +42,11 @@ export interface IBaseContent extends Document {
   // Status
   status: PublishStatus
   publishedAt?: Date
+  moderationStatus: ContentModerationStatus
+  moderationReason?: string
+  moderationNote?: string
+  moderatedBy?: mongoose.Types.ObjectId
+  moderatedAt?: Date
 
   // Creator
   creator: mongoose.Types.ObjectId // ref: 'User'
@@ -159,6 +165,31 @@ export const baseContentSchema = {
     type: Date,
     default: null,
   },
+  moderationStatus: {
+    type: String,
+    enum: ['visible', 'hidden', 'restricted'],
+    default: 'visible',
+    index: true,
+  },
+  moderationReason: {
+    type: String,
+    default: null,
+    maxlength: 500,
+  },
+  moderationNote: {
+    type: String,
+    default: null,
+    maxlength: 2000,
+  },
+  moderatedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  moderatedAt: {
+    type: Date,
+    default: null,
+  },
 
   // Creator
   creator: {
@@ -215,6 +246,8 @@ export const baseContentIndexes = [
   { isPremium: 1 },
   { isFeatured: 1 },
   { publishedAt: -1 },
+  { moderationStatus: 1, updatedAt: -1 },
+  { moderatedAt: -1 },
   { averageRating: -1 },
   { views: -1 },
 ]

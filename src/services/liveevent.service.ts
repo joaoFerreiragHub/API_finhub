@@ -56,6 +56,7 @@ export class LiveEventService {
     const skip = (page - 1) * limit
 
     const query: Record<string, unknown> = {}
+    query.moderationStatus = { $nin: ['hidden', 'restricted'] }
     if (!filters.status) {
       query.status = 'published'
     }
@@ -121,7 +122,10 @@ export class LiveEventService {
    * Obter live por slug
    */
   async getBySlug(slug: string) {
-    const liveevent = await LiveEvent.findOne({ slug }).populate('creator', 'name username avatar bio')
+    const liveevent = await LiveEvent.findOne({
+      slug,
+      moderationStatus: { $nin: ['hidden', 'restricted'] },
+    }).populate('creator', 'name username avatar bio')
 
     if (!liveevent) {
       throw new Error('Live nao encontrada')

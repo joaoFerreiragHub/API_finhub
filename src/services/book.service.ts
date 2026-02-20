@@ -56,6 +56,7 @@ export class BookService {
     const skip = (page - 1) * limit
 
     const query: Record<string, unknown> = {}
+    query.moderationStatus = { $nin: ['hidden', 'restricted'] }
     if (!filters.status) {
       query.status = 'published'
     }
@@ -121,7 +122,10 @@ export class BookService {
    * Obter livro por slug
    */
   async getBySlug(slug: string) {
-    const book = await Book.findOne({ slug }).populate('creator', 'name username avatar bio')
+    const book = await Book.findOne({
+      slug,
+      moderationStatus: { $nin: ['hidden', 'restricted'] },
+    }).populate('creator', 'name username avatar bio')
 
     if (!book) {
       throw new Error('Livro nao encontrado')
