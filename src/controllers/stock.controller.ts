@@ -10,6 +10,7 @@ import {
 } from '../utils/stockFetchers'
 import { buildQuickMetricGovernance } from '../utils/quickAnalysisMetrics'
 import { fillDerivedCurrentIndicadores } from '../utils/quickAnalysisDerivedMetrics'
+import { computeDataQualityScore, computeSectorContextScore } from '../utils/quickAnalysisSectorScoring'
 
 function simplifyRating(rating: string): 'A' | 'B' | 'C' | 'D' | 'F' {
   const char = rating?.[0]?.toUpperCase() ?? 'C'
@@ -140,6 +141,7 @@ export const getQuickAnalysis = async (req: Request, res: Response) => {
       benchmarkAsOf: benchmarkPack.context.asOf,
       asOf: benchmarkPack.context.asOf,
     })
+    const dataQualityScore = computeDataQualityScore(quickMetricGovernance)
 
     // B1 — Growth Score melhorado
     const qualityScore = scores.financialScores?.piotroskiScore ?? 0
@@ -154,6 +156,11 @@ export const getQuickAnalysis = async (req: Request, res: Response) => {
 
     // B2 — FinHub Score composto
     const finHubScore = computeFinHubScore(qualityScore, growthScore, valuationGrade, riskScore)
+    const sectorContextScore = computeSectorContextScore({
+      finHubScore: finHubScore.score,
+      governance: quickMetricGovernance,
+      sector: quickMetricGovernance.ingestion.resolvedSector ?? profile.sector ?? 'Unknown',
+    })
 
     const quickAnalysis = {
       ...profile,
@@ -168,6 +175,8 @@ export const getQuickAnalysis = async (req: Request, res: Response) => {
       finHubScore: finHubScore.score,
       finHubLabel: finHubScore.label,
       finHubCoverage: finHubScore.coverage,
+      sectorContextScore,
+      dataQualityScore,
       // A2: period tag
       dataPeriod: rawForScoring.dataPeriod ?? 'TTM',
       alerts,

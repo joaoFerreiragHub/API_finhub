@@ -1,7 +1,32 @@
 // src/utils/financial/resultBuilder.ts
 
 import { RawFinancialData, EPSCalculations, DerivedMetrics, IndicadoresResult } from './types'
-import { fmt, fmtPercent, fmtLarge } from './helpers'
+import { fmt, fmtPercent, fmtLarge, plausibleOrNull } from './helpers'
+
+// Feature flags — ligar/desligar novas funcionalidades de forma segura
+export const STOCK_FLAGS = {
+  useNullInsteadOfZero: true,  // plausibleOrNull() para sentinels do FMP
+  enableEVMetrics: true,       // EV/EBITDA e FCF Yield
+} as const
+
+export interface QuickAnalysisFallbackData {
+  ratios: Record<string, unknown> | null
+  metrics: Record<string, unknown> | null
+  historicalRatios: Array<Record<string, unknown>>
+  keyMetricsHistorical: Array<Record<string, unknown>>
+  income: Record<string, unknown> | null
+  balance: Record<string, unknown> | null
+  balanceY1: Record<string, unknown> | null
+  cashflow: Record<string, unknown> | null
+  growth: Record<string, unknown> | null
+}
+
+export interface RawScoringData {
+  cagrEps: number | null
+  revenueGrowth: number | null
+  dataPeriod: string | null
+  quickFallbackData?: QuickAnalysisFallbackData
+}
 
 /**
  * Monta o objeto final de indicadores com formatação adequada
@@ -429,38 +454,37 @@ function processCAGREPS(epsCalculations: EPSCalculations, rawData: RawFinancialD
   console.log(`   cagrEpsAnoAnterior: ${cagrEpsAnoAnterior} (tipo: ${typeof cagrEpsAnoAnterior})`)
   
   // 🔧 CORREÇÃO 1: CAGR EPS Atual
-  let cagrEPSFormatted = 'N/A'
-  
+  let cagrEPSFormatted = '\u2014'
+
   if (cagrEps != null && !isNaN(cagrEps)) {
-    // Verificar se o valor é razoável (entre -99% e 999%)
     if (Math.abs(cagrEps) <= 9.99) {
       cagrEPSFormatted = fmtPercent(cagrEps)
       console.log(`✅ [CRITICAL] CAGR EPS formatado: ${cagrEPSFormatted}`)
     } else {
       console.log(`⚠️ [CRITICAL] CAGR EPS fora do range: ${cagrEps * 100}%`)
-      cagrEPSFormatted = 'N/A'
+      cagrEPSFormatted = '\u2014'
     }
   } else {
     console.log(`⚠️ [CRITICAL] CAGR EPS inválido: ${cagrEps}`)
-    
+
     // 🔧 FALLBACK: Tentar calcular manualmente usando dados disponíveis
     const epsAtualNum = parseFloat(epsAtual?.toString() || '0')
     const epsY1Num = parseFloat(rawData.income?.epsY1?.toString() || '0')
-    
+
     if (epsAtualNum > 0 && epsY1Num > 0 && epsY1Num !== epsAtualNum) {
       const manualCAGR = (epsAtualNum - epsY1Num) / epsY1Num
       console.log(`🔧 [CRITICAL] CAGR EPS calculado manualmente: ${(manualCAGR * 100).toFixed(2)}%`)
-      
+
       if (Math.abs(manualCAGR) <= 9.99) {
         cagrEPSFormatted = fmtPercent(manualCAGR)
         console.log(`✅ [CRITICAL] CAGR EPS manual aceito: ${cagrEPSFormatted}`)
       }
     }
   }
-  
+
   // 🔧 CORREÇÃO 2: CAGR EPS (Y-1)
-  let cagrEPSY1Formatted = 'N/A'
-  
+  let cagrEPSY1Formatted = '\u2014'
+
   if (cagrEpsAnoAnterior != null && !isNaN(cagrEpsAnoAnterior)) {
     if (Math.abs(cagrEpsAnoAnterior) <= 9.99) {
       cagrEPSY1Formatted = fmtPercent(cagrEpsAnoAnterior)
@@ -470,15 +494,15 @@ function processCAGREPS(epsCalculations: EPSCalculations, rawData: RawFinancialD
     }
   } else {
     console.log(`⚠️ [CRITICAL] CAGR EPS (Y-1) inválido: ${cagrEpsAnoAnterior}`)
-    
+
     // 🔧 FALLBACK: Tentar calcular Y-1 manualmente
     const epsY1Num = parseFloat(rawData.income?.epsY1?.toString() || '0')
     const epsY2Num = parseFloat(rawData.income?.epsY2?.toString() || '0')
-    
+
     if (epsY1Num > 0 && epsY2Num > 0 && epsY1Num !== epsY2Num) {
       const manualCAGRY1 = (epsY1Num - epsY2Num) / epsY2Num
       console.log(`🔧 [CRITICAL] CAGR EPS (Y-1) calculado manualmente: ${(manualCAGRY1 * 100).toFixed(2)}%`)
-      
+
       if (Math.abs(manualCAGRY1) <= 9.99) {
         cagrEPSY1Formatted = fmtPercent(manualCAGRY1)
         console.log(`✅ [CRITICAL] CAGR EPS (Y-1) manual aceito: ${cagrEPSY1Formatted}`)
@@ -512,6 +536,31 @@ export function buildIndicadoresResult(
 
   // 🏦 DETECTAR TIPO DE EMPRESA
   const companyType = detectCompanyType(profile, income)
+
+  // 💡 Market cap para guards plausibleOrNull
+  const mktCap: number | null = profile?.mktCap ?? profile?.marketCap ?? null
+
+  // 📊 EV/EBITDA e FCF Yield (Fase C1+C2)
+  const evEbitdaStr = (() => {
+    if (!STOCK_FLAGS.enableEVMetrics) return '\u2014'
+    const totalDebt = balance?.totalDebt ?? 0
+    const cash = balance?.cashAndCashEquivalents ?? 0
+    const ev = mktCap ? mktCap + totalDebt - cash : null
+    const ebitdaRaw = income?.ebitda ?? null
+    const ebitdaGuarded = STOCK_FLAGS.useNullInsteadOfZero ? plausibleOrNull(ebitdaRaw, mktCap) : ebitdaRaw
+    if (!ev || !ebitdaGuarded || ebitdaGuarded <= 0) return '\u2014'
+    return fmt(ev / ebitdaGuarded, 1) + 'x'
+  })()
+
+  const fcfYieldStr = (() => {
+    if (!STOCK_FLAGS.enableEVMetrics) return '\u2014'
+    const fcf = cashflow?.freeCashFlow ??
+      (cashflow?.operatingCashFlow && cashflow?.capitalExpenditure
+        ? cashflow.operatingCashFlow - Math.abs(cashflow.capitalExpenditure)
+        : null)
+    if (!fcf || !mktCap || mktCap <= 0) return '\u2014'
+    return fmtPercent(fcf / mktCap)
+  })()
 
   // 🆕 CALCULAR NOVAS MÉTRICAS DA FMP API
   console.log('🆕 Calculando métricas adicionais da FMP API...')
@@ -644,7 +693,7 @@ export function buildIndicadoresResult(
       }
     }
     
-    return 'N/A'
+    return '\u2014'
   }
 
   // 🔧 CORREÇÃO 6: Valores históricos com fallbacks múltiplos
@@ -729,7 +778,7 @@ export function buildIndicadoresResult(
     
     // Fallback: usar CAGR EPS (Y-1) recalculado se disponível
     const cagrFallback = calculateCAGREPSFallback()
-    if (cagrFallback !== 'N/A' && plAnoAnterior) {
+    if (cagrFallback !== '\u2014' && plAnoAnterior) {
       const cagrNum = parseFloat(cagrFallback.replace('%', '')) / 100
       if (cagrNum !== 0) {
         const pegFallback = plAnoAnterior / Math.abs(cagrNum * 100)
@@ -838,15 +887,15 @@ export function buildIndicadoresResult(
         return fmt(calculatedPE)
       }
       
-      return 'N/A'
+      return '\u2014'
     })(),
     'P/L (Y-1)': fmt(plAnoAnterior),
     'P/S': fmt(ratios?.priceToSalesRatioTTM ?? metrics?.priceToSalesRatioTTM),
     'P/S (Y-1)': fmt(psAnoAnterior),
     
     // 🆕 P/VPA - CORRIGIDO
-    'P/VPA': priceToBook ? fmt(priceToBook) : 'N/A',
-    'P/VPA (Y-1)': priceToBookY1 ? fmt(priceToBookY1) : 'N/A',
+    'P/VPA': fmt(priceToBook ?? null),
+    'P/VPA (Y-1)': fmt(priceToBookY1 ?? null),
     
     'PEG': (() => {
       // 🔧 CORREÇÃO: Calcular PEG usando CAGR EPS corrigido
@@ -870,22 +919,30 @@ export function buildIndicadoresResult(
         return fmt(pegFromAPI)
       }
       
-      return 'N/A'
+      return '\u2014'
     })(),
     'PEG (Y-1)': (() => {
       if (pegAnoAnterior != null && isFinite(pegAnoAnterior) && Math.abs(pegAnoAnterior) < 100) {
         return fmt(pegAnoAnterior)
       }
-      return 'N/A'
+      return '\u2014'
     })(),
 
+    // === MÉTRICAS EV (Fase C1 + C2) ===
+    'EV/EBITDA': evEbitdaStr,
+    'FCF Yield': fcfYieldStr,
+
     // === RETORNOS SOBRE CAPITAL ===
-    'ROE': fmtPercent(ratios?.returnOnEquityTTM ?? metrics?.roeTTM),
+    'ROE': fmtPercent(
+      STOCK_FLAGS.useNullInsteadOfZero
+        ? plausibleOrNull(ratios?.returnOnEquityTTM ?? metrics?.roeTTM ?? null, mktCap)
+        : (ratios?.returnOnEquityTTM ?? metrics?.roeTTM)
+    ),
     'ROE (Y-1)': fmtPercent(roeAnoAnterior),
     
     // 🆕 ROA - CORRIGIDO
-    'ROA': roaFinal ? fmtPercent(roaFinal) : 'N/A',
-    'ROA (Y-1)': roaY1Final ? fmtPercent(roaY1Final) : 'N/A',
+    'ROA': fmtPercent(roaFinal ?? null),
+    'ROA (Y-1)': fmtPercent(roaY1Final ?? null),
     
     'ROIC': fmtPercent(metrics?.roicTTM ?? ratios?.returnOnCapitalEmployedTTM),
     'ROIC (Y-1)': fmtPercent(roicAnoAnterior),
@@ -901,7 +958,11 @@ export function buildIndicadoresResult(
     // === MARGENS ===
     'Margem Bruta': fmtPercent(ratios?.grossProfitMarginTTM ?? income?.grossProfitRatio),
     'Margem Bruta (Y-1)': fmtPercent(margemBrutaAnoAnterior),
-    'Margem EBITDA': fmtPercent(income?.ebitdaratio ?? ratios?.ebitdaratioTTM),
+    'Margem EBITDA': fmtPercent(
+      STOCK_FLAGS.useNullInsteadOfZero
+        ? plausibleOrNull(income?.ebitdaratio ?? ratios?.ebitdaratioTTM ?? null, mktCap)
+        : (income?.ebitdaratio ?? ratios?.ebitdaratioTTM)
+    ),
     'Margem EBITDA (Y-1)': fmtPercent(incomeY1?.ebitda && incomeY1?.revenue && incomeY1.revenue > 0 ? incomeY1.ebitda / incomeY1.revenue : null),
     'Margem Líquida': fmtPercent(ratios?.netProfitMarginTTM ?? income?.netIncomeRatio),
     'Margem Líquida (Y-1)': fmtPercent(margemLiquidaAnoAnterior),
@@ -925,18 +986,36 @@ export function buildIndicadoresResult(
     ),
 
     // 🆕 CRESCIMENTO CARTEIRA - CORRIGIDO
-    'Crescimento Carteira': portfolioGrowth ? fmtPercent(portfolioGrowth) : 'N/A',
-    'Crescimento Carteira (Y-1)': portfolioGrowthY1 ? fmtPercent(portfolioGrowthY1) : 'N/A',
+    'Crescimento Carteira': fmtPercent(portfolioGrowth ?? null),
+    'Crescimento Carteira (Y-1)': fmtPercent(portfolioGrowthY1 ?? null),
 
     // === RISCO E VOLATILIDADE ===
     'Beta': fmt(profile?.beta),
     'Beta (Y-1)': fmt(profile?.beta),
-    
+
+    // === DÍVIDA (VALORES ABSOLUTOS) ===
+    'Net Debt': (() => {
+      const nd = balance?.netDebt ?? null
+      if (nd != null && isFinite(nd)) return fmtLarge(nd)
+      const td = balance?.totalDebt ?? null
+      const cash = balance?.cashAndCashEquivalents ?? 0
+      return td != null ? fmtLarge(td - cash) : '\u2014'
+    })(),
+    'Total Dívida': fmtLarge(balance?.totalDebt ?? null),
+    'Cash e Equiv.': fmtLarge(balance?.cashAndCashEquivalents ?? balance?.cash ?? null),
+    'Despesa de Juros': fmtLarge(income?.interestExpense != null ? Math.abs(income.interestExpense) : null),
+    'Cobertura de Juros': fmt(metrics?.interestCoverageTTM ?? ratios?.interestCoverageRatioTTM ?? ratios?.interestCoverageTTM ?? null),
+    'Cobertura de Juros (Y-1)': fmt(historicalRatios?.[1]?.interestCoverage ?? historicalRatios?.[1]?.interestCoverageRatio ?? null),
+
+    // === DIVIDENDO POR AÇÃO ===
+    'Dividendo por Ação': fmt(metrics?.dividendsPerShareTTM ?? ratios?.dividendsPerShareTTM ?? profile?.lastDividend ?? null),
+    'Dividendo por Ação (Y-1)': fmt(historicalRatios?.[1]?.dividendsPerShare ?? historicalRatios?.[1]?.dividendPerShare ?? null),
+
     // === MÉTRICAS ESPECÍFICAS (P&D, CASH FLOW, ETC) ===
     'Investimento em P&D': fmtLarge(income?.researchAndDevelopmentExpenses),
     'Investimento em P&D (Y-1)': fmtLarge(investimentoPDAnoAnterior),
-    'Eficiência de P&D': rAnddEfficiency ? fmt(rAnddEfficiency, 2) : '0.00',
-    'Eficiência de P&D (Y-1)': rAnddEfficiencyAnoAnterior ? fmt(rAnddEfficiencyAnoAnterior, 2) : '0.00',
+    'Eficiência de P&D': rAnddEfficiency ? fmt(rAnddEfficiency, 2) : '\u2014',
+    'Eficiência de P&D (Y-1)': rAnddEfficiencyAnoAnterior ? fmt(rAnddEfficiencyAnoAnterior, 2) : '\u2014',
     'SG&A / Receita': fmtPercent(sgaOverRevenue),
     'SG&A / Receita (Y-1)': fmtPercent(sgaOverRevenueAnoAnterior),
     'Cash Flow / CapEx': (() => {
@@ -954,7 +1033,7 @@ export function buildIndicadoresResult(
           return fmt(ratio, 2)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     'Cash Flow / CapEx (Y-1)': (() => {
       // Primeiro tentar usar valor calculado
@@ -971,7 +1050,7 @@ export function buildIndicadoresResult(
           return fmt(ratio, 2)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     'Free Cash Flow': fmtLarge(
       cashflow?.freeCashFlow ?? (cashflow?.operatingCashFlow && cashflow?.capitalExpenditure 
@@ -995,8 +1074,8 @@ export function buildIndicadoresResult(
     })(),
     
     // 🆕 DIVIDEND YIELD - CORRIGIDO
-    'Dividend Yield': dividendYield ? fmtPercent(dividendYield) : 'N/A',
-    'Dividend Yield (Y-1)': dividendYieldY1 ? fmtPercent(dividendYieldY1) : 'N/A',
+    'Dividend Yield': fmtPercent(dividendYield ?? null),
+    'Dividend Yield (Y-1)': fmtPercent(dividendYieldY1 ?? null),
     
     // === OUTROS ===
     'Preço Atual': fmt(currentPrice),
@@ -1006,54 +1085,54 @@ export function buildIndicadoresResult(
         const percentage = income.rentalIncome / income.revenue
         return fmtPercent(percentage)
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     
     // === CASH RATIO (CORRIGIDO) ===
-    'Cash Ratio': cashRatio ? fmt(cashRatio, 2) : 'N/A',
-    'Cash Ratio (Y-1)': cashRatioAnoAnterior ? fmt(cashRatioAnoAnterior, 2) : 'N/A',
+    'Cash Ratio': fmt(cashRatio ?? null, 2),
+    'Cash Ratio (Y-1)': fmt(cashRatioAnoAnterior ?? null, 2),
 
     // 🆕 MÉTRICAS BANCÁRIAS ESPECÍFICAS - APLICADAS APENAS QUANDO APROPRIADO
-    'NIM': companyType.isBanco && nimCurrent ? fmtPercent(nimCurrent) : 'N/A',
-    'NIM (Y-1)': companyType.isBanco && nimY1 ? fmtPercent(nimY1) : 'N/A',
+    'NIM': fmtPercent(companyType.isBanco ? nimCurrent : null),
+    'NIM (Y-1)': fmtPercent(companyType.isBanco ? nimY1 : null),
     'Eficiência': (() => {
       if (companyType.isPaymentProcessor) {
         const operatingMargin = ratios?.operatingProfitMarginTTM || income?.operatingIncomeRatio
-        return operatingMargin ? fmtPercent(1 - operatingMargin) : 'N/A'
+        return fmtPercent(operatingMargin ? 1 - operatingMargin : null)
       }
       if (companyType.isBanco && bankingEfficiency) {
         return fmtPercent(bankingEfficiency)
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     'Eficiência (Y-1)': (() => {
       if (companyType.isPaymentProcessor) {
         const operatingMarginY1 = historicalRatios?.[1]?.operatingProfitMargin
-        return operatingMarginY1 ? fmtPercent(1 - operatingMarginY1) : 'N/A'
+        return fmtPercent(operatingMarginY1 ? 1 - operatingMarginY1 : null)
       }
       if (companyType.isBanco && bankingEfficiencyY1) {
         return fmtPercent(bankingEfficiencyY1)
       }
-      return 'N/A'
+      return '\u2014'
     })(),
-    'LDR': companyType.isBanco && ldr ? fmtPercent(ldr) : 'N/A',
-    'LDR (Y-1)': companyType.isBanco && ldrY1 ? fmtPercent(ldrY1) : 'N/A',
-    'Cobertura': companyType.isBanco && provisionCoverage ? fmtPercent(provisionCoverage) : 'N/A',
-    'Cobertura (Y-1)': companyType.isBanco ? 'N/A' : 'N/A', // Requer dados históricos mais detalhados
+    'LDR': fmtPercent(companyType.isBanco ? ldr : null),
+    'LDR (Y-1)': fmtPercent(companyType.isBanco ? ldrY1 : null),
+    'Cobertura': fmtPercent(companyType.isBanco ? provisionCoverage : null),
+    'Cobertura (Y-1)': '\u2014', // Requer dados históricos mais detalhados
 
     // 🆕 LEVERED DCF - DISPONÍVEL DA FMP
-    'Levered DCF': 'N/A', // Implementar quando DCF endpoint estiver disponível
-    'Levered DCF (Y-1)': 'N/A',
+    'Levered DCF': '\u2014', // Implementar quando DCF endpoint estiver disponível
+    'Levered DCF (Y-1)': '\u2014',
 
     // 🏢 NOVOS CAMPOS ESPECÍFICOS DE REITs (CORRIGIDOS)
-    
+
     // FFO (Funds From Operations)
-    'FFO': companyType.isREIT && ffoCalculated ? fmtLarge(ffoCalculated) : 'N/A',
-    'FFO (Y-1)': companyType.isREIT && ffoY1Calculated ? fmtLarge(ffoY1Calculated) : 'N/A',
-    
-    // AFFO (Adjusted FFO)  
-    'AFFO': companyType.isREIT && affoCalculated ? fmtLarge(affoCalculated) : 'N/A',
-    'AFFO (Y-1)': companyType.isREIT && affoY1Calculated ? fmtLarge(affoY1Calculated) : 'N/A',
+    'FFO': fmtLarge(companyType.isREIT ? ffoCalculated : null),
+    'FFO (Y-1)': fmtLarge(companyType.isREIT ? ffoY1Calculated : null),
+
+    // AFFO (Adjusted FFO)
+    'AFFO': fmtLarge(companyType.isREIT ? affoCalculated : null),
+    'AFFO (Y-1)': fmtLarge(companyType.isREIT ? affoY1Calculated : null),
     
     // 🔧 P/FFO (Price to FFO) - CORRIGIDO PARA CALCULAR
     'P/FFO': (() => {
@@ -1071,7 +1150,7 @@ export function buildIndicadoresResult(
           console.log(`⚠️ P/FFO não calculado - Market Cap: ${marketCap}`)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     'P/FFO (Y-1)': (() => {
       if (companyType.isREIT && ffoY1Calculated) {
@@ -1085,12 +1164,12 @@ export function buildIndicadoresResult(
           return fmt(pFFOY1Value)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     
     // FFO Payout Ratio
-    'FFO Payout Ratio': companyType.isREIT && ffoPayoutCalculated ? fmtPercent(ffoPayoutCalculated) : 'N/A',
-    'FFO Payout Ratio (Y-1)': companyType.isREIT && ffoPayoutY1Calculated ? fmtPercent(ffoPayoutY1Calculated) : 'N/A',
+    'FFO Payout Ratio': fmtPercent(companyType.isREIT ? ffoPayoutCalculated : null),
+    'FFO Payout Ratio (Y-1)': fmtPercent(companyType.isREIT ? ffoPayoutY1Calculated : null),
     
     // Dividend CAGR Real (para REITs)
     'Dividend CAGR': (() => {
@@ -1122,7 +1201,7 @@ export function buildIndicadoresResult(
           console.log(`   Current Price: ${currentPrice}`)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     'FFO per Share (Y-1)': (() => {
       if (companyType.isREIT && ffoY1Calculated) {
@@ -1134,7 +1213,7 @@ export function buildIndicadoresResult(
           return fmt(ffoPerShareY1, 2)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     
     // 🔧 AFFO per Share - CORRIGIDO PARA CALCULAR
@@ -1153,7 +1232,7 @@ export function buildIndicadoresResult(
           console.log(`   Current Price: ${currentPrice}`)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
     'AFFO per Share (Y-1)': (() => {
       if (companyType.isREIT && affoY1Calculated) {
@@ -1165,20 +1244,20 @@ export function buildIndicadoresResult(
           return fmt(affoPerShareY1, 2)
         }
       }
-      return 'N/A'
+      return '\u2014'
     })(),
 
-    // 🚫 MÉTRICAS NÃO DISPONÍVEIS (mantém como N/A)
-    'Basileia': 'N/A',
-    'Basileia (Y-1)': 'N/A',
-    'Tier 1': 'N/A',
-    'Tier 1 (Y-1)': 'N/A',
+    // 🚫 MÉTRICAS NÃO DISPONÍVEIS
+    'Basileia': '\u2014',
+    'Basileia (Y-1)': '\u2014',
+    'Tier 1': '\u2014',
+    'Tier 1 (Y-1)': '\u2014',
     'Alavancagem': fmt(ratios?.debtEquityRatioTTM ?? metrics?.debtEquityRatioTTM), // Proxy
     'Alavancagem (Y-1)': fmt(debtEquityAnoAnterior), // Proxy
-    'Inadimplência': 'N/A',
-    'Inadimplência (Y-1)': 'N/A',
-    'Custo do Crédito': 'N/A',
-    'Custo do Crédito (Y-1)': 'N/A',
+    'Inadimplência': '\u2014',
+    'Inadimplência (Y-1)': '\u2014',
+    'Custo do Crédito': '\u2014',
+    'Custo do Crédito (Y-1)': '\u2014',
   }
 
   // 🔧 VALIDAÇÃO FINAL DOS INDICADORES CRÍTICOS
@@ -1191,7 +1270,7 @@ export function buildIndicadoresResult(
   console.log(`   ✅ PEG: ${resultado['PEG']}`)
 
   // 🚨 ALERTAS se ainda há problemas
-  if (resultado['CAGR EPS'] === 'N/A') {
+  if (resultado['CAGR EPS'] === '\u2014') {
     console.log('🚨 [CRITICAL] CAGR EPS ainda é N/A após todas as correções!')
     console.log('🔍 Dados de entrada para debug:')
     console.log(`   epsCalculations.cagrEps: ${cagrEps}`)
@@ -1199,17 +1278,17 @@ export function buildIndicadoresResult(
     console.log(`   rawData.income.epsY1: ${rawData.income?.epsY1}`)
   }
 
-  if (resultado['EPS (Y-1)'] === 'N/A') {
+  if (resultado['EPS (Y-1)'] === '\u2014') {
     console.log('🚨 [CRITICAL] EPS (Y-1) ainda é N/A - verificar fontes de dados históricos')
   }
 
   // 🔧 VALIDAÇÃO FINAL DOS INDICADORES CRÍTICOS
   const validationResults = {
-    epsAtual: resultado['EPS'] !== 'N/A',
-    epsY1: resultado['EPS (Y-1)'] !== 'N/A',
-    cagrEps: resultado['CAGR EPS'] !== 'N/A' && resultado['CAGR EPS'] !== '0.00%',
-    pl: resultado['P/L'] !== 'N/A',
-    peg: resultado['PEG'] !== 'N/A'
+    epsAtual: resultado['EPS'] !== '\u2014',
+    epsY1: resultado['EPS (Y-1)'] !== '\u2014',
+    cagrEps: resultado['CAGR EPS'] !== '\u2014' && resultado['CAGR EPS'] !== '0.00%',
+    pl: resultado['P/L'] !== '\u2014',
+    peg: resultado['PEG'] !== '\u2014'
   }
   
   console.log('   ✅ EPS Atual válido:', validationResults.epsAtual, '- Valor:', resultado['EPS'])
@@ -1260,24 +1339,26 @@ export function buildIndicadoresResult(
 function validateIndicadoresResult(indicadores: IndicadoresResult): { valid: boolean; issues: string[] } {
   const issues: string[] = []
   
+  const DASH = '\u2014'
+
   // Verificar CAGR EPS
-  if (indicadores["CAGR EPS"] === "0.00%" || indicadores["CAGR EPS"] === "N/A") {
+  if (indicadores["CAGR EPS"] === "0.00%" || indicadores["CAGR EPS"] === DASH) {
     issues.push("CAGR EPS não calculado corretamente")
   }
-  
+
   // Verificar P/L
   const pl = parseFloat(indicadores["P/L"])
   if (isNaN(pl) || pl <= 0 || pl > 1000) {
     issues.push(`P/L suspeito: ${indicadores["P/L"]}`)
   }
-  
+
   // Verificar PEG
-  if (indicadores["PEG"] === "N/A" && indicadores["CAGR EPS"] !== "N/A" && indicadores["CAGR EPS"] !== "0.00%") {
+  if (indicadores["PEG"] === DASH && indicadores["CAGR EPS"] !== DASH && indicadores["CAGR EPS"] !== "0.00%") {
     issues.push("PEG não calculado apesar de ter CAGR EPS válido")
   }
-  
+
   // Verificar EPS
-  if (indicadores["EPS"] === "N/A") {
+  if (indicadores["EPS"] === DASH) {
     issues.push("EPS não encontrado")
   }
   
@@ -1305,10 +1386,10 @@ export function validateCAGREPSFix(resultado: IndicadoresResult): boolean {
   console.log('🧪 Validando correções CAGR EPS...')
   
   const tests = {
-    cagrEPSExists: resultado['CAGR EPS'] !== 'N/A',
+    cagrEPSExists: resultado['CAGR EPS'] !== '\u2014',
     cagrEPSReasonable: resultado['CAGR EPS'] !== '0.00%',
-    epsExists: resultado['EPS'] !== 'N/A',
-    plExists: resultado['P/L'] !== 'N/A'
+    epsExists: resultado['EPS'] !== '\u2014',
+    plExists: resultado['P/L'] !== '\u2014'
   }
   
   console.log('📊 Resultados dos testes:')

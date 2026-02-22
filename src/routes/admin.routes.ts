@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { listAdminAuditLogs } from '../controllers/adminAudit.controller'
+import { listAdminInternalAlerts } from '../controllers/adminOperationalAlerts.controller'
 import {
   listAdminAssistedSessionHistory,
   listAdminAssistedSessions,
@@ -45,6 +46,23 @@ router.get(
   }),
   requireAdminScope('admin.audit.read'),
   listAdminAuditLogs
+)
+
+/**
+ * @route   GET /api/admin/alerts/internal
+ * @desc    Alertas internos para eventos admin criticos
+ * @access  Private (Admin com escopo admin.audit.read)
+ */
+router.get(
+  '/alerts/internal',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.alerts.internal.list',
+    resourceType: 'admin_operational_alert',
+    scope: 'admin.audit.read',
+  }),
+  requireAdminScope('admin.audit.read'),
+  listAdminInternalAlerts
 )
 
 /**

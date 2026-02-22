@@ -1,10 +1,26 @@
 // src/utils/financial/helpers.ts - VERSÃO CORRIGIDA
 
+const EM_DASH = '\u2014'
+
+/**
+ * Guarda contra sentinel 0 do FMP: para empresas com market cap > threshold,
+ * um valor de exatamente 0 é impossível e representa dado em falta.
+ */
+export const plausibleOrNull = (
+  value: number | null | undefined,
+  marketCap: number | null | undefined,
+  threshold = 5e8,
+): number | null => {
+  if (value === null || value === undefined) return null
+  if (value === 0 && (marketCap ?? 0) > threshold) return null
+  return value
+}
+
 /**
  * Função para formatar números com precisão decimal
  */
 export const fmt = (val: number | undefined | null, digits = 2): string => {
-  if (val == null || isNaN(val)) return 'N/A'
+  if (val == null || isNaN(val)) return EM_DASH
   return val.toFixed(digits)
 }
 
@@ -12,7 +28,7 @@ export const fmt = (val: number | undefined | null, digits = 2): string => {
  * Função para formatar percentuais - VERSÃO CORRIGIDA
  */
 export const fmtPercent = (val: number | undefined | null, digits = 2): string => {
-  if (val == null || isNaN(val)) return 'N/A'
+  if (val == null || isNaN(val)) return EM_DASH
   return (val * 100).toFixed(digits) + '%'
 }
 
@@ -20,7 +36,7 @@ export const fmtPercent = (val: number | undefined | null, digits = 2): string =
  * Função para formatar valores grandes (M/B)
  */
 export const fmtLarge = (val: number | undefined | null): string => {
-  if (val == null || isNaN(val)) return 'N/A'
+  if (val == null || isNaN(val)) return EM_DASH
   if (val >= 1e9) return (val / 1e9).toFixed(1) + 'B'
   if (val >= 1e6) return (val / 1e6).toFixed(1) + 'M'
   return val.toFixed(0)
@@ -137,16 +153,11 @@ export const isReasonablePercentage = (value: number, maxPercent: number = 1000)
  * 🔧 FUNÇÃO AUXILIAR: Formatar CAGR especificamente com validações
  */
 export const formatCAGR = (cagrValue: number | null | undefined): string => {
-  if (cagrValue == null || isNaN(cagrValue)) {
-    return 'N/A'
-  }
-  
-  // Validação de sanidade
-  if (!isReasonablePercentage(cagrValue, 2000)) { // Máximo 2000%
+  if (cagrValue == null || isNaN(cagrValue)) return EM_DASH
+  if (!isReasonablePercentage(cagrValue, 2000)) {
     console.log(`⚠️ CAGR fora do esperado: ${cagrValue * 100}%`)
-    return 'N/A'
+    return EM_DASH
   }
-  
   return fmtPercent(cagrValue)
 }
 /**
