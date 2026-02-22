@@ -1,4 +1,4 @@
-import { QuickMetricGovernance, QuickMetricState } from './quickAnalysisMetrics'
+import { QuickMetricCategory, QuickMetricDefinition, QuickMetricGovernance, QuickMetricState } from './quickAnalysisMetrics'
 
 export interface SectorContextScore {
   score: number
@@ -27,6 +27,18 @@ const LOWER_IS_BETTER = new Set([
   'debt_equity',
   'beta',
 ])
+
+// Sensibilidade diferenciada por categoria — evita que múltiplos voláteis
+// saturem o score da mesma forma que margens estáveis.
+const CATEGORY_SENSITIVITY: Record<QuickMetricCategory, number> = {
+  multiplos: 40,
+  estrutura_capital: 45,
+  crescimento: 50,
+  rentabilidade: 55,
+  retorno_capital: 55,
+  risco: 35,
+}
+const DEFAULT_SENSITIVITY = 50
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -64,8 +76,17 @@ function isReadyState(state: QuickMetricState): boolean {
   return state.status === 'ok' || state.status === 'calculated'
 }
 
+function buildCategoryMap(catalog: QuickMetricDefinition[]): Record<string, QuickMetricCategory> {
+  const map: Record<string, QuickMetricCategory> = {}
+  for (const metric of catalog) {
+    map[metric.key] = metric.category
+  }
+  return map
+}
+
 function computeRelativeCoreScore(
   states: Record<string, QuickMetricState>,
+  categoryMap: Record<string, QuickMetricCategory>,
 ): { score: number; comparableCore: number; favorableCore: number } {
   let sum = 0
   let comparableCore = 0
@@ -84,7 +105,9 @@ function computeRelativeCoreScore(
     }
 
     const ratio = lowerBetter ? benchmark / current : current / benchmark
-    const metricScore = clamp(50 + (ratio - 1) * 60, 0, 100)
+    const category = categoryMap[key]
+    const sensitivity = category ? (CATEGORY_SENSITIVITY[category] ?? DEFAULT_SENSITIVITY) : DEFAULT_SENSITIVITY
+    const metricScore = clamp(50 + (ratio - 1) * sensitivity, 0, 100)
 
     comparableCore += 1
     sum += metricScore
@@ -130,13 +153,21 @@ export function computeSectorContextScore(params: {
   const coreReady = governance.summary.coreReady
   const coreCoverage = coreTotal > 0 ? (coreReady / coreTotal) * 100 : 0
 
-  const relative = computeRelativeCoreScore(governance.states)
+  const categoryMap = buildCategoryMap(governance.catalog)
+  const relative = computeRelativeCoreScore(governance.states, categoryMap)
   const comparableRatio = coreTotal > 0 ? relative.comparableCore / coreTotal : 0
   const confidence = Math.round(clamp(coreCoverage * 0.65 + comparableRatio * 35, 0, 100))
 
-  const score = Math.round(
-    clamp(finHubScore * 0.45 + relative.score * 0.35 + coreCoverage * 0.2, 0, 100),
-  )
+  // Score puro empresa: 50% saúde financeira + 50% posição relativa vs peers
+  // Se sem benchmarks comparáveis, o relative default (50) pesa menos
+  const hasComparisons = relative.comparableCore > 0
+  const rawScore = hasComparisons
+    ? finHubScore * 0.50 + relative.score * 0.50
+    : finHubScore * 0.85 + 50 * 0.15
+
+  // Confidence gating: penalizar score quando dados comparáveis são insuficientes
+  const confidencePenalty = confidence < 50 ? 0.85 : confidence < 65 ? 0.93 : 1.0
+  const score = Math.round(clamp(rawScore * confidencePenalty, 0, 100))
 
   return {
     score,
@@ -178,4 +209,3 @@ export function computeDataQualityScore(governance: QuickMetricGovernance): Data
     missingRate: round1(missingRate * 100),
   }
 }
-

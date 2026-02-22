@@ -25,6 +25,23 @@ import {
   suspendUser,
   unbanUser,
 } from '../controllers/adminUser.controller'
+import {
+  addEditorialSectionItem,
+  approveAdminClaim,
+  archiveAdminDirectory,
+  createAdminDirectory,
+  createEditorialSection,
+  listAdminClaims,
+  listAdminDirectories,
+  listEditorialSections,
+  rejectAdminClaim,
+  removeEditorialSectionItem,
+  reorderEditorialSectionItems,
+  transferAdminOwnership,
+  updateAdminDirectory,
+  updateEditorialSection,
+  publishAdminDirectory,
+} from '../controllers/adminEditorialCms.controller'
 import { authenticate } from '../middlewares/auth'
 import { auditAdminAction } from '../middlewares/adminAudit'
 import { requireAdminScope } from '../middlewares/roleGuard'
@@ -257,6 +274,272 @@ router.post(
   }),
   requireAdminScope('admin.content.moderate'),
   restrictContent
+)
+
+/**
+ * @route   GET /api/admin/editorial/sections
+ * @desc    Listar secoes editoriais admin
+ * @access  Private (Admin com escopo admin.home.curate)
+ */
+router.get(
+  '/editorial/sections',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.editorial.sections.list',
+    resourceType: 'editorial_section',
+    scope: 'admin.home.curate',
+  }),
+  requireAdminScope('admin.home.curate'),
+  listEditorialSections
+)
+
+/**
+ * @route   POST /api/admin/editorial/sections
+ * @desc    Criar secao editorial admin
+ * @access  Private (Admin com escopo admin.home.curate)
+ */
+router.post(
+  '/editorial/sections',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.editorial.sections.create',
+    resourceType: 'editorial_section',
+    scope: 'admin.home.curate',
+  }),
+  requireAdminScope('admin.home.curate'),
+  createEditorialSection
+)
+
+/**
+ * @route   PATCH /api/admin/editorial/sections/:sectionId
+ * @desc    Atualizar secao editorial admin
+ * @access  Private (Admin com escopo admin.home.curate)
+ */
+router.patch(
+  '/editorial/sections/:sectionId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.editorial.sections.update',
+    resourceType: 'editorial_section',
+    scope: 'admin.home.curate',
+    getResourceId: (req) => req.params.sectionId,
+  }),
+  requireAdminScope('admin.home.curate'),
+  updateEditorialSection
+)
+
+/**
+ * @route   POST /api/admin/editorial/sections/:sectionId/items
+ * @desc    Adicionar item a secao editorial
+ * @access  Private (Admin com escopo admin.home.curate)
+ */
+router.post(
+  '/editorial/sections/:sectionId/items',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.editorial.section_items.add',
+    resourceType: 'editorial_section_item',
+    scope: 'admin.home.curate',
+    getResourceId: (req) => req.params.sectionId,
+  }),
+  requireAdminScope('admin.home.curate'),
+  addEditorialSectionItem
+)
+
+/**
+ * @route   PATCH /api/admin/editorial/sections/:sectionId/items/reorder
+ * @desc    Reordenar itens de secao editorial
+ * @access  Private (Admin com escopo admin.home.curate)
+ */
+router.patch(
+  '/editorial/sections/:sectionId/items/reorder',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.editorial.section_items.reorder',
+    resourceType: 'editorial_section_item',
+    scope: 'admin.home.curate',
+    getResourceId: (req) => req.params.sectionId,
+  }),
+  requireAdminScope('admin.home.curate'),
+  reorderEditorialSectionItems
+)
+
+/**
+ * @route   DELETE /api/admin/editorial/sections/:sectionId/items/:itemId
+ * @desc    Remover item de secao editorial
+ * @access  Private (Admin com escopo admin.home.curate)
+ */
+router.delete(
+  '/editorial/sections/:sectionId/items/:itemId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.editorial.section_items.remove',
+    resourceType: 'editorial_section_item',
+    scope: 'admin.home.curate',
+    getResourceId: (req) => req.params.itemId,
+  }),
+  requireAdminScope('admin.home.curate'),
+  removeEditorialSectionItem
+)
+
+/**
+ * @route   GET /api/admin/directories/:vertical
+ * @desc    Listar entradas de diretorio por vertical
+ * @access  Private (Admin com escopo admin.directory.manage)
+ */
+router.get(
+  '/directories/:vertical',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.directories.list',
+    resourceType: 'directory_entry',
+    scope: 'admin.directory.manage',
+    getResourceId: (req) => req.params.vertical,
+  }),
+  requireAdminScope('admin.directory.manage'),
+  listAdminDirectories
+)
+
+/**
+ * @route   POST /api/admin/directories/:vertical
+ * @desc    Criar entrada de diretorio
+ * @access  Private (Admin com escopo admin.directory.manage)
+ */
+router.post(
+  '/directories/:vertical',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.directories.create',
+    resourceType: 'directory_entry',
+    scope: 'admin.directory.manage',
+    getResourceId: (req) => req.params.vertical,
+  }),
+  requireAdminScope('admin.directory.manage'),
+  createAdminDirectory
+)
+
+/**
+ * @route   PATCH /api/admin/directories/:vertical/:entryId
+ * @desc    Atualizar entrada de diretorio
+ * @access  Private (Admin com escopo admin.directory.manage)
+ */
+router.patch(
+  '/directories/:vertical/:entryId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.directories.update',
+    resourceType: 'directory_entry',
+    scope: 'admin.directory.manage',
+    getResourceId: (req) => req.params.entryId,
+  }),
+  requireAdminScope('admin.directory.manage'),
+  updateAdminDirectory
+)
+
+/**
+ * @route   POST /api/admin/directories/:vertical/:entryId/publish
+ * @desc    Publicar entrada de diretorio
+ * @access  Private (Admin com escopo admin.content.publish)
+ */
+router.post(
+  '/directories/:vertical/:entryId/publish',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.directories.publish',
+    resourceType: 'directory_entry',
+    scope: 'admin.content.publish',
+    getResourceId: (req) => req.params.entryId,
+  }),
+  requireAdminScope('admin.content.publish'),
+  publishAdminDirectory
+)
+
+/**
+ * @route   POST /api/admin/directories/:vertical/:entryId/archive
+ * @desc    Arquivar entrada de diretorio
+ * @access  Private (Admin com escopo admin.content.archive)
+ */
+router.post(
+  '/directories/:vertical/:entryId/archive',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.directories.archive',
+    resourceType: 'directory_entry',
+    scope: 'admin.content.archive',
+    getResourceId: (req) => req.params.entryId,
+  }),
+  requireAdminScope('admin.content.archive'),
+  archiveAdminDirectory
+)
+
+/**
+ * @route   GET /api/admin/claims
+ * @desc    Listar pedidos de claim
+ * @access  Private (Admin com escopo admin.claim.review)
+ */
+router.get(
+  '/claims',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.claims.list',
+    resourceType: 'claim_request',
+    scope: 'admin.claim.review',
+  }),
+  requireAdminScope('admin.claim.review'),
+  listAdminClaims
+)
+
+/**
+ * @route   POST /api/admin/claims/:claimId/approve
+ * @desc    Aprovar claim e transferir ownership
+ * @access  Private (Admin com escopo admin.claim.review)
+ */
+router.post(
+  '/claims/:claimId/approve',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.claims.approve',
+    resourceType: 'claim_request',
+    scope: 'admin.claim.review',
+    getResourceId: (req) => req.params.claimId,
+  }),
+  requireAdminScope('admin.claim.review'),
+  approveAdminClaim
+)
+
+/**
+ * @route   POST /api/admin/claims/:claimId/reject
+ * @desc    Rejeitar claim
+ * @access  Private (Admin com escopo admin.claim.review)
+ */
+router.post(
+  '/claims/:claimId/reject',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.claims.reject',
+    resourceType: 'claim_request',
+    scope: 'admin.claim.review',
+    getResourceId: (req) => req.params.claimId,
+  }),
+  requireAdminScope('admin.claim.review'),
+  rejectAdminClaim
+)
+
+/**
+ * @route   POST /api/admin/ownership/transfer
+ * @desc    Transferir ownership manualmente
+ * @access  Private (Admin com escopo admin.claim.transfer)
+ */
+router.post(
+  '/ownership/transfer',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.ownership.transfer',
+    resourceType: 'ownership_transfer',
+    scope: 'admin.claim.transfer',
+  }),
+  requireAdminScope('admin.claim.transfer'),
+  transferAdminOwnership
 )
 
 /**

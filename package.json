@@ -17,6 +17,7 @@
     "contract:openapi": "node scripts/validate-openapi.js",
     "quick-metrics:coverage": "node scripts/quick-metrics-sector-coverage.js",
     "test:pre-p1": "powershell -ExecutionPolicy Bypass -File scripts/pre-p1-smoke.ps1",
+    "test:sector-smoke": "node scripts/quick-analysis-sector-smoke.js",
     "build": "tsc",
     "seed": "ts-node src/scripts/seed.ts"
   },

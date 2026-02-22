@@ -16,6 +16,8 @@ export type ContentCategory =
   | 'analysis'
   | 'other'
 export type PublishStatus = 'draft' | 'published' | 'archived'
+export type ContentOwnerType = 'admin_seeded' | 'creator_owned'
+export type ContentSourceType = 'internal' | 'external_profile' | 'external_content'
 
 /**
  * Interface base para todos os tipos de conteúdo
@@ -47,6 +49,14 @@ export interface IBaseContent extends Document {
   moderationNote?: string
   moderatedBy?: mongoose.Types.ObjectId
   moderatedAt?: Date
+  ownerType: ContentOwnerType
+  sourceType: ContentSourceType
+  claimable: boolean
+  editorialVisibility: {
+    showOnHome: boolean
+    showOnLanding: boolean
+    showOnShowAll: boolean
+  }
 
   // Creator
   creator: mongoose.Types.ObjectId // ref: 'User'
@@ -190,6 +200,37 @@ export const baseContentSchema = {
     type: Date,
     default: null,
   },
+  ownerType: {
+    type: String,
+    enum: ['admin_seeded', 'creator_owned'],
+    default: 'creator_owned',
+    index: true,
+  },
+  sourceType: {
+    type: String,
+    enum: ['internal', 'external_profile', 'external_content'],
+    default: 'internal',
+    index: true,
+  },
+  claimable: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  editorialVisibility: {
+    showOnHome: {
+      type: Boolean,
+      default: false,
+    },
+    showOnLanding: {
+      type: Boolean,
+      default: true,
+    },
+    showOnShowAll: {
+      type: Boolean,
+      default: true,
+    },
+  },
 
   // Creator
   creator: {
@@ -248,6 +289,12 @@ export const baseContentIndexes = [
   { publishedAt: -1 },
   { moderationStatus: 1, updatedAt: -1 },
   { moderatedAt: -1 },
+  { ownerType: 1 },
+  { sourceType: 1 },
+  { claimable: 1 },
+  { 'editorialVisibility.showOnHome': 1 },
+  { 'editorialVisibility.showOnLanding': 1 },
+  { 'editorialVisibility.showOnShowAll': 1 },
   { averageRating: -1 },
   { views: -1 },
 ]

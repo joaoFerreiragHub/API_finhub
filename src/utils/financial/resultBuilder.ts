@@ -981,9 +981,33 @@ export function buildIndicadoresResult(
     'Crescimento Receita': fmtPercent(growth?.revenueGrowth),
     'Crescimento Receita (Y-1)': fmtPercent(
       incomeY1?.revenue && income?.revenue && incomeY1.revenue > 0
-        ? (income.revenue - incomeY1.revenue) / incomeY1.revenue 
+        ? (income.revenue - incomeY1.revenue) / incomeY1.revenue
         : null
     ),
+    'Crescimento EBITDA': (() => {
+      const ebitda = income?.ebitda
+      const ebitdaY1val = incomeY1?.ebitda
+      if (!ebitda || !ebitdaY1val || ebitdaY1val === 0) return '\u2014'
+      return fmtPercent((ebitda - ebitdaY1val) / Math.abs(ebitdaY1val))
+    })(),
+    'Crescimento EBITDA (Y-1)': '\u2014',
+
+    // 🆕 CAGR RECEITA 3Y (2-year compound growth: Y0 vs Y-2)
+    'CAGR Receita 3Y': (() => {
+      const revY0 = income?.revenue
+      const revY2 = rawData.incomeY2?.revenue
+      if (!revY0 || !revY2 || revY2 <= 0 || revY0 <= 0) return '\u2014'
+      const cagr = Math.pow(revY0 / revY2, 1 / 2) - 1
+      return fmtPercent(cagr)
+    })(),
+    'CAGR Receita 3Y (Y-1)': (() => {
+      const revY1 = incomeY1?.revenue
+      const revY2 = rawData.incomeY2?.revenue
+      if (!revY1 || !revY2 || revY2 <= 0 || revY1 <= 0) return '\u2014'
+      // 1-year growth as Y-1 proxy (only 3 years of data available)
+      const growth = (revY1 - revY2) / Math.abs(revY2)
+      return fmtPercent(growth)
+    })(),
 
     // 🆕 CRESCIMENTO CARTEIRA - CORRIGIDO
     'Crescimento Carteira': fmtPercent(portfolioGrowth ?? null),
@@ -1004,7 +1028,16 @@ export function buildIndicadoresResult(
     'Total Dívida': fmtLarge(balance?.totalDebt ?? null),
     'Cash e Equiv.': fmtLarge(balance?.cashAndCashEquivalents ?? balance?.cash ?? null),
     'Despesa de Juros': fmtLarge(income?.interestExpense != null ? Math.abs(income.interestExpense) : null),
-    'Cobertura de Juros': fmt(metrics?.interestCoverageTTM ?? ratios?.interestCoverageRatioTTM ?? ratios?.interestCoverageTTM ?? null),
+    'Cobertura de Juros': (() => {
+      const raw = metrics?.interestCoverageTTM ?? ratios?.interestCoverageRatioTTM ?? ratios?.interestCoverageTTM ?? null
+      const guarded = STOCK_FLAGS.useNullInsteadOfZero ? plausibleOrNull(raw, mktCap) : raw
+      if (guarded != null) return fmt(guarded)
+      // Fallback: calcular manualmente EBIT / InterestExpense
+      const ebit = income?.operatingIncome ?? income?.ebitda
+      const intExp = income?.interestExpense
+      if (ebit && intExp && Math.abs(intExp) > 0) return fmt(ebit / Math.abs(intExp))
+      return '\u2014'
+    })(),
     'Cobertura de Juros (Y-1)': fmt(historicalRatios?.[1]?.interestCoverage ?? historicalRatios?.[1]?.interestCoverageRatio ?? null),
 
     // === DIVIDENDO POR AÇÃO ===
@@ -1058,7 +1091,19 @@ export function buildIndicadoresResult(
         : null)
     ),
     'Free Cash Flow (Y-1)': fmtLarge(fcfAnoAnterior),
-    
+    'CapEx/Receita': (() => {
+      const capex = cashflow?.capitalExpenditure
+      const rev = income?.revenue
+      if (!capex || !rev || rev <= 0) return '\u2014'
+      return fmtPercent(Math.abs(capex) / rev)
+    })(),
+    'CapEx/Receita (Y-1)': (() => {
+      const capex = cashflowY1?.capitalExpenditure
+      const rev = incomeY1?.revenue
+      if (!capex || !rev || rev <= 0) return '\u2014'
+      return fmtPercent(Math.abs(capex) / rev)
+    })(),
+
     // === DIVIDENDOS (CORRIGIDOS) ===
     'Payout Ratio': (() => {
       if (companyType.isREIT && ffoPayoutCalculated) {

@@ -191,13 +191,49 @@ function formatReportPeriod(date?: string | null, period?: string | null): strin
 }
 
 // 3. Peers + quotes
+// FMP /stable/stock-peers format (2025+): flat array of { symbol, companyName, price, mktCap }
+// Older format was: [{ peersList: string[] }]
 export async function fetchPeers(symbol: string) {
   try {
     const peersData = await fetch(`${FMP_STABLE}/stock-peers?symbol=${symbol}&apikey=${API_KEY}`)
-    const peers = peersData?.[0]?.peersList?.slice(0, 5) || []
-    const quotes = peers.length > 0
-      ? await fetch(`${FMP_STABLE}/quote?symbol=${peers.join(',')}&apikey=${API_KEY}`)
+
+    if (!Array.isArray(peersData) || peersData.length === 0) {
+      return { peers: [], quotes: [] }
+    }
+
+    // Legacy format: first item has peersList array
+    if (peersData[0]?.peersList) {
+      const peers: string[] = peersData[0].peersList.slice(0, 6)
+      const rawQuotes = peers.length > 0
+        ? await fetch(`${FMP_STABLE}/quote?symbol=${peers.join(',')}&apikey=${API_KEY}`)
+        : []
+      return { peers, quotes: rawQuotes }
+    }
+
+    // New format: each item IS a peer with { symbol, companyName, price, mktCap }
+    const peerEntries: Array<{ symbol: string; companyName: string; price: number; mktCap: number }> =
+      peersData.filter((p: any) => p?.symbol).slice(0, 6)
+    const peers = peerEntries.map((p) => p.symbol)
+
+    // Batch fetch 1D price change
+    const changeRaw = peers.length > 0
+      ? await fetch(`${FMP_STABLE}/stock-price-change?symbol=${peers.join(',')}&apikey=${API_KEY}`)
       : []
+    const changeMap: Record<string, number> = {}
+    for (const c of (Array.isArray(changeRaw) ? changeRaw : [])) {
+      if (c?.symbol) changeMap[c.symbol] = c['1D'] ?? 0
+    }
+
+    // Build PeerQuote-compatible objects
+    const quotes = peerEntries.map((p) => ({
+      symbol: p.symbol,
+      name: p.companyName,
+      price: p.price ?? 0,
+      changesPercentage: changeMap[p.symbol] ?? null,
+      marketCap: p.mktCap ?? null,
+      pe: null as number | null,
+    }))
+
     return { peers, quotes }
   } catch (error) {
     console.warn(`⚠️ fetchPeers falhou para ${symbol}`)
