@@ -706,10 +706,11 @@ export async function fetchAlerts(symbol: string) {
   const ratios = ratiosRes?.[0] || {}
   const income: IncomeStatement[] = incomeRes || []
   const cashflow: CashFlowStatement[] = cashflowRes || []
-    const alerts = []
+  const alerts = []
 
-
-  if (ratios?.debtEquityRatioTTM > 1) {
+  // 1. Endividamento elevado (guard contra sentinel zero do FMP)
+  const debtEquity = ratios?.debtEquityRatioTTM
+  if (typeof debtEquity === 'number' && debtEquity > 0 && debtEquity > 1) {
     alerts.push({
       title: 'Endividamento elevado',
       description: 'A dívida excede 100% do patrimônio.',
@@ -717,15 +718,33 @@ export async function fetchAlerts(symbol: string) {
     })
   }
 
+  // 2. Lucros em queda — 3 anos consecutivos OU queda >50% face ao pico dos últimos 3 anos
   const netIncomes = income.map((i) => i.netIncome)
-  if (netIncomes.length >= 3 && netIncomes[0] < netIncomes[1] && netIncomes[1] < netIncomes[2]) {
+  const strictDecline = netIncomes.length >= 3 && netIncomes[0] < netIncomes[1] && netIncomes[1] < netIncomes[2]
+  const peakNI = netIncomes.length > 0 ? Math.max(...netIncomes) : 0
+  const peakDecline = peakNI > 0 && netIncomes.length >= 2 && netIncomes[0] < peakNI * 0.5 && netIncomes[0] !== peakNI
+  if (strictDecline || peakDecline) {
     alerts.push({
       title: 'Lucros em queda',
-      description: 'Net Income em queda nos últimos 3 anos.',
+      description: strictDecline
+        ? 'Net Income em queda nos últimos 3 anos.'
+        : 'Lucros actuais abaixo de 50% do pico recente.',
       severity: 'medium'
     })
   }
 
+  // 3. Receita em declínio — queda >25% face ao melhor dos últimos 3 anos
+  const revenues = income.map((i) => (i as any).revenue as number)
+  const peakRev = revenues.length > 0 ? Math.max(...revenues) : 0
+  if (peakRev > 0 && revenues.length >= 2 && revenues[0] < peakRev * 0.75 && revenues[0] !== peakRev) {
+    alerts.push({
+      title: 'Receita em declínio',
+      description: 'Receita actual abaixo de 75% do pico dos últimos 3 anos.',
+      severity: 'medium'
+    })
+  }
+
+  // 4. FCF negativo nos últimos 2 anos
   const fcf = cashflow.map((c) =>
     typeof c.freeCashFlow === 'number' ? c.freeCashFlow : c.operatingCashFlow - c.capitalExpenditure
   )
@@ -737,12 +756,13 @@ export async function fetchAlerts(symbol: string) {
     })
   }
 
-  const dps = income.map((i) => i.dividendPerShare || 0).filter((d) => d > 0)
-  if (dps.length >= 3 && new Set(dps).size > 2) {
+  // 5. Corte de dividendos — verifica redução real face ao ano anterior (não apenas variação)
+  const dps = income.map((i) => i.dividendPerShare || 0)
+  if (dps[0] > 0 && dps[1] > 0 && dps[0] < dps[1] * 0.97) {
     alerts.push({
-      title: 'Dividendos inconsistentes',
-      description: 'Histórico irregular de distribuição.',
-      severity: 'low'
+      title: 'Dividendo reduzido',
+      description: 'Dividendo por ação abaixo do ano anterior.',
+      severity: 'medium'
     })
   }
 
