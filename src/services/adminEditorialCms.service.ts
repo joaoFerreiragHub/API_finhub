@@ -333,6 +333,18 @@ export interface DirectoryListFilters {
   claimable?: boolean
 }
 
+export interface PublicDirectoryListOptions extends PaginationOptions {
+  showAll?: boolean
+  search?: string
+  country?: string
+  region?: string
+  categories?: string[]
+  tags?: string[]
+  isFeatured?: boolean
+  verificationStatus?: DirectoryVerificationStatus
+  sort?: 'featured' | 'recent' | 'name'
+}
+
 export interface ClaimListFilters {
   status?: ClaimRequestStatus
   targetType?: ClaimTargetType
@@ -1295,12 +1307,34 @@ export class AdminEditorialCmsService {
     }
   }
 
-  async listPublicVertical(vertical: DirectoryVerticalType, options: { showAll?: boolean } = {}) {
+  async listPublicVertical(vertical: DirectoryVerticalType, options: PublicDirectoryListOptions = {}) {
     if (!isValidDirectoryVerticalType(vertical)) {
       throw new AdminEditorialCmsServiceError(400, 'vertical invalido.')
     }
 
+    if (
+      options.verificationStatus &&
+      !isValidDirectoryVerificationStatus(options.verificationStatus)
+    ) {
+      throw new AdminEditorialCmsServiceError(400, 'verificationStatus invalido.')
+    }
+
     const showAll = options.showAll === true
+    const page = normalizePage(options.page)
+    const limit = normalizeLimit(options.limit)
+    const skip = (page - 1) * limit
+    const sort = options.sort ?? 'featured'
+
+    const search = options.search?.trim()
+    const country = options.country?.trim()
+    const region = options.region?.trim()
+    const categories = (options.categories ?? [])
+      .map((category) => category.trim())
+      .filter((category) => category.length > 0)
+    const tags = (options.tags ?? [])
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
+
     const query: Record<string, unknown> = {
       verticalType: vertical,
       status: 'published',
@@ -1309,12 +1343,74 @@ export class AdminEditorialCmsService {
       [showAll ? 'showAllEnabled' : 'landingEnabled']: true,
     }
 
-    const items = await DirectoryEntry.find(query).sort({ isFeatured: -1, updatedAt: -1 }).lean()
+    if (typeof options.isFeatured === 'boolean') {
+      query.isFeatured = options.isFeatured
+    }
+
+    if (options.verificationStatus) {
+      query.verificationStatus = options.verificationStatus
+    }
+
+    if (country) {
+      query.country = new RegExp(`^${escapeRegExp(country)}$`, 'i')
+    }
+
+    if (region) {
+      query.region = new RegExp(`^${escapeRegExp(region)}$`, 'i')
+    }
+
+    if (categories.length > 0) {
+      query.categories = { $in: categories }
+    }
+
+    if (tags.length > 0) {
+      query.tags = { $in: tags }
+    }
+
+    if (search && search.length > 0) {
+      const regex = new RegExp(escapeRegExp(search), 'i')
+      query.$or = [
+        { name: regex },
+        { slug: regex },
+        { shortDescription: regex },
+        { description: regex },
+        { categories: regex },
+        { tags: regex },
+      ]
+    }
+
+    const sortBy: Record<string, 1 | -1> =
+      sort === 'recent'
+        ? { updatedAt: -1 }
+        : sort === 'name'
+          ? { name: 1 }
+          : { isFeatured: -1, updatedAt: -1 }
+
+    const [items, total] = await Promise.all([
+      DirectoryEntry.find(query).sort(sortBy).skip(skip).limit(limit).lean(),
+      DirectoryEntry.countDocuments(query),
+    ])
 
     return {
       vertical,
       mode: showAll ? 'show-all' : 'landing',
+      filters: {
+        search: search ?? null,
+        country: country ?? null,
+        region: region ?? null,
+        categories,
+        tags,
+        featured: typeof options.isFeatured === 'boolean' ? options.isFeatured : null,
+        verificationStatus: options.verificationStatus ?? null,
+        sort,
+      },
       items: items.map(mapDirectory),
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.max(1, Math.ceil(total / limit)),
+      },
     }
   }
 
