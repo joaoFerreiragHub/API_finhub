@@ -351,6 +351,11 @@ export interface ClaimListFilters {
   creatorId?: string
 }
 
+export interface MyClaimListFilters {
+  status?: ClaimRequestStatus
+  targetType?: ClaimTargetType
+}
+
 export class AdminEditorialCmsService {
   private isContentType(value: string): value is ContentType {
     return (
@@ -1087,6 +1092,184 @@ export class AdminEditorialCmsService {
     }
     await entry.save()
     return { changed, entry: mapDirectory(entry.toObject()) }
+  }
+
+  private async assertClaimTargetClaimable(targetType: ClaimTargetType, targetIdRaw: string, creatorIdRaw: string) {
+    const creatorId = String(toObjectId(creatorIdRaw, 'creatorId'))
+    toObjectId(targetIdRaw, 'targetId')
+
+    if (targetType === 'directory_entry') {
+      const entry = await DirectoryEntry.findById(targetIdRaw)
+        .select('claimable ownerType ownerUser status')
+        .lean()
+
+      if (!entry) {
+        throw new AdminEditorialCmsServiceError(404, 'Alvo do claim nao encontrado.')
+      }
+      if (entry.status === 'archived') {
+        throw new AdminEditorialCmsServiceError(409, 'Nao e possivel reclamar um recurso arquivado.')
+      }
+      if (!entry.claimable) {
+        throw new AdminEditorialCmsServiceError(409, 'Este recurso nao esta disponivel para claim.')
+      }
+      if (entry.ownerType === 'creator_owned' && entry.ownerUser && String(entry.ownerUser) === creatorId) {
+        throw new AdminEditorialCmsServiceError(409, 'Este recurso ja pertence ao creator.')
+      }
+      return
+    }
+
+    if (!this.isContentType(targetType)) {
+      throw new AdminEditorialCmsServiceError(400, 'targetType invalido.')
+    }
+    const model = contentModelByType[targetType]
+    const content = await model.findById(targetIdRaw).select('claimable ownerType creator status').lean()
+
+    if (!content) {
+      throw new AdminEditorialCmsServiceError(404, `Conteudo alvo (${targetType}) nao encontrado.`)
+    }
+    if (content.status === 'archived') {
+      throw new AdminEditorialCmsServiceError(409, 'Nao e possivel reclamar conteudo arquivado.')
+    }
+    if (!content.claimable) {
+      throw new AdminEditorialCmsServiceError(409, 'Este conteudo nao esta disponivel para claim.')
+    }
+    if (
+      content.ownerType === 'creator_owned' &&
+      content.creator &&
+      String(content.creator) === creatorId
+    ) {
+      throw new AdminEditorialCmsServiceError(409, 'Este conteudo ja pertence ao creator.')
+    }
+  }
+
+  async createClaimRequest(input: {
+    requestedById: string
+    creatorId?: string
+    targetType: ClaimTargetType
+    targetId: string
+    reason: string
+    note?: string
+    evidenceLinks?: string[]
+  }) {
+    if (!isValidClaimTargetType(input.targetType)) {
+      throw new AdminEditorialCmsServiceError(400, 'targetType invalido.')
+    }
+    const requestedById = toObjectId(input.requestedById, 'requestedById')
+    const creatorId = toObjectId(input.creatorId ?? input.requestedById, 'creatorId')
+    const reason = toNullableTrimmed(input.reason)
+    if (!reason) {
+      throw new AdminEditorialCmsServiceError(400, 'reason e obrigatorio.')
+    }
+
+    await this.assertClaimTargetClaimable(input.targetType, input.targetId, String(creatorId))
+
+    const evidenceLinks = (input.evidenceLinks ?? [])
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+      .slice(0, 10)
+
+    try {
+      const created = await ClaimRequest.create({
+        targetType: input.targetType,
+        targetId: String(toObjectId(input.targetId, 'targetId')),
+        creatorId,
+        requestedBy: requestedById,
+        status: 'pending',
+        reason,
+        note: toNullableTrimmed(input.note),
+        evidenceLinks,
+      })
+
+      const populated = await ClaimRequest.findById(created._id)
+        .populate('creatorId', 'name username email role')
+        .populate('requestedBy', 'name username email role')
+        .lean()
+
+      return populated ? mapClaim(populated) : mapClaim(created.toObject())
+    } catch (error: unknown) {
+      const mongoError = error as { code?: number }
+      if (mongoError.code === 11000) {
+        throw new AdminEditorialCmsServiceError(409, 'Ja existe um claim pendente para este alvo.')
+      }
+      throw error
+    }
+  }
+
+  async listMyClaims(
+    requestedByIdRaw: string,
+    filters: MyClaimListFilters = {},
+    options: PaginationOptions = {}
+  ) {
+    if (filters.status && !isValidClaimStatus(filters.status)) {
+      throw new AdminEditorialCmsServiceError(400, 'status invalido.')
+    }
+    if (filters.targetType && !isValidClaimTargetType(filters.targetType)) {
+      throw new AdminEditorialCmsServiceError(400, 'targetType invalido.')
+    }
+
+    const requestedById = toObjectId(requestedByIdRaw, 'requestedById')
+    const page = normalizePage(options.page)
+    const limit = normalizeLimit(options.limit)
+    const skip = (page - 1) * limit
+    const query: Record<string, unknown> = {
+      requestedBy: requestedById,
+    }
+
+    if (filters.status) query.status = filters.status
+    if (filters.targetType) query.targetType = filters.targetType
+
+    const [items, total] = await Promise.all([
+      ClaimRequest.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('creatorId', 'name username email role')
+        .populate('requestedBy', 'name username email role')
+        .populate('reviewedBy', 'name username email role')
+        .lean(),
+      ClaimRequest.countDocuments(query),
+    ])
+
+    return {
+      items: items.map(mapClaim),
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.max(1, Math.ceil(total / limit)),
+      },
+    }
+  }
+
+  async cancelClaimRequest(claimIdRaw: string, input: { actorId: string; note?: string }) {
+    const actorId = toObjectId(input.actorId, 'actorId')
+    toObjectId(claimIdRaw, 'claimId')
+    const claim = await ClaimRequest.findById(claimIdRaw)
+    if (!claim) {
+      throw new AdminEditorialCmsServiceError(404, 'Claim nao encontrado.')
+    }
+
+    const actorIdString = String(actorId)
+    if (String(claim.requestedBy) !== actorIdString && String(claim.creatorId) !== actorIdString) {
+      throw new AdminEditorialCmsServiceError(403, 'Sem permissao para cancelar este claim.')
+    }
+    if (claim.status !== 'pending') {
+      throw new AdminEditorialCmsServiceError(409, `Claim nao esta pendente (${claim.status}).`)
+    }
+
+    claim.status = 'cancelled'
+    claim.reviewedBy = actorId
+    claim.reviewedAt = new Date()
+    claim.reviewNote = toNullableTrimmed(input.note) ?? undefined
+    await claim.save()
+
+    const populated = await ClaimRequest.findById(claim._id)
+      .populate('creatorId', 'name username email role')
+      .populate('requestedBy', 'name username email role')
+      .populate('reviewedBy', 'name username email role')
+      .lean()
+
+    return populated ? mapClaim(populated) : mapClaim(claim.toObject())
   }
 
   async listClaims(filters: ClaimListFilters = {}, options: PaginationOptions = {}) {

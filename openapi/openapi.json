@@ -1356,6 +1356,60 @@
         }
       }
     },
+    "/api/editorial/claims/my": {
+      "get": {
+        "tags": [
+          "Editorial"
+        ],
+        "summary": "Listar claims do creator autenticado",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/editorial/claims": {
+      "post": {
+        "tags": [
+          "Editorial"
+        ],
+        "summary": "Criar claim de ownership",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Claim criado"
+          }
+        }
+      }
+    },
+    "/api/editorial/claims/{claimId}/cancel": {
+      "post": {
+        "tags": [
+          "Editorial"
+        ],
+        "summary": "Cancelar claim pendente",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claim cancelado"
+          }
+        }
+      }
+    },
     "/api/editorial/home": {
       "get": {
         "tags": [
