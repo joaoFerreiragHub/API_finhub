@@ -46,6 +46,41 @@ const extractNote = (req: AuthRequest): string | undefined => {
   return undefined
 }
 
+const extractBodyRecord = (req: AuthRequest): Record<string, unknown> | undefined => {
+  const body = req.body
+  if (!body || typeof body !== 'object') return undefined
+  return body as Record<string, unknown>
+}
+
+const isValidModerationAction = (value: unknown): value is ContentModerationAction =>
+  value === 'hide' || value === 'unhide' || value === 'restrict'
+
+const extractBulkItems = (
+  req: AuthRequest
+): Array<{ contentType: ModeratableContentType; contentId: string }> | undefined => {
+  const body = extractBodyRecord(req)
+  if (!body) return undefined
+
+  const rawItems = body.items
+  if (!Array.isArray(rawItems)) return undefined
+
+  return rawItems
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    .map((item) => ({
+      contentType: item.contentType as ModeratableContentType,
+      contentId: typeof item.contentId === 'string' ? item.contentId : '',
+    }))
+}
+
+const extractConfirm = (req: AuthRequest): boolean | undefined => {
+  const body = extractBodyRecord(req)
+  if (!body) return undefined
+
+  const confirm = body.confirm
+  if (typeof confirm === 'boolean') return confirm
+  return undefined
+}
+
 const handleAdminContentError = (res: Response, error: unknown, fallbackMessage: string) => {
   if (error instanceof AdminContentServiceError) {
     return res.status(error.statusCode).json({
@@ -196,6 +231,46 @@ export const hideContent = async (req: AuthRequest, res: Response) => {
 }
 
 /**
+ * POST /api/admin/content/:contentType/:contentId/hide-fast
+ */
+export const hideContentFast = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const contentType = req.params.contentType
+    if (!isValidContentTypeFilter(contentType)) {
+      return res.status(400).json({
+        error: 'Parametro contentType invalido.',
+      })
+    }
+
+    const result = await adminContentService.fastHideContent({
+      actorId: req.user.id,
+      contentType: contentType as ModeratableContentType,
+      contentId: req.params.contentId,
+      reason: extractReason(req),
+      note: extractNote(req),
+    })
+
+    return res.status(200).json({
+      message: 'Conteudo ocultado em modo rapido com sucesso.',
+      fastTrack: true,
+      changed: result.changed,
+      fromStatus: result.fromStatus,
+      toStatus: result.toStatus,
+      content: result.content,
+    })
+  } catch (error: unknown) {
+    console.error('Hide fast content error:', error)
+    return handleAdminContentError(res, error, 'Erro ao ocultar conteudo em modo rapido.')
+  }
+}
+
+/**
  * POST /api/admin/content/:contentType/:contentId/unhide
  */
 export const unhideContent = async (req: AuthRequest, res: Response) => {
@@ -216,5 +291,57 @@ export const restrictContent = async (req: AuthRequest, res: Response) => {
   } catch (error: unknown) {
     console.error('Restrict content error:', error)
     return handleAdminContentError(res, error, 'Erro ao restringir conteudo.')
+  }
+}
+
+/**
+ * POST /api/admin/content/bulk-moderate
+ */
+export const bulkModerateContent = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const body = extractBodyRecord(req)
+    const action = body?.action
+    if (!isValidModerationAction(action)) {
+      return res.status(400).json({
+        error: 'Parametro action invalido.',
+      })
+    }
+
+    const reason = extractReason(req)
+    if (!reason) {
+      return res.status(400).json({
+        error: 'Motivo obrigatorio para moderacao em lote.',
+      })
+    }
+
+    const items = extractBulkItems(req)
+    if (!items || items.length === 0) {
+      return res.status(400).json({
+        error: 'Lista items obrigatoria para moderacao em lote.',
+      })
+    }
+
+    const result = await adminContentService.bulkModerateContent({
+      actorId: req.user.id,
+      action,
+      reason,
+      note: extractNote(req),
+      confirm: extractConfirm(req),
+      items,
+    })
+
+    return res.status(200).json({
+      message: 'Moderacao em lote concluida.',
+      ...result,
+    })
+  } catch (error: unknown) {
+    console.error('Bulk moderate content error:', error)
+    return handleAdminContentError(res, error, 'Erro ao executar moderacao em lote.')
   }
 }

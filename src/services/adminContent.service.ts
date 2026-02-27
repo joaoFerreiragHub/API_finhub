@@ -37,6 +37,10 @@ const contentModelByType: Record<ContentType, ContentModel> = {
 const DEFAULT_PAGE = 1
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 100
+export const ADMIN_CONTENT_BULK_MAX_ITEMS = 50
+export const ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD = 10
+export const ADMIN_CONTENT_FAST_HIDE_REASON =
+  'Ocultacao rapida preventiva para protecao da plataforma.'
 
 export interface AdminContentQueueFilters {
   contentType?: ModeratableContentType
@@ -58,6 +62,41 @@ export interface ModerateContentInput {
   action: ContentModerationAction
   reason: string
   note?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface FastHideContentInput {
+  actorId: string
+  contentType: ModeratableContentType
+  contentId: string
+  note?: string
+  reason?: string
+}
+
+export interface BulkModerateContentItem {
+  contentType: ModeratableContentType
+  contentId: string
+}
+
+export interface BulkModerateContentInput {
+  actorId: string
+  action: ContentModerationAction
+  reason: string
+  note?: string
+  confirm?: boolean
+  items: BulkModerateContentItem[]
+}
+
+export interface BulkModerateContentResultItem {
+  contentType: ModeratableContentType
+  contentId: string
+  success: boolean
+  changed?: boolean
+  fromStatus?: ContentModerationStatus
+  toStatus?: ContentModerationStatus
+  content?: unknown
+  error?: string
+  statusCode?: number
 }
 
 export interface ContentHistoryFilters {
@@ -208,7 +247,7 @@ export class AdminContentService {
 
     await content.save()
 
-    const metadata =
+    const baseMetadata =
       input.contentType === 'comment'
         ? {
             changed,
@@ -229,6 +268,8 @@ export class AdminContentService {
               changed,
               publishStatus: toPublishStatus(content.status),
             }
+
+    const metadata = input.metadata ? { ...baseMetadata, ...input.metadata } : baseMetadata
 
     await ContentModerationEvent.create({
       contentType: input.contentType,
@@ -252,6 +293,130 @@ export class AdminContentService {
       fromStatus,
       toStatus,
       content: queueItem,
+    }
+  }
+
+  async fastHideContent(input: FastHideContentInput) {
+    const reason = input.reason?.trim() || ADMIN_CONTENT_FAST_HIDE_REASON
+
+    return this.moderateContent({
+      actorId: input.actorId,
+      contentType: input.contentType,
+      contentId: input.contentId,
+      action: 'hide',
+      reason,
+      note: input.note,
+      metadata: {
+        fastTrack: true,
+      },
+    })
+  }
+
+  async bulkModerateContent(input: BulkModerateContentInput) {
+    if (!Array.isArray(input.items) || input.items.length === 0) {
+      throw new AdminContentServiceError(400, 'Pelo menos um item e obrigatorio para moderacao em lote.')
+    }
+
+    if (input.items.length > ADMIN_CONTENT_BULK_MAX_ITEMS) {
+      throw new AdminContentServiceError(
+        400,
+        `Lote excede o limite maximo de ${ADMIN_CONTENT_BULK_MAX_ITEMS} itens.`
+      )
+    }
+
+    const normalizedItems = input.items.map((item, index) => {
+      if (!isValidContentType(item.contentType)) {
+        throw new AdminContentServiceError(400, `items[${index}].contentType invalido.`)
+      }
+
+      toObjectId(item.contentId, `items[${index}].contentId`)
+
+      return {
+        contentType: item.contentType,
+        contentId: item.contentId,
+      }
+    })
+
+    const dedupeMap = new Map<string, BulkModerateContentItem>()
+    for (const item of normalizedItems) {
+      const itemKey = `${item.contentType}:${item.contentId}`
+      if (!dedupeMap.has(itemKey)) {
+        dedupeMap.set(itemKey, item)
+      }
+    }
+
+    const uniqueItems = Array.from(dedupeMap.values())
+    const duplicatesSkipped = normalizedItems.length - uniqueItems.length
+
+    if (uniqueItems.length >= ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD && input.confirm !== true) {
+      throw new AdminContentServiceError(
+        400,
+        `Lotes com ${ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD} ou mais itens exigem confirm=true.`
+      )
+    }
+
+    const results: BulkModerateContentResultItem[] = []
+
+    for (const item of uniqueItems) {
+      try {
+        const result = await this.moderateContent({
+          actorId: input.actorId,
+          contentType: item.contentType,
+          contentId: item.contentId,
+          action: input.action,
+          reason: input.reason,
+          note: input.note,
+          metadata: {
+            bulkModeration: true,
+            bulkSize: uniqueItems.length,
+          },
+        })
+
+        results.push({
+          contentType: item.contentType,
+          contentId: item.contentId,
+          success: true,
+          changed: result.changed,
+          fromStatus: result.fromStatus,
+          toStatus: result.toStatus,
+          content: result.content,
+        })
+      } catch (error: unknown) {
+        if (error instanceof AdminContentServiceError) {
+          results.push({
+            contentType: item.contentType,
+            contentId: item.contentId,
+            success: false,
+            error: error.message,
+            statusCode: error.statusCode,
+          })
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    const succeeded = results.filter((item) => item.success).length
+    const failed = results.length - succeeded
+    const changed = results.filter((item) => item.success && item.changed).length
+
+    return {
+      items: results,
+      summary: {
+        requested: input.items.length,
+        processed: uniqueItems.length,
+        succeeded,
+        failed,
+        changed,
+      },
+      guardrails: {
+        maxItems: ADMIN_CONTENT_BULK_MAX_ITEMS,
+        confirmThreshold: ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD,
+        confirmApplied:
+          uniqueItems.length < ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD ? true : input.confirm === true,
+        duplicatesSkipped,
+      },
     }
   }
 

@@ -9,7 +9,9 @@ import {
   startAdminAssistedSession,
 } from '../controllers/adminAssistedSession.controller'
 import {
+  bulkModerateContent,
   hideContent,
+  hideContentFast,
   listAdminContentQueue,
   listContentModerationHistory,
   restrictContent,
@@ -45,6 +47,7 @@ import {
 } from '../controllers/adminEditorialCms.controller'
 import { authenticate } from '../middlewares/auth'
 import { auditAdminAction } from '../middlewares/adminAudit'
+import { rateLimiter } from '../middlewares/rateLimiter'
 import { requireAdminScope } from '../middlewares/roleGuard'
 
 const router = Router()
@@ -224,6 +227,44 @@ router.get(
 )
 
 /**
+ * @route   POST /api/admin/content/bulk-moderate
+ * @desc    Executar moderacao em lote com guardrails
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/bulk-moderate',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.content.bulk_moderate',
+    resourceType: 'content',
+    scope: 'admin.content.moderate',
+    getResourceId: () => 'bulk',
+  }),
+  requireAdminScope('admin.content.moderate'),
+  bulkModerateContent
+)
+
+/**
+ * @route   POST /api/admin/content/:contentType/:contentId/hide-fast
+ * @desc    Ocultar conteudo com trilho rapido operacional
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/:contentType/:contentId/hide-fast',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.hide_fast',
+    resourceType: 'content',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  hideContentFast
+)
+
+/**
  * @route   POST /api/admin/content/:contentType/:contentId/hide
  * @desc    Ocultar conteudo da superficie publica
  * @access  Private (Admin com escopo admin.content.moderate)
@@ -231,6 +272,7 @@ router.get(
 router.post(
   '/content/:contentType/:contentId/hide',
   authenticate,
+  rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.hide',
     resourceType: 'content',
@@ -249,6 +291,7 @@ router.post(
 router.post(
   '/content/:contentType/:contentId/unhide',
   authenticate,
+  rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.unhide',
     resourceType: 'content',
@@ -267,6 +310,7 @@ router.post(
 router.post(
   '/content/:contentType/:contentId/restrict',
   authenticate,
+  rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.restrict',
     resourceType: 'content',
