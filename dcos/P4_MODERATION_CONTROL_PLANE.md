@@ -37,7 +37,7 @@ Payload esperado:
 {
   "action": "hide",
   "reason": "Spam coordenado",
-  "note": "batch inicial de contenção",
+  "note": "batch inicial de contencao",
   "confirm": true,
   "items": [
     { "contentType": "article", "contentId": "..." },
