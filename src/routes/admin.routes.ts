@@ -32,6 +32,7 @@ import {
   createAdminDirectory,
   createEditorialSection,
   listAdminClaims,
+  listAdminOwnershipTransfers,
   listAdminDirectories,
   listEditorialSections,
   rejectAdminClaim,
@@ -523,6 +524,23 @@ router.post(
   }),
   requireAdminScope('admin.claim.review'),
   rejectAdminClaim
+)
+
+/**
+ * @route   GET /api/admin/ownership/transfers
+ * @desc    Listar historico de transferencias de ownership
+ * @access  Private (Admin com escopo admin.claim.transfer)
+ */
+router.get(
+  '/ownership/transfers',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.ownership.transfers.list',
+    resourceType: 'ownership_transfer',
+    scope: 'admin.claim.transfer',
+  }),
+  requireAdminScope('admin.claim.transfer'),
+  listAdminOwnershipTransfers
 )
 
 /**

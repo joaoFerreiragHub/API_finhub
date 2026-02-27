@@ -262,6 +262,40 @@ const mapClaim = (claim: any) => ({
   updatedAt: claim.updatedAt ?? null,
 })
 
+const mapOwnershipTransferActor = (value: any) => {
+  if (!value) return null
+
+  if (typeof value === 'string') {
+    return { id: value }
+  }
+
+  const maybeId = value._id ?? value.id
+  if (!maybeId) return null
+
+  return {
+    id: String(maybeId),
+    name: value.name ?? undefined,
+    username: value.username ?? undefined,
+    email: value.email ?? undefined,
+    role: value.role ?? undefined,
+  }
+}
+
+const mapOwnershipTransferLog = (log: any) => ({
+  id: String(log._id),
+  targetType: log.targetType,
+  targetId: String(log.targetId),
+  fromOwnerType: log.fromOwnerType,
+  toOwnerType: log.toOwnerType,
+  fromOwnerUser: mapOwnershipTransferActor(log.fromOwnerUser),
+  toOwnerUser: mapOwnershipTransferActor(log.toOwnerUser),
+  transferredBy: mapOwnershipTransferActor(log.transferredBy),
+  reason: log.reason,
+  note: log.note ?? null,
+  metadata: log.metadata ?? null,
+  createdAt: log.createdAt ?? null,
+})
+
 export const isValidSectionStatus = (value: unknown): value is EditorialSectionStatus =>
   typeof value === 'string' && SECTION_STATUSES.includes(value as EditorialSectionStatus)
 
@@ -349,6 +383,15 @@ export interface ClaimListFilters {
   status?: ClaimRequestStatus
   targetType?: ClaimTargetType
   creatorId?: string
+}
+
+export interface OwnershipTransferListFilters {
+  targetType?: OwnershipEntityType | string
+  targetId?: string
+  fromOwnerType?: OwnershipEntityOwnerType | string
+  toOwnerType?: OwnershipEntityOwnerType | string
+  transferredBy?: string
+  search?: string
 }
 
 export interface MyClaimListFilters {
@@ -1305,6 +1348,65 @@ export class AdminEditorialCmsService {
 
     return {
       items: items.map(mapClaim),
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.max(1, Math.ceil(total / limit)),
+      },
+    }
+  }
+
+  async listOwnershipTransfers(
+    filters: OwnershipTransferListFilters = {},
+    options: PaginationOptions = {}
+  ) {
+    if (filters.targetType && !isValidOwnershipTargetType(filters.targetType)) {
+      throw new AdminEditorialCmsServiceError(400, 'targetType invalido.')
+    }
+    if (filters.fromOwnerType && !isValidOwnershipOwnerType(filters.fromOwnerType)) {
+      throw new AdminEditorialCmsServiceError(400, 'fromOwnerType invalido.')
+    }
+    if (filters.toOwnerType && !isValidOwnershipOwnerType(filters.toOwnerType)) {
+      throw new AdminEditorialCmsServiceError(400, 'toOwnerType invalido.')
+    }
+    if (filters.transferredBy) {
+      toObjectId(filters.transferredBy, 'transferredBy')
+    }
+
+    const page = normalizePage(options.page)
+    const limit = normalizeLimit(options.limit)
+    const skip = (page - 1) * limit
+    const query: Record<string, unknown> = {}
+
+    if (filters.targetType) query.targetType = filters.targetType
+    if (filters.fromOwnerType) query.fromOwnerType = filters.fromOwnerType
+    if (filters.toOwnerType) query.toOwnerType = filters.toOwnerType
+    if (filters.transferredBy) query.transferredBy = toObjectId(filters.transferredBy, 'transferredBy')
+
+    if (filters.targetId && filters.targetId.trim().length > 0) {
+      query.targetId = filters.targetId.trim()
+    }
+
+    if (filters.search && filters.search.trim().length > 0) {
+      const regex = new RegExp(escapeRegExp(filters.search.trim()), 'i')
+      query.$or = [{ reason: regex }, { note: regex }, { targetId: regex }]
+    }
+
+    const [items, total] = await Promise.all([
+      OwnershipTransferLog.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('fromOwnerUser', 'name username email role')
+        .populate('toOwnerUser', 'name username email role')
+        .populate('transferredBy', 'name username email role')
+        .lean(),
+      OwnershipTransferLog.countDocuments(query),
+    ])
+
+    return {
+      items: items.map(mapOwnershipTransferLog),
       pagination: {
         page,
         limit,

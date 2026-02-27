@@ -509,6 +509,35 @@ export const listAdminClaims = async (req: AuthRequest, res: Response) => {
 }
 
 /**
+ * GET /api/admin/ownership/transfers
+ */
+export const listAdminOwnershipTransfers = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await adminEditorialCmsService.listOwnershipTransfers(
+      {
+        targetType: typeof req.query.targetType === 'string' ? req.query.targetType : undefined,
+        targetId: typeof req.query.targetId === 'string' ? req.query.targetId : undefined,
+        fromOwnerType:
+          typeof req.query.fromOwnerType === 'string' ? req.query.fromOwnerType : undefined,
+        toOwnerType: typeof req.query.toOwnerType === 'string' ? req.query.toOwnerType : undefined,
+        transferredBy:
+          typeof req.query.transferredBy === 'string' ? req.query.transferredBy : undefined,
+        search: typeof req.query.search === 'string' ? req.query.search : undefined,
+      },
+      {
+        page: parsePositiveInt(req.query.page),
+        limit: parsePositiveInt(req.query.limit),
+      }
+    )
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List admin ownership transfers error:', error)
+    return handleAdminEditorialError(res, error, 'Erro ao listar historico de ownership.')
+  }
+}
+
+/**
  * POST /api/admin/claims/:claimId/approve
  */
 export const approveAdminClaim = async (req: AuthRequest, res: Response) => {

@@ -1343,6 +1343,19 @@
         }
       }
     },
+    "/api/admin/ownership/transfers": {
+      "get": {
+        "tags": [
+          "Admin Editorial"
+        ],
+        "summary": "Listar historico de ownership transfers",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/admin/ownership/transfer": {
       "post": {
         "tags": [
