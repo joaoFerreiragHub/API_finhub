@@ -1,6 +1,7 @@
 import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Podcast } from '../models/Podcast'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para Podcast
@@ -157,7 +158,16 @@ export class PodcastService {
       contentType: 'podcast',
     })
 
-    if (podcast.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'podcast',
+      contentId: podcast.id,
+      triggerSource: 'create',
+    })
+    if (moderationResult.automation.executed) {
+      podcast.moderationStatus = 'hidden'
+    }
+
+    if (podcast.status === 'published' && podcast.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, podcast.id, podcast.title)
     }
 
@@ -182,7 +192,16 @@ export class PodcastService {
     Object.assign(podcast, data)
     await podcast.save()
 
-    if (!wasPublished && podcast.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'podcast',
+      contentId: podcast.id,
+      triggerSource: 'update',
+    })
+    if (moderationResult.automation.executed) {
+      podcast.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && podcast.status === 'published' && podcast.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, podcast.id, podcast.title)
     }
 
@@ -227,7 +246,16 @@ export class PodcastService {
     podcast.publishedAt = new Date()
     await podcast.save()
 
-    if (!wasPublished) {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'podcast',
+      contentId: podcast.id,
+      triggerSource: 'publish',
+    })
+    if (moderationResult.automation.executed) {
+      podcast.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && podcast.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, podcast.id, podcast.title)
     }
 

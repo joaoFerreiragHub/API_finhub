@@ -1,6 +1,7 @@
 import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Book } from '../models/Book'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para Book
@@ -157,7 +158,16 @@ export class BookService {
       contentType: 'book',
     })
 
-    if (book.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'book',
+      contentId: book.id,
+      triggerSource: 'create',
+    })
+    if (moderationResult.automation.executed) {
+      book.moderationStatus = 'hidden'
+    }
+
+    if (book.status === 'published' && book.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, book.id, book.title)
     }
 
@@ -182,7 +192,16 @@ export class BookService {
     Object.assign(book, data)
     await book.save()
 
-    if (!wasPublished && book.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'book',
+      contentId: book.id,
+      triggerSource: 'update',
+    })
+    if (moderationResult.automation.executed) {
+      book.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && book.status === 'published' && book.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, book.id, book.title)
     }
 
@@ -227,7 +246,16 @@ export class BookService {
     book.publishedAt = new Date()
     await book.save()
 
-    if (!wasPublished) {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'book',
+      contentId: book.id,
+      triggerSource: 'publish',
+    })
+    if (moderationResult.automation.executed) {
+      book.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && book.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, book.id, book.title)
     }
 

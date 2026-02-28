@@ -1,6 +1,7 @@
 import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Course } from '../models/Course'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para Course
@@ -157,7 +158,16 @@ export class CourseService {
       contentType: 'course',
     })
 
-    if (course.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'course',
+      contentId: course.id,
+      triggerSource: 'create',
+    })
+    if (moderationResult.automation.executed) {
+      course.moderationStatus = 'hidden'
+    }
+
+    if (course.status === 'published' && course.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, course.id, course.title)
     }
 
@@ -182,7 +192,16 @@ export class CourseService {
     Object.assign(course, data)
     await course.save()
 
-    if (!wasPublished && course.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'course',
+      contentId: course.id,
+      triggerSource: 'update',
+    })
+    if (moderationResult.automation.executed) {
+      course.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && course.status === 'published' && course.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, course.id, course.title)
     }
 
@@ -227,7 +246,16 @@ export class CourseService {
     course.publishedAt = new Date()
     await course.save()
 
-    if (!wasPublished) {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'course',
+      contentId: course.id,
+      triggerSource: 'publish',
+    })
+    if (moderationResult.automation.executed) {
+      course.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && course.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, course.id, course.title)
     }
 

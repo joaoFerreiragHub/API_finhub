@@ -9,6 +9,7 @@ import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
 import { User } from '../models/User'
 import { Video } from '../models/Video'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para Comment
@@ -134,6 +135,12 @@ export class CommentService {
         occurredAt: new Date().toISOString(),
       })
     }
+
+    await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'comment',
+      contentId: comment.id,
+      triggerSource: 'create',
+    })
 
     return Comment.findById(comment._id).populate('user', 'name username avatar')
   }
@@ -270,6 +277,12 @@ export class CommentService {
     comment.content = data.content
     comment.isEdited = true
     await comment.save()
+
+    await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'comment',
+      contentId: comment.id,
+      triggerSource: 'update',
+    })
 
     return Comment.findById(commentId).populate('user', 'name username avatar')
   }

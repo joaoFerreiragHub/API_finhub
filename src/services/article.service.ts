@@ -1,6 +1,7 @@
 import { socialEventBus } from '../events/socialEvents'
 import { Article } from '../models/Article'
 import { PublishStatus } from '../models/BaseContent'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para Article
@@ -158,7 +159,16 @@ export class ArticleService {
       contentType: 'article',
     })
 
-    if (article.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'article',
+      contentId: article.id,
+      triggerSource: 'create',
+    })
+    if (moderationResult.automation.executed) {
+      article.moderationStatus = 'hidden'
+    }
+
+    if (article.status === 'published' && article.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, article.id, article.title)
     }
 
@@ -183,7 +193,16 @@ export class ArticleService {
     Object.assign(article, data)
     await article.save()
 
-    if (!wasPublished && article.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'article',
+      contentId: article.id,
+      triggerSource: 'update',
+    })
+    if (moderationResult.automation.executed) {
+      article.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && article.status === 'published' && article.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, article.id, article.title)
     }
 
@@ -228,7 +247,16 @@ export class ArticleService {
     article.publishedAt = new Date()
     await article.save()
 
-    if (!wasPublished) {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'article',
+      contentId: article.id,
+      triggerSource: 'publish',
+    })
+    if (moderationResult.automation.executed) {
+      article.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && article.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, article.id, article.title)
     }
 

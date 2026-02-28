@@ -1,6 +1,7 @@
 import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Video } from '../models/Video'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para Video
@@ -157,7 +158,16 @@ export class VideoService {
       contentType: 'video',
     })
 
-    if (video.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'video',
+      contentId: video.id,
+      triggerSource: 'create',
+    })
+    if (moderationResult.automation.executed) {
+      video.moderationStatus = 'hidden'
+    }
+
+    if (video.status === 'published' && video.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, video.id, video.title)
     }
 
@@ -182,7 +192,16 @@ export class VideoService {
     Object.assign(video, data)
     await video.save()
 
-    if (!wasPublished && video.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'video',
+      contentId: video.id,
+      triggerSource: 'update',
+    })
+    if (moderationResult.automation.executed) {
+      video.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && video.status === 'published' && video.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, video.id, video.title)
     }
 
@@ -227,7 +246,16 @@ export class VideoService {
     video.publishedAt = new Date()
     await video.save()
 
-    if (!wasPublished) {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'video',
+      contentId: video.id,
+      triggerSource: 'publish',
+    })
+    if (moderationResult.automation.executed) {
+      video.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && video.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, video.id, video.title)
     }
 

@@ -1,5 +1,10 @@
 import mongoose from 'mongoose'
 import { AdminAuditLog } from '../models/AdminAuditLog'
+import {
+  AutomatedModerationRule,
+  AutomatedModerationSeverity,
+  AutomatedModerationSignal,
+} from '../models/AutomatedModerationSignal'
 import { ContentReport, ContentReportReason } from '../models/ContentReport'
 import { UserModerationEvent } from '../models/UserModerationEvent'
 import { CreatorOperationalAction, User, UserRole } from '../models/User'
@@ -12,6 +17,9 @@ export type AdminOperationalAlertType =
   | 'critical_report_target'
   | 'policy_auto_hide_triggered'
   | 'policy_auto_hide_failed'
+  | 'automated_detection_high_risk'
+  | 'automated_detection_auto_hide_triggered'
+  | 'automated_detection_auto_hide_failed'
   | 'creator_control_applied'
 export type AdminOperationalAlertSeverity = 'critical' | 'high' | 'medium'
 
@@ -50,6 +58,7 @@ export interface AdminOperationalAlertsResponse {
     hideSpikeWindowMinutes: number
     reportPriorityMin: 'high'
     reportMinOpenReports: number
+    automatedDetectionSeverityMin: 'high'
     creatorControlRestrictiveActions: CreatorOperationalAction[]
   }
   summary: {
@@ -109,6 +118,24 @@ interface UserModerationEventLike {
   createdAt?: unknown
 }
 
+interface AutomatedDetectionAlertRow {
+  _id: unknown
+  contentType: string
+  contentId: string
+  severity: AutomatedModerationSeverity
+  score: number
+  triggeredRules: Array<{
+    rule?: AutomatedModerationRule
+  }>
+  lastDetectedAt?: Date | null
+  automation?: {
+    attempted?: boolean
+    executed?: boolean
+    action?: string | null
+    lastOutcome?: 'success' | 'error' | null
+  } | null
+}
+
 const DEFAULT_WINDOW_HOURS = 24
 const MAX_WINDOW_HOURS = 24 * 7
 const DEFAULT_LIMIT = 50
@@ -117,6 +144,7 @@ const MAX_LIMIT = 100
 const HIDE_SPIKE_THRESHOLD = 5
 const HIDE_SPIKE_WINDOW_MINUTES = 30
 const REPORT_ALERT_MIN_OPEN_REPORTS = 3
+const AUTOMATED_DETECTION_ALERT_MIN_SEVERITY: AutomatedModerationSeverity = 'high'
 const RESTRICTIVE_CREATOR_CONTROL_ACTIONS: CreatorOperationalAction[] = [
   'set_cooldown',
   'block_creation',
@@ -209,6 +237,19 @@ const getSeveritySummary = (items: AdminOperationalAlert[]) => {
 const toMetadataRecord = (value: unknown): Record<string, unknown> | undefined =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined
 
+const toAutomatedDetectionSeverityRank = (value: AutomatedModerationSeverity): number => {
+  if (value === 'critical') return 4
+  if (value === 'high') return 3
+  if (value === 'medium') return 2
+  if (value === 'low') return 1
+  return 0
+}
+
+const isAutomatedDetectionSeverityAtLeast = (
+  current: AutomatedModerationSeverity,
+  minimum: AutomatedModerationSeverity
+): boolean => toAutomatedDetectionSeverityRank(current) >= toAutomatedDetectionSeverityRank(minimum)
+
 const mapPolicyAutoHideSeverity = (
   outcome: unknown,
   metadata: Record<string, unknown> | undefined
@@ -257,6 +298,8 @@ export class AdminOperationalAlertsService {
       hideSpikeAlerts,
       reportRiskAlerts,
       policyAutoHideAlerts,
+      automatedDetectionAlerts,
+      automatedDetectionAutoHideAlerts,
       creatorControlAlerts,
     ] = await Promise.all([
       this.listBanAlerts(windowStart, limit),
@@ -264,6 +307,8 @@ export class AdminOperationalAlertsService {
       this.listHideSpikeAlerts(limit),
       this.listCriticalReportAlerts(windowStart, limit),
       this.listPolicyAutoHideAlerts(windowStart, limit),
+      this.listAutomatedDetectionAlerts(windowStart, limit),
+      this.listAutomatedDetectionAutoHideAlerts(windowStart, limit),
       this.listCreatorControlAlerts(windowStart, limit),
     ])
 
@@ -273,6 +318,8 @@ export class AdminOperationalAlertsService {
       ...hideSpikeAlerts,
       ...reportRiskAlerts,
       ...policyAutoHideAlerts,
+      ...automatedDetectionAlerts,
+      ...automatedDetectionAutoHideAlerts,
       ...creatorControlAlerts,
     ]
       .sort((a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime())
@@ -286,6 +333,7 @@ export class AdminOperationalAlertsService {
         hideSpikeWindowMinutes: HIDE_SPIKE_WINDOW_MINUTES,
         reportPriorityMin: 'high',
         reportMinOpenReports: REPORT_ALERT_MIN_OPEN_REPORTS,
+        automatedDetectionSeverityMin: 'high',
         creatorControlRestrictiveActions: RESTRICTIVE_CREATOR_CONTROL_ACTIONS,
       },
       summary: getSeveritySummary(items),
@@ -586,6 +634,109 @@ export class AdminOperationalAlertsService {
           ? `Falha ao ocultar preventivamente ${resourceId ?? 'conteudo sem id resolvido'}.`
           : `Ocultacao preventiva automatica aplicada a ${resourceId ?? 'conteudo sem id resolvido'}.`,
         action: 'admin.content.policy_auto_hide',
+        resourceType: 'content',
+        resourceId,
+        detectedAt: detectedAt.toISOString(),
+        actor: mapActor(row.actor),
+        metadata,
+      })
+    }
+
+    return alerts
+  }
+
+  private async listAutomatedDetectionAlerts(
+    windowStart: Date,
+    limit: number
+  ): Promise<AdminOperationalAlert[]> {
+    const rows = (await AutomatedModerationSignal.find({
+      status: 'active',
+      lastDetectedAt: { $gte: windowStart },
+    })
+      .select(
+        'contentType contentId severity score triggeredRules lastDetectedAt automation'
+      )
+      .sort({ lastDetectedAt: -1 })
+      .limit(limit)
+      .lean()) as AutomatedDetectionAlertRow[]
+
+    const alerts: AdminOperationalAlert[] = []
+    for (const row of rows) {
+      const detectedAt = toDate(row.lastDetectedAt)
+      if (!detectedAt) continue
+      if (!isAutomatedDetectionSeverityAtLeast(row.severity, AUTOMATED_DETECTION_ALERT_MIN_SEVERITY)) {
+        continue
+      }
+
+      const resourceId = `${row.contentType}:${row.contentId}`
+      const triggeredRules = Array.isArray(row.triggeredRules)
+        ? row.triggeredRules
+            .map((item) => item.rule)
+            .filter((item): item is AutomatedModerationRule => typeof item === 'string')
+        : []
+
+      alerts.push({
+        id: `automated-detection:${resourceId}`,
+        type: 'automated_detection_high_risk',
+        severity: row.severity === 'critical' ? 'critical' : 'high',
+        title: 'Detecao automatica de alto risco',
+        description: `Sinal ${row.severity} para ${resourceId} com regras ${triggeredRules.join(', ') || 'n/a'}.`,
+        action: 'admin.content.queue.review',
+        resourceType: 'content',
+        resourceId,
+        detectedAt: detectedAt.toISOString(),
+        actor: null,
+        metadata: {
+          contentType: row.contentType,
+          contentId: row.contentId,
+          severity: row.severity,
+          score: row.score,
+          triggeredRules,
+          automation: row.automation ?? null,
+        },
+      })
+    }
+
+    return alerts
+  }
+
+  private async listAutomatedDetectionAutoHideAlerts(
+    windowStart: Date,
+    limit: number
+  ): Promise<AdminOperationalAlert[]> {
+    const rows = (await AdminAuditLog.find({
+      action: 'admin.content.automated_detection_auto_hide',
+      outcome: { $in: ['success', 'error'] },
+      createdAt: { $gte: windowStart },
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('actor', 'name username email role')
+      .lean()) as AuditLogLike[]
+
+    const alerts: AdminOperationalAlert[] = []
+    for (const row of rows) {
+      const id = resolveAnyId(row._id)
+      const detectedAt = toDate(row.createdAt)
+      if (!id || !detectedAt) continue
+
+      const metadata = toMetadataRecord(row.metadata)
+      const resourceId = toStringSafe(row.resourceId) ?? undefined
+      const failed = row.outcome === 'error'
+
+      alerts.push({
+        id: `automated-detection-auto-hide:${id}`,
+        type: failed
+          ? 'automated_detection_auto_hide_failed'
+          : 'automated_detection_auto_hide_triggered',
+        severity: failed ? 'critical' : 'high',
+        title: failed
+          ? 'Auto-hide por detecao automatica falhou'
+          : 'Auto-hide por detecao automatica acionado',
+        description: failed
+          ? `Falha ao ocultar preventivamente ${resourceId ?? 'conteudo sem id resolvido'}.`
+          : `Ocultacao preventiva automatica aplicada a ${resourceId ?? 'conteudo sem id resolvido'}.`,
+        action: 'admin.content.automated_detection_auto_hide',
         resourceType: 'content',
         resourceId,
         detectedAt: detectedAt.toISOString(),

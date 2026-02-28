@@ -1,6 +1,7 @@
 import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { LiveEvent } from '../models/LiveEvent'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para LiveEvent
@@ -157,7 +158,16 @@ export class LiveEventService {
       contentType: 'live',
     })
 
-    if (liveevent.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'live',
+      contentId: liveevent.id,
+      triggerSource: 'create',
+    })
+    if (moderationResult.automation.executed) {
+      liveevent.moderationStatus = 'hidden'
+    }
+
+    if (liveevent.status === 'published' && liveevent.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, liveevent.id, liveevent.title)
     }
 
@@ -182,7 +192,20 @@ export class LiveEventService {
     Object.assign(liveevent, data)
     await liveevent.save()
 
-    if (!wasPublished && liveevent.status === 'published') {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'live',
+      contentId: liveevent.id,
+      triggerSource: 'update',
+    })
+    if (moderationResult.automation.executed) {
+      liveevent.moderationStatus = 'hidden'
+    }
+
+    if (
+      !wasPublished &&
+      liveevent.status === 'published' &&
+      liveevent.moderationStatus === 'visible'
+    ) {
       this.emitContentPublishedEvent(creatorId, liveevent.id, liveevent.title)
     }
 
@@ -227,7 +250,16 @@ export class LiveEventService {
     liveevent.publishedAt = new Date()
     await liveevent.save()
 
-    if (!wasPublished) {
+    const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
+      contentType: 'live',
+      contentId: liveevent.id,
+      triggerSource: 'publish',
+    })
+    if (moderationResult.automation.executed) {
+      liveevent.moderationStatus = 'hidden'
+    }
+
+    if (!wasPublished && liveevent.moderationStatus === 'visible') {
       this.emitContentPublishedEvent(creatorId, liveevent.id, liveevent.title)
     }
 

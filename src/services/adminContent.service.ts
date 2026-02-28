@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { AutomatedModerationSignal } from '../models/AutomatedModerationSignal'
 import { Article } from '../models/Article'
 import { Book } from '../models/Book'
 import {
@@ -19,6 +20,7 @@ import {
   isPriorityAtLeast,
 } from './contentReport.service'
 import { creatorTrustService } from './creatorTrust.service'
+import { automatedModerationService } from './automatedModeration.service'
 import { moderationPolicyService } from './moderationPolicy.service'
 
 interface ContentModel {
@@ -80,6 +82,7 @@ export interface FastHideContentInput {
   contentId: string
   note?: string
   reason?: string
+  metadata?: Record<string, unknown>
 }
 
 export interface BulkModerateContentItem {
@@ -219,12 +222,15 @@ export class AdminContentService {
       types.map(async (contentType) => this.listQueueByType(contentType, filters))
     )
 
-    const mergedItems = listResults
-      .flatMap((result) => result.items)
+    const mergedItems = listResults.flatMap((result) => result.items)
     const enrichedItems = await this.attachReportSignals(mergedItems)
     const filteredItems = enrichedItems
       .filter((item) => {
-        if (filters.flaggedOnly && item.reportSignals.openReports <= 0) {
+        if (
+          filters.flaggedOnly &&
+          item.reportSignals.openReports <= 0 &&
+          item.automatedSignals.active !== true
+        ) {
           return false
         }
 
@@ -238,14 +244,20 @@ export class AdminContentService {
         return true
       })
       .sort((a, b) => {
-        if (b.reportSignals.priorityScore !== a.reportSignals.priorityScore) {
-          return b.reportSignals.priorityScore - a.reportSignals.priorityScore
+        const aRiskScore = Math.max(a.reportSignals.priorityScore, a.automatedSignals.score)
+        const bRiskScore = Math.max(b.reportSignals.priorityScore, b.automatedSignals.score)
+        if (bRiskScore !== aRiskScore) {
+          return bRiskScore - aRiskScore
         }
 
         const aReportDate = this.toSortableDate(a.reportSignals.latestReportAt)
         const bReportDate = this.toSortableDate(b.reportSignals.latestReportAt)
-        if (bReportDate !== aReportDate) {
-          return bReportDate - aReportDate
+        const aAutomationDate = this.toSortableDate(a.automatedSignals.lastDetectedAt)
+        const bAutomationDate = this.toSortableDate(b.automatedSignals.lastDetectedAt)
+        const aRiskDate = Math.max(aReportDate, aAutomationDate)
+        const bRiskDate = Math.max(bReportDate, bAutomationDate)
+        if (bRiskDate !== aRiskDate) {
+          return bRiskDate - aRiskDate
         }
 
         return this.toSortableDate(b.updatedAt) - this.toSortableDate(a.updatedAt)
@@ -298,6 +310,24 @@ export class AdminContentService {
       reviewedBy: input.actorId,
       resolutionAction: input.action,
     })
+    const shouldKeepAutomatedSignalActive = input.metadata?.automatedDetection === true
+    if (!shouldKeepAutomatedSignalActive) {
+      await AutomatedModerationSignal.updateOne(
+        {
+          contentType: input.contentType,
+          contentId: String(content._id),
+          status: 'active',
+        },
+        {
+          $set: {
+            status: 'reviewed',
+            resolvedBy: actorId,
+            resolvedAt: now,
+            resolutionAction: input.action,
+          },
+        }
+      )
+    }
 
     const baseMetadata =
       input.contentType === 'comment'
@@ -362,6 +392,7 @@ export class AdminContentService {
       note: input.note,
       metadata: {
         fastTrack: true,
+        ...(input.metadata ?? {}),
       },
     })
   }
@@ -739,12 +770,15 @@ export class AdminContentService {
   private async attachReportSignals(items: any[]) {
     if (items.length === 0) return items
 
-    const summaries = await contentReportService.getOpenReportSummaries(
-      items.map((item) => ({
-        contentType: item.contentType as ModeratableContentType,
-        contentId: item.id as string,
-      }))
-    )
+    const targets = items.map((item) => ({
+      contentType: item.contentType as ModeratableContentType,
+      contentId: item.id as string,
+    }))
+
+    const [summaries, automatedSummaries] = await Promise.all([
+      contentReportService.getOpenReportSummaries(targets),
+      automatedModerationService.getActiveSummaries(targets),
+    ])
 
     const creatorIds = Array.from(
       new Set(
@@ -760,6 +794,9 @@ export class AdminContentService {
       ...item,
       reportSignals:
         summaries.get(`${item.contentType}:${item.id}`) ?? contentReportService.getEmptySummary(),
+      automatedSignals:
+        automatedSummaries.get(`${item.contentType}:${item.id}`) ??
+        automatedModerationService.getEmptySummary(),
       creatorTrustSignals:
         item.creator?.role === 'creator'
           ? creatorTrustSignals.get(resolveAnyId(item.creator) ?? '') ?? null

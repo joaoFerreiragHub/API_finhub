@@ -9,6 +9,7 @@ import { Podcast } from '../models/Podcast'
 import { Rating, RatingReactionType, RatingTargetType } from '../models/Rating'
 import { User } from '../models/User'
 import { Video } from '../models/Video'
+import { automatedModerationService } from './automatedModeration.service'
 
 /**
  * DTOs para Rating
@@ -98,8 +99,10 @@ export class RatingService {
       targetType,
       targetId: new mongoose.Types.ObjectId(targetId),
     })
+    const hadReviewBefore =
+      typeof existing?.review === 'string' && existing.review.trim().length > 0
 
-    let ratingDoc
+    let ratingDoc: any
     if (existing) {
       existing.rating = rating
       if (review !== undefined) {
@@ -127,6 +130,16 @@ export class RatingService {
       ratingValue: rating,
       occurredAt: new Date().toISOString(),
     })
+
+    const hasReviewNow =
+      typeof ratingDoc.review === 'string' && ratingDoc.review.trim().length > 0
+    if (hasReviewNow || hadReviewBefore) {
+      await automatedModerationService.evaluateAndApplyTarget({
+        contentType: 'review',
+        contentId: String(ratingDoc._id),
+        triggerSource: existing ? 'update' : 'create',
+      })
+    }
 
     return ratingDoc
   }

@@ -451,6 +451,115 @@ O backend passa a entregar uma unidade de leitura pronta para:
 
 Isto e importante porque a UX aqui nao e decorativa. E uma superficie operacional para admins tomarem decisoes rapidas sob pressao.
 
+### 14. Deteccao automatica para spam, links suspeitos, flood e criacao em massa
+
+Foi adicionada uma camada transversal de deteccao automatica com persistencia por alvo.
+
+Objetivo:
+
+- apanhar sinais de risco antes de haver reports manuais suficientes;
+- reduzir tempo ate triagem em conteudo e interacoes suspeitas;
+- dar ao admin visibilidade consistente na queue, metricas e alertas.
+
+Superficies avaliadas:
+
+- `article`, `video`, `course`, `live`, `podcast`, `book`
+- `comment`
+- `review`
+
+Momentos de avaliacao nesta iteracao:
+
+- `create`
+- `update`
+- `publish` para conteudo base
+
+Regras ativas:
+
+- `spam`
+- `suspicious_link`
+- `flood`
+- `mass_creation`
+
+Heuristicas atuais:
+
+- `spam`: repeticao de tokens/linhas, baixa diversidade lexical, URLs repetidas;
+- `suspicious_link`: shorteners e hosts sensiveis, excesso de links externos;
+- `flood`: demasiados itens na mesma superficie em janelas de `10m` e `60m`;
+- `mass_creation`: demasiada criacao transversal nas superficies de conteudo base.
+
+Estado persistido:
+
+- modelo: `AutomatedModerationSignal`
+- um sinal por `contentType + contentId`
+- `status`: `active|reviewed|cleared`
+- `severity`: `none|low|medium|high|critical`
+- `recommendedAction`: `none|review|restrict|hide`
+- `triggeredRules`, `textSignals`, `activitySignals`, `automation`
+
+#### 14.1. Queue admin enriquecida
+
+`GET /api/admin/content/queue` passa a devolver por item:
+
+```json
+{
+  "automatedSignals": {
+    "active": true,
+    "status": "active",
+    "score": 13,
+    "severity": "critical",
+    "recommendedAction": "hide",
+    "triggerSource": "publish",
+    "triggeredRules": [
+      { "rule": "suspicious_link", "score": 8, "severity": "high" }
+    ],
+    "lastDetectedAt": "2026-02-28T00:00:00.000Z"
+  }
+}
+```
+
+Comportamento adicional:
+
+- `flaggedOnly=true` inclui agora reports manuais e sinais automaticos;
+- a ordenacao da queue passa a considerar o maior risco entre `reportSignals` e `automatedSignals`.
+
+#### 14.2. Auto-hide opcional por env
+
+O auto-hide desta camada fica desligado por defeito.
+
+Flags introduzidas:
+
+- `AUTOMATED_MODERATION_AUTO_HIDE_ENABLED`
+- `AUTOMATED_MODERATION_AUTO_HIDE_ACTOR_ID`
+- `AUTOMATED_MODERATION_AUTO_HIDE_MIN_SEVERITY`
+- `AUTOMATED_MODERATION_AUTO_HIDE_ALLOWED_RULES`
+
+Guardrails:
+
+- so corre quando a recomendacao automatica e `hide`;
+- exige actor tecnico admin valido;
+- nao corre em drafts/archived;
+- respeita threshold minimo de severidade e regras permitidas;
+- regista auditoria tecnica em `admin.content.automated_detection_auto_hide`.
+
+#### 14.3. Metricas e alertas
+
+`GET /api/admin/metrics/overview` passa a incluir:
+
+- `automation.automatedDetection.activeSignals`
+- `automation.automatedDetection.highRiskTargets`
+- `automation.automatedDetection.criticalTargets`
+- `automation.automatedDetection.byRule`
+- `automation.automatedDetection.autoHide.successLast24h|last7d`
+- `automation.automatedDetection.autoHide.errorLast24h|last7d`
+
+`GET /api/admin/alerts/internal` passa a incluir:
+
+- `automated_detection_high_risk`
+- `automated_detection_auto_hide_triggered`
+- `automated_detection_auto_hide_failed`
+
+Isto fecha o circuito minimo: detetar, priorizar, alertar, atuar opcionalmente e deixar pista de auditoria.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -475,12 +584,12 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 Estas sao as proximas camadas que fazem mais sentido:
 
 1. Historico de falso positivo e afinacao do trust score por creator.
-2. Deteccao automatica para spam, links suspeitos, flood e criacao em massa.
-3. Kill switches por superficie: home, landing, comments, reviews, creator page.
-4. Ferramentas de rollback/review para reativacao segura apos hide em massa.
-5. Jobs assincros para lotes maiores e workflows de aprovacao.
-6. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
-7. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
+2. Kill switches por superficie: home, landing, comments, reviews, creator page.
+3. Ferramentas de rollback/review para reativacao segura apos hide em massa.
+4. Jobs assincros para lotes maiores e workflows de aprovacao.
+5. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+6. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
+7. Afinar trust scoring com sinais automaticos e feedback de falso positivo.
 
 ## Pre-release obrigatorio
 
@@ -499,7 +608,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. deteccao automatica fora dos reports manuais;
-2. workflows de revisao e rollback assistido;
-3. dashboard visual com drill-down operacional;
-4. afinacao do trust score com feedback de falso positivo.
+1. workflows de revisao e rollback assistido;
+2. dashboard visual com drill-down operacional;
+3. afinacao do trust score com feedback de falso positivo;
+4. kill switches por superficie.

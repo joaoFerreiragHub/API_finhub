@@ -1,6 +1,11 @@
 import mongoose from 'mongoose'
 import { AdminAuditOutcome, AdminAuditLog } from '../models/AdminAuditLog'
 import { Article } from '../models/Article'
+import {
+  AutomatedModerationRule,
+  AutomatedModerationSeverity,
+  AutomatedModerationSignal,
+} from '../models/AutomatedModerationSignal'
 import { Book } from '../models/Book'
 import { Comment } from '../models/Comment'
 import { ContentType } from '../models/BaseContent'
@@ -62,6 +67,7 @@ interface AdminRouteErrors {
 
 type CreatorControlActionCounts = Record<CreatorOperationalAction, number>
 type CreatorRiskLevelCounts = Record<CreatorRiskLevel, number>
+type AutomatedModerationRuleCounts = Record<AutomatedModerationRule, number>
 
 export interface AdminMetricsOverview {
   generatedAt: string
@@ -157,6 +163,18 @@ export interface AdminMetricsOverview {
         successLast7d: number
         errorLast24h: number
         errorLast7d: number
+      }
+      automatedDetection: {
+        activeSignals: number
+        highRiskTargets: number
+        criticalTargets: number
+        byRule: AutomatedModerationRuleCounts
+        autoHide: {
+          successLast24h: number
+          successLast7d: number
+          errorLast24h: number
+          errorLast7d: number
+        }
       }
     }
     creatorControls: {
@@ -285,6 +303,13 @@ const emptyCreatorRiskLevelCounts = (): CreatorRiskLevelCounts => ({
   medium: 0,
   high: 0,
   critical: 0,
+})
+
+const emptyAutomatedModerationRuleCounts = (): AutomatedModerationRuleCounts => ({
+  spam: 0,
+  suspicious_link: 0,
+  flood: 0,
+  mass_creation: 0,
 })
 
 const toObjectIds = (rawIds: string[]): mongoose.Types.ObjectId[] =>
@@ -533,10 +558,17 @@ export class AdminMetricsService {
       reportsResolved7d,
       openReportReasonRows,
       openReportTargetRows,
+      activeAutomatedSignalsTotal,
+      activeAutomatedSignalRows,
+      automatedSignalRuleRows,
       autoHideSuccess24h,
       autoHideSuccess7d,
       autoHideError24h,
       autoHideError7d,
+      automatedDetectionAutoHideSuccess24h,
+      automatedDetectionAutoHideSuccess7d,
+      automatedDetectionAutoHideError24h,
+      automatedDetectionAutoHideError7d,
       creationBlockedCreators,
       publishingBlockedCreators,
       cooldownActiveCreators,
@@ -603,6 +635,15 @@ export class AdminMetricsService {
           },
         },
       ]),
+      AutomatedModerationSignal.countDocuments({ status: 'active' }),
+      AutomatedModerationSignal.find({ status: 'active' })
+        .select('severity')
+        .lean<Array<{ severity: AutomatedModerationSeverity }>>(),
+      AutomatedModerationSignal.aggregate<{ _id: AutomatedModerationRule | null; count: number }>([
+        { $match: { status: 'active' } },
+        { $unwind: '$triggeredRules' },
+        { $group: { _id: '$triggeredRules.rule', count: { $sum: 1 } } },
+      ]),
       AdminAuditLog.countDocuments({
         action: 'admin.content.policy_auto_hide',
         outcome: 'success',
@@ -620,6 +661,26 @@ export class AdminMetricsService {
       }),
       AdminAuditLog.countDocuments({
         action: 'admin.content.policy_auto_hide',
+        outcome: 'error',
+        createdAt: { $gte: last7dStart },
+      }),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.automated_detection_auto_hide',
+        outcome: 'success',
+        createdAt: { $gte: last24hStart },
+      }),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.automated_detection_auto_hide',
+        outcome: 'success',
+        createdAt: { $gte: last7dStart },
+      }),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.automated_detection_auto_hide',
+        outcome: 'error',
+        createdAt: { $gte: last24hStart },
+      }),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.automated_detection_auto_hide',
         outcome: 'error',
         createdAt: { $gte: last7dStart },
       }),
@@ -698,6 +759,24 @@ export class AdminMetricsService {
       }
     }
 
+    const automatedRuleCounts = emptyAutomatedModerationRuleCounts()
+    for (const row of automatedSignalRuleRows) {
+      if (row._id && row._id in automatedRuleCounts) {
+        automatedRuleCounts[row._id] = row.count
+      }
+    }
+
+    let automatedHighRiskTargets = 0
+    let automatedCriticalTargets = 0
+    for (const row of activeAutomatedSignalRows) {
+      if (row.severity === 'high' || row.severity === 'critical') {
+        automatedHighRiskTargets += 1
+      }
+      if (row.severity === 'critical') {
+        automatedCriticalTargets += 1
+      }
+    }
+
     const creatorControlActionsByType = emptyCreatorControlActionCounts()
     for (const row of creatorControlActionRows) {
       if (row._id && row._id in creatorControlActionsByType) {
@@ -771,6 +850,18 @@ export class AdminMetricsService {
           successLast7d: autoHideSuccess7d,
           errorLast24h: autoHideError24h,
           errorLast7d: autoHideError7d,
+        },
+        automatedDetection: {
+          activeSignals: activeAutomatedSignalsTotal,
+          highRiskTargets: automatedHighRiskTargets,
+          criticalTargets: automatedCriticalTargets,
+          byRule: automatedRuleCounts,
+          autoHide: {
+            successLast24h: automatedDetectionAutoHideSuccess24h,
+            successLast7d: automatedDetectionAutoHideSuccess7d,
+            errorLast24h: automatedDetectionAutoHideError24h,
+            errorLast7d: automatedDetectionAutoHideError7d,
+          },
         },
       },
       creatorControls: {
