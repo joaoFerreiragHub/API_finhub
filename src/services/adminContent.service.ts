@@ -13,6 +13,11 @@ import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
 import { Rating } from '../models/Rating'
 import { Video } from '../models/Video'
+import {
+  contentReportService,
+  ContentReportPriority,
+  isPriorityAtLeast,
+} from './contentReport.service'
 
 interface ContentModel {
   find(query: Record<string, unknown>): any
@@ -48,6 +53,8 @@ export interface AdminContentQueueFilters {
   publishStatus?: PublishStatus
   creatorId?: string
   search?: string
+  flaggedOnly?: boolean
+  minReportPriority?: ContentReportPriority
 }
 
 export interface PaginationOptions {
@@ -197,16 +204,40 @@ export class AdminContentService {
       types.map(async (contentType) => this.listQueueByType(contentType, filters))
     )
 
-    const total = listResults.reduce((sum, result) => sum + result.total, 0)
     const mergedItems = listResults
       .flatMap((result) => result.items)
+    const enrichedItems = await this.attachReportSignals(mergedItems)
+    const filteredItems = enrichedItems
+      .filter((item) => {
+        if (filters.flaggedOnly && item.reportSignals.openReports <= 0) {
+          return false
+        }
+
+        if (
+          filters.minReportPriority &&
+          !isPriorityAtLeast(item.reportSignals.priority, filters.minReportPriority)
+        ) {
+          return false
+        }
+
+        return true
+      })
       .sort((a, b) => {
-        const aDate = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
-        const bDate = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
-        return bDate - aDate
+        if (b.reportSignals.priorityScore !== a.reportSignals.priorityScore) {
+          return b.reportSignals.priorityScore - a.reportSignals.priorityScore
+        }
+
+        const aReportDate = this.toSortableDate(a.reportSignals.latestReportAt)
+        const bReportDate = this.toSortableDate(b.reportSignals.latestReportAt)
+        if (bReportDate !== aReportDate) {
+          return bReportDate - aReportDate
+        }
+
+        return this.toSortableDate(b.updatedAt) - this.toSortableDate(a.updatedAt)
       })
 
-    const paginatedItems = mergedItems.slice(skip, skip + limit)
+    const total = filteredItems.length
+    const paginatedItems = filteredItems.slice(skip, skip + limit)
 
     return {
       items: paginatedItems,
@@ -246,6 +277,12 @@ export class AdminContentService {
     content.moderatedAt = now
 
     await content.save()
+    const resolvedOpenReports = await contentReportService.resolveOpenReportsForContent({
+      contentType: input.contentType,
+      contentId: String(content._id),
+      reviewedBy: input.actorId,
+      resolutionAction: input.action,
+    })
 
     const baseMetadata =
       input.contentType === 'comment'
@@ -269,7 +306,9 @@ export class AdminContentService {
               publishStatus: toPublishStatus(content.status),
             }
 
-    const metadata = input.metadata ? { ...baseMetadata, ...input.metadata } : baseMetadata
+    const metadata = input.metadata
+      ? { ...baseMetadata, resolvedOpenReports, ...input.metadata }
+      : { ...baseMetadata, resolvedOpenReports }
 
     await ContentModerationEvent.create({
       contentType: input.contentType,
@@ -560,7 +599,9 @@ export class AdminContentService {
         .populate('moderatedBy', 'name username email role')
         .lean()
 
-      return item ? this.mapBaseQueueItem(contentType, item) : null
+      if (!item) return null
+      const [queueItem] = await this.attachReportSignals([this.mapBaseQueueItem(contentType, item)])
+      return queueItem ?? null
     }
 
     if (contentType === 'comment') {
@@ -572,7 +613,9 @@ export class AdminContentService {
         .populate('moderatedBy', 'name username email role')
         .lean()
 
-      return item ? this.mapCommentQueueItem(item as any) : null
+      if (!item) return null
+      const [queueItem] = await this.attachReportSignals([this.mapCommentQueueItem(item as any)])
+      return queueItem ?? null
     }
 
     const item = await Rating.findById(contentId)
@@ -583,7 +626,9 @@ export class AdminContentService {
       .populate('moderatedBy', 'name username email role')
       .lean()
 
-    return item ? this.mapReviewQueueItem(item as any) : null
+    if (!item) return null
+    const [queueItem] = await this.attachReportSignals([this.mapReviewQueueItem(item as any)])
+    return queueItem ?? null
   }
 
   private getModel(contentType: ModeratableContentType): ContentModel {
@@ -674,6 +719,30 @@ export class AdminContentService {
     if (action === 'hide') return 'hidden'
     if (action === 'restrict') return 'restricted'
     return 'visible'
+  }
+
+  private async attachReportSignals(items: any[]) {
+    if (items.length === 0) return items
+
+    const summaries = await contentReportService.getOpenReportSummaries(
+      items.map((item) => ({
+        contentType: item.contentType as ModeratableContentType,
+        contentId: item.id as string,
+      }))
+    )
+
+    return items.map((item) => ({
+      ...item,
+      reportSignals:
+        summaries.get(`${item.contentType}:${item.id}`) ?? contentReportService.getEmptySummary(),
+    }))
+  }
+
+  private toSortableDate(value: unknown): number {
+    if (!value) return 0
+    const date = new Date(value as string | number | Date)
+    const timestamp = date.getTime()
+    return Number.isFinite(timestamp) ? timestamp : 0
   }
 
   private mapBaseQueueItem(contentType: ContentType, item: any) {

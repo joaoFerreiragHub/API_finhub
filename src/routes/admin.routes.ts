@@ -13,6 +13,7 @@ import {
   hideContent,
   hideContentFast,
   listAdminContentQueue,
+  listContentReports,
   listContentModerationHistory,
   restrictContent,
   unhideContent,
@@ -224,6 +225,24 @@ router.get(
   }),
   requireAdminScope('admin.content.read'),
   listContentModerationHistory
+)
+
+/**
+ * @route   GET /api/admin/content/:contentType/:contentId/reports
+ * @desc    Listar reports de users sobre um conteudo
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/:contentType/:contentId/reports',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.reports.list',
+    resourceType: 'content_report',
+    scope: 'admin.content.read',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.read'),
+  listContentReports
 )
 
 /**

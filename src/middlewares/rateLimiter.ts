@@ -121,6 +121,9 @@ export const rateLimiter = {
     'Muitos lotes de moderacao. Tente novamente em 10 minutos.',
     { keyPrefix: 'admin-moderation-bulk' }
   ),
+  userReport: createLimiter(10 * 60 * 1000, 20, 'Muitos reports enviados. Tente novamente em 10 minutos.', {
+    keyPrefix: 'user-report',
+  }),
   general: createLimiter(5 * 60 * 1000, 100, 'Muitas requisicoes. Tente novamente em 5 minutos.', {
     keyPrefix: 'general',
   }),

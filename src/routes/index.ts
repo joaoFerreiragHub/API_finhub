@@ -16,6 +16,7 @@ import favoriteRoutes from './favorite.routes'
 import notificationRoutes from './notification.routes'
 import ratingRoutes from './rating.routes'
 import commentRoutes from './comment.routes'
+import reportRoutes from './report.routes'
 import stockRoutes from './stock.routes'
 import mlRoutes from './ml.routes'
 import newsRoutes from './newsRoutes'
@@ -53,6 +54,7 @@ router.get('/', (req, res) => {
       universal: {
         ratings: '/api/ratings',
         comments: '/api/comments',
+        reports: '/api/reports',
       },
       stocks: '/api/stocks',
       ml: '/api/ml',
@@ -94,6 +96,7 @@ router.use('/notifications', notificationRoutes)
 // Rotas universais (ratings & comments)
 router.use('/ratings', ratingRoutes)
 router.use('/comments', commentRoutes)
+router.use('/reports', reportRoutes)
 
 // Rotas de ações
 router.use('/stocks', stockRoutes)

@@ -7,6 +7,12 @@ import {
   isValidModerationStatus,
   isValidPublishStatus,
 } from '../services/adminContent.service'
+import {
+  contentReportService,
+  ContentReportServiceError,
+  isValidContentReportPriority,
+  isValidContentReportStatus,
+} from '../services/contentReport.service'
 import { ContentModerationAction, ModeratableContentType } from '../models/ContentModerationEvent'
 import { ContentModerationStatus, PublishStatus } from '../models/BaseContent'
 
@@ -83,6 +89,12 @@ const extractConfirm = (req: AuthRequest): boolean | undefined => {
 
 const handleAdminContentError = (res: Response, error: unknown, fallbackMessage: string) => {
   if (error instanceof AdminContentServiceError) {
+    return res.status(error.statusCode).json({
+      error: error.message,
+    })
+  }
+
+  if (error instanceof ContentReportServiceError) {
     return res.status(error.statusCode).json({
       error: error.message,
     })
@@ -167,6 +179,28 @@ export const listAdminContentQueue = async (req: AuthRequest, res: Response) => 
       })
     }
 
+    const flaggedOnlyRaw = typeof req.query.flaggedOnly === 'string' ? req.query.flaggedOnly : undefined
+    const flaggedOnly =
+      flaggedOnlyRaw === 'true' || flaggedOnlyRaw === '1'
+        ? true
+        : flaggedOnlyRaw === 'false' || flaggedOnlyRaw === '0'
+          ? false
+          : undefined
+
+    if (flaggedOnlyRaw && flaggedOnly === undefined) {
+      return res.status(400).json({
+        error: 'Parametro flaggedOnly invalido.',
+      })
+    }
+
+    const minReportPriorityRaw =
+      typeof req.query.minReportPriority === 'string' ? req.query.minReportPriority : undefined
+    if (minReportPriorityRaw && !isValidContentReportPriority(minReportPriorityRaw)) {
+      return res.status(400).json({
+        error: 'Parametro minReportPriority invalido.',
+      })
+    }
+
     const result = await adminContentService.listQueue(
       {
         contentType: contentTypeRaw as ModeratableContentType | undefined,
@@ -174,6 +208,10 @@ export const listAdminContentQueue = async (req: AuthRequest, res: Response) => 
         publishStatus: publishStatusRaw as PublishStatus | undefined,
         creatorId: typeof req.query.creatorId === 'string' ? req.query.creatorId : undefined,
         search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        flaggedOnly,
+        minReportPriority: minReportPriorityRaw as
+          | import('../services/contentReport.service').ContentReportPriority
+          | undefined,
       },
       {
         page: parsePositiveInt(req.query.page),
@@ -215,6 +253,44 @@ export const listContentModerationHistory = async (req: AuthRequest, res: Respon
   } catch (error: unknown) {
     console.error('List content moderation history error:', error)
     return handleAdminContentError(res, error, 'Erro ao listar historico de moderacao de conteudo.')
+  }
+}
+
+/**
+ * GET /api/admin/content/:contentType/:contentId/reports
+ */
+export const listContentReports = async (req: AuthRequest, res: Response) => {
+  try {
+    const contentType = req.params.contentType
+    if (!isValidContentTypeFilter(contentType)) {
+      return res.status(400).json({
+        error: 'Parametro contentType invalido.',
+      })
+    }
+
+    const statusRaw = typeof req.query.status === 'string' ? req.query.status : undefined
+    if (statusRaw && !isValidContentReportStatus(statusRaw)) {
+      return res.status(400).json({
+        error: 'Parametro status invalido.',
+      })
+    }
+
+    const result = await contentReportService.listReportsForContent(
+      {
+        contentType: contentType as ModeratableContentType,
+        contentId: req.params.contentId,
+        status: statusRaw as import('../models/ContentReport').ContentReportStatus | undefined,
+      },
+      {
+        page: parsePositiveInt(req.query.page),
+        limit: parsePositiveInt(req.query.limit),
+      }
+    )
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List content reports error:', error)
+    return handleAdminContentError(res, error, 'Erro ao listar reports de conteudo.')
   }
 }
 

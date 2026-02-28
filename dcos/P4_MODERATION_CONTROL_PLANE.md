@@ -77,6 +77,86 @@ Notas:
 - hide, hide-fast, unhide e restrict usam o limitador de acao;
 - bulk-moderate usa o limitador de lote.
 
+### 4. Reports de users a alimentar a queue admin
+
+Foi adicionada a camada inicial de reports/flags:
+
+- endpoint publico autenticado: `POST /api/reports/content`
+- alvo suportado: `article`, `video`, `course`, `live`, `podcast`, `book`, `comment`, `review`
+- deduplicacao: um report por `user + alvo`
+- protecao anti-abuso:
+  - self-report bloqueado;
+  - rate limit dedicado para reports;
+  - reenvio reabre/substitui o report existente em vez de multiplicar ruido
+
+Payload esperado:
+
+```json
+{
+  "contentType": "comment",
+  "contentId": "...",
+  "reason": "spam",
+  "note": "link repetido e suspeito"
+}
+```
+
+Motivos suportados:
+
+- `spam`
+- `abuse`
+- `misinformation`
+- `sexual`
+- `violence`
+- `hate`
+- `scam`
+- `copyright`
+- `other`
+
+### 5. Queue admin priorizada por signals de reports
+
+A queue `GET /api/admin/content/queue` passa agora a devolver `reportSignals` por item e a ordenar primeiro por risco/reporting pressure e depois por data.
+
+Campo devolvido por item:
+
+```json
+{
+  "reportSignals": {
+    "openReports": 0,
+    "uniqueReporters": 0,
+    "latestReportAt": null,
+    "topReasons": [],
+    "priorityScore": 0,
+    "priority": "none"
+  }
+}
+```
+
+Regras de prioridade atuais:
+
+- o score combina numero de reports abertos, reporters unicos e o peso do motivo mais grave;
+- `scam`, `sexual`, `violence` e `hate` puxam prioridade para cima mais depressa;
+- bandas atuais: `none`, `low`, `medium`, `high`, `critical`.
+
+Filtros novos na queue:
+
+- `flaggedOnly=true`
+- `minReportPriority=low|medium|high|critical`
+
+### 6. Fecho de reports quando ha acao admin
+
+Quando o admin executa `hide`, `hide-fast`, `restrict` ou `unhide`, os reports abertos desse alvo passam para `reviewed`.
+
+Objetivo:
+
+- evitar que a queue continue a promover casos que ja tiveram intervencao;
+- manter rastreabilidade do que foi sinalizado e do que foi tratado.
+
+Endpoint admin adicional:
+
+- `GET /api/admin/content/:contentType/:contentId/reports`
+
+Serve para consultar o historico de reports por alvo, incluindo reporter, status, revisao e acao aplicada.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -100,14 +180,14 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 
 Estas sao as proximas camadas que fazem mais sentido:
 
-1. Pipeline de reports/flags de users para alimentar a queue de moderacao.
-2. Policy engine com regras por severidade, reincidencia e tipo de alvo.
-3. Deteccao automatica para spam, links suspeitos, flood e criacao em massa.
-4. Acoes sobre criadores para alem do conteudo: cooldown, limitacao, suspensao, ban.
-5. Kill switches por superficie: home, landing, comments, reviews, creator page.
-6. Ferramentas de rollback/review para reativacao segura apos hide em massa.
-7. Metricas e alertas operacionais dedicados a moderacao.
-8. Jobs assincros para lotes maiores e workflows de aprovacao.
+1. Policy engine com regras por severidade, reincidencia e tipo de alvo.
+2. Deteccao automatica para spam, links suspeitos, flood e criacao em massa.
+3. Acoes sobre criadores para alem do conteudo: cooldown, limitacao, suspensao, ban.
+4. Kill switches por superficie: home, landing, comments, reviews, creator page.
+5. Ferramentas de rollback/review para reativacao segura apos hide em massa.
+6. Metricas e alertas operacionais dedicados a moderacao.
+7. Jobs assincros para lotes maiores e workflows de aprovacao.
+8. Escalonamento entre fila humana e auto-acao preventiva.
 
 ## Pre-release obrigatorio
 
@@ -126,7 +206,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. reports/flags dos users;
-2. queue de moderacao priorizada por risco;
-3. policy engine simples com thresholds;
-4. automacao de hide preventivo + revisao humana.
+1. policy engine simples com thresholds;
+2. automacao de hide preventivo + revisao humana;
+3. acoes por creator e trust levels;
+4. alertas operacionais e dashboard de risco.
