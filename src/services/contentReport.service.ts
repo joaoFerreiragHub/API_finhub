@@ -88,6 +88,13 @@ export interface ReportSignalSummary {
   priority: ContentReportPriority
 }
 
+export interface BuildReportSignalSummaryInput {
+  openReports: number
+  uniqueReporters: number
+  latestReportAt: Date | null
+  reasons: ContentReportReason[]
+}
+
 export interface ListContentReportsFilters {
   contentType: ModeratableContentType
   contentId: string
@@ -172,14 +179,11 @@ export const isPriorityAtLeast = (
   minimum: ContentReportPriority
 ): boolean => toPriorityRank(current) >= toPriorityRank(minimum)
 
-const buildSummaryFromAggregate = (aggregate: {
-  openReports: number
-  uniqueReporterIds: mongoose.Types.ObjectId[]
-  latestReportAt: Date | null
-  reasons: ContentReportReason[]
-}): ReportSignalSummary => {
+export const buildReportSignalSummary = (
+  input: BuildReportSignalSummaryInput
+): ReportSignalSummary => {
   const reasonCounts = new Map<ContentReportReason, number>()
-  for (const reason of aggregate.reasons) {
+  for (const reason of input.reasons) {
     reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1)
   }
 
@@ -195,19 +199,32 @@ const buildSummaryFromAggregate = (aggregate: {
     return Math.max(max, REPORT_REASON_WEIGHTS[item.reason] ?? 0)
   }, 0)
 
-  const openReports = aggregate.openReports
-  const uniqueReporters = aggregate.uniqueReporterIds.length
+  const openReports = input.openReports
+  const uniqueReporters = input.uniqueReporters
   const priorityScore = openReports + uniqueReporters + highestReasonWeight
 
   return {
     openReports,
     uniqueReporters,
-    latestReportAt: aggregate.latestReportAt,
+    latestReportAt: input.latestReportAt,
     topReasons,
     priorityScore,
     priority: mapPriority(priorityScore),
   }
 }
+
+const buildSummaryFromAggregate = (aggregate: {
+  openReports: number
+  uniqueReporterIds: mongoose.Types.ObjectId[]
+  latestReportAt: Date | null
+  reasons: ContentReportReason[]
+}): ReportSignalSummary =>
+  buildReportSignalSummary({
+    openReports: aggregate.openReports,
+    uniqueReporters: aggregate.uniqueReporterIds.length,
+    latestReportAt: aggregate.latestReportAt,
+    reasons: aggregate.reasons,
+  })
 
 export class ContentReportService {
   async createOrUpdateReport(input: CreateContentReportInput) {

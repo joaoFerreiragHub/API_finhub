@@ -1,11 +1,18 @@
 import mongoose from 'mongoose'
 import { AdminAuditLog } from '../models/AdminAuditLog'
-import { User, UserRole } from '../models/User'
+import { ContentReport, ContentReportReason } from '../models/ContentReport'
+import { UserModerationEvent } from '../models/UserModerationEvent'
+import { CreatorOperationalAction, User, UserRole } from '../models/User'
+import { buildReportSignalSummary, isPriorityAtLeast } from './contentReport.service'
 
 export type AdminOperationalAlertType =
   | 'ban_applied'
   | 'content_hide_spike'
   | 'delegated_access_started'
+  | 'critical_report_target'
+  | 'policy_auto_hide_triggered'
+  | 'policy_auto_hide_failed'
+  | 'creator_control_applied'
 export type AdminOperationalAlertSeverity = 'critical' | 'high' | 'medium'
 
 interface AdminAlertActorSummary {
@@ -41,6 +48,9 @@ export interface AdminOperationalAlertsResponse {
   thresholds: {
     hideSpikeCount: number
     hideSpikeWindowMinutes: number
+    reportPriorityMin: 'high'
+    reportMinOpenReports: number
+    creatorControlRestrictiveActions: CreatorOperationalAction[]
   }
   summary: {
     critical: number
@@ -66,6 +76,7 @@ interface AuditLogLike {
   action?: unknown
   resourceType?: unknown
   resourceId?: unknown
+  outcome?: unknown
   createdAt?: unknown
   metadata?: unknown
 }
@@ -77,6 +88,27 @@ interface HideSpikeAggregateRow {
   distinctTargets: string[]
 }
 
+interface OpenReportAggregateRow {
+  _id: {
+    contentType: string
+    contentId: string
+  }
+  openReports: number
+  uniqueReporterIds: mongoose.Types.ObjectId[]
+  latestReportAt: Date | null
+  reasons: ContentReportReason[]
+}
+
+interface UserModerationEventLike {
+  _id: unknown
+  actor?: unknown
+  user?: unknown
+  reason?: unknown
+  note?: unknown
+  metadata?: unknown
+  createdAt?: unknown
+}
+
 const DEFAULT_WINDOW_HOURS = 24
 const MAX_WINDOW_HOURS = 24 * 7
 const DEFAULT_LIMIT = 50
@@ -84,6 +116,13 @@ const MAX_LIMIT = 100
 
 const HIDE_SPIKE_THRESHOLD = 5
 const HIDE_SPIKE_WINDOW_MINUTES = 30
+const REPORT_ALERT_MIN_OPEN_REPORTS = 3
+const RESTRICTIVE_CREATOR_CONTROL_ACTIONS: CreatorOperationalAction[] = [
+  'set_cooldown',
+  'block_creation',
+  'block_publishing',
+  'suspend_creator_ops',
+]
 
 const toPositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
@@ -167,6 +206,38 @@ const getSeveritySummary = (items: AdminOperationalAlert[]) => {
   }
 }
 
+const toMetadataRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined
+
+const mapPolicyAutoHideSeverity = (
+  outcome: unknown,
+  metadata: Record<string, unknown> | undefined
+): AdminOperationalAlertSeverity => {
+  if (outcome === 'error') return 'critical'
+
+  const policySignals =
+    metadata?.policySignals && typeof metadata.policySignals === 'object'
+      ? (metadata.policySignals as Record<string, unknown>)
+      : undefined
+
+  return policySignals?.escalation === 'critical' ? 'critical' : 'high'
+}
+
+const mapCreatorControlSeverity = (
+  action: CreatorOperationalAction | null
+): AdminOperationalAlertSeverity => {
+  if (action === 'suspend_creator_ops') return 'critical'
+  if (action === 'block_creation' || action === 'block_publishing') return 'high'
+  return 'medium'
+}
+
+const mapCreatorControlTitle = (action: CreatorOperationalAction | null): string => {
+  if (action === 'suspend_creator_ops') return 'Operacao de creator suspensa'
+  if (action === 'block_creation') return 'Criacao de conteudo bloqueada'
+  if (action === 'block_publishing') return 'Publicacao de conteudo bloqueada'
+  return 'Cooldown operacional aplicado'
+}
+
 export class AdminOperationalAlertsService {
   async listInternalAlerts(
     options: ListAdminOperationalAlertsOptions = {}
@@ -180,13 +251,30 @@ export class AdminOperationalAlertsService {
     const limit = clamp(toPositiveInt(options.limit, DEFAULT_LIMIT), 1, MAX_LIMIT)
     const windowStart = new Date(now.getTime() - windowHours * 60 * 60 * 1000)
 
-    const [banAlerts, delegatedAlerts, hideSpikeAlerts] = await Promise.all([
+    const [
+      banAlerts,
+      delegatedAlerts,
+      hideSpikeAlerts,
+      reportRiskAlerts,
+      policyAutoHideAlerts,
+      creatorControlAlerts,
+    ] = await Promise.all([
       this.listBanAlerts(windowStart, limit),
       this.listDelegatedAccessAlerts(windowStart, limit),
       this.listHideSpikeAlerts(limit),
+      this.listCriticalReportAlerts(windowStart, limit),
+      this.listPolicyAutoHideAlerts(windowStart, limit),
+      this.listCreatorControlAlerts(windowStart, limit),
     ])
 
-    const items = [...banAlerts, ...delegatedAlerts, ...hideSpikeAlerts]
+    const items = [
+      ...banAlerts,
+      ...delegatedAlerts,
+      ...hideSpikeAlerts,
+      ...reportRiskAlerts,
+      ...policyAutoHideAlerts,
+      ...creatorControlAlerts,
+    ]
       .sort((a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime())
       .slice(0, limit)
 
@@ -196,6 +284,9 @@ export class AdminOperationalAlertsService {
       thresholds: {
         hideSpikeCount: HIDE_SPIKE_THRESHOLD,
         hideSpikeWindowMinutes: HIDE_SPIKE_WINDOW_MINUTES,
+        reportPriorityMin: 'high',
+        reportMinOpenReports: REPORT_ALERT_MIN_OPEN_REPORTS,
+        creatorControlRestrictiveActions: RESTRICTIVE_CREATOR_CONTROL_ACTIONS,
       },
       summary: getSeveritySummary(items),
       items,
@@ -375,6 +466,181 @@ export class AdminOperationalAlertsService {
           distinctTargetCount,
           windowMinutes: HIDE_SPIKE_WINDOW_MINUTES,
           threshold: HIDE_SPIKE_THRESHOLD,
+        },
+      })
+    }
+
+    return alerts
+  }
+
+  private async listCriticalReportAlerts(
+    windowStart: Date,
+    limit: number
+  ): Promise<AdminOperationalAlert[]> {
+    const grouped = await ContentReport.aggregate<OpenReportAggregateRow>([
+      { $match: { status: 'open' } },
+      {
+        $group: {
+          _id: {
+            contentType: '$contentType',
+            contentId: '$contentId',
+          },
+          openReports: { $sum: 1 },
+          uniqueReporterIds: { $addToSet: '$reporter' },
+          latestReportAt: { $max: '$createdAt' },
+          reasons: { $push: '$reason' },
+        },
+      },
+      {
+        $match: {
+          openReports: { $gte: REPORT_ALERT_MIN_OPEN_REPORTS },
+          latestReportAt: { $gte: windowStart },
+        },
+      },
+    ])
+
+    const alerts: AdminOperationalAlert[] = []
+    for (const row of grouped) {
+      const summary = buildReportSignalSummary({
+        openReports: row.openReports,
+        uniqueReporters: row.uniqueReporterIds.length,
+        latestReportAt: row.latestReportAt,
+        reasons: row.reasons,
+      })
+
+      if (!isPriorityAtLeast(summary.priority, 'high') || !summary.latestReportAt) {
+        continue
+      }
+
+      const severity: AdminOperationalAlertSeverity =
+        summary.priority === 'critical' ? 'critical' : 'high'
+      const resourceId = `${row._id.contentType}:${row._id.contentId}`
+
+      alerts.push({
+        id: `report-target:${resourceId}`,
+        type: 'critical_report_target',
+        severity,
+        title: 'Alvo com pressao de reports',
+        description: `${summary.openReports} reports abertos de ${summary.uniqueReporters} reporters unicos para ${resourceId}.`,
+        action: 'admin.content.queue.review',
+        resourceType: 'content',
+        resourceId,
+        detectedAt: summary.latestReportAt.toISOString(),
+        actor: null,
+        metadata: {
+          contentType: row._id.contentType,
+          contentId: row._id.contentId,
+          priority: summary.priority,
+          priorityScore: summary.priorityScore,
+          openReports: summary.openReports,
+          uniqueReporters: summary.uniqueReporters,
+          latestReportAt: summary.latestReportAt.toISOString(),
+          topReasons: summary.topReasons.map((item) => item.reason),
+        },
+      })
+    }
+
+    alerts.sort((a, b) => {
+      const scoreA =
+        typeof a.metadata?.priorityScore === 'number' ? (a.metadata.priorityScore as number) : 0
+      const scoreB =
+        typeof b.metadata?.priorityScore === 'number' ? (b.metadata.priorityScore as number) : 0
+
+      return scoreB - scoreA || new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
+    })
+
+    return alerts.slice(0, limit)
+  }
+
+  private async listPolicyAutoHideAlerts(
+    windowStart: Date,
+    limit: number
+  ): Promise<AdminOperationalAlert[]> {
+    const rows = (await AdminAuditLog.find({
+      action: 'admin.content.policy_auto_hide',
+      outcome: { $in: ['success', 'error'] },
+      createdAt: { $gte: windowStart },
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('actor', 'name username email role')
+      .lean()) as AuditLogLike[]
+
+    const alerts: AdminOperationalAlert[] = []
+    for (const row of rows) {
+      const id = resolveAnyId(row._id)
+      const detectedAt = toDate(row.createdAt)
+      if (!id || !detectedAt) continue
+
+      const metadata = toMetadataRecord(row.metadata)
+      const severity = mapPolicyAutoHideSeverity(row.outcome, metadata)
+      const resourceId = toStringSafe(row.resourceId) ?? undefined
+      const failed = row.outcome === 'error'
+
+      alerts.push({
+        id: `policy-auto-hide:${id}`,
+        type: failed ? 'policy_auto_hide_failed' : 'policy_auto_hide_triggered',
+        severity,
+        title: failed ? 'Auto-hide preventivo falhou' : 'Auto-hide preventivo acionado',
+        description: failed
+          ? `Falha ao ocultar preventivamente ${resourceId ?? 'conteudo sem id resolvido'}.`
+          : `Ocultacao preventiva automatica aplicada a ${resourceId ?? 'conteudo sem id resolvido'}.`,
+        action: 'admin.content.policy_auto_hide',
+        resourceType: 'content',
+        resourceId,
+        detectedAt: detectedAt.toISOString(),
+        actor: mapActor(row.actor),
+        metadata,
+      })
+    }
+
+    return alerts
+  }
+
+  private async listCreatorControlAlerts(
+    windowStart: Date,
+    limit: number
+  ): Promise<AdminOperationalAlert[]> {
+    const rows = (await UserModerationEvent.find({
+      action: 'creator_control',
+      createdAt: { $gte: windowStart },
+      'metadata.creatorControlAction': { $in: RESTRICTIVE_CREATOR_CONTROL_ACTIONS },
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('actor', 'name username email role')
+      .populate('user', 'name username email role')
+      .lean()) as UserModerationEventLike[]
+
+    const alerts: AdminOperationalAlert[] = []
+    for (const row of rows) {
+      const id = resolveAnyId(row._id)
+      const detectedAt = toDate(row.createdAt)
+      if (!id || !detectedAt) continue
+
+      const metadata = toMetadataRecord(row.metadata)
+      const creatorControlAction =
+        metadata?.creatorControlAction && typeof metadata.creatorControlAction === 'string'
+          ? (metadata.creatorControlAction as CreatorOperationalAction)
+          : null
+      const targetUser = mapActor(row.user)
+
+      alerts.push({
+        id: `creator-control:${id}`,
+        type: 'creator_control_applied',
+        severity: mapCreatorControlSeverity(creatorControlAction),
+        title: mapCreatorControlTitle(creatorControlAction),
+        description: `Creator ${targetUser?.username ?? targetUser?.email ?? targetUser?.id ?? '(id em falta)'} recebeu acao ${creatorControlAction ?? 'desconhecida'}.`,
+        action: 'admin.users.creator_controls.apply',
+        resourceType: 'user',
+        resourceId: targetUser?.id,
+        detectedAt: detectedAt.toISOString(),
+        actor: mapActor(row.actor),
+        metadata: {
+          ...(metadata ?? {}),
+          reason: toStringSafe(row.reason) ?? undefined,
+          note: toStringSafe(row.note) ?? undefined,
+          targetUser,
         },
       })
     }

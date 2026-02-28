@@ -303,6 +303,80 @@ Metadata registada:
 
 Isto permite reconstruir quem travou o creator, quando e em que modo.
 
+### 12. Alertas operacionais e metricas de risco
+
+Foram enriquecidos os endpoints administrativos existentes:
+
+- `GET /api/admin/metrics/overview`
+- `GET /api/admin/alerts/internal`
+
+Objetivo:
+
+- dar visibilidade operacional imediata sobre reports;
+- acompanhar o auto-hide preventivo;
+- mostrar pressao e uso de `creator controls` sem depender de consulta manual a varios modulos.
+
+#### 12.1. Metricas novas no overview
+
+O bloco `moderation` passa a incluir:
+
+- `reports.openTotal`
+- `reports.highPriorityTargets`
+- `reports.criticalTargets`
+- `reports.topReasons`
+- `reports.intake.last24h|last7d`
+- `reports.resolved.last24h|last7d`
+
+Tambem inclui:
+
+- `automation.policyAutoHide.successLast24h|last7d`
+- `automation.policyAutoHide.errorLast24h|last7d`
+
+E ainda:
+
+- `creatorControls.active.affectedCreators`
+- `creatorControls.active.creationBlocked`
+- `creatorControls.active.publishingBlocked`
+- `creatorControls.active.cooldownActive`
+- `creatorControls.active.fullyRestricted`
+- `creatorControls.actions.last24h|last7d`
+- `creatorControls.actions.byActionLast7d`
+
+Isto transforma o overview num ponto unico para:
+
+- medir backlog de risco;
+- perceber se a policy automatica esta a agir ou a falhar;
+- perceber quantos creators estao atualmente limitados.
+
+#### 12.2. Alertas novos
+
+O feed `GET /api/admin/alerts/internal` passa a incluir:
+
+- `critical_report_target`
+- `policy_auto_hide_triggered`
+- `policy_auto_hide_failed`
+- `creator_control_applied`
+
+Regras desta iteracao:
+
+- targets com reports abertos e prioridade `high` ou `critical` entram como alerta;
+- eventos de `policy auto-hide` bem sucedidos e falhados entram como alerta;
+- acoes restritivas sobre creators (`set_cooldown`, `block_creation`, `block_publishing`, `suspend_creator_ops`) entram como alerta.
+
+Os thresholds devolvidos no endpoint passam a expor:
+
+- `reportPriorityMin=high`
+- `reportMinOpenReports=3`
+- `creatorControlRestrictiveActions`
+
+#### 12.3. Nota operacional
+
+Esta camada nao substitui um dashboard visual dedicado. O objetivo aqui foi consolidar os sinais de risco no backend para que:
+
+- o frontend admin tenha um contrato unico para leitura;
+- futuras automacoes e scorecards usem os mesmos sinais;
+- o P4 continue a crescer por composicao, nao por excecoes espalhadas.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -331,9 +405,9 @@ Estas sao as proximas camadas que fazem mais sentido:
 3. Trust scoring de creator para escalar de review para block/suspension.
 4. Kill switches por superficie: home, landing, comments, reviews, creator page.
 5. Ferramentas de rollback/review para reativacao segura apos hide em massa.
-6. Metricas e alertas operacionais dedicados a moderacao.
-7. Jobs assincros para lotes maiores e workflows de aprovacao.
-8. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+6. Jobs assincros para lotes maiores e workflows de aprovacao.
+7. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+8. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
 
 ## Pre-release obrigatorio
 
@@ -352,7 +426,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. alertas operacionais e dashboard de risco;
-2. reincidencia e trust scoring;
-3. deteccao automatica fora dos reports manuais;
-4. workflows de revisao e rollback assistido.
+1. reincidencia e trust scoring;
+2. deteccao automatica fora dos reports manuais;
+3. workflows de revisao e rollback assistido;
+4. dashboard visual com drill-down operacional.

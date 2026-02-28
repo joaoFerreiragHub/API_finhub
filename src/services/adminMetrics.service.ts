@@ -4,6 +4,7 @@ import { Article } from '../models/Article'
 import { Book } from '../models/Book'
 import { Comment } from '../models/Comment'
 import { ContentType } from '../models/BaseContent'
+import { ContentReport, ContentReportReason } from '../models/ContentReport'
 import { ContentModerationEvent, ModeratableContentType } from '../models/ContentModerationEvent'
 import { Course } from '../models/Course'
 import { Favorite } from '../models/Favorite'
@@ -11,9 +12,11 @@ import { Follow } from '../models/Follow'
 import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
 import { Rating } from '../models/Rating'
-import { User, UserRole } from '../models/User'
+import { UserModerationEvent } from '../models/UserModerationEvent'
+import { CreatorOperationalAction, User, UserRole } from '../models/User'
 import { Video } from '../models/Video'
 import { getMetricsSnapshot } from '../observability/metrics'
+import { buildReportSignalSummary, isPriorityAtLeast } from './contentReport.service'
 
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx'
 
@@ -55,6 +58,8 @@ interface AdminRouteErrors {
   errors5xx: number
   errorRatePercent: number
 }
+
+type CreatorControlActionCounts = Record<CreatorOperationalAction, number>
 
 export interface AdminMetricsOverview {
   generatedAt: string
@@ -129,6 +134,42 @@ export interface AdminMetricsOverview {
     recidivismLast30d: {
       repeatedTargets: number
       repeatedActors: number
+    }
+    reports: {
+      openTotal: number
+      highPriorityTargets: number
+      criticalTargets: number
+      topReasons: Array<{ reason: ContentReportReason; count: number }>
+      intake: {
+        last24h: number
+        last7d: number
+      }
+      resolved: {
+        last24h: number
+        last7d: number
+      }
+    }
+    automation: {
+      policyAutoHide: {
+        successLast24h: number
+        successLast7d: number
+        errorLast24h: number
+        errorLast7d: number
+      }
+    }
+    creatorControls: {
+      active: {
+        affectedCreators: number
+        creationBlocked: number
+        publishingBlocked: number
+        cooldownActive: number
+        fullyRestricted: number
+      }
+      actions: {
+        last24h: number
+        last7d: number
+        byActionLast7d: CreatorControlActionCounts
+      }
     }
   }
   operations: {
@@ -219,6 +260,17 @@ const emptyRoleDistribution = (): Record<UserRole, number> => ({
   premium: 0,
   creator: 0,
   admin: 0,
+})
+
+const emptyCreatorControlActionCounts = (): CreatorControlActionCounts => ({
+  set_cooldown: 0,
+  clear_cooldown: 0,
+  block_creation: 0,
+  unblock_creation: 0,
+  block_publishing: 0,
+  unblock_publishing: 0,
+  suspend_creator_ops: 0,
+  restore_creator_ops: 0,
 })
 
 const toObjectIds = (rawIds: string[]): mongoose.Types.ObjectId[] =>
@@ -438,6 +490,7 @@ export class AdminMetricsService {
   }
 
   private async buildModerationMetrics(last24hStart: Date, last7dStart: Date, last30dStart: Date) {
+    const now = new Date()
     const [queueTotalByType, queueHiddenByType, queueRestrictedByType] = await Promise.all([
       this.countQueueByType(),
       this.countQueueByType('hidden'),
@@ -452,33 +505,148 @@ export class AdminMetricsService {
     )
     const queueVisible = Math.max(queueTotal - queueHidden - queueRestricted, 0)
 
-    const [actions24h, actions7d, volumeRows, resolutionDurationsHours, repeatTargetsRows, repeatActorsRows] =
-      await Promise.all([
-        ContentModerationEvent.countDocuments({ createdAt: { $gte: last24hStart } }),
-        ContentModerationEvent.countDocuments({ createdAt: { $gte: last7dStart } }),
-        ContentModerationEvent.aggregate<{ _id: ModeratableContentType; count: number }>([
-          { $match: { createdAt: { $gte: last7dStart } } },
-          { $group: { _id: '$contentType', count: { $sum: 1 } } },
-        ]),
-        this.calculateResolutionDurationsHours(last7dStart),
-        ContentModerationEvent.aggregate<{ total: number }>([
-          { $match: { createdAt: { $gte: last30dStart } } },
-          {
-            $group: {
-              _id: { contentType: '$contentType', contentId: '$contentId' },
-              count: { $sum: 1 },
-            },
+    const [
+      actions24h,
+      actions7d,
+      volumeRows,
+      resolutionDurationsHours,
+      repeatTargetsRows,
+      repeatActorsRows,
+      openReportsTotal,
+      reportsCreated24h,
+      reportsCreated7d,
+      reportsResolved24h,
+      reportsResolved7d,
+      openReportReasonRows,
+      openReportTargetRows,
+      autoHideSuccess24h,
+      autoHideSuccess7d,
+      autoHideError24h,
+      autoHideError7d,
+      creationBlockedCreators,
+      publishingBlockedCreators,
+      cooldownActiveCreators,
+      affectedCreators,
+      fullyRestrictedCreators,
+      creatorControlActions24h,
+      creatorControlActions7d,
+      creatorControlActionRows,
+    ] = await Promise.all([
+      ContentModerationEvent.countDocuments({ createdAt: { $gte: last24hStart } }),
+      ContentModerationEvent.countDocuments({ createdAt: { $gte: last7dStart } }),
+      ContentModerationEvent.aggregate<{ _id: ModeratableContentType; count: number }>([
+        { $match: { createdAt: { $gte: last7dStart } } },
+        { $group: { _id: '$contentType', count: { $sum: 1 } } },
+      ]),
+      this.calculateResolutionDurationsHours(last7dStart),
+      ContentModerationEvent.aggregate<{ total: number }>([
+        { $match: { createdAt: { $gte: last30dStart } } },
+        {
+          $group: {
+            _id: { contentType: '$contentType', contentId: '$contentId' },
+            count: { $sum: 1 },
           },
-          { $match: { count: { $gt: 1 } } },
-          { $count: 'total' },
-        ]),
-        ContentModerationEvent.aggregate<{ total: number }>([
-          { $match: { createdAt: { $gte: last30dStart } } },
-          { $group: { _id: '$actor', count: { $sum: 1 } } },
-          { $match: { count: { $gt: 1 } } },
-          { $count: 'total' },
-        ]),
-      ])
+        },
+        { $match: { count: { $gt: 1 } } },
+        { $count: 'total' },
+      ]),
+      ContentModerationEvent.aggregate<{ total: number }>([
+        { $match: { createdAt: { $gte: last30dStart } } },
+        { $group: { _id: '$actor', count: { $sum: 1 } } },
+        { $match: { count: { $gt: 1 } } },
+        { $count: 'total' },
+      ]),
+      ContentReport.countDocuments({ status: 'open' }),
+      ContentReport.countDocuments({ createdAt: { $gte: last24hStart } }),
+      ContentReport.countDocuments({ createdAt: { $gte: last7dStart } }),
+      ContentReport.countDocuments({ status: 'reviewed', reviewedAt: { $gte: last24hStart } }),
+      ContentReport.countDocuments({ status: 'reviewed', reviewedAt: { $gte: last7dStart } }),
+      ContentReport.aggregate<{ _id: ContentReportReason; count: number }>([
+        { $match: { status: 'open' } },
+        { $group: { _id: '$reason', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+        { $limit: 5 },
+      ]),
+      ContentReport.aggregate<{
+        _id: { contentType: ModeratableContentType; contentId: string }
+        openReports: number
+        uniqueReporterIds: mongoose.Types.ObjectId[]
+        latestReportAt: Date | null
+        reasons: ContentReportReason[]
+      }>([
+        { $match: { status: 'open' } },
+        {
+          $group: {
+            _id: {
+              contentType: '$contentType',
+              contentId: '$contentId',
+            },
+            openReports: { $sum: 1 },
+            uniqueReporterIds: { $addToSet: '$reporter' },
+            latestReportAt: { $max: '$createdAt' },
+            reasons: { $push: '$reason' },
+          },
+        },
+      ]),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.policy_auto_hide',
+        outcome: 'success',
+        createdAt: { $gte: last24hStart },
+      }),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.policy_auto_hide',
+        outcome: 'success',
+        createdAt: { $gte: last7dStart },
+      }),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.policy_auto_hide',
+        outcome: 'error',
+        createdAt: { $gte: last24hStart },
+      }),
+      AdminAuditLog.countDocuments({
+        action: 'admin.content.policy_auto_hide',
+        outcome: 'error',
+        createdAt: { $gte: last7dStart },
+      }),
+      User.countDocuments({ role: 'creator', 'creatorControls.creationBlocked': true }),
+      User.countDocuments({ role: 'creator', 'creatorControls.publishingBlocked': true }),
+      User.countDocuments({ role: 'creator', 'creatorControls.cooldownUntil': { $gt: now } }),
+      User.countDocuments({
+        role: 'creator',
+        $or: [
+          { 'creatorControls.creationBlocked': true },
+          { 'creatorControls.publishingBlocked': true },
+          { 'creatorControls.cooldownUntil': { $gt: now } },
+        ],
+      }),
+      User.countDocuments({
+        role: 'creator',
+        'creatorControls.creationBlocked': true,
+        'creatorControls.publishingBlocked': true,
+      }),
+      UserModerationEvent.countDocuments({
+        action: 'creator_control',
+        createdAt: { $gte: last24hStart },
+      }),
+      UserModerationEvent.countDocuments({
+        action: 'creator_control',
+        createdAt: { $gte: last7dStart },
+      }),
+      UserModerationEvent.aggregate<{ _id: CreatorOperationalAction | null; count: number }>([
+        {
+          $match: {
+            action: 'creator_control',
+            createdAt: { $gte: last7dStart },
+          },
+        },
+        {
+          $group: {
+            _id: '$metadata.creatorControlAction',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ])
 
     const volumeByTypeLast7d = emptyVolumeByType()
     for (const row of volumeRows) {
@@ -495,6 +663,31 @@ export class AdminMetricsService {
             2
           )
         : null
+
+    let highPriorityTargets = 0
+    let criticalTargets = 0
+    for (const row of openReportTargetRows) {
+      const summary = buildReportSignalSummary({
+        openReports: row.openReports,
+        uniqueReporters: row.uniqueReporterIds.length,
+        latestReportAt: row.latestReportAt,
+        reasons: row.reasons,
+      })
+
+      if (isPriorityAtLeast(summary.priority, 'high')) {
+        highPriorityTargets += 1
+      }
+      if (summary.priority === 'critical') {
+        criticalTargets += 1
+      }
+    }
+
+    const creatorControlActionsByType = emptyCreatorControlActionCounts()
+    for (const row of creatorControlActionRows) {
+      if (row._id && row._id in creatorControlActionsByType) {
+        creatorControlActionsByType[row._id] = row.count
+      }
+    }
 
     return {
       queue: {
@@ -521,6 +714,45 @@ export class AdminMetricsService {
       recidivismLast30d: {
         repeatedTargets: repeatTargetsRows[0]?.total ?? 0,
         repeatedActors: repeatActorsRows[0]?.total ?? 0,
+      },
+      reports: {
+        openTotal: openReportsTotal,
+        highPriorityTargets,
+        criticalTargets,
+        topReasons: openReportReasonRows.map((row) => ({
+          reason: row._id,
+          count: row.count,
+        })),
+        intake: {
+          last24h: reportsCreated24h,
+          last7d: reportsCreated7d,
+        },
+        resolved: {
+          last24h: reportsResolved24h,
+          last7d: reportsResolved7d,
+        },
+      },
+      automation: {
+        policyAutoHide: {
+          successLast24h: autoHideSuccess24h,
+          successLast7d: autoHideSuccess7d,
+          errorLast24h: autoHideError24h,
+          errorLast7d: autoHideError7d,
+        },
+      },
+      creatorControls: {
+        active: {
+          affectedCreators,
+          creationBlocked: creationBlockedCreators,
+          publishingBlocked: publishingBlockedCreators,
+          cooldownActive: cooldownActiveCreators,
+          fullyRestricted: fullyRestrictedCreators,
+        },
+        actions: {
+          last24h: creatorControlActions24h,
+          last7d: creatorControlActions7d,
+          byActionLast7d: creatorControlActionsByType,
+        },
       },
     }
   }
