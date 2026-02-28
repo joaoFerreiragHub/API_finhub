@@ -157,6 +157,76 @@ Endpoint admin adicional:
 
 Serve para consultar o historico de reports por alvo, incluindo reporter, status, revisao e acao aplicada.
 
+### 7. Policy engine com thresholds e automacao controlada
+
+Foi adicionada uma camada de policy por cima dos `reportSignals`.
+
+Objetivo:
+
+- transformar ruido de reports em recomendacao operacional;
+- separar `review`, `restrict` e `hide` de forma consistente;
+- permitir auto-hide preventivo sem ficar ligado por defeito.
+
+Sinais devolvidos agora na queue admin:
+
+```json
+{
+  "policySignals": {
+    "recommendedAction": "hide",
+    "escalation": "critical",
+    "automationEligible": true,
+    "automationEnabled": false,
+    "automationBlockedReason": "auto_hide_disabled",
+    "matchedReasons": ["scam"],
+    "thresholds": {
+      "autoHideMinPriority": "critical",
+      "autoHideMinUniqueReporters": 3,
+      "autoHideAllowedReasons": ["scam", "hate", "sexual", "violence"]
+    }
+  }
+}
+```
+
+Heuristica atual:
+
+- `critical` ou motivo de alto risco com reporters suficientes => recomendacao `hide`;
+- `medium` => recomendacao `restrict`;
+- `low` => recomendacao `review`.
+
+Motivos de alto risco nesta fase:
+
+- `scam`
+- `hate`
+- `sexual`
+- `violence`
+
+### 8. Auto-hide preventivo controlado por env
+
+O auto-hide nao corre por defeito.
+
+Flags introduzidas:
+
+- `MODERATION_POLICY_AUTO_HIDE_ENABLED`
+- `MODERATION_POLICY_AUTO_HIDE_ACTOR_ID`
+- `MODERATION_POLICY_AUTO_HIDE_MIN_PRIORITY`
+- `MODERATION_POLICY_AUTO_HIDE_MIN_UNIQUE_REPORTERS`
+- `MODERATION_POLICY_AUTO_HIDE_ALLOWED_REASONS`
+
+Comportamento:
+
+- quando um novo report entra, o backend avalia a policy;
+- se a policy recomendar `hide` e os thresholds de automacao forem cumpridos;
+- e se existir um actor tecnico admin configurado;
+- o backend faz `hide-fast` automatico e regista auditoria tecnica.
+
+Segurancas:
+
+- feature desligada por defeito;
+- actor obrigatorio e validado como ObjectId;
+- apenas motivos permitidos entram em auto-hide;
+- thresholds minimos de prioridade e reporters unicos;
+- o response do report devolve `policy.before`, `policy.after` e estado de `automation`.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -180,14 +250,14 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 
 Estas sao as proximas camadas que fazem mais sentido:
 
-1. Policy engine com regras por severidade, reincidencia e tipo de alvo.
+1. Policy engine com reincidencia por creator e historico de falso positivo.
 2. Deteccao automatica para spam, links suspeitos, flood e criacao em massa.
 3. Acoes sobre criadores para alem do conteudo: cooldown, limitacao, suspensao, ban.
 4. Kill switches por superficie: home, landing, comments, reviews, creator page.
 5. Ferramentas de rollback/review para reativacao segura apos hide em massa.
 6. Metricas e alertas operacionais dedicados a moderacao.
 7. Jobs assincros para lotes maiores e workflows de aprovacao.
-8. Escalonamento entre fila humana e auto-acao preventiva.
+8. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
 
 ## Pre-release obrigatorio
 
@@ -206,7 +276,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. policy engine simples com thresholds;
-2. automacao de hide preventivo + revisao humana;
-3. acoes por creator e trust levels;
-4. alertas operacionais e dashboard de risco.
+1. acoes por creator e trust levels;
+2. alertas operacionais e dashboard de risco;
+3. reincidencia e trust scoring;
+4. deteccao automatica fora dos reports manuais.

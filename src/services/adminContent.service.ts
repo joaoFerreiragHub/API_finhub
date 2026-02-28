@@ -18,6 +18,7 @@ import {
   ContentReportPriority,
   isPriorityAtLeast,
 } from './contentReport.service'
+import { moderationPolicyService } from './moderationPolicy.service'
 
 interface ContentModel {
   find(query: Record<string, unknown>): any
@@ -735,6 +736,10 @@ export class AdminContentService {
       ...item,
       reportSignals:
         summaries.get(`${item.contentType}:${item.id}`) ?? contentReportService.getEmptySummary(),
+      policySignals: moderationPolicyService.buildPolicySignals(
+        summaries.get(`${item.contentType}:${item.id}`) ?? contentReportService.getEmptySummary(),
+        toModerationStatus(item.moderationStatus)
+      ),
     }))
   }
 
