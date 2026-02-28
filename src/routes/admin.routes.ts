@@ -20,6 +20,7 @@ import {
 } from '../controllers/adminContent.controller'
 import { getAdminMetricsOverview } from '../controllers/adminMetrics.controller'
 import {
+  applyCreatorControls,
   addUserInternalNote,
   banUser,
   forceLogoutUser,
@@ -674,6 +675,24 @@ router.post(
   }),
   requireAdminScope('admin.users.write'),
   addUserInternalNote
+)
+
+/**
+ * @route   POST /api/admin/users/:userId/creator-controls
+ * @desc    Aplicar controlos operacionais a um creator
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/users/:userId/creator-controls',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.users.creator_controls.apply',
+    resourceType: 'user',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.userId,
+  }),
+  requireAdminScope('admin.users.write'),
+  applyCreatorControls
 )
 
 /**

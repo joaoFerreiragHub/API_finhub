@@ -13,6 +13,25 @@ const isAccountBlocked = (status: UserAccountStatus): status is Exclude<UserAcco
   return status !== 'active'
 }
 
+const mapCreatorControls = (creatorControls: any): AuthResponse['user']['creatorControls'] => ({
+  creationBlocked: Boolean(creatorControls?.creationBlocked),
+  creationBlockedReason:
+    typeof creatorControls?.creationBlockedReason === 'string'
+      ? creatorControls.creationBlockedReason
+      : null,
+  publishingBlocked: Boolean(creatorControls?.publishingBlocked),
+  publishingBlockedReason:
+    typeof creatorControls?.publishingBlockedReason === 'string'
+      ? creatorControls.publishingBlockedReason
+      : null,
+  cooldownUntil: creatorControls?.cooldownUntil ?? null,
+  updatedAt: creatorControls?.updatedAt ?? null,
+  updatedBy:
+    creatorControls?.updatedBy !== undefined && creatorControls?.updatedBy !== null
+      ? String(creatorControls.updatedBy)
+      : null,
+})
+
 const mapAuthResponseUser = (user: {
   id: string
   email: string
@@ -23,6 +42,7 @@ const mapAuthResponseUser = (user: {
   accountStatus: AuthResponse['user']['accountStatus']
   adminReadOnly?: boolean
   adminScopes?: string[]
+  creatorControls?: AuthResponse['user']['creatorControls']
   assistedSession?: AuthResponse['user']['assistedSession']
 }): AuthResponse['user'] => ({
   id: user.id,
@@ -34,6 +54,7 @@ const mapAuthResponseUser = (user: {
   accountStatus: user.accountStatus,
   adminReadOnly: Boolean(user.adminReadOnly),
   adminScopes: Array.isArray(user.adminScopes) ? user.adminScopes : [],
+  creatorControls: user.creatorControls ?? mapCreatorControls(undefined),
   assistedSession: user.assistedSession,
 })
 
@@ -99,6 +120,7 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
         accountStatus: user.accountStatus,
         adminReadOnly: user.adminReadOnly,
         adminScopes: user.adminScopes,
+        creatorControls: mapCreatorControls(user.creatorControls),
       }),
       tokens,
     }
@@ -168,6 +190,7 @@ export const login = async (req: Request<{}, {}, LoginDTO>, res: Response) => {
         accountStatus: user.accountStatus,
         adminReadOnly: user.adminReadOnly,
         adminScopes: user.adminScopes,
+        creatorControls: mapCreatorControls(user.creatorControls),
       }),
       tokens,
     }
@@ -290,6 +313,7 @@ export const me = async (req: AuthRequest, res: Response) => {
         accountStatus: req.user.accountStatus,
         adminReadOnly: req.user.adminReadOnly,
         adminScopes: req.user.adminScopes ?? [],
+        creatorControls: mapCreatorControls(req.user.creatorControls),
         assistedSession: req.assistedSession,
         bio: req.user.bio,
         socialLinks: req.user.socialLinks,

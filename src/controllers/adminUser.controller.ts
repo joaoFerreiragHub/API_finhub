@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../types/auth'
-import { UserAccountStatus, UserRole } from '../models/User'
+import { CreatorOperationalAction, UserAccountStatus, UserRole } from '../models/User'
 import {
   AdminUserServiceError,
   AdminUserSortField,
@@ -16,6 +16,16 @@ const VALID_SORT_FIELDS = new Set<AdminUserSortField>([
   'lastActiveAt',
   'username',
   'email',
+])
+const VALID_CREATOR_CONTROL_ACTIONS = new Set<CreatorOperationalAction>([
+  'set_cooldown',
+  'clear_cooldown',
+  'block_creation',
+  'unblock_creation',
+  'block_publishing',
+  'unblock_publishing',
+  'suspend_creator_ops',
+  'restore_creator_ops',
 ])
 
 const parsePositiveInt = (value: unknown): number | undefined => {
@@ -73,6 +83,15 @@ const mapUserResponse = (user: {
   adminScopes?: string[]
   statusReason?: string
   statusChangedAt?: Date
+  creatorControls?: {
+    creationBlocked: boolean
+    creationBlockedReason?: string | null
+    publishingBlocked: boolean
+    publishingBlockedReason?: string | null
+    cooldownUntil?: Date | null
+    updatedAt?: Date | null
+    updatedBy?: unknown
+  }
   tokenVersion: number
   lastForcedLogoutAt?: Date
   lastLoginAt?: Date
@@ -89,6 +108,15 @@ const mapUserResponse = (user: {
   adminScopes: user.adminScopes ?? [],
   statusReason: user.statusReason ?? null,
   statusChangedAt: user.statusChangedAt ?? null,
+  creatorControls: {
+    creationBlocked: Boolean(user.creatorControls?.creationBlocked),
+    creationBlockedReason: user.creatorControls?.creationBlockedReason ?? null,
+    publishingBlocked: Boolean(user.creatorControls?.publishingBlocked),
+    publishingBlockedReason: user.creatorControls?.publishingBlockedReason ?? null,
+    cooldownUntil: user.creatorControls?.cooldownUntil ?? null,
+    updatedAt: user.creatorControls?.updatedAt ?? null,
+    updatedBy: user.creatorControls?.updatedBy ?? null,
+  },
   tokenVersion: user.tokenVersion,
   lastForcedLogoutAt: user.lastForcedLogoutAt ?? null,
   lastLoginAt: user.lastLoginAt ?? null,
@@ -302,6 +330,80 @@ export const forceLogoutUser = async (req: AuthRequest, res: Response) => {
   } catch (error: unknown) {
     console.error('Force logout user error:', error)
     return handleAdminUserError(res, error, 'Erro ao aplicar force logout.')
+  }
+}
+
+/**
+ * POST /api/admin/users/:userId/creator-controls
+ */
+export const applyCreatorControls = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const actionRaw = typeof req.body?.action === 'string' ? req.body.action : undefined
+    if (!actionRaw || !VALID_CREATOR_CONTROL_ACTIONS.has(actionRaw as CreatorOperationalAction)) {
+      return res.status(400).json({
+        error: 'Parametro action invalido.',
+      })
+    }
+
+    const reason = extractReason(req)
+    if (!reason) {
+      return res.status(400).json({
+        error: 'Motivo obrigatorio para controlos do creator.',
+      })
+    }
+
+    const cooldownHours =
+      typeof req.body?.cooldownHours === 'number'
+        ? req.body.cooldownHours
+        : typeof req.body?.cooldownHours === 'string'
+          ? Number.parseInt(req.body.cooldownHours, 10)
+          : undefined
+
+    const result = await adminUserService.applyCreatorControl({
+      actorId: req.user.id,
+      targetUserId: req.params.userId,
+      action: actionRaw as CreatorOperationalAction,
+      reason,
+      note: extractNote(req),
+      cooldownHours,
+    })
+
+    return res.status(200).json({
+      message: 'Controlos operacionais do creator atualizados com sucesso.',
+      action: result.action,
+      creatorControls: result.creatorControls,
+      user: mapUserResponse({
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        username: result.user.username,
+        avatar: result.user.avatar,
+        role: result.user.role,
+        accountStatus: result.user.accountStatus,
+        adminReadOnly: result.user.adminReadOnly,
+        adminScopes: result.user.adminScopes ?? [],
+        statusReason: result.user.statusReason,
+        statusChangedAt: result.user.statusChangedAt,
+        creatorControls: result.creatorControls,
+        tokenVersion: result.user.tokenVersion,
+        lastForcedLogoutAt: result.user.lastForcedLogoutAt,
+        lastLoginAt: result.user.lastLoginAt,
+        lastActiveAt: result.user.lastActiveAt,
+      }),
+    })
+  } catch (error: unknown) {
+    console.error('Apply creator controls error:', error)
+    return handleAdminUserError(
+      res,
+      error,
+      'Erro ao atualizar controlos operacionais do creator.'
+    )
   }
 }
 

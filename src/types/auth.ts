@@ -2,6 +2,16 @@ import { Request } from 'express'
 import { IUser, UserAccountStatus, UserRole } from '../models/User'
 import { AssistedSessionTokenPayload } from '../utils/jwt'
 
+export interface AuthCreatorControlsResponse {
+  creationBlocked: boolean
+  creationBlockedReason?: string | null
+  publishingBlocked: boolean
+  publishingBlockedReason?: string | null
+  cooldownUntil?: Date | null
+  updatedAt?: Date | null
+  updatedBy?: string | null
+}
+
 /**
  * Request estendido com user autenticado
  */
@@ -35,6 +45,7 @@ export interface AuthResponse {
     accountStatus: UserAccountStatus
     adminReadOnly: boolean
     adminScopes: string[]
+    creatorControls: AuthCreatorControlsResponse
     assistedSession?: AssistedSessionTokenPayload
   }
   tokens: {

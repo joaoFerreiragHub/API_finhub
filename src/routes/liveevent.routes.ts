@@ -12,6 +12,7 @@ import {
   getMyStats,
 } from '../controllers/liveevent.controller'
 import { authenticate } from '../middlewares/auth'
+import { enforceCreatorOperationalControl } from '../middlewares/creatorOperationalControl'
 import { requireCreator } from '../middlewares/roleGuard'
 
 const router = Router()
@@ -58,7 +59,7 @@ router.get('/stats', authenticate, requireCreator, getMyStats)
  * @desc    Criar novo artigo
  * @access  Private (Creator/Admin)
  */
-router.post('/', authenticate, requireCreator, createLive)
+router.post('/', authenticate, requireCreator, enforceCreatorOperationalControl('create'), createLive)
 
 /**
  * @route   PATCH /api/liveevents/:id
@@ -79,7 +80,13 @@ router.delete('/:id', authenticate, requireCreator, deleteLive)
  * @desc    Publicar artigo (mudar status para published)
  * @access  Private (Owner/Admin)
  */
-router.patch('/:id/publish', authenticate, requireCreator, publishLive)
+router.patch(
+  '/:id/publish',
+  authenticate,
+  requireCreator,
+  enforceCreatorOperationalControl('publish'),
+  publishLive
+)
 
 // ==========================================
 // Rotas de Interação (Auth Required)

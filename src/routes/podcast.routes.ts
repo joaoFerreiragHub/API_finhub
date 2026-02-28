@@ -12,6 +12,7 @@ import {
   getMyStats,
 } from '../controllers/podcast.controller'
 import { authenticate } from '../middlewares/auth'
+import { enforceCreatorOperationalControl } from '../middlewares/creatorOperationalControl'
 import { requireCreator } from '../middlewares/roleGuard'
 
 const router = Router()
@@ -58,7 +59,7 @@ router.get('/stats', authenticate, requireCreator, getMyStats)
  * @desc    Criar novo artigo
  * @access  Private (Creator/Admin)
  */
-router.post('/', authenticate, requireCreator, createPodcast)
+router.post('/', authenticate, requireCreator, enforceCreatorOperationalControl('create'), createPodcast)
 
 /**
  * @route   PATCH /api/podcasts/:id
@@ -79,7 +80,13 @@ router.delete('/:id', authenticate, requireCreator, deletePodcast)
  * @desc    Publicar artigo (mudar status para published)
  * @access  Private (Owner/Admin)
  */
-router.patch('/:id/publish', authenticate, requireCreator, publishPodcast)
+router.patch(
+  '/:id/publish',
+  authenticate,
+  requireCreator,
+  enforceCreatorOperationalControl('publish'),
+  publishPodcast
+)
 
 // ==========================================
 // Rotas de Interação (Auth Required)

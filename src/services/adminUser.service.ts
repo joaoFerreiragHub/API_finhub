@@ -1,5 +1,11 @@
 import mongoose from 'mongoose'
-import { IUser, User, UserAccountStatus, UserRole } from '../models/User'
+import {
+  CreatorOperationalAction,
+  IUser,
+  User,
+  UserAccountStatus,
+  UserRole,
+} from '../models/User'
 import { UserModerationEvent } from '../models/UserModerationEvent'
 
 export type AdminUserSortField =
@@ -32,6 +38,11 @@ export interface AdminUserActionInput {
   note?: string
 }
 
+export interface AdminCreatorControlInput extends AdminUserActionInput {
+  action: CreatorOperationalAction
+  cooldownHours?: number
+}
+
 export class AdminUserServiceError extends Error {
   statusCode: number
 
@@ -44,6 +55,7 @@ export class AdminUserServiceError extends Error {
 const MAX_LIMIT = 100
 const DEFAULT_LIMIT = 25
 const DEFAULT_PAGE = 1
+const MAX_COOLDOWN_HOURS = 24 * 30
 
 const normalizePage = (value?: number): number => {
   if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
@@ -123,9 +135,10 @@ export class AdminUserService {
         .skip(skip)
         .limit(limit)
         .select(
-          'email name username avatar role accountStatus adminReadOnly adminScopes statusReason statusChangedAt statusChangedBy tokenVersion lastForcedLogoutAt lastLoginAt lastActiveAt createdAt updatedAt'
+          'email name username avatar role accountStatus adminReadOnly adminScopes statusReason statusChangedAt statusChangedBy creatorControls tokenVersion lastForcedLogoutAt lastLoginAt lastActiveAt createdAt updatedAt'
         )
         .populate('statusChangedBy', 'name username email role')
+        .populate('creatorControls.updatedBy', 'name username email role')
         .lean(),
       User.countDocuments(query),
     ])
@@ -144,6 +157,7 @@ export class AdminUserService {
         statusReason: user.statusReason ?? null,
         statusChangedAt: user.statusChangedAt ?? null,
         statusChangedBy: user.statusChangedBy ?? null,
+        creatorControls: this.mapCreatorControls(user.creatorControls),
         tokenVersion: user.tokenVersion,
         lastForcedLogoutAt: user.lastForcedLogoutAt ?? null,
         lastLoginAt: user.lastLoginAt ?? null,
@@ -290,6 +304,120 @@ export class AdminUserService {
     return event
   }
 
+  async applyCreatorControl(input: AdminCreatorControlInput) {
+    const actorId = toObjectId(input.actorId, 'actorId')
+    const targetUserId = toObjectId(input.targetUserId, 'targetUserId')
+
+    if (actorId.equals(targetUserId)) {
+      throw new AdminUserServiceError(
+        400,
+        'Nao podes alterar os controlos operacionais da tua propria conta.'
+      )
+    }
+
+    const targetUser = await User.findById(targetUserId)
+    if (!targetUser) {
+      throw new AdminUserServiceError(404, 'Utilizador alvo nao encontrado.')
+    }
+
+    if (targetUser.role !== 'creator') {
+      throw new AdminUserServiceError(409, 'Controlos operacionais aplicam-se apenas a creators.')
+    }
+
+    const before = this.mapCreatorControls(targetUser.creatorControls)
+    const now = new Date()
+    const controls = targetUser.creatorControls ?? {
+      creationBlocked: false,
+      publishingBlocked: false,
+    }
+
+    if (input.action === 'set_cooldown') {
+      const cooldownHours = input.cooldownHours
+      if (!cooldownHours || !Number.isFinite(cooldownHours) || cooldownHours <= 0) {
+        throw new AdminUserServiceError(400, 'cooldownHours obrigatorio para set_cooldown.')
+      }
+
+      const boundedCooldownHours = Math.min(Math.floor(cooldownHours), MAX_COOLDOWN_HOURS)
+      controls.cooldownUntil = new Date(now.getTime() + boundedCooldownHours * 60 * 60 * 1000)
+    }
+
+    if (input.action === 'clear_cooldown') {
+      controls.cooldownUntil = undefined
+      targetUser.set('creatorControls.cooldownUntil', null)
+    }
+
+    if (input.action === 'block_creation') {
+      controls.creationBlocked = true
+      controls.creationBlockedReason = input.reason
+    }
+
+    if (input.action === 'unblock_creation') {
+      controls.creationBlocked = false
+      controls.creationBlockedReason = undefined
+      targetUser.set('creatorControls.creationBlockedReason', null)
+    }
+
+    if (input.action === 'block_publishing') {
+      controls.publishingBlocked = true
+      controls.publishingBlockedReason = input.reason
+    }
+
+    if (input.action === 'unblock_publishing') {
+      controls.publishingBlocked = false
+      controls.publishingBlockedReason = undefined
+      targetUser.set('creatorControls.publishingBlockedReason', null)
+    }
+
+    if (input.action === 'suspend_creator_ops') {
+      controls.creationBlocked = true
+      controls.creationBlockedReason = input.reason
+      controls.publishingBlocked = true
+      controls.publishingBlockedReason = input.reason
+    }
+
+    if (input.action === 'restore_creator_ops') {
+      controls.creationBlocked = false
+      controls.creationBlockedReason = undefined
+      controls.publishingBlocked = false
+      controls.publishingBlockedReason = undefined
+      controls.cooldownUntil = undefined
+      targetUser.set('creatorControls.creationBlockedReason', null)
+      targetUser.set('creatorControls.publishingBlockedReason', null)
+      targetUser.set('creatorControls.cooldownUntil', null)
+    }
+
+    controls.updatedAt = now
+    controls.updatedBy = actorId
+    targetUser.creatorControls = controls
+
+    await targetUser.save()
+    await targetUser.populate('creatorControls.updatedBy', 'name username email role')
+
+    const after = this.mapCreatorControls(targetUser.creatorControls)
+
+    await UserModerationEvent.create({
+      user: targetUserId,
+      actor: actorId,
+      action: 'creator_control',
+      fromStatus: targetUser.accountStatus,
+      toStatus: targetUser.accountStatus,
+      reason: input.reason,
+      note: input.note ?? null,
+      metadata: {
+        creatorControlAction: input.action,
+        cooldownHours: input.cooldownHours ?? null,
+        before,
+        after,
+      },
+    })
+
+    return {
+      action: input.action,
+      user: targetUser,
+      creatorControls: after,
+    }
+  }
+
   async listHistory(targetUserIdRaw: string, options: { page?: number; limit?: number } = {}) {
     const targetUserId = toObjectId(targetUserIdRaw, 'targetUserId')
     const page = normalizePage(options.page)
@@ -325,6 +453,24 @@ export class AdminUserService {
         total,
         pages: Math.ceil(total / limit),
       },
+    }
+  }
+
+  private mapCreatorControls(creatorControls: any) {
+    return {
+      creationBlocked: Boolean(creatorControls?.creationBlocked),
+      creationBlockedReason:
+        typeof creatorControls?.creationBlockedReason === 'string'
+          ? creatorControls.creationBlockedReason
+          : null,
+      publishingBlocked: Boolean(creatorControls?.publishingBlocked),
+      publishingBlockedReason:
+        typeof creatorControls?.publishingBlockedReason === 'string'
+          ? creatorControls.publishingBlockedReason
+          : null,
+      cooldownUntil: creatorControls?.cooldownUntil ?? null,
+      updatedAt: creatorControls?.updatedAt ?? null,
+      updatedBy: creatorControls?.updatedBy ?? null,
     }
   }
 }

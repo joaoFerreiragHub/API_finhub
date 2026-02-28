@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose'
 import { UserAccountStatus } from './User'
 
-export type UserModerationAction = 'status_change' | 'force_logout' | 'internal_note'
+export type UserModerationAction = 'status_change' | 'force_logout' | 'internal_note' | 'creator_control'
 
 export interface IUserModerationEvent extends Document {
   user: mongoose.Types.ObjectId
@@ -31,7 +31,7 @@ const UserModerationEventSchema = new Schema<IUserModerationEvent>(
     },
     action: {
       type: String,
-      enum: ['status_change', 'force_logout', 'internal_note'],
+      enum: ['status_change', 'force_logout', 'internal_note', 'creator_control'],
       required: true,
       index: true,
     },

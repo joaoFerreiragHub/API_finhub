@@ -3,6 +3,25 @@ import bcrypt from 'bcryptjs'
 
 export type UserRole = 'visitor' | 'free' | 'premium' | 'creator' | 'admin'
 export type UserAccountStatus = 'active' | 'suspended' | 'banned'
+export type CreatorOperationalAction =
+  | 'set_cooldown'
+  | 'clear_cooldown'
+  | 'block_creation'
+  | 'unblock_creation'
+  | 'block_publishing'
+  | 'unblock_publishing'
+  | 'suspend_creator_ops'
+  | 'restore_creator_ops'
+
+export interface ICreatorControls {
+  creationBlocked: boolean
+  creationBlockedReason?: string
+  publishingBlocked: boolean
+  publishingBlockedReason?: string
+  cooldownUntil?: Date
+  updatedAt?: Date
+  updatedBy?: mongoose.Types.ObjectId
+}
 
 export interface IUser extends Document {
   email: string
@@ -17,6 +36,7 @@ export interface IUser extends Document {
   statusReason?: string
   statusChangedAt?: Date
   statusChangedBy?: mongoose.Types.ObjectId
+  creatorControls: ICreatorControls
   tokenVersion: number
   lastForcedLogoutAt?: Date
   lastLoginAt?: Date
@@ -113,6 +133,39 @@ const UserSchema = new Schema<IUser>(
       ref: 'User',
       default: null,
     },
+    creatorControls: {
+      creationBlocked: {
+        type: Boolean,
+        default: false,
+      },
+      creationBlockedReason: {
+        type: String,
+        default: null,
+        maxlength: 500,
+      },
+      publishingBlocked: {
+        type: Boolean,
+        default: false,
+      },
+      publishingBlockedReason: {
+        type: String,
+        default: null,
+        maxlength: 500,
+      },
+      cooldownUntil: {
+        type: Date,
+        default: null,
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+      updatedBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+      },
+    },
     tokenVersion: {
       type: Number,
       default: 0,
@@ -170,6 +223,9 @@ UserSchema.index({ username: 1 })
 UserSchema.index({ role: 1 })
 UserSchema.index({ role: 1, adminReadOnly: 1 })
 UserSchema.index({ accountStatus: 1, role: 1 })
+UserSchema.index({ role: 1, 'creatorControls.creationBlocked': 1 })
+UserSchema.index({ role: 1, 'creatorControls.publishingBlocked': 1 })
+UserSchema.index({ role: 1, 'creatorControls.cooldownUntil': 1 })
 UserSchema.index({ lastLoginAt: -1 })
 UserSchema.index({ accountStatus: 1, lastLoginAt: -1 })
 

@@ -227,6 +227,82 @@ Segurancas:
 - thresholds minimos de prioridade e reporters unicos;
 - o response do report devolve `policy.before`, `policy.after` e estado de `automation`.
 
+### 9. Controlos operacionais ao nivel do creator
+
+Foi adicionada uma camada de controlo direto sobre creators sem suspender a conta inteira.
+
+Objetivo:
+
+- reduzir dano operacional mantendo acesso minimo a conta;
+- travar criacao/publicacao enquanto a revisao decorre;
+- permitir resposta graduada antes de `suspend` ou `ban`.
+
+Estado guardado no utilizador:
+
+- `creatorControls.creationBlocked`
+- `creatorControls.creationBlockedReason`
+- `creatorControls.publishingBlocked`
+- `creatorControls.publishingBlockedReason`
+- `creatorControls.cooldownUntil`
+- `creatorControls.updatedAt`
+- `creatorControls.updatedBy`
+
+Endpoint admin:
+
+- `POST /api/admin/users/:userId/creator-controls`
+
+Payload base:
+
+```json
+{
+  "action": "set_cooldown",
+  "reason": "Spike de reports em observacao",
+  "note": "barreira temporaria enquanto decorre revisao",
+  "cooldownHours": 24
+}
+```
+
+Acoes suportadas:
+
+- `set_cooldown`
+- `clear_cooldown`
+- `block_creation`
+- `unblock_creation`
+- `block_publishing`
+- `unblock_publishing`
+- `suspend_creator_ops`
+- `restore_creator_ops`
+
+### 10. Enforcement nas rotas de conteudo
+
+Foi adicionado middleware transversal nas rotas de creators para:
+
+- `create` de `articles`, `videos`, `courses`, `books`, `liveevents`, `podcasts`
+- `publish` dos mesmos tipos
+
+Comportamento:
+
+- `creationBlocked=true` => bloqueia criacao com `403`
+- `cooldownUntil > now` => bloqueia criacao com `429` e `retryAfterSeconds`
+- `publishingBlocked=true` => bloqueia publicacao com `403`
+- admins passam sem estas barreiras operacionais
+
+Isto garante que a camada de controlo do admin nao depende apenas do frontend.
+
+### 11. Auditoria e historico
+
+As alteracoes de creator controls entram agora em `UserModerationEvent` com acao:
+
+- `creator_control`
+
+Metadata registada:
+
+- acao executada;
+- cooldown aplicado, quando existe;
+- snapshot `before` e `after` dos controlos.
+
+Isto permite reconstruir quem travou o creator, quando e em que modo.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -252,7 +328,7 @@ Estas sao as proximas camadas que fazem mais sentido:
 
 1. Policy engine com reincidencia por creator e historico de falso positivo.
 2. Deteccao automatica para spam, links suspeitos, flood e criacao em massa.
-3. Acoes sobre criadores para alem do conteudo: cooldown, limitacao, suspensao, ban.
+3. Trust scoring de creator para escalar de review para block/suspension.
 4. Kill switches por superficie: home, landing, comments, reviews, creator page.
 5. Ferramentas de rollback/review para reativacao segura apos hide em massa.
 6. Metricas e alertas operacionais dedicados a moderacao.
@@ -276,7 +352,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. acoes por creator e trust levels;
-2. alertas operacionais e dashboard de risco;
-3. reincidencia e trust scoring;
-4. deteccao automatica fora dos reports manuais.
+1. alertas operacionais e dashboard de risco;
+2. reincidencia e trust scoring;
+3. deteccao automatica fora dos reports manuais;
+4. workflows de revisao e rollback assistido.
