@@ -17,6 +17,7 @@ import { CreatorOperationalAction, User, UserRole } from '../models/User'
 import { Video } from '../models/Video'
 import { getMetricsSnapshot } from '../observability/metrics'
 import { buildReportSignalSummary, isPriorityAtLeast } from './contentReport.service'
+import { CreatorRiskLevel, creatorTrustService } from './creatorTrust.service'
 
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx'
 
@@ -60,6 +61,7 @@ interface AdminRouteErrors {
 }
 
 type CreatorControlActionCounts = Record<CreatorOperationalAction, number>
+type CreatorRiskLevelCounts = Record<CreatorRiskLevel, number>
 
 export interface AdminMetricsOverview {
   generatedAt: string
@@ -171,6 +173,11 @@ export interface AdminMetricsOverview {
         byActionLast7d: CreatorControlActionCounts
       }
     }
+    creatorTrust: {
+      creatorsEvaluated: number
+      needingIntervention: number
+      byRiskLevel: CreatorRiskLevelCounts
+    }
   }
   operations: {
     source: 'in_memory_since_process_boot'
@@ -271,6 +278,13 @@ const emptyCreatorControlActionCounts = (): CreatorControlActionCounts => ({
   unblock_publishing: 0,
   suspend_creator_ops: 0,
   restore_creator_ops: 0,
+})
+
+const emptyCreatorRiskLevelCounts = (): CreatorRiskLevelCounts => ({
+  low: 0,
+  medium: 0,
+  high: 0,
+  critical: 0,
 })
 
 const toObjectIds = (rawIds: string[]): mongoose.Types.ObjectId[] =>
@@ -531,6 +545,7 @@ export class AdminMetricsService {
       creatorControlActions24h,
       creatorControlActions7d,
       creatorControlActionRows,
+      creatorRows,
     ] = await Promise.all([
       ContentModerationEvent.countDocuments({ createdAt: { $gte: last24hStart } }),
       ContentModerationEvent.countDocuments({ createdAt: { $gte: last7dStart } }),
@@ -646,6 +661,7 @@ export class AdminMetricsService {
           },
         },
       ]),
+      User.find({ role: 'creator' }).select('_id').lean<Array<{ _id: mongoose.Types.ObjectId }>>(),
     ])
 
     const volumeByTypeLast7d = emptyVolumeByType()
@@ -686,6 +702,23 @@ export class AdminMetricsService {
     for (const row of creatorControlActionRows) {
       if (row._id && row._id in creatorControlActionsByType) {
         creatorControlActionsByType[row._id] = row.count
+      }
+    }
+
+    const creatorTrustSignals = await creatorTrustService.getSignalsForCreators(
+      creatorRows.map((row) => String(row._id))
+    )
+    const creatorTrustByRiskLevel = emptyCreatorRiskLevelCounts()
+    let creatorsNeedingIntervention = 0
+
+    for (const signal of creatorTrustSignals.values()) {
+      creatorTrustByRiskLevel[signal.riskLevel] += 1
+      if (
+        signal.recommendedAction === 'set_cooldown' ||
+        signal.recommendedAction === 'block_publishing' ||
+        signal.recommendedAction === 'suspend_creator_ops'
+      ) {
+        creatorsNeedingIntervention += 1
       }
     }
 
@@ -753,6 +786,11 @@ export class AdminMetricsService {
           last7d: creatorControlActions7d,
           byActionLast7d: creatorControlActionsByType,
         },
+      },
+      creatorTrust: {
+        creatorsEvaluated: creatorTrustSignals.size,
+        needingIntervention: creatorsNeedingIntervention,
+        byRiskLevel: creatorTrustByRiskLevel,
       },
     }
   }

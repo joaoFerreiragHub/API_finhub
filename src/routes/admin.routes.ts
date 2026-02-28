@@ -24,6 +24,7 @@ import {
   addUserInternalNote,
   banUser,
   forceLogoutUser,
+  getAdminUserTrustProfile,
   listAdminUsers,
   listUserModerationHistory,
   suspendUser,
@@ -639,6 +640,24 @@ router.get(
   }),
   requireAdminScope('admin.users.read'),
   listAdminUsers
+)
+
+/**
+ * @route   GET /api/admin/users/:userId/trust-profile
+ * @desc    Ler trust/risk profile consolidado de um creator
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/users/:userId/trust-profile',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.users.trust_profile.read',
+    resourceType: 'user',
+    scope: 'admin.users.read',
+    getResourceId: (req) => req.params.userId,
+  }),
+  requireAdminScope('admin.users.read'),
+  getAdminUserTrustProfile
 )
 
 /**

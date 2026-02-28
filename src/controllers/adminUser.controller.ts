@@ -6,6 +6,10 @@ import {
   AdminUserSortField,
   adminUserService,
 } from '../services/adminUser.service'
+import {
+  CreatorRiskLevel,
+  CreatorTrustRecommendedAction,
+} from '../services/creatorTrust.service'
 
 const VALID_USER_ROLES = new Set<UserRole>(['visitor', 'free', 'premium', 'creator', 'admin'])
 const VALID_ACCOUNT_STATUSES = new Set<UserAccountStatus>(['active', 'suspended', 'banned'])
@@ -81,8 +85,8 @@ const mapUserResponse = (user: {
   accountStatus: UserAccountStatus
   adminReadOnly: boolean
   adminScopes?: string[]
-  statusReason?: string
-  statusChangedAt?: Date
+  statusReason?: string | null
+  statusChangedAt?: Date | null
   creatorControls?: {
     creationBlocked: boolean
     creationBlockedReason?: string | null
@@ -92,10 +96,29 @@ const mapUserResponse = (user: {
     updatedAt?: Date | null
     updatedBy?: unknown
   }
+  trustSignals?: {
+    trustScore: number
+    riskLevel: CreatorRiskLevel
+    recommendedAction: CreatorTrustRecommendedAction
+    generatedAt: string
+    summary: {
+      openReports: number
+      highPriorityTargets: number
+      criticalTargets: number
+      hiddenItems: number
+      restrictedItems: number
+      recentModerationActions30d: number
+      repeatModerationTargets30d: number
+      recentCreatorControlActions30d: number
+      activeControlFlags: string[]
+    }
+    flags: string[]
+    reasons: string[]
+  } | null
   tokenVersion: number
-  lastForcedLogoutAt?: Date
-  lastLoginAt?: Date
-  lastActiveAt?: Date
+  lastForcedLogoutAt?: Date | null
+  lastLoginAt?: Date | null
+  lastActiveAt?: Date | null
 }) => ({
   id: user.id,
   email: user.email,
@@ -117,6 +140,7 @@ const mapUserResponse = (user: {
     updatedAt: user.creatorControls?.updatedAt ?? null,
     updatedBy: user.creatorControls?.updatedBy ?? null,
   },
+  trustSignals: user.trustSignals ?? null,
   tokenVersion: user.tokenVersion,
   lastForcedLogoutAt: user.lastForcedLogoutAt ?? null,
   lastLoginAt: user.lastLoginAt ?? null,
@@ -465,5 +489,22 @@ export const listUserModerationHistory = async (req: AuthRequest, res: Response)
   } catch (error: unknown) {
     console.error('List user moderation history error:', error)
     return handleAdminUserError(res, error, 'Erro ao listar historico de moderacao.')
+  }
+}
+
+/**
+ * GET /api/admin/users/:userId/trust-profile
+ */
+export const getAdminUserTrustProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await adminUserService.getCreatorTrustProfile(req.params.userId)
+
+    return res.status(200).json({
+      user: mapUserResponse(result.user),
+      trustSignals: result.trustSignals,
+    })
+  } catch (error: unknown) {
+    console.error('Get admin user trust profile error:', error)
+    return handleAdminUserError(res, error, 'Erro ao carregar trust profile do creator.')
   }
 }

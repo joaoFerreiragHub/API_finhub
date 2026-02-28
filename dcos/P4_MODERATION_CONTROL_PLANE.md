@@ -377,6 +377,80 @@ Esta camada nao substitui um dashboard visual dedicado. O objetivo aqui foi cons
 - futuras automacoes e scorecards usem os mesmos sinais;
 - o P4 continue a crescer por composicao, nao por excecoes espalhadas.
 
+### 13. Trust scoring e reincidencia por creator
+
+Foi adicionada uma camada de sintese para creators:
+
+- `trustSignals` na listagem `GET /api/admin/users`
+- `trustSignals` por item em `GET /api/admin/content/queue` via `creatorTrustSignals`
+- endpoint dedicado `GET /api/admin/users/:userId/trust-profile`
+- distribuicao agregada em `GET /api/admin/metrics/overview`
+
+Objetivo:
+
+- deixar o frontend admin renderizar risco com boa UX sem recomputar regras no cliente;
+- expor um score unico por creator;
+- ligar reports, historico de moderacao e controlos operacionais numa vista coerente.
+
+Campos devolvidos:
+
+```json
+{
+  "trustSignals": {
+    "trustScore": 42,
+    "riskLevel": "high",
+    "recommendedAction": "block_publishing",
+    "generatedAt": "2026-02-28T00:00:00.000Z",
+    "summary": {
+      "openReports": 6,
+      "highPriorityTargets": 2,
+      "criticalTargets": 1,
+      "hiddenItems": 1,
+      "restrictedItems": 0,
+      "recentModerationActions30d": 3,
+      "repeatModerationTargets30d": 1,
+      "recentCreatorControlActions30d": 1,
+      "activeControlFlags": ["cooldown_active"]
+    },
+    "flags": ["critical_report_targets", "cooldown_active"],
+    "reasons": [
+      "1 alvo(s) com reports criticos.",
+      "Cooldown operacional ativo."
+    ]
+  }
+}
+```
+
+Heuristica atual:
+
+- parte de `100` e retira pontos por reports, targets `high/critical`, itens ocultos/restritos, historico recente de moderacao, reincidencia e creator controls ativos;
+- devolve `riskLevel` em `low|medium|high|critical`;
+- devolve `recommendedAction` em:
+  - `none`
+  - `review`
+  - `set_cooldown`
+  - `block_publishing`
+  - `suspend_creator_ops`
+
+#### 13.1. Relevancia para UX
+
+Esta camada foi desenhada para frontend admin.
+
+O cliente nao deve:
+
+- recalcular severidade a partir de campos crus;
+- decidir cor/badge a partir de varias contagens soltas;
+- tentar reconstruir a recomendacao operacional no browser.
+
+O backend passa a entregar uma unidade de leitura pronta para:
+
+- badges de risco em listas;
+- cards de topo no dashboard;
+- painel lateral de detalhe por creator;
+- ordenacao e filtros visuais consistentes.
+
+Isto e importante porque a UX aqui nao e decorativa. E uma superficie operacional para admins tomarem decisoes rapidas sob pressao.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -400,14 +474,13 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 
 Estas sao as proximas camadas que fazem mais sentido:
 
-1. Policy engine com reincidencia por creator e historico de falso positivo.
+1. Historico de falso positivo e afinacao do trust score por creator.
 2. Deteccao automatica para spam, links suspeitos, flood e criacao em massa.
-3. Trust scoring de creator para escalar de review para block/suspension.
-4. Kill switches por superficie: home, landing, comments, reviews, creator page.
-5. Ferramentas de rollback/review para reativacao segura apos hide em massa.
-6. Jobs assincros para lotes maiores e workflows de aprovacao.
-7. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
-8. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
+3. Kill switches por superficie: home, landing, comments, reviews, creator page.
+4. Ferramentas de rollback/review para reativacao segura apos hide em massa.
+5. Jobs assincros para lotes maiores e workflows de aprovacao.
+6. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+7. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
 
 ## Pre-release obrigatorio
 
@@ -426,7 +499,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. reincidencia e trust scoring;
-2. deteccao automatica fora dos reports manuais;
-3. workflows de revisao e rollback assistido;
-4. dashboard visual com drill-down operacional.
+1. deteccao automatica fora dos reports manuais;
+2. workflows de revisao e rollback assistido;
+3. dashboard visual com drill-down operacional;
+4. afinacao do trust score com feedback de falso positivo.

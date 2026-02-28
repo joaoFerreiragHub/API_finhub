@@ -18,6 +18,7 @@ import {
   ContentReportPriority,
   isPriorityAtLeast,
 } from './contentReport.service'
+import { creatorTrustService } from './creatorTrust.service'
 import { moderationPolicyService } from './moderationPolicy.service'
 
 interface ContentModel {
@@ -164,6 +165,19 @@ const toExcerpt = (text: unknown, maxLength = 96): string => {
   if (!raw) return ''
   if (raw.length <= maxLength) return raw
   return `${raw.slice(0, maxLength - 3)}...`
+}
+
+const resolveAnyId = (value: unknown): string | null => {
+  if (!value) return null
+  if (typeof value === 'string' && value.trim().length > 0) return value.trim()
+  if (value instanceof mongoose.Types.ObjectId) return String(value)
+  if (typeof value === 'object') {
+    const record = value as { id?: unknown; _id?: unknown }
+    if (typeof record.id === 'string' && record.id.trim().length > 0) return record.id.trim()
+    if (typeof record._id === 'string' && record._id.trim().length > 0) return record._id.trim()
+    if (record._id instanceof mongoose.Types.ObjectId) return String(record._id)
+  }
+  return null
 }
 
 const publishedOnlyQuery = { _id: { $exists: false } }
@@ -732,10 +746,24 @@ export class AdminContentService {
       }))
     )
 
+    const creatorIds = Array.from(
+      new Set(
+        items
+          .filter((item) => item.creator?.role === 'creator')
+          .map((item) => resolveAnyId(item.creator))
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      )
+    )
+    const creatorTrustSignals = await creatorTrustService.getSignalsForCreators(creatorIds)
+
     return items.map((item) => ({
       ...item,
       reportSignals:
         summaries.get(`${item.contentType}:${item.id}`) ?? contentReportService.getEmptySummary(),
+      creatorTrustSignals:
+        item.creator?.role === 'creator'
+          ? creatorTrustSignals.get(resolveAnyId(item.creator) ?? '') ?? null
+          : null,
       policySignals: moderationPolicyService.buildPolicySignals(
         summaries.get(`${item.contentType}:${item.id}`) ?? contentReportService.getEmptySummary(),
         toModerationStatus(item.moderationStatus)

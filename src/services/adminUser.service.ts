@@ -7,6 +7,7 @@ import {
   UserRole,
 } from '../models/User'
 import { UserModerationEvent } from '../models/UserModerationEvent'
+import { creatorTrustService } from './creatorTrust.service'
 
 export type AdminUserSortField =
   | 'createdAt'
@@ -143,6 +144,10 @@ export class AdminUserService {
       User.countDocuments(query),
     ])
 
+    const creatorTrustSignals = await creatorTrustService.getSignalsForCreators(
+      items.filter((user) => user.role === 'creator').map((user) => String(user._id))
+    )
+
     return {
       items: items.map((user) => ({
         id: String(user._id),
@@ -158,6 +163,8 @@ export class AdminUserService {
         statusChangedAt: user.statusChangedAt ?? null,
         statusChangedBy: user.statusChangedBy ?? null,
         creatorControls: this.mapCreatorControls(user.creatorControls),
+        trustSignals:
+          user.role === 'creator' ? creatorTrustSignals.get(String(user._id)) ?? null : null,
         tokenVersion: user.tokenVersion,
         lastForcedLogoutAt: user.lastForcedLogoutAt ?? null,
         lastLoginAt: user.lastLoginAt ?? null,
@@ -453,6 +460,52 @@ export class AdminUserService {
         total,
         pages: Math.ceil(total / limit),
       },
+    }
+  }
+
+  async getCreatorTrustProfile(targetUserIdRaw: string) {
+    const targetUserId = toObjectId(targetUserIdRaw, 'targetUserId')
+    const user = await User.findById(targetUserId)
+      .select(
+        'email name username avatar role accountStatus adminReadOnly adminScopes statusReason statusChangedAt statusChangedBy creatorControls tokenVersion lastForcedLogoutAt lastLoginAt lastActiveAt createdAt updatedAt'
+      )
+      .populate('statusChangedBy', 'name username email role')
+      .populate('creatorControls.updatedBy', 'name username email role')
+      .lean()
+
+    if (!user) {
+      throw new AdminUserServiceError(404, 'Utilizador alvo nao encontrado.')
+    }
+
+    if (user.role !== 'creator') {
+      throw new AdminUserServiceError(409, 'Trust profile aplica-se apenas a creators.')
+    }
+
+    const trustSignals = await creatorTrustService.getSignalsForCreators([String(user._id)])
+
+    return {
+      user: {
+        id: String(user._id),
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        avatar: user.avatar,
+        role: user.role,
+        accountStatus: user.accountStatus,
+        adminReadOnly: user.adminReadOnly,
+        adminScopes: user.adminScopes ?? [],
+        statusReason: user.statusReason ?? null,
+        statusChangedAt: user.statusChangedAt ?? null,
+        statusChangedBy: user.statusChangedBy ?? null,
+        creatorControls: this.mapCreatorControls(user.creatorControls),
+        tokenVersion: user.tokenVersion,
+        lastForcedLogoutAt: user.lastForcedLogoutAt ?? null,
+        lastLoginAt: user.lastLoginAt ?? null,
+        lastActiveAt: user.lastActiveAt ?? null,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+      trustSignals: trustSignals.get(String(user._id)) ?? null,
     }
   }
 
