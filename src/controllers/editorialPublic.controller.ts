@@ -5,6 +5,7 @@ import {
   isValidDirectoryVerificationStatus,
   isValidDirectoryVerticalType,
 } from '../services/adminEditorialCms.service'
+import { surfaceControlService } from '../services/surfaceControl.service'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -61,6 +62,14 @@ const handleEditorialError = (res: Response, error: unknown, fallbackMessage: st
  */
 export const getEditorialHome = async (_req: Request, res: Response) => {
   try {
+    const surfaceControl = await surfaceControlService.getPublicControl('editorial_home')
+    if (!surfaceControl.enabled) {
+      return res.status(200).json({
+        items: [],
+        surfaceControl,
+      })
+    }
+
     const result = await adminEditorialCmsService.listPublicHomeSections()
     return res.status(200).json(result)
   } catch (error: unknown) {
@@ -99,10 +108,38 @@ export const getEditorialVerticalLanding = async (req: Request, res: Response) =
       })
     }
 
+    const page = parsePositiveInt(req.query.page) ?? 1
+    const limit = parsePositiveInt(req.query.limit) ?? 20
+    const surfaceControl = await surfaceControlService.getPublicControl('editorial_verticals')
+    if (!surfaceControl.enabled) {
+      return res.status(200).json({
+        vertical,
+        mode: 'landing',
+        filters: {
+          search: typeof req.query.search === 'string' ? req.query.search : null,
+          country: typeof req.query.country === 'string' ? req.query.country : null,
+          region: typeof req.query.region === 'string' ? req.query.region : null,
+          categories: parseStringArray(req.query.categories) ?? [],
+          tags: parseStringArray(req.query.tags) ?? [],
+          featured: parseBoolean(req.query.featured) ?? null,
+          verificationStatus: verificationStatusRaw ?? null,
+          sort: parseSort(req.query.sort) ?? 'featured',
+        },
+        items: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 1,
+        },
+        surfaceControl,
+      })
+    }
+
     const result = await adminEditorialCmsService.listPublicVertical(vertical, {
       showAll: false,
-      page: parsePositiveInt(req.query.page),
-      limit: parsePositiveInt(req.query.limit),
+      page,
+      limit,
       search: typeof req.query.search === 'string' ? req.query.search : undefined,
       country: typeof req.query.country === 'string' ? req.query.country : undefined,
       region: typeof req.query.region === 'string' ? req.query.region : undefined,
@@ -153,10 +190,38 @@ export const getEditorialVerticalShowAll = async (req: Request, res: Response) =
       })
     }
 
+    const page = parsePositiveInt(req.query.page) ?? 1
+    const limit = parsePositiveInt(req.query.limit) ?? 20
+    const surfaceControl = await surfaceControlService.getPublicControl('editorial_verticals')
+    if (!surfaceControl.enabled) {
+      return res.status(200).json({
+        vertical,
+        mode: 'show-all',
+        filters: {
+          search: typeof req.query.search === 'string' ? req.query.search : null,
+          country: typeof req.query.country === 'string' ? req.query.country : null,
+          region: typeof req.query.region === 'string' ? req.query.region : null,
+          categories: parseStringArray(req.query.categories) ?? [],
+          tags: parseStringArray(req.query.tags) ?? [],
+          featured: parseBoolean(req.query.featured) ?? null,
+          verificationStatus: verificationStatusRaw ?? null,
+          sort: parseSort(req.query.sort) ?? 'featured',
+        },
+        items: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 1,
+        },
+        surfaceControl,
+      })
+    }
+
     const result = await adminEditorialCmsService.listPublicVertical(vertical, {
       showAll: true,
-      page: parsePositiveInt(req.query.page),
-      limit: parsePositiveInt(req.query.limit),
+      page,
+      limit,
       search: typeof req.query.search === 'string' ? req.query.search : undefined,
       country: typeof req.query.country === 'string' ? req.query.country : undefined,
       region: typeof req.query.region === 'string' ? req.query.region : undefined,

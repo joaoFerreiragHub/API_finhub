@@ -597,6 +597,69 @@ Auditoria:
 - o evento de rollback fica marcado com metadata `rollback: true`;
 - a metadata inclui `rollbackEventId`, estado alvo e warnings considerados no momento da reversao.
 
+### 16. Kill switches por superficie
+
+Foi adicionada uma primeira camada de kill switches operacionais por superficie publica.
+
+Objetivo:
+
+- retirar rapidamente leitura ou escrita de superficies inteiras durante incidentes;
+- reduzir blast radius sem depender de deploy ou alteracoes manuais dispersas;
+- dar ao admin um ponto unico de operacao para contencao rapida.
+
+Superficies cobertas nesta iteracao:
+
+- `editorial_home`
+- `editorial_verticals`
+- `comments_read`
+- `comments_write`
+- `reviews_read`
+- `reviews_write`
+
+Endpoints admin:
+
+- `GET /api/admin/platform/surfaces`
+- `POST /api/admin/platform/surfaces/:surfaceKey`
+
+Payload de update:
+
+```json
+{
+  "enabled": false,
+  "reason": "Ataque de spam coordenado",
+  "note": "Incidente INC-42",
+  "publicMessage": "Comentarios temporariamente indisponiveis."
+}
+```
+
+Comportamento publico:
+
+- superficies de leitura devolvem resposta `200` com colecoes vazias e `surfaceControl`;
+- superficies de escrita devolvem `503` com `error` e `surfaceControl`;
+- isto evita quebrar clientes existentes e permite UI futura mais elegante.
+
+Superficies publicas ligadas:
+
+- `GET /api/editorial/home`
+- `GET /api/editorial/:vertical`
+- `GET /api/editorial/:vertical/show-all`
+- `POST /api/comments`
+- `GET /api/comments/:targetType/:targetId`
+- `GET /api/comments/:targetType/:targetId/tree`
+- `GET /api/comments/:commentId/replies`
+- `PATCH|DELETE|POST /api/comments/...`
+- `POST /api/ratings`
+- `GET /api/ratings/:targetType/:targetId`
+- `GET /api/ratings/:targetType/:targetId/stats`
+- `POST /api/ratings/:id/reaction`
+- `DELETE /api/ratings/:id`
+
+Notas operacionais:
+
+- a escrita admin de moderacao continua disponivel via `/api/admin/content/...`;
+- o kill switch nao substitui moderacao por item, mas reduz exposicao enquanto a triagem decorre;
+- a mensagem publica deve ser curta, neutra e nao revelar detalhe interno do incidente.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -621,7 +684,7 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 Estas sao as proximas camadas que fazem mais sentido:
 
 1. Historico de falso positivo e afinacao do trust score por creator.
-2. Kill switches por superficie: home, landing, comments, reviews, creator page.
+2. Kill switches adicionais por superficie: creator page, search, feeds derivados.
 3. Jobs assincros para lotes maiores e workflows de aprovacao.
 4. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
 5. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.

@@ -22,6 +22,10 @@ import {
 } from '../controllers/adminContent.controller'
 import { getAdminMetricsOverview } from '../controllers/adminMetrics.controller'
 import {
+  listAdminSurfaceControls,
+  updateAdminSurfaceControl,
+} from '../controllers/adminSurfaceControl.controller'
+import {
   applyCreatorControls,
   addUserInternalNote,
   banUser,
@@ -106,6 +110,42 @@ router.get(
   }),
   requireAdminScope('admin.metrics.read'),
   getAdminMetricsOverview
+)
+
+/**
+ * @route   GET /api/admin/platform/surfaces
+ * @desc    Ler kill switches operacionais por superficie
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/platform/surfaces',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.platform.surfaces.list',
+    resourceType: 'platform_surface_control',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminSurfaceControls
+)
+
+/**
+ * @route   POST /api/admin/platform/surfaces/:surfaceKey
+ * @desc    Atualizar kill switch operacional de uma superficie
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/platform/surfaces/:surfaceKey',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.platform.surfaces.update',
+    resourceType: 'platform_surface_control',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.surfaceKey,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminSurfaceControl
 )
 
 /**

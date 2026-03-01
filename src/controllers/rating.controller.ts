@@ -1,7 +1,15 @@
 import { Request, Response } from 'express'
 import { RatingTargetType } from '../models/Rating'
+import { surfaceControlService } from '../services/surfaceControl.service'
 import { AuthRequest } from '../types/auth'
 import { CreateRatingDTO, ratingService, ReviewReactionInput } from '../services/rating.service'
+
+const buildDisabledRatingsPagination = (req: Request) => ({
+  page: parseInt(req.query.page as string, 10) || 1,
+  limit: parseInt(req.query.limit as string, 10) || 20,
+  total: 0,
+  pages: 1,
+})
 
 /**
  * Criar ou atualizar rating
@@ -11,6 +19,14 @@ export const createOrUpdateRating = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Autenticacao necessaria' })
+    }
+
+    const surfaceControl = await surfaceControlService.getPublicControl('reviews_write')
+    if (!surfaceControl.enabled) {
+      return res.status(503).json({
+        error: surfaceControl.publicMessage || 'Reviews temporariamente indisponiveis.',
+        surfaceControl,
+      })
     }
 
     const data: CreateRatingDTO = req.body
@@ -106,6 +122,14 @@ export const reactToRating = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: 'Autenticacao necessaria' })
     }
 
+    const surfaceControl = await surfaceControlService.getPublicControl('reviews_write')
+    if (!surfaceControl.enabled) {
+      return res.status(503).json({
+        error: surfaceControl.publicMessage || 'Reviews temporariamente indisponiveis.',
+        surfaceControl,
+      })
+    }
+
     const id = String(req.params.id ?? '')
     const reaction = req.body?.reaction as ReviewReactionInput
     const allowedReactions: ReviewReactionInput[] = ['like', 'dislike', 'none']
@@ -141,6 +165,15 @@ export const listRatings = async (req: Request, res: Response) => {
   try {
     const targetType = String(req.params.targetType ?? '')
     const targetId = String(req.params.targetId ?? '')
+    const surfaceControl = await surfaceControlService.getPublicControl('reviews_read')
+
+    if (!surfaceControl.enabled) {
+      return res.status(200).json({
+        ratings: [],
+        pagination: buildDisabledRatingsPagination(req),
+        surfaceControl,
+      })
+    }
 
     const options = {
       page: parseInt(req.query.page as string, 10) || 1,
@@ -169,6 +202,21 @@ export const getRatingStats = async (req: Request, res: Response) => {
   try {
     const targetType = String(req.params.targetType ?? '')
     const targetId = String(req.params.targetId ?? '')
+    const surfaceControl = await surfaceControlService.getPublicControl('reviews_read')
+
+    if (!surfaceControl.enabled) {
+      return res.status(200).json({
+        average: 0,
+        total: 0,
+        distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        reviews: {
+          withText: 0,
+          totalLikes: 0,
+          totalDislikes: 0,
+        },
+        surfaceControl,
+      })
+    }
 
     const stats = await ratingService.getStats(targetType as RatingTargetType, targetId)
     return res.status(200).json(stats)
@@ -190,6 +238,14 @@ export const deleteRating = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Autenticacao necessaria' })
+    }
+
+    const surfaceControl = await surfaceControlService.getPublicControl('reviews_write')
+    if (!surfaceControl.enabled) {
+      return res.status(503).json({
+        error: surfaceControl.publicMessage || 'Reviews temporariamente indisponiveis.',
+        surfaceControl,
+      })
     }
 
     const id = String(req.params.id ?? '')
