@@ -1,12 +1,13 @@
 import { Notification, NotificationType } from '../models/Notification'
 
 export interface CreateNotificationDTO {
-  user: string // Destinatário
+  user: string
   type: NotificationType
   triggeredBy?: string
   targetType?: string
   targetId?: string
   message?: string
+  metadata?: Record<string, unknown>
 }
 
 export interface PaginationOptions {
@@ -14,13 +15,7 @@ export interface PaginationOptions {
   limit?: number
 }
 
-/**
- * Service de Notifications
- */
 export class NotificationService {
-  /**
-   * Criar notificação
-   */
   async create(data: CreateNotificationDTO) {
     const notification = await Notification.create(data)
     return notification
@@ -30,12 +25,10 @@ export class NotificationService {
     if (data.length === 0) {
       return []
     }
+
     return Notification.insertMany(data, { ordered: false })
   }
 
-  /**
-   * Listar notificações do utilizador
-   */
   async getUserNotifications(userId: string, options: PaginationOptions = {}) {
     const page = options.page || 1
     const limit = options.limit || 20
@@ -64,9 +57,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Listar apenas notificações não lidas
-   */
   async getUnreadNotifications(userId: string, options: PaginationOptions = {}) {
     const page = options.page || 1
     const limit = options.limit || 20
@@ -93,9 +83,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Marcar notificação como lida
-   */
   async markAsRead(notificationId: string, userId: string) {
     const notification = await Notification.findOne({
       _id: notificationId,
@@ -103,7 +90,7 @@ export class NotificationService {
     })
 
     if (!notification) {
-      throw new Error('Notificação não encontrada')
+      throw new Error('Notificacao nao encontrada')
     }
 
     if (notification.isRead) {
@@ -117,9 +104,6 @@ export class NotificationService {
     return notification
   }
 
-  /**
-   * Marcar todas as notificações como lidas
-   */
   async markAllAsRead(userId: string) {
     const result = await Notification.updateMany(
       { user: userId, isRead: false },
@@ -127,14 +111,11 @@ export class NotificationService {
     )
 
     return {
-      message: 'Todas as notificações foram marcadas como lidas',
+      message: 'Todas as notificacoes foram marcadas como lidas',
       modifiedCount: result.modifiedCount,
     }
   }
 
-  /**
-   * Eliminar notificação
-   */
   async deleteNotification(notificationId: string, userId: string) {
     const notification = await Notification.findOneAndDelete({
       _id: notificationId,
@@ -142,15 +123,12 @@ export class NotificationService {
     })
 
     if (!notification) {
-      throw new Error('Notificação não encontrada')
+      throw new Error('Notificacao nao encontrada')
     }
 
-    return { message: 'Notificação eliminada' }
+    return { message: 'Notificacao eliminada' }
   }
 
-  /**
-   * Eliminar todas as notificações lidas
-   */
   async deleteReadNotifications(userId: string) {
     const result = await Notification.deleteMany({
       user: userId,
@@ -158,14 +136,11 @@ export class NotificationService {
     })
 
     return {
-      message: 'Notificações lidas eliminadas',
+      message: 'Notificacoes lidas eliminadas',
       deletedCount: result.deletedCount,
     }
   }
 
-  /**
-   * Obter contador de não lidas
-   */
   async getUnreadCount(userId: string) {
     const count = await Notification.countDocuments({
       user: userId,
@@ -175,9 +150,6 @@ export class NotificationService {
     return { unreadCount: count }
   }
 
-  /**
-   * Obter estatísticas de notificações
-   */
   async getStats(userId: string) {
     const [total, unread, byType] = await Promise.all([
       Notification.countDocuments({ user: userId }),
@@ -213,9 +185,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Helper: Criar notificação de follow
-   */
   async notifyFollow(followedUserId: string, followerId: string) {
     return await this.create({
       user: followedUserId,
@@ -224,10 +193,12 @@ export class NotificationService {
     })
   }
 
-  /**
-   * Helper: Criar notificação de comentário
-   */
-  async notifyComment(contentOwnerId: string, commenterId: string, contentType: string, contentId: string) {
+  async notifyComment(
+    contentOwnerId: string,
+    commenterId: string,
+    contentType: string,
+    contentId: string
+  ) {
     return await this.create({
       user: contentOwnerId,
       type: 'comment',
@@ -237,9 +208,6 @@ export class NotificationService {
     })
   }
 
-  /**
-   * Helper: Criar notificação de resposta
-   */
   async notifyReply(commentOwnerId: string, replierId: string, commentId: string) {
     return await this.create({
       user: commentOwnerId,
@@ -250,10 +218,13 @@ export class NotificationService {
     })
   }
 
-  /**
-   * Helper: Criar notificação de rating
-   */
-  async notifyRating(contentOwnerId: string, raterId: string, contentType: string, contentId: string, rating: number) {
+  async notifyRating(
+    contentOwnerId: string,
+    raterId: string,
+    contentType: string,
+    contentId: string,
+    rating: number
+  ) {
     return await this.create({
       user: contentOwnerId,
       type: 'rating',
@@ -264,9 +235,6 @@ export class NotificationService {
     })
   }
 
-  /**
-   * Helper: Criar notificação de like
-   */
   async notifyLike(contentOwnerId: string, likerId: string, contentType: string, contentId: string) {
     return await this.create({
       user: contentOwnerId,
@@ -274,6 +242,29 @@ export class NotificationService {
       triggeredBy: likerId,
       targetType: contentType,
       targetId: contentId,
+    })
+  }
+
+  async notifyContentModerated(
+    contentOwnerId: string,
+    actorId: string,
+    contentType: string,
+    contentId: string,
+    action: 'hide' | 'restrict',
+    reason: string,
+    message: string
+  ) {
+    return await this.create({
+      user: contentOwnerId,
+      type: 'content_moderated',
+      triggeredBy: actorId,
+      targetType: contentType,
+      targetId: contentId,
+      message,
+      metadata: {
+        action,
+        reason,
+      },
     })
   }
 }

@@ -100,6 +100,10 @@ export const createContentReport = async (req: AuthRequest, res: Response) => {
           contentId,
           reason: moderationPolicyService.buildAutoHideReason(policyBefore),
           note: 'Policy engine auto-hide preventivo acionado por reports.',
+          metadata: {
+            policyAutoHide: true,
+            policySignals: true,
+          },
         })
 
         await adminAuditService.record({

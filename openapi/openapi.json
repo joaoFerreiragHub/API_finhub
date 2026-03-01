@@ -1578,6 +1578,9 @@
           },
           "content_published": {
             "type": "boolean"
+          },
+          "content_moderated": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1587,7 +1590,8 @@
           "rating",
           "like",
           "mention",
-          "content_published"
+          "content_published",
+          "content_moderated"
         ]
       },
       "NotificationPreferencesResponse": {
@@ -1623,6 +1627,9 @@
             "type": "boolean"
           },
           "content_published": {
+            "type": "boolean"
+          },
+          "content_moderated": {
             "type": "boolean"
           }
         }

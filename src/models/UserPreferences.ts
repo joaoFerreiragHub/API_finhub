@@ -31,6 +31,7 @@ export interface INotificationPreferences {
   like: boolean
   mention: boolean
   content_published: boolean
+  content_moderated: boolean
 }
 
 export interface IUserPreferences extends Document {
@@ -59,6 +60,7 @@ const UserPreferencesSchema = new Schema<IUserPreferences>(
       like: { type: Boolean, default: true },
       mention: { type: Boolean, default: true },
       content_published: { type: Boolean, default: true },
+      content_moderated: { type: Boolean, default: true },
     },
     tagAffinities: {
       type: [
@@ -102,6 +104,7 @@ export const notificationTypeToPreferenceKey: Record<
   like: 'like',
   mention: 'mention',
   content_published: 'content_published',
+  content_moderated: 'content_moderated',
 }
 
 export const UserPreferences = mongoose.model<IUserPreferences>(

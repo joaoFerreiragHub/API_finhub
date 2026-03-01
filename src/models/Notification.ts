@@ -1,35 +1,28 @@
 import mongoose, { Document, Schema } from 'mongoose'
 
 export type NotificationType =
-  | 'follow'          // Alguém te seguiu
-  | 'comment'         // Comentário no teu conteúdo
-  | 'reply'           // Resposta ao teu comentário
-  | 'rating'          // Avaliação no teu conteúdo
-  | 'like'            // Like no teu conteúdo/comentário
-  | 'mention'         // Menção num comentário
-  | 'content_published' // Conteúdo de quem segues foi publicado
+  | 'follow'
+  | 'comment'
+  | 'reply'
+  | 'rating'
+  | 'like'
+  | 'mention'
+  | 'content_published'
+  | 'content_moderated'
 
 /**
- * Notification - Sistema de notificações
+ * Notification - Sistema de notificacoes
  */
 export interface INotification extends Document {
-  user: mongoose.Types.ObjectId // Destinatário da notificação
+  user: mongoose.Types.ObjectId
   type: NotificationType
-
-  // Quem gerou a notificação
-  triggeredBy?: mongoose.Types.ObjectId // ref: 'User'
-
-  // Referência ao conteúdo relacionado
-  targetType?: string // article, video, comment, etc.
-  targetId?: mongoose.Types.ObjectId
-
-  // Mensagem personalizada (opcional)
-  message?: string
-
-  // Status
+  triggeredBy?: mongoose.Types.ObjectId | null
+  targetType?: string | null
+  targetId?: mongoose.Types.ObjectId | null
+  message?: string | null
+  metadata?: Record<string, unknown> | null
   isRead: boolean
-  readAt?: Date
-
+  readAt?: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -45,7 +38,16 @@ const NotificationSchema = new Schema<INotification>(
     type: {
       type: String,
       required: true,
-      enum: ['follow', 'comment', 'reply', 'rating', 'like', 'mention', 'content_published'],
+      enum: [
+        'follow',
+        'comment',
+        'reply',
+        'rating',
+        'like',
+        'mention',
+        'content_published',
+        'content_moderated',
+      ],
       index: true,
     },
     triggeredBy: {
@@ -66,6 +68,10 @@ const NotificationSchema = new Schema<INotification>(
       default: null,
       maxlength: 500,
     },
+    metadata: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
     isRead: {
       type: Boolean,
       default: false,
@@ -81,7 +87,6 @@ const NotificationSchema = new Schema<INotification>(
   }
 )
 
-// Índices
 NotificationSchema.index({ user: 1, isRead: 1, createdAt: -1 })
 NotificationSchema.index({ user: 1, type: 1 })
 NotificationSchema.index({ createdAt: -1 })

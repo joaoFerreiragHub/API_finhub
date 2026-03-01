@@ -19,6 +19,7 @@ import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
 import { Rating } from '../models/Rating'
 import { Video } from '../models/Video'
+import { notificationService } from './notification.service'
 import {
   contentReportService,
   ContentReportPriority,
@@ -27,6 +28,7 @@ import {
 import { creatorTrustService } from './creatorTrust.service'
 import { automatedModerationService } from './automatedModeration.service'
 import { moderationPolicyService } from './moderationPolicy.service'
+import { userPreferenceService } from './userPreference.service'
 
 interface ContentModel {
   find(query: Record<string, unknown>): any
@@ -237,6 +239,7 @@ const resolveAnyId = (value: unknown): string | null => {
 }
 
 const publishedOnlyQuery = { _id: { $exists: false } }
+const MODERATION_NOTIFICATION_MAX_REFERENCE = 72
 
 export const isValidModerationStatus = (value: unknown): value is ContentModerationStatus =>
   typeof value === 'string' && MODERATION_STATUSES.includes(value as ContentModerationStatus)
@@ -505,6 +508,18 @@ export class AdminContentService {
       note,
       metadata,
     })
+
+    if (this.shouldNotifyCreatorAboutModeration(input, fromStatus, toStatus)) {
+      const moderatedAction = input.action as 'hide' | 'restrict'
+      void this.notifyCreatorAboutModeration({
+        actorId: input.actorId,
+        contentType: input.contentType,
+        contentId: String(content._id),
+        action: moderatedAction,
+        reason: this.buildCreatorModerationReason(moderatedAction),
+        content,
+      })
+    }
 
     const queueItem = await this.getQueueItemById(input.contentType, String(content._id))
     if (!queueItem) {
@@ -977,6 +992,110 @@ export class AdminContentService {
       source: feedback.source,
       categories: feedback.categories,
       createdAt: feedback.createdAt,
+    }
+  }
+
+  private shouldNotifyCreatorAboutModeration(
+    input: ModerateContentInput,
+    fromStatus: ContentModerationStatus,
+    toStatus: ContentModerationStatus
+  ) {
+    if (input.action !== 'hide' && input.action !== 'restrict') {
+      return false
+    }
+
+    if (fromStatus === toStatus) {
+      return false
+    }
+
+    if (input.metadata?.automatedDetection === true || input.metadata?.policyAutoHide === true) {
+      return false
+    }
+
+    return true
+  }
+
+  private resolveModeratedContentOwnerId(contentType: ModeratableContentType, content: any): string | null {
+    if (isBaseContentType(contentType)) {
+      return resolveAnyId(content.creator)
+    }
+
+    return resolveAnyId(content.user)
+  }
+
+  private buildCreatorModerationReason(action: 'hide' | 'restrict'): string {
+    if (action === 'hide') {
+      return 'revisao_moderacao_preventiva'
+    }
+
+    return 'restricao_temporaria_para_revisao'
+  }
+
+  private buildModerationNotificationReference(contentType: ModeratableContentType, content: any): string {
+    if (isBaseContentType(contentType)) {
+      return toExcerpt(content.title, MODERATION_NOTIFICATION_MAX_REFERENCE)
+    }
+
+    if (contentType === 'comment') {
+      return toExcerpt(content.content, MODERATION_NOTIFICATION_MAX_REFERENCE)
+    }
+
+    return toExcerpt(content.review, MODERATION_NOTIFICATION_MAX_REFERENCE)
+  }
+
+  private buildModerationNotificationMessage(
+    contentType: ModeratableContentType,
+    action: 'hide' | 'restrict',
+    content: any
+  ) {
+    const reference = this.buildModerationNotificationReference(contentType, content)
+    const contentLabel = contentType === 'comment' ? 'comentario' : contentType === 'review' ? 'review' : 'conteudo'
+    const baseMessage =
+      action === 'hide'
+        ? `O teu ${contentLabel} foi temporariamente ocultado para revisao pela equipa de moderacao.`
+        : `O teu ${contentLabel} ficou temporariamente restringido enquanto decorre uma revisao de moderacao.`
+
+    if (!reference) {
+      return baseMessage
+    }
+
+    return `${baseMessage} Referencia: "${reference}".`
+  }
+
+  private async notifyCreatorAboutModeration(input: {
+    actorId: string
+    contentType: ModeratableContentType
+    contentId: string
+    action: 'hide' | 'restrict'
+    reason: string
+    content: any
+  }) {
+    const ownerId = this.resolveModeratedContentOwnerId(input.contentType, input.content)
+    if (!ownerId || ownerId === input.actorId) {
+      return
+    }
+
+    try {
+      const canNotify = await userPreferenceService.canReceiveNotification(
+        ownerId,
+        'content_moderated'
+      )
+
+      if (!canNotify) {
+        return
+      }
+
+      await notificationService.notifyContentModerated(
+        ownerId,
+        input.actorId,
+        input.contentType,
+        input.contentId,
+        input.action,
+        input.reason,
+        this.buildModerationNotificationMessage(input.contentType, input.action, input.content)
+      )
+    } catch (error) {
+      console.error('Creator moderation notification failed:', error)
     }
   }
 

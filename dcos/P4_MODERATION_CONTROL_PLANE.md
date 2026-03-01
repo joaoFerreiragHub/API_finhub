@@ -660,6 +660,29 @@ Notas operacionais:
 - o kill switch nao substitui moderacao por item, mas reduz exposicao enquanto a triagem decorre;
 - a mensagem publica deve ser curta, neutra e nao revelar detalhe interno do incidente.
 
+### 16.1. Notificacao ao creator em `hide` e `restrict`
+
+Foi ligada uma notificacao operacional ao creator quando a equipa aplica `hide` ou `restrict`
+manuais ao seu conteudo.
+
+Objetivo:
+
+- reduzir tickets cegos de suporte;
+- informar o creator sem expor notas internas do admin;
+- manter controlo do lado do utilizador via preferencias de notificacao.
+
+Comportamento:
+
+- dispara apenas em moderacao manual com mudanca real de estado;
+- nao dispara em `policy auto-hide` nem em `automated detection auto-hide`;
+- usa a nova preferencia `notificationPreferences.content_moderated`;
+- gera notificacao `content_moderated` com `metadata.action` e `metadata.reason`.
+
+Mensagem:
+
+- curta, neutra e sem detalhe interno;
+- inclui apenas uma referencia resumida ao titulo/texto quando disponivel.
+
 ### 17. Historico de falso positivo e afinacao do trust score
 
 Foi adicionada persistencia explicita de `false positives` para reduzir ruido operacional no score de creators.
