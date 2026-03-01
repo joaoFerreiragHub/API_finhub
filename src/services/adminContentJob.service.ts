@@ -30,6 +30,9 @@ const DEFAULT_PAGE = 1
 const DEFAULT_LIMIT = 10
 const MAX_LIMIT = 50
 const STALE_RUNNING_MS = 10 * 60 * 1000
+const COMPLETED_JOB_TTL_DAYS = 90
+const FAILED_JOB_TTL_DAYS = 180
+const WORKER_STOP_POLL_MS = 100
 
 const normalizePage = (value?: number): number => {
   if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
@@ -62,11 +65,38 @@ export const isValidAdminContentJobStatus = (value: unknown): value is AdminCont
 class AdminContentJobService {
   private workerScheduled = false
   private workerRunning = false
+  private stopRequested = false
+  private scheduledTimer: NodeJS.Timeout | null = null
 
   startWorker() {
+    this.stopRequested = false
     void this.requeueStaleRunningJobs().finally(() => {
       this.scheduleWorker()
     })
+  }
+
+  async stopWorker(timeoutMs = 15_000) {
+    this.stopRequested = true
+
+    if (this.scheduledTimer) {
+      clearTimeout(this.scheduledTimer)
+      this.scheduledTimer = null
+      this.workerScheduled = false
+    }
+
+    const deadline = Date.now() + timeoutMs
+    while (this.workerRunning && Date.now() < deadline) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, WORKER_STOP_POLL_MS)
+      })
+    }
+
+    if (this.workerRunning) {
+      await this.requeueRunningJobs('Job reencaminhado apos paragem controlada do worker.')
+      return false
+    }
+
+    return true
   }
 
   async queueBulkModerationJob(input: BulkModerateContentInput) {
@@ -197,41 +227,50 @@ class AdminContentJobService {
   }
 
   private scheduleWorker() {
-    if (this.workerScheduled || this.workerRunning) return
+    if (this.workerScheduled || this.workerRunning || this.stopRequested) return
     if (mongoose.connection.readyState !== 1) return
 
     this.workerScheduled = true
-    setTimeout(() => {
+    this.scheduledTimer = setTimeout(() => {
       this.workerScheduled = false
+      this.scheduledTimer = null
       void this.processNextJobs()
     }, 0)
   }
 
   private async requeueStaleRunningJobs() {
+    await this.requeueRunningJobs('Job reencaminhado apos execucao interrompida.')
+  }
+
+  private async requeueRunningJobs(message: string) {
     if (mongoose.connection.readyState !== 1) return
 
     const staleBefore = new Date(Date.now() - STALE_RUNNING_MS)
-    await AdminContentJob.updateMany(
-      {
-        status: 'running',
-        startedAt: { $lt: staleBefore },
+    const query: Record<string, unknown> = {
+      status: 'running',
+    }
+
+    if (!this.stopRequested) {
+      query.startedAt = { $lt: staleBefore }
+    }
+
+    await AdminContentJob.updateMany(query, {
+      $set: {
+        status: 'queued',
+        startedAt: null,
+        finishedAt: null,
+        expiresAt: null,
+        error: message,
       },
-      {
-        $set: {
-          status: 'queued',
-          startedAt: null,
-          error: 'Job reencaminhado apos execucao interrompida.',
-        },
-      }
-    )
+    })
   }
 
   private async processNextJobs() {
-    if (this.workerRunning || mongoose.connection.readyState !== 1) return
+    if (this.workerRunning || mongoose.connection.readyState !== 1 || this.stopRequested) return
     this.workerRunning = true
 
     try {
-      while (true) {
+      while (!this.stopRequested) {
         const job = await AdminContentJob.findOneAndUpdate(
           { status: 'queued' },
           {
@@ -239,6 +278,7 @@ class AdminContentJobService {
               status: 'running',
               startedAt: new Date(),
               finishedAt: null,
+              expiresAt: null,
               error: null,
             },
           },
@@ -268,17 +308,28 @@ class AdminContentJobService {
       error: item.error ?? null,
       statusCode: item.statusCode ?? null,
     }))
-    const progress = {
-      requested: job.progress.requested,
-      processed: 0,
-      succeeded: 0,
-      failed: 0,
-      changed: 0,
-    }
+    const progress = this.buildProgressFromItems(items, job.progress.requested)
 
     try {
       for (let index = 0; index < items.length; index += 1) {
         const item = items[index]
+
+        if (item.status !== 'pending') {
+          continue
+        }
+
+        if (this.stopRequested) {
+          await this.persistJobState(new mongoose.Types.ObjectId(String(job._id)), {
+            items,
+            progress,
+            status: 'queued',
+            startedAt: null,
+            finishedAt: null,
+            expiresAt: null,
+            error: 'Job reencaminhado apos paragem controlada do worker.',
+          })
+          return
+        }
 
         try {
           if (job.type === 'bulk_moderate') {
@@ -351,11 +402,13 @@ class AdminContentJobService {
           progress.failed += 1
         }
 
-        progress.processed = index + 1
+        progress.processed = progress.succeeded + progress.failed
         await this.persistJobState(new mongoose.Types.ObjectId(String(job._id)), {
           items,
           progress,
           status: 'running',
+          startedAt: job.startedAt ?? null,
+          expiresAt: null,
         })
       }
 
@@ -371,6 +424,8 @@ class AdminContentJobService {
         progress,
         status: finalStatus,
         finishedAt: new Date(),
+        startedAt: job.startedAt ?? null,
+        expiresAt: this.getExpiresAt(finalStatus),
         error: finalStatus === 'failed' ? items.find((item) => item.error)?.error ?? null : null,
       })
     } catch (error: unknown) {
@@ -379,9 +434,41 @@ class AdminContentJobService {
         progress,
         status: 'failed',
         finishedAt: new Date(),
+        startedAt: job.startedAt ?? null,
+        expiresAt: this.getExpiresAt('failed'),
         error: error instanceof Error ? error.message : 'Erro desconhecido ao processar job.',
       })
     }
+  }
+
+  private buildProgressFromItems(items: IAdminContentJob['items'], requested: number) {
+    const succeeded = items.filter((item) => item.status === 'success').length
+    const failed = items.filter((item) => item.status === 'failed').length
+    const changed = items.filter((item) => item.status === 'success' && item.changed === true).length
+
+    return {
+      requested,
+      processed: succeeded + failed,
+      succeeded,
+      failed,
+      changed,
+    }
+  }
+
+  private getExpiresAt(status: AdminContentJobStatus): Date | null {
+    const now = new Date()
+
+    if (status === 'completed') {
+      now.setDate(now.getDate() + COMPLETED_JOB_TTL_DAYS)
+      return now
+    }
+
+    if (status === 'failed' || status === 'completed_with_errors') {
+      now.setDate(now.getDate() + FAILED_JOB_TTL_DAYS)
+      return now
+    }
+
+    return null
   }
 
   private async persistJobState(
@@ -390,7 +477,9 @@ class AdminContentJobService {
       items: IAdminContentJob['items']
       progress: IAdminContentJob['progress']
       status: AdminContentJobStatus
+      startedAt?: Date | null
       finishedAt?: Date | null
+      expiresAt?: Date | null
       error?: string | null
     }
   ) {
@@ -401,7 +490,9 @@ class AdminContentJobService {
           items: payload.items,
           progress: payload.progress,
           status: payload.status,
+          startedAt: payload.startedAt ?? null,
           finishedAt: payload.finishedAt ?? null,
+          expiresAt: payload.expiresAt ?? null,
           error: payload.error ?? null,
         },
       }
@@ -461,6 +552,7 @@ class AdminContentJobService {
       error: item.error ?? null,
       startedAt: item.startedAt ?? null,
       finishedAt: item.finishedAt ?? null,
+      expiresAt: item.expiresAt ?? null,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     }

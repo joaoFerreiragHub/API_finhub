@@ -944,10 +944,20 @@ export class AdminContentService {
       typeof input.creatorId === 'string' && mongoose.Types.ObjectId.isValid(input.creatorId)
         ? new mongoose.Types.ObjectId(input.creatorId)
         : null
-    const eventId =
-      typeof input.eventId === 'string' && mongoose.Types.ObjectId.isValid(input.eventId)
-        ? new mongoose.Types.ObjectId(input.eventId)
-        : null
+    const hasEventId = typeof input.eventId === 'string' && input.eventId.trim().length > 0
+
+    if (input.source === 'rollback' && !hasEventId) {
+      throw new AdminContentServiceError(
+        400,
+        'eventId e obrigatorio quando source=rollback.'
+      )
+    }
+
+    if (hasEventId && !mongoose.Types.ObjectId.isValid(input.eventId!)) {
+      throw new AdminContentServiceError(400, 'eventId invalido.')
+    }
+
+    const eventId = hasEventId ? new mongoose.Types.ObjectId(input.eventId!) : null
 
     const feedback = await ContentFalsePositiveFeedback.create({
       contentType: input.contentType,

@@ -121,6 +121,12 @@ export const rateLimiter = {
     'Muitos lotes de moderacao. Tente novamente em 10 minutos.',
     { keyPrefix: 'admin-moderation-bulk' }
   ),
+  adminMetricsDrilldown: createLimiter(
+    1 * 60 * 1000,
+    5,
+    'Muitos pedidos de drill-down. Tente novamente em 1 minuto.',
+    { keyPrefix: 'admin-metrics-drilldown' }
+  ),
   userReport: createLimiter(10 * 60 * 1000, 20, 'Muitos reports enviados. Tente novamente em 10 minutos.', {
     keyPrefix: 'user-report',
   }),

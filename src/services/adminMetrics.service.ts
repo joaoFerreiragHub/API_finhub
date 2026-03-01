@@ -74,6 +74,11 @@ type CreatorRiskLevelCounts = Record<CreatorRiskLevel, number>
 type AutomatedModerationRuleCounts = Record<AutomatedModerationRule, number>
 type ContentJobTypeCounts = Record<AdminContentJobType, number>
 
+interface AdminMetricsDrilldownCacheEntry {
+  data: AdminMetricsDrilldown
+  expiresAt: number
+}
+
 export interface AdminMetricsOverview {
   generatedAt: string
   windows: {
@@ -441,6 +446,9 @@ const mapStatusCodeToClass = (statusCode: number): StatusClass => {
 }
 
 export class AdminMetricsService {
+  private readonly drilldownCacheTtlMs = 2 * 60 * 1000
+  private readonly drilldownCache = new Map<number, AdminMetricsDrilldownCacheEntry>()
+
   async getOverview(): Promise<AdminMetricsOverview> {
     const now = new Date()
     const last24hStart = new Date(now.getTime() - DAY_MS)
@@ -471,6 +479,13 @@ export class AdminMetricsService {
   async getDrilldown(limit = 6): Promise<AdminMetricsDrilldown> {
     const now = new Date()
     const normalizedLimit = Math.min(Math.max(Math.floor(limit) || 6, 1), 12)
+    const cached = this.drilldownCache.get(normalizedLimit)
+
+    if (cached && cached.expiresAt > now.getTime()) {
+      return cached.data
+    }
+
+    this.pruneExpiredDrilldownCache(now.getTime())
 
     const [creatorRows, flaggedQueue, surfaceControls, jobRows] = await Promise.all([
       User.find({ role: 'creator' })
@@ -613,12 +628,27 @@ export class AdminMetricsService {
         : null,
     }))
 
-    return {
+    const drilldown = {
       generatedAt: now.toISOString(),
       creators,
       targets,
       surfaces,
       jobs,
+    }
+
+    this.drilldownCache.set(normalizedLimit, {
+      data: drilldown,
+      expiresAt: now.getTime() + this.drilldownCacheTtlMs,
+    })
+
+    return drilldown
+  }
+
+  private pruneExpiredDrilldownCache(nowMs: number) {
+    for (const [key, entry] of this.drilldownCache.entries()) {
+      if (entry.expiresAt <= nowMs) {
+        this.drilldownCache.delete(key)
+      }
     }
   }
 

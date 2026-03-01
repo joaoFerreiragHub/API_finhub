@@ -771,6 +771,29 @@ Frontend:
 - `StatsPage` passa a mostrar tabelas detalhadas por creator, target, surface e jobs;
 - `ContentModerationPage` passa a mostrar jobs recentes e criacao de `bulk jobs` diretamente na fila.
 
+### 20. Hardening inicial do worker, jobs e drill-down
+
+Foi fechada uma primeira camada de robustez operacional sobre o control plane.
+
+Entregue:
+
+- `graceful shutdown` do worker de jobs com `SIGINT`/`SIGTERM`;
+- jobs `running` podem ser reencaminhados para `queued` sem perder o estado ja persistido por item;
+- reprocessamento de jobs reencaminhados passa a retomar apenas items `pending` em vez de repetir items ja concluidos;
+- `eventId` passa a ser obrigatorio no feedback de falso positivo quando `source=rollback`;
+- `AdminContentJob` passa a ter:
+  - indice `{ status: 1, startedAt: 1 }` para deteccao de stale jobs;
+  - `expiresAt` com TTL para retention automatica;
+- `GET /api/admin/metrics/drilldown` passa a ter:
+  - rate limit dedicado;
+  - cache curta em memoria para reduzir agregacoes repetidas.
+
+Objetivo:
+
+- reduzir risco de jobs orfaos em deploy;
+- evitar moderacao duplicada apos requeue;
+- proteger rotas caras antes da migracao para worker/store dedicados.
+
 ## Porque esta abordagem
 
 ### Fast hide

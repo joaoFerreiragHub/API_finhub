@@ -50,6 +50,7 @@ export interface IAdminContentJob extends Document {
   error?: string | null
   startedAt?: Date | null
   finishedAt?: Date | null
+  expiresAt?: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -198,6 +199,10 @@ const AdminContentJobSchema = new Schema<IAdminContentJob>(
       type: Date,
       default: null,
     },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -207,7 +212,9 @@ const AdminContentJobSchema = new Schema<IAdminContentJob>(
 AdminContentJobSchema.index({ createdAt: -1 })
 AdminContentJobSchema.index({ type: 1, createdAt: -1 })
 AdminContentJobSchema.index({ status: 1, createdAt: 1 })
+AdminContentJobSchema.index({ status: 1, startedAt: 1 })
 AdminContentJobSchema.index({ actor: 1, createdAt: -1 })
+AdminContentJobSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 export const AdminContentJob = mongoose.model<IAdminContentJob>(
   'AdminContentJob',

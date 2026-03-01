@@ -128,6 +128,7 @@ router.get(
 router.get(
   '/metrics/drilldown',
   authenticate,
+  rateLimiter.adminMetricsDrilldown,
   auditAdminAction({
     action: 'admin.metrics.drilldown.read',
     resourceType: 'admin_metrics',
