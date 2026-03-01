@@ -11,7 +11,7 @@ Dar ao admin e aos gestores uma camada de controlo operacional sobre conteudo e 
 
 ## Estado atual implementado
 
-Data desta iteracao: 2026-02-27.
+Data desta iteracao consolidada: 2026-03-01.
 
 ### 1. Fast hide operacional
 
