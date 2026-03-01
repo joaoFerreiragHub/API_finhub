@@ -598,11 +598,12 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 1. Trocar o rate limiter em memoria por Redis ou store partilhada.
 2. Medir e alertar picos de `hide-fast`, `bulk-moderate` e falhas por item.
 3. Garantir scopes minimos para admins e perfis read-only.
-4. Definir SLA operacional para fast hide e revisao posterior.
-5. Criar playbook de incidente para abuso, spam coordenado e conteudo sensivel.
-6. Adicionar testes de carga aos endpoints de moderacao.
-7. Garantir retention e consulta eficiente de auditoria e eventos.
-8. Preparar dashboard com visibilidade global por creator, alvo e superficie.
+4. Remover qualquer bypass TLS de ambiente (`NODE_TLS_REJECT_UNAUTHORIZED=0` ou equivalente) e configurar CA/proxy corretamente para npm, CI e deploy.
+5. Definir SLA operacional para fast hide e revisao posterior.
+6. Criar playbook de incidente para abuso, spam coordenado e conteudo sensivel.
+7. Adicionar testes de carga aos endpoints de moderacao.
+8. Garantir retention e consulta eficiente de auditoria e eventos.
+9. Preparar dashboard com visibilidade global por creator, alvo e superficie.
 
 ## Proxima iteracao recomendada
 
