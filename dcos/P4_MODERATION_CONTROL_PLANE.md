@@ -560,6 +560,43 @@ Guardrails:
 
 Isto fecha o circuito minimo: detetar, priorizar, alertar, atuar opcionalmente e deixar pista de auditoria.
 
+### 15. Rollback assistido para revisao segura
+
+Foi adicionada uma camada de revisao assistida para reversao de moderacao em cima do historico ja existente.
+
+Objetivo:
+
+- evitar reativacoes cegas depois de `hide`, `restrict` ou `bulk-moderate`;
+- obrigar leitura do contexto atual antes de devolver um alvo ao publico;
+- manter a reversao dentro do mesmo trilho de auditoria e compliance.
+
+Endpoints:
+
+- `GET /api/admin/content/:contentType/:contentId/rollback-review?eventId=...`
+- `POST /api/admin/content/:contentType/:contentId/rollback`
+
+Comportamento:
+
+- o review devolve o evento alvo, o estado atual do conteudo e a acao de rollback recomendada;
+- o rollback so avanca quando o evento selecionado ainda e o mais recente para esse alvo;
+- se o estado atual ja divergiu do `toStatus` do evento, o rollback e bloqueado;
+- se a reversao voltar a colocar o alvo em `visible` com `reports`, `automatedSignals` ou `creator risk` alto, passa a exigir `confirm=true`.
+
+Guardrails devolvidos ao frontend:
+
+- `canRollback`
+- `requiresConfirm`
+- `warnings`
+- `blockers`
+- `guidance`
+- `checks` com `isLatestEvent`, `openReports`, `automatedSignalActive`, `automatedSeverity`, `creatorRiskLevel`
+
+Auditoria:
+
+- a execucao continua a usar `ContentModerationEvent`;
+- o evento de rollback fica marcado com metadata `rollback: true`;
+- a metadata inclui `rollbackEventId`, estado alvo e warnings considerados no momento da reversao.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -585,11 +622,11 @@ Estas sao as proximas camadas que fazem mais sentido:
 
 1. Historico de falso positivo e afinacao do trust score por creator.
 2. Kill switches por superficie: home, landing, comments, reviews, creator page.
-3. Ferramentas de rollback/review para reativacao segura apos hide em massa.
-4. Jobs assincros para lotes maiores e workflows de aprovacao.
-5. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
-6. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
-7. Afinar trust scoring com sinais automaticos e feedback de falso positivo.
+3. Jobs assincros para lotes maiores e workflows de aprovacao.
+4. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+5. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
+6. Afinar trust scoring com sinais automaticos e feedback de falso positivo.
+7. Rollback em lote com fila assincra e amostragem de validacao antes da reversao.
 
 ## Pre-release obrigatorio
 
@@ -609,7 +646,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. workflows de revisao e rollback assistido;
-2. dashboard visual com drill-down operacional;
-3. afinacao do trust score com feedback de falso positivo;
-4. kill switches por superficie.
+1. dashboard visual com drill-down operacional;
+2. afinacao do trust score com feedback de falso positivo;
+3. kill switches por superficie;
+4. rollback em lote com aprovacao faseada.

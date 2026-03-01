@@ -10,11 +10,13 @@ import {
 } from '../controllers/adminAssistedSession.controller'
 import {
   bulkModerateContent,
+  getContentRollbackReview,
   hideContent,
   hideContentFast,
   listAdminContentQueue,
   listContentReports,
   listContentModerationHistory,
+  rollbackContent,
   restrictContent,
   unhideContent,
 } from '../controllers/adminContent.controller'
@@ -230,6 +232,24 @@ router.get(
 )
 
 /**
+ * @route   GET /api/admin/content/:contentType/:contentId/rollback-review
+ * @desc    Rever guardrails e impacto antes de rollback de moderacao
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/:contentType/:contentId/rollback-review',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.rollback_review.read',
+    resourceType: 'content_moderation_event',
+    scope: 'admin.content.read',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.read'),
+  getContentRollbackReview
+)
+
+/**
  * @route   GET /api/admin/content/:contentType/:contentId/reports
  * @desc    Listar reports de users sobre um conteudo
  * @access  Private (Admin com escopo admin.content.read)
@@ -340,6 +360,25 @@ router.post(
   }),
   requireAdminScope('admin.content.moderate'),
   restrictContent
+)
+
+/**
+ * @route   POST /api/admin/content/:contentType/:contentId/rollback
+ * @desc    Executar rollback assistido do ultimo estado de moderacao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/:contentType/:contentId/rollback',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.rollback',
+    resourceType: 'content',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  rollbackContent
 )
 
 /**

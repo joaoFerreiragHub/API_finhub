@@ -87,6 +87,19 @@ const extractConfirm = (req: AuthRequest): boolean | undefined => {
   return undefined
 }
 
+const extractEventId = (req: AuthRequest): string | undefined => {
+  const body = extractBodyRecord(req)
+  if (body && typeof body.eventId === 'string' && body.eventId.trim().length > 0) {
+    return body.eventId.trim()
+  }
+
+  if (typeof req.query.eventId === 'string' && req.query.eventId.trim().length > 0) {
+    return req.query.eventId.trim()
+  }
+
+  return undefined
+}
+
 const handleAdminContentError = (res: Response, error: unknown, fallbackMessage: string) => {
   if (error instanceof AdminContentServiceError) {
     return res.status(error.statusCode).json({
@@ -257,6 +270,38 @@ export const listContentModerationHistory = async (req: AuthRequest, res: Respon
 }
 
 /**
+ * GET /api/admin/content/:contentType/:contentId/rollback-review
+ */
+export const getContentRollbackReview = async (req: AuthRequest, res: Response) => {
+  try {
+    const contentType = req.params.contentType
+    if (!isValidContentTypeFilter(contentType)) {
+      return res.status(400).json({
+        error: 'Parametro contentType invalido.',
+      })
+    }
+
+    const eventId = extractEventId(req)
+    if (!eventId) {
+      return res.status(400).json({
+        error: 'Parametro eventId obrigatorio.',
+      })
+    }
+
+    const result = await adminContentService.getRollbackReview({
+      contentType: contentType as ModeratableContentType,
+      contentId: req.params.contentId,
+      eventId,
+    })
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('Get content rollback review error:', error)
+    return handleAdminContentError(res, error, 'Erro ao preparar revisao de rollback.')
+  }
+}
+
+/**
  * GET /api/admin/content/:contentType/:contentId/reports
  */
 export const listContentReports = async (req: AuthRequest, res: Response) => {
@@ -367,6 +412,62 @@ export const restrictContent = async (req: AuthRequest, res: Response) => {
   } catch (error: unknown) {
     console.error('Restrict content error:', error)
     return handleAdminContentError(res, error, 'Erro ao restringir conteudo.')
+  }
+}
+
+/**
+ * POST /api/admin/content/:contentType/:contentId/rollback
+ */
+export const rollbackContent = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const contentType = req.params.contentType
+    if (!isValidContentTypeFilter(contentType)) {
+      return res.status(400).json({
+        error: 'Parametro contentType invalido.',
+      })
+    }
+
+    const eventId = extractEventId(req)
+    if (!eventId) {
+      return res.status(400).json({
+        error: 'Parametro eventId obrigatorio para rollback.',
+      })
+    }
+
+    const reason = extractReason(req)
+    if (!reason) {
+      return res.status(400).json({
+        error: 'Motivo obrigatorio para rollback.',
+      })
+    }
+
+    const result = await adminContentService.rollbackContent({
+      actorId: req.user.id,
+      contentType: contentType as ModeratableContentType,
+      contentId: req.params.contentId,
+      eventId,
+      reason,
+      note: extractNote(req),
+      confirm: extractConfirm(req),
+    })
+
+    return res.status(200).json({
+      message: 'Rollback assistido concluido com sucesso.',
+      changed: result.changed,
+      fromStatus: result.fromStatus,
+      toStatus: result.toStatus,
+      content: result.content,
+      rollback: result.rollback,
+    })
+  } catch (error: unknown) {
+    console.error('Rollback content error:', error)
+    return handleAdminContentError(res, error, 'Erro ao executar rollback assistido.')
   }
 }
 

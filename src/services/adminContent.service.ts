@@ -116,6 +116,19 @@ export interface ContentHistoryFilters {
   contentId: string
 }
 
+export interface ContentRollbackReviewInput {
+  contentType: ModeratableContentType
+  contentId: string
+  eventId: string
+}
+
+export interface RollbackContentInput extends ContentRollbackReviewInput {
+  actorId: string
+  reason: string
+  note?: string
+  confirm?: boolean
+}
+
 export class AdminContentServiceError extends Error {
   statusCode: number
 
@@ -531,24 +544,188 @@ export class AdminContentService {
     ])
 
     return {
-      items: items.map((item: any) => ({
-        id: String(item._id),
-        contentType: item.contentType,
-        contentId: item.contentId,
-        actor: item.actor,
-        action: item.action,
-        fromStatus: item.fromStatus,
-        toStatus: item.toStatus,
-        reason: item.reason,
-        note: item.note ?? null,
-        metadata: item.metadata ?? null,
-        createdAt: item.createdAt,
-      })),
+      items: items.map((item: any) => this.mapHistoryItem(item)),
       pagination: {
         page,
         limit,
         total,
         pages: Math.max(1, Math.ceil(total / limit)),
+      },
+    }
+  }
+
+  async getRollbackReview(input: ContentRollbackReviewInput) {
+    if (!isValidContentType(input.contentType)) {
+      throw new AdminContentServiceError(400, 'contentType invalido.')
+    }
+
+    toObjectId(input.contentId, 'contentId')
+    toObjectId(input.eventId, 'eventId')
+
+    const [content, eventDoc, latestEvent] = await Promise.all([
+      this.getQueueItemById(input.contentType, input.contentId),
+      ContentModerationEvent.findOne({
+        _id: input.eventId,
+        contentType: input.contentType,
+        contentId: input.contentId,
+      })
+        .populate('actor', 'name username email role')
+        .lean(),
+      ContentModerationEvent.findOne({
+        contentType: input.contentType,
+        contentId: input.contentId,
+      })
+        .sort({ createdAt: -1, _id: -1 })
+        .lean(),
+    ])
+
+    if (!content) {
+      throw new AdminContentServiceError(404, 'Conteudo alvo nao encontrado.')
+    }
+
+    if (!eventDoc) {
+      throw new AdminContentServiceError(404, 'Evento de moderacao nao encontrado.')
+    }
+
+    const event = this.mapHistoryItem(eventDoc as any)
+    const currentStatus = toModerationStatus(content.moderationStatus)
+    const targetStatus = event.fromStatus
+    const action = this.mapStatusToRollbackAction(targetStatus)
+    const isLatestEvent = Boolean(latestEvent) && String((latestEvent as any)._id) === event.id
+
+    let newerEventsCount = 0
+    if (!isLatestEvent) {
+      newerEventsCount = await ContentModerationEvent.countDocuments({
+        contentType: input.contentType,
+        contentId: input.contentId,
+        createdAt: { $gt: event.createdAt },
+      })
+      if (newerEventsCount === 0) newerEventsCount = 1
+    }
+
+    const blockers: string[] = []
+    const warnings: string[] = []
+    const guidance = this.buildRollbackGuidance(targetStatus)
+
+    if (!isLatestEvent) {
+      blockers.push(
+        'Existe pelo menos uma decisao de moderacao mais recente. Reverte primeiro o evento mais recente.'
+      )
+    }
+
+    if (currentStatus !== event.toStatus) {
+      blockers.push(
+        `Estado atual (${currentStatus}) ja nao corresponde ao estado produzido por este evento (${event.toStatus}).`
+      )
+    }
+
+    if (targetStatus === 'visible' && content.reportSignals.openReports > 0) {
+      warnings.push(
+        `Rollback volta a expor o alvo com ${content.reportSignals.openReports} report(s) ainda associados.`
+      )
+    }
+
+    if (targetStatus === 'visible' && content.automatedSignals.active) {
+      warnings.push(
+        `Existe detecao automatica ${content.automatedSignals.severity} ativa para este alvo.`
+      )
+    }
+
+    if (
+      targetStatus === 'visible' &&
+      (content.creatorTrustSignals?.riskLevel === 'high' ||
+        content.creatorTrustSignals?.riskLevel === 'critical')
+    ) {
+      warnings.push(
+        `O creator associado esta em risco ${content.creatorTrustSignals.riskLevel}.`
+      )
+    }
+
+    if (event.metadata?.fastTrack === true) {
+      warnings.push('O evento original foi executado em fast hide.')
+    }
+
+    if (event.metadata?.bulkModeration === true) {
+      warnings.push('O evento original fez parte de uma acao em lote.')
+    }
+
+    if (event.metadata?.automatedDetection === true) {
+      warnings.push('O evento original foi influenciado por detecao automatica.')
+    }
+
+    const requiresConfirm =
+      targetStatus === 'visible' &&
+      (content.reportSignals.openReports > 0 ||
+        content.automatedSignals.active ||
+        content.creatorTrustSignals?.riskLevel === 'high' ||
+        content.creatorTrustSignals?.riskLevel === 'critical')
+
+    return {
+      content,
+      event,
+      rollback: {
+        action,
+        targetStatus,
+        currentStatus,
+        canRollback: blockers.length === 0,
+        requiresConfirm,
+        warnings,
+        blockers,
+        guidance,
+        checks: {
+          isLatestEvent,
+          newerEventsCount,
+          currentMatchesEventToStatus: currentStatus === event.toStatus,
+          openReports: content.reportSignals.openReports,
+          uniqueReporters: content.reportSignals.uniqueReporters,
+          automatedSignalActive: content.automatedSignals.active,
+          automatedSeverity: content.automatedSignals.severity,
+          creatorRiskLevel: content.creatorTrustSignals?.riskLevel ?? null,
+        },
+      },
+    }
+  }
+
+  async rollbackContent(input: RollbackContentInput) {
+    const review = await this.getRollbackReview(input)
+
+    if (!review.rollback.canRollback) {
+      throw new AdminContentServiceError(409, review.rollback.blockers[0] ?? 'Rollback indisponivel.')
+    }
+
+    if (review.rollback.requiresConfirm && input.confirm !== true) {
+      throw new AdminContentServiceError(
+        400,
+        'Este rollback exige confirm=true devido a risco ativo no alvo.'
+      )
+    }
+
+    const result = await this.moderateContent({
+      actorId: input.actorId,
+      contentType: input.contentType,
+      contentId: input.contentId,
+      action: review.rollback.action,
+      reason: input.reason,
+      note: input.note,
+      metadata: {
+        rollback: true,
+        rollbackEventId: input.eventId,
+        rollbackEventAction: review.event.action,
+        rollbackFromStatus: review.event.toStatus,
+        rollbackTargetStatus: review.rollback.targetStatus,
+        rollbackWarnings: review.rollback.warnings,
+        rollbackRequiresConfirm: review.rollback.requiresConfirm,
+      },
+    })
+
+    return {
+      ...result,
+      rollback: {
+        eventId: input.eventId,
+        action: review.rollback.action,
+        targetStatus: review.rollback.targetStatus,
+        requiresConfirm: review.rollback.requiresConfirm,
+        warnings: review.rollback.warnings,
       },
     }
   }
@@ -765,6 +942,50 @@ export class AdminContentService {
     if (action === 'hide') return 'hidden'
     if (action === 'restrict') return 'restricted'
     return 'visible'
+  }
+
+  private mapStatusToRollbackAction(status: ContentModerationStatus): ContentModerationAction {
+    if (status === 'hidden') return 'hide'
+    if (status === 'restricted') return 'restrict'
+    return 'unhide'
+  }
+
+  private buildRollbackGuidance(targetStatus: ContentModerationStatus): string[] {
+    if (targetStatus === 'visible') {
+      return [
+        'Rollback volta a colocar o alvo no circuito publico.',
+        'Usa confirmacao forte quando existirem reports ou sinais automaticos ativos.',
+        'Regista nota operacional para justificar a reativacao.',
+      ]
+    }
+
+    if (targetStatus === 'hidden') {
+      return [
+        'Rollback mantem o alvo fora das superficies publicas.',
+        'Usa esta opcao quando precisas desfazer um restrict mas manter ocultacao preventiva.',
+      ]
+    }
+
+    return [
+      'Rollback volta a aplicar estado restricted.',
+      'Adequado quando a ultima reversao foi excessiva mas o alvo ainda nao deve regressar ao publico.',
+    ]
+  }
+
+  private mapHistoryItem(item: any) {
+    return {
+      id: String(item._id),
+      contentType: item.contentType,
+      contentId: item.contentId,
+      actor: item.actor ?? null,
+      action: item.action,
+      fromStatus: item.fromStatus,
+      toStatus: item.toStatus,
+      reason: item.reason,
+      note: item.note ?? null,
+      metadata: item.metadata ?? null,
+      createdAt: item.createdAt,
+    }
   }
 
   private async attachReportSignals(items: any[]) {
