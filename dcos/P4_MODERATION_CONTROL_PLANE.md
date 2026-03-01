@@ -660,6 +660,117 @@ Notas operacionais:
 - o kill switch nao substitui moderacao por item, mas reduz exposicao enquanto a triagem decorre;
 - a mensagem publica deve ser curta, neutra e nao revelar detalhe interno do incidente.
 
+### 17. Historico de falso positivo e afinacao do trust score
+
+Foi adicionada persistencia explicita de `false positives` para reduzir ruido operacional no score de creators.
+
+Objetivo:
+
+- evitar que reversoes justificadas continuem a penalizar o creator de forma cega;
+- guardar historico auditavel de correcoes feitas pelo admin;
+- expor o contexto de falso positivo no frontend admin para leitura operacional.
+
+Modelo introduzido:
+
+- `ContentFalsePositiveFeedback`
+
+Campos principais:
+
+- `contentType`, `contentId`
+- `creatorId`
+- `actor`
+- `eventId`
+- `source: rollback|manual_unhide`
+- `categories: reports|policy_auto_hide|automated_detection|manual_moderation`
+- `reason`, `note`, `metadata`
+
+Fluxos cobertos:
+
+- `POST /api/admin/content/:contentType/:contentId/unhide` com `markFalsePositive=true`
+- `POST /api/admin/content/:contentType/:contentId/rollback` com `markFalsePositive=true`
+
+Impacto no trust score:
+
+- o score continua a penalizar reports, itens ocultos/restritos, reincidencia e creator controls;
+- passa a aplicar compensacao limitada quando existem `false positives` recentes;
+- o summary devolve agora:
+  - `falsePositiveEvents30d`
+  - `automatedFalsePositiveEvents30d`
+  - `falsePositiveRate30d`
+
+Notas de UX:
+
+- trust dialogs de `users` e `creators` passam a mostrar `false positives 30d`;
+- rollback e reativacao manual permitem marcar o evento como falso positivo no proprio fluxo.
+
+### 18. Jobs assincronos para moderacao e rollback em lote
+
+Foi adicionada uma fila persistida em Mongo para lotes operacionais sem bloquear a interface admin.
+
+Modelo introduzido:
+
+- `AdminContentJob`
+
+Tipos:
+
+- `bulk_moderate`
+- `bulk_rollback`
+
+Estados:
+
+- `queued`
+- `running`
+- `completed`
+- `completed_with_errors`
+- `failed`
+
+Endpoints:
+
+- `GET /api/admin/content/jobs`
+- `GET /api/admin/content/jobs/:jobId`
+- `POST /api/admin/content/bulk-moderate/jobs`
+- `POST /api/admin/content/bulk-rollback/jobs`
+
+Comportamento:
+
+- os jobs herdam os mesmos guardrails de `bulk-moderate` e `bulk-rollback`;
+- a execucao corre num worker simples no processo depois da ligacao ao Mongo;
+- jobs `running` demasiado antigos sao recolocados em `queued` no arranque;
+- cada item guarda `status`, `fromStatus`, `toStatus`, `error` e `statusCode`;
+- o job devolve `progress` com `requested`, `processed`, `succeeded`, `failed`, `changed`.
+
+Notas:
+
+- nesta fase a implementacao e suficiente para `backend + UX admin` sem depender de infra externa;
+- para escala real, esta fila deve migrar para worker/processo dedicado.
+
+### 19. Drill-down operacional por creator, alvo, superficie e jobs
+
+Foi adicionada uma camada de drill-down para evitar que o dashboard fique preso apenas a KPIs agregados.
+
+Endpoint:
+
+- `GET /api/admin/metrics/drilldown`
+
+Blocos devolvidos:
+
+- `creators`
+- `targets`
+- `surfaces`
+- `jobs`
+
+Objetivo:
+
+- dar ao admin shortlist pronta para triagem;
+- ligar risco do creator, alvo em risco, blast radius por superficie e backlog de jobs;
+- reduzir cliques entre dashboard, queue e board de creators.
+
+Frontend:
+
+- `AdminDashboardPage` passa a mostrar cards/listas de drill-down rapido;
+- `StatsPage` passa a mostrar tabelas detalhadas por creator, target, surface e jobs;
+- `ContentModerationPage` passa a mostrar jobs recentes e criacao de `bulk jobs` diretamente na fila.
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -683,13 +794,13 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 
 Estas sao as proximas camadas que fazem mais sentido:
 
-1. Historico de falso positivo e afinacao do trust score por creator.
-2. Kill switches adicionais por superficie: creator page, search, feeds derivados.
-3. Jobs assincros para lotes maiores e workflows de aprovacao.
-4. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
-5. Dashboard visual com drill-down por creator, alvo, superficie e estado de automacao.
-6. Afinar trust scoring com sinais automaticos e feedback de falso positivo.
-7. Rollback em lote com fila assincra e amostragem de validacao antes da reversao.
+1. Kill switches adicionais por superficie: creator page, search, feeds derivados.
+2. Jobs assincros com worker dedicado e politicas de retry/retencao.
+3. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+4. Afinar trust scoring com sinais automaticos, falso positivo e thresholds por categoria.
+5. Rollback em lote com aprovacao faseada e amostragem de validacao.
+6. Deep-links mais finos entre dashboard, queue, trust profile e jobs.
+7. Alertas especificos para backlog de jobs e falsos positivos anormais.
 
 ## Pre-release obrigatorio
 
@@ -709,7 +820,98 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. dashboard visual com drill-down operacional;
-2. afinacao do trust score com feedback de falso positivo;
-3. kill switches por superficie;
+1. kill switches adicionais por superficie;
+2. jobs assincros com worker dedicado;
+3. afinacao adicional do trust score por falso positivo/categoria;
 4. rollback em lote com aprovacao faseada.
+
+## Plano de ataque da proxima fase
+
+Para nao dispersar o trabalho entre backend, frontend e operacao, a execucao deve seguir blocos fechados.
+
+### Bloco A. Conter melhor a distribuicao publica
+
+Objetivo:
+
+- aumentar o raio de cobertura dos kill switches sem obrigar a hide individual;
+- reduzir tempo de resposta quando ha abuso coordenado ou spam em escala.
+
+Escopo:
+
+1. estender kill switches a `creator page`, `search` e `feeds derivados`;
+2. garantir que dashboard, queue e board de creators mostram o estado dessas superficies;
+3. adicionar auditoria e alertas especificos por superficie desligada.
+
+Dependencias:
+
+- backend de surface control;
+- frontend admin dashboard e superficies de triagem.
+
+### Bloco B. Tirar os jobs do processo web
+
+Objetivo:
+
+- remover risco operacional de jobs presos no processo HTTP;
+- preparar retry, concorrencia controlada e retencao.
+
+Escopo:
+
+1. migrar `AdminContentJob` para worker/processo dedicado;
+2. adicionar politicas de retry, timeout e requeue explicitas;
+3. expor no admin o estado real do worker, backlog e falhas por job.
+
+Dependencias:
+
+- fila/worker dedicado;
+- observabilidade minima para jobs.
+
+### Bloco C. Afinar decisao automatica com feedback real
+
+Objetivo:
+
+- usar falso positivo e reincidencia para reduzir ruído e melhorar acerto;
+- evitar que automacao penalize creators validos com demasiada facilidade.
+
+Escopo:
+
+1. pesar falso positivo por categoria e por regra automatica;
+2. separar thresholds por tipo de alvo e superficie;
+3. refletir esse ajuste no trust score, policy engine e recomendacoes do admin.
+
+Dependencias:
+
+- historico de `ContentFalsePositiveFeedback`;
+- sinais automaticos persistidos.
+
+### Bloco D. Rollback em lote com mais seguranca
+
+Objetivo:
+
+- permitir reversao operacional em escala sem criar regressao publica imediata.
+
+Escopo:
+
+1. introduzir aprovacao faseada para `bulk rollback`;
+2. exigir amostragem/revisao extra acima de thresholds criticos;
+3. manter marcacao opcional de falso positivo em lote so quando a revisao validar.
+
+Dependencias:
+
+- jobs assincronos mais robustos;
+- UX admin para revisao e aprovacao.
+
+### Ordem recomendada
+
+1. Bloco A
+2. Bloco B
+3. Bloco C
+4. Bloco D
+
+### Regra de execucao
+
+Cada bloco deve fechar sempre estas quatro frentes antes de passar ao seguinte:
+
+1. backend e contratos
+2. surface admin/frontend
+3. testes e validacao de CLI
+4. documentacao operacional e pre-release

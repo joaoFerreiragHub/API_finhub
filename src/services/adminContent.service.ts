@@ -7,6 +7,11 @@ import {
   ContentModerationEvent,
   ModeratableContentType,
 } from '../models/ContentModerationEvent'
+import {
+  ContentFalsePositiveCategory,
+  ContentFalsePositiveFeedback,
+  ContentFalsePositiveSource,
+} from '../models/ContentFalsePositiveFeedback'
 import { ContentModerationStatus, ContentType, PublishStatus } from '../models/BaseContent'
 import { Comment } from '../models/Comment'
 import { Course } from '../models/Course'
@@ -111,6 +116,26 @@ export interface BulkModerateContentResultItem {
   statusCode?: number
 }
 
+export interface BulkRollbackContentItem {
+  contentType: ModeratableContentType
+  contentId: string
+  eventId: string
+}
+
+export interface BulkRollbackContentInput {
+  actorId: string
+  reason: string
+  note?: string
+  confirm?: boolean
+  markFalsePositive?: boolean
+  items: BulkRollbackContentItem[]
+  metadata?: Record<string, unknown>
+}
+
+export interface BulkRollbackContentResultItem extends BulkModerateContentResultItem {
+  eventId: string
+}
+
 export interface ContentHistoryFilters {
   contentType: ModeratableContentType
   contentId: string
@@ -127,6 +152,21 @@ export interface RollbackContentInput extends ContentRollbackReviewInput {
   reason: string
   note?: string
   confirm?: boolean
+  markFalsePositive?: boolean
+  metadata?: Record<string, unknown>
+}
+
+export interface RecordFalsePositiveFeedbackInput {
+  actorId: string
+  contentType: ModeratableContentType
+  contentId: string
+  creatorId?: string | null
+  eventId?: string | null
+  source: ContentFalsePositiveSource
+  reason: string
+  note?: string
+  categories: ContentFalsePositiveCategory[]
+  metadata?: Record<string, unknown>
 }
 
 export class AdminContentServiceError extends Error {
@@ -206,6 +246,92 @@ export const isValidPublishStatus = (value: unknown): value is PublishStatus =>
 
 export const isValidContentTypeFilter = (value: unknown): value is ModeratableContentType =>
   isValidContentType(value)
+
+export const normalizeBulkModerationItems = (
+  items: BulkModerateContentItem[],
+  fieldName = 'items'
+): { uniqueItems: BulkModerateContentItem[]; duplicatesSkipped: number } => {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new AdminContentServiceError(400, 'Pelo menos um item e obrigatorio para moderacao em lote.')
+  }
+
+  if (items.length > ADMIN_CONTENT_BULK_MAX_ITEMS) {
+    throw new AdminContentServiceError(
+      400,
+      `Lote excede o limite maximo de ${ADMIN_CONTENT_BULK_MAX_ITEMS} itens.`
+    )
+  }
+
+  const normalizedItems = items.map((item, index) => {
+    if (!isValidContentType(item.contentType)) {
+      throw new AdminContentServiceError(400, `${fieldName}[${index}].contentType invalido.`)
+    }
+
+    toObjectId(item.contentId, `${fieldName}[${index}].contentId`)
+
+    return {
+      contentType: item.contentType,
+      contentId: item.contentId,
+    }
+  })
+
+  const dedupeMap = new Map<string, BulkModerateContentItem>()
+  for (const item of normalizedItems) {
+    const itemKey = `${item.contentType}:${item.contentId}`
+    if (!dedupeMap.has(itemKey)) {
+      dedupeMap.set(itemKey, item)
+    }
+  }
+
+  return {
+    uniqueItems: Array.from(dedupeMap.values()),
+    duplicatesSkipped: normalizedItems.length - dedupeMap.size,
+  }
+}
+
+export const normalizeBulkRollbackItems = (
+  items: BulkRollbackContentItem[],
+  fieldName = 'items'
+): { uniqueItems: BulkRollbackContentItem[]; duplicatesSkipped: number } => {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new AdminContentServiceError(400, 'Pelo menos um item e obrigatorio para rollback em lote.')
+  }
+
+  if (items.length > ADMIN_CONTENT_BULK_MAX_ITEMS) {
+    throw new AdminContentServiceError(
+      400,
+      `Lote excede o limite maximo de ${ADMIN_CONTENT_BULK_MAX_ITEMS} itens.`
+    )
+  }
+
+  const normalizedItems = items.map((item, index) => {
+    if (!isValidContentType(item.contentType)) {
+      throw new AdminContentServiceError(400, `${fieldName}[${index}].contentType invalido.`)
+    }
+
+    toObjectId(item.contentId, `${fieldName}[${index}].contentId`)
+    toObjectId(item.eventId, `${fieldName}[${index}].eventId`)
+
+    return {
+      contentType: item.contentType,
+      contentId: item.contentId,
+      eventId: item.eventId,
+    }
+  })
+
+  const dedupeMap = new Map<string, BulkRollbackContentItem>()
+  for (const item of normalizedItems) {
+    const itemKey = `${item.contentType}:${item.contentId}:${item.eventId}`
+    if (!dedupeMap.has(itemKey)) {
+      dedupeMap.set(itemKey, item)
+    }
+  }
+
+  return {
+    uniqueItems: Array.from(dedupeMap.values()),
+    duplicatesSkipped: normalizedItems.length - dedupeMap.size,
+  }
+}
 
 export class AdminContentService {
   async listQueue(filters: AdminContentQueueFilters = {}, options: PaginationOptions = {}) {
@@ -411,40 +537,7 @@ export class AdminContentService {
   }
 
   async bulkModerateContent(input: BulkModerateContentInput) {
-    if (!Array.isArray(input.items) || input.items.length === 0) {
-      throw new AdminContentServiceError(400, 'Pelo menos um item e obrigatorio para moderacao em lote.')
-    }
-
-    if (input.items.length > ADMIN_CONTENT_BULK_MAX_ITEMS) {
-      throw new AdminContentServiceError(
-        400,
-        `Lote excede o limite maximo de ${ADMIN_CONTENT_BULK_MAX_ITEMS} itens.`
-      )
-    }
-
-    const normalizedItems = input.items.map((item, index) => {
-      if (!isValidContentType(item.contentType)) {
-        throw new AdminContentServiceError(400, `items[${index}].contentType invalido.`)
-      }
-
-      toObjectId(item.contentId, `items[${index}].contentId`)
-
-      return {
-        contentType: item.contentType,
-        contentId: item.contentId,
-      }
-    })
-
-    const dedupeMap = new Map<string, BulkModerateContentItem>()
-    for (const item of normalizedItems) {
-      const itemKey = `${item.contentType}:${item.contentId}`
-      if (!dedupeMap.has(itemKey)) {
-        dedupeMap.set(itemKey, item)
-      }
-    }
-
-    const uniqueItems = Array.from(dedupeMap.values())
-    const duplicatesSkipped = normalizedItems.length - uniqueItems.length
+    const { uniqueItems, duplicatesSkipped } = normalizeBulkModerationItems(input.items)
 
     if (uniqueItems.length >= ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD && input.confirm !== true) {
       throw new AdminContentServiceError(
@@ -669,6 +762,7 @@ export class AdminContentService {
         currentStatus,
         canRollback: blockers.length === 0,
         requiresConfirm,
+        falsePositiveEligible: targetStatus === 'visible',
         warnings,
         blockers,
         guidance,
@@ -700,6 +794,13 @@ export class AdminContentService {
       )
     }
 
+    if (input.markFalsePositive === true && review.rollback.targetStatus !== 'visible') {
+      throw new AdminContentServiceError(
+        400,
+        'So e possivel marcar falso positivo quando o rollback volta o alvo a visivel.'
+      )
+    }
+
     const result = await this.moderateContent({
       actorId: input.actorId,
       contentType: input.contentType,
@@ -715,8 +816,29 @@ export class AdminContentService {
         rollbackTargetStatus: review.rollback.targetStatus,
         rollbackWarnings: review.rollback.warnings,
         rollbackRequiresConfirm: review.rollback.requiresConfirm,
+        falsePositiveMarked: input.markFalsePositive === true,
+        ...(input.metadata ?? {}),
       },
     })
+
+    let falsePositiveRecorded = false
+    if (input.markFalsePositive === true) {
+      await this.recordFalsePositiveFeedback({
+        actorId: input.actorId,
+        contentType: input.contentType,
+        contentId: input.contentId,
+        creatorId: resolveAnyId(result.content?.creator) ?? null,
+        eventId: input.eventId,
+        source: 'rollback',
+        reason: input.reason,
+        note: input.note,
+        categories: this.deriveFalsePositiveCategories(review.event, result.content),
+        metadata: {
+          rollbackTargetStatus: review.rollback.targetStatus,
+        },
+      })
+      falsePositiveRecorded = true
+    }
 
     return {
       ...result,
@@ -726,7 +848,125 @@ export class AdminContentService {
         targetStatus: review.rollback.targetStatus,
         requiresConfirm: review.rollback.requiresConfirm,
         warnings: review.rollback.warnings,
+        falsePositiveRecorded,
       },
+    }
+  }
+
+  async bulkRollbackContent(input: BulkRollbackContentInput) {
+    const { uniqueItems, duplicatesSkipped } = normalizeBulkRollbackItems(input.items)
+
+    if (uniqueItems.length >= ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD && input.confirm !== true) {
+      throw new AdminContentServiceError(
+        400,
+        `Lotes com ${ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD} ou mais itens exigem confirm=true.`
+      )
+    }
+
+    const results: BulkRollbackContentResultItem[] = []
+
+    for (const item of uniqueItems) {
+      try {
+        const result = await this.rollbackContent({
+          actorId: input.actorId,
+          contentType: item.contentType,
+          contentId: item.contentId,
+          eventId: item.eventId,
+          reason: input.reason,
+          note: input.note,
+          confirm: input.confirm,
+          markFalsePositive: input.markFalsePositive,
+          metadata: {
+            bulkRollback: true,
+            bulkSize: uniqueItems.length,
+            ...(input.metadata ?? {}),
+          },
+        })
+
+        results.push({
+          contentType: item.contentType,
+          contentId: item.contentId,
+          eventId: item.eventId,
+          success: true,
+          changed: result.changed,
+          fromStatus: result.fromStatus,
+          toStatus: result.toStatus,
+          content: result.content,
+        })
+      } catch (error: unknown) {
+        if (error instanceof AdminContentServiceError) {
+          results.push({
+            contentType: item.contentType,
+            contentId: item.contentId,
+            eventId: item.eventId,
+            success: false,
+            error: error.message,
+            statusCode: error.statusCode,
+          })
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    const succeeded = results.filter((item) => item.success).length
+    const failed = results.length - succeeded
+    const changed = results.filter((item) => item.success && item.changed).length
+
+    return {
+      items: results,
+      summary: {
+        requested: input.items.length,
+        processed: uniqueItems.length,
+        succeeded,
+        failed,
+        changed,
+      },
+      guardrails: {
+        maxItems: ADMIN_CONTENT_BULK_MAX_ITEMS,
+        confirmThreshold: ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD,
+        confirmApplied:
+          uniqueItems.length < ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD ? true : input.confirm === true,
+        duplicatesSkipped,
+      },
+    }
+  }
+
+  async recordFalsePositiveFeedback(input: RecordFalsePositiveFeedbackInput) {
+    const actorId = toObjectId(input.actorId, 'actorId')
+    const categories =
+      input.categories.length > 0
+        ? Array.from(new Set(input.categories))
+        : (['manual_moderation'] as ContentFalsePositiveCategory[])
+
+    const creatorId =
+      typeof input.creatorId === 'string' && mongoose.Types.ObjectId.isValid(input.creatorId)
+        ? new mongoose.Types.ObjectId(input.creatorId)
+        : null
+    const eventId =
+      typeof input.eventId === 'string' && mongoose.Types.ObjectId.isValid(input.eventId)
+        ? new mongoose.Types.ObjectId(input.eventId)
+        : null
+
+    const feedback = await ContentFalsePositiveFeedback.create({
+      contentType: input.contentType,
+      contentId: input.contentId,
+      creatorId,
+      actor: actorId,
+      eventId,
+      source: input.source,
+      categories,
+      reason: input.reason.trim(),
+      note: input.note?.trim() ? input.note.trim() : null,
+      metadata: input.metadata ?? null,
+    })
+
+    return {
+      id: String(feedback._id),
+      source: feedback.source,
+      categories: feedback.categories,
+      createdAt: feedback.createdAt,
     }
   }
 
@@ -970,6 +1210,42 @@ export class AdminContentService {
       'Rollback volta a aplicar estado restricted.',
       'Adequado quando a ultima reversao foi excessiva mas o alvo ainda nao deve regressar ao publico.',
     ]
+  }
+
+  private deriveFalsePositiveCategories(
+    event: {
+      metadata?: Record<string, unknown> | null
+    },
+    content: {
+      reportSignals?: { openReports?: number }
+      automatedSignals?: { active?: boolean }
+    } | null
+  ): ContentFalsePositiveCategory[] {
+    const categories: ContentFalsePositiveCategory[] = []
+
+    if ((event.metadata?.policyAutoHide === true || event.metadata?.policySignals === true) && !categories.includes('policy_auto_hide')) {
+      categories.push('policy_auto_hide')
+    }
+    if (
+      (event.metadata?.automatedDetection === true || content?.automatedSignals?.active === true) &&
+      !categories.includes('automated_detection')
+    ) {
+      categories.push('automated_detection')
+    }
+    if (
+      (event.metadata?.resolvedOpenReports &&
+        typeof event.metadata.resolvedOpenReports === 'number' &&
+        event.metadata.resolvedOpenReports > 0) ||
+      (content?.reportSignals?.openReports ?? 0) > 0
+    ) {
+      categories.push('reports')
+    }
+
+    if (categories.length === 0) {
+      categories.push('manual_moderation')
+    }
+
+    return categories
   }
 
   private mapHistoryItem(item: any) {

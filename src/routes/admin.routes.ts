@@ -10,9 +10,14 @@ import {
 } from '../controllers/adminAssistedSession.controller'
 import {
   bulkModerateContent,
+  bulkRollbackContent,
+  createBulkModerationJob,
+  createBulkRollbackJob,
+  getAdminContentJob,
   getContentRollbackReview,
   hideContent,
   hideContentFast,
+  listAdminContentJobs,
   listAdminContentQueue,
   listContentReports,
   listContentModerationHistory,
@@ -20,7 +25,10 @@ import {
   restrictContent,
   unhideContent,
 } from '../controllers/adminContent.controller'
-import { getAdminMetricsOverview } from '../controllers/adminMetrics.controller'
+import {
+  getAdminMetricsDrilldown,
+  getAdminMetricsOverview,
+} from '../controllers/adminMetrics.controller'
 import {
   listAdminSurfaceControls,
   updateAdminSurfaceControl,
@@ -110,6 +118,23 @@ router.get(
   }),
   requireAdminScope('admin.metrics.read'),
   getAdminMetricsOverview
+)
+
+/**
+ * @route   GET /api/admin/metrics/drilldown
+ * @desc    Drill-down operacional por creator, alvo, superficie e jobs
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/metrics/drilldown',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.metrics.drilldown.read',
+    resourceType: 'admin_metrics',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getAdminMetricsDrilldown
 )
 
 /**
@@ -254,6 +279,41 @@ router.get(
 )
 
 /**
+ * @route   GET /api/admin/content/jobs
+ * @desc    Listar jobs assíncronos de moderacao/rollback
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/jobs',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.jobs.list',
+    resourceType: 'content_job',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminContentJobs
+)
+
+/**
+ * @route   GET /api/admin/content/jobs/:jobId
+ * @desc    Ler detalhe de um job assíncrono de conteudo
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/jobs/:jobId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.jobs.read',
+    resourceType: 'content_job',
+    scope: 'admin.content.read',
+    getResourceId: (req) => req.params.jobId,
+  }),
+  requireAdminScope('admin.content.read'),
+  getAdminContentJob
+)
+
+/**
  * @route   GET /api/admin/content/:contentType/:contentId/history
  * @desc    Listar historico de moderacao de um conteudo
  * @access  Private (Admin com escopo admin.content.read)
@@ -324,6 +384,63 @@ router.post(
   }),
   requireAdminScope('admin.content.moderate'),
   bulkModerateContent
+)
+
+/**
+ * @route   POST /api/admin/content/bulk-rollback
+ * @desc    Executar rollback em lote com guardrails
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/bulk-rollback',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.content.bulk_rollback',
+    resourceType: 'content',
+    scope: 'admin.content.moderate',
+    getResourceId: () => 'bulk',
+  }),
+  requireAdminScope('admin.content.moderate'),
+  bulkRollbackContent
+)
+
+/**
+ * @route   POST /api/admin/content/bulk-moderate/jobs
+ * @desc    Criar job assíncrono para moderacao em lote
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/bulk-moderate/jobs',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.content.bulk_moderate_job.create',
+    resourceType: 'content_job',
+    scope: 'admin.content.moderate',
+    getResourceId: () => 'bulk_moderate',
+  }),
+  requireAdminScope('admin.content.moderate'),
+  createBulkModerationJob
+)
+
+/**
+ * @route   POST /api/admin/content/bulk-rollback/jobs
+ * @desc    Criar job assíncrono para rollback em lote
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/bulk-rollback/jobs',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.content.bulk_rollback_job.create',
+    resourceType: 'content_job',
+    scope: 'admin.content.moderate',
+    getResourceId: () => 'bulk_rollback',
+  }),
+  requireAdminScope('admin.content.moderate'),
+  createBulkRollbackJob
 )
 
 /**

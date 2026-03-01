@@ -22,3 +22,17 @@ export const getAdminMetricsOverview = async (_req: AuthRequest, res: Response) 
     return handleError(res, error, 'Erro ao carregar metricas administrativas.')
   }
 }
+
+/**
+ * GET /api/admin/metrics/drilldown
+ */
+export const getAdminMetricsDrilldown = async (req: AuthRequest, res: Response) => {
+  try {
+    const limitRaw = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : undefined
+    const drilldown = await adminMetricsService.getDrilldown(limitRaw)
+    return res.status(200).json(drilldown)
+  } catch (error: unknown) {
+    console.error('Get admin metrics drilldown error:', error)
+    return handleError(res, error, 'Erro ao carregar drill-down administrativo.')
+  }
+}

@@ -3,6 +3,7 @@ import { Article } from '../models/Article'
 import { ContentModerationStatus } from '../models/BaseContent'
 import { Book } from '../models/Book'
 import { Comment } from '../models/Comment'
+import { ContentFalsePositiveFeedback } from '../models/ContentFalsePositiveFeedback'
 import { ContentReport, ContentReportReason } from '../models/ContentReport'
 import { ContentModerationEvent, ModeratableContentType } from '../models/ContentModerationEvent'
 import { Course } from '../models/Course'
@@ -36,6 +37,9 @@ export interface CreatorTrustSignals {
     recentModerationActions30d: number
     repeatModerationTargets30d: number
     recentCreatorControlActions30d: number
+    falsePositiveEvents30d: number
+    automatedFalsePositiveEvents30d: number
+    falsePositiveRate30d: number
     activeControlFlags: string[]
   }
   flags: string[]
@@ -70,6 +74,8 @@ interface CreatorAccumulator {
   recentModerationActions30d: number
   repeatModerationTargets30d: number
   recentCreatorControlActions30d: number
+  falsePositiveEvents30d: number
+  automatedFalsePositiveEvents30d: number
   reasonCounts: Map<string, number>
 }
 
@@ -116,6 +122,11 @@ const ownerFieldByType: Record<ModeratableContentType, 'creator' | 'user'> = {
 }
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max)
+const round = (value: number, decimals = 2): number => {
+  if (!Number.isFinite(value)) return 0
+  const factor = 10 ** decimals
+  return Math.round(value * factor) / factor
+}
 
 const toObjectId = (rawId: string): mongoose.Types.ObjectId | null =>
   mongoose.Types.ObjectId.isValid(rawId) ? new mongoose.Types.ObjectId(rawId) : null
@@ -146,6 +157,13 @@ const pushReason = (reasons: string[], reason: string) => {
 }
 
 const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSignals => {
+  const falsePositiveRate30d =
+    acc.recentModerationActions30d > 0
+      ? round((acc.falsePositiveEvents30d / acc.recentModerationActions30d) * 100, 2)
+      : acc.falsePositiveEvents30d > 0
+        ? 100
+        : 0
+
   const penalties =
     acc.openReports * 2 +
     acc.highPriorityTargets * 8 +
@@ -159,7 +177,15 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
     (acc.activeControlFlags.has('publishing_blocked') ? 12 : 0) +
     (acc.activeControlFlags.has('cooldown_active') ? 6 : 0)
 
-  const trustScore = clamp(100 - penalties, 0, 100)
+  const falsePositiveCompensation = clamp(
+    acc.falsePositiveEvents30d * 3 +
+      acc.automatedFalsePositiveEvents30d * 2 +
+      (acc.falsePositiveEvents30d >= 2 ? 4 : 0),
+    0,
+    18
+  )
+
+  const trustScore = clamp(100 - penalties + falsePositiveCompensation, 0, 100)
   let riskLevel: CreatorRiskLevel = 'low'
 
   if (trustScore <= 25 || acc.criticalTargets >= 2) {
@@ -202,6 +228,7 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
   if (acc.highPriorityTargets > 0) flags.push('high_priority_targets')
   if (acc.hiddenItems > 0) flags.push('hidden_content_present')
   if (acc.repeatModerationTargets30d > 0) flags.push('repeat_moderation_targets')
+  if (acc.falsePositiveEvents30d > 0) flags.push('false_positive_feedback')
 
   const reasons: string[] = []
   if (acc.criticalTargets > 0) {
@@ -221,6 +248,12 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
   }
   if (acc.activeControlFlags.has('cooldown_active')) {
     pushReason(reasons, 'Cooldown operacional ativo.')
+  }
+  if (acc.falsePositiveEvents30d > 0) {
+    pushReason(
+      reasons,
+      `${acc.falsePositiveEvents30d} reversao(oes) marcada(s) como falso positivo em 30 dias.`
+    )
   }
   if (reasons.length === 0 && acc.openReports > 0) {
     pushReason(reasons, `${acc.openReports} report(s) abertos em observacao.`)
@@ -248,6 +281,9 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
       recentModerationActions30d: acc.recentModerationActions30d,
       repeatModerationTargets30d: acc.repeatModerationTargets30d,
       recentCreatorControlActions30d: acc.recentCreatorControlActions30d,
+      falsePositiveEvents30d: acc.falsePositiveEvents30d,
+      automatedFalsePositiveEvents30d: acc.automatedFalsePositiveEvents30d,
+      falsePositiveRate30d,
       activeControlFlags: Array.from(acc.activeControlFlags),
     },
     flags,
@@ -266,6 +302,8 @@ const createAccumulator = (snapshot: CreatorSnapshot, now: Date): CreatorAccumul
   recentModerationActions30d: 0,
   repeatModerationTargets30d: 0,
   recentCreatorControlActions30d: 0,
+  falsePositiveEvents30d: 0,
+  automatedFalsePositiveEvents30d: 0,
   reasonCounts: new Map<string, number>(),
 })
 
@@ -464,6 +502,38 @@ export class CreatorTrustService {
       if (acc) {
         acc.recentCreatorControlActions30d = row.count
       }
+    }
+
+    const falsePositiveRows = await ContentFalsePositiveFeedback.aggregate<{
+      _id: mongoose.Types.ObjectId
+      count: number
+      automatedCount: number
+    }>([
+      {
+        $match: {
+          creatorId: { $in: ownerObjectIds },
+          createdAt: { $gte: last30dStart },
+        },
+      },
+      {
+        $group: {
+          _id: '$creatorId',
+          count: { $sum: 1 },
+          automatedCount: {
+            $sum: {
+              $cond: [{ $in: ['automated_detection', '$categories'] }, 1, 0],
+            },
+          },
+        },
+      },
+    ])
+
+    for (const row of falsePositiveRows) {
+      const acc = accumulators.get(String(row._id))
+      if (!acc) continue
+
+      acc.falsePositiveEvents30d = row.count
+      acc.automatedFalsePositiveEvents30d = row.automatedCount
     }
 
     const signalMap = new Map<string, CreatorTrustSignals>()

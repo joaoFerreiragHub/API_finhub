@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import { AdminAuditOutcome, AdminAuditLog } from '../models/AdminAuditLog'
+import { AdminContentJob, AdminContentJobStatus, AdminContentJobType } from '../models/AdminContentJob'
 import { Article } from '../models/Article'
 import {
   AutomatedModerationRule,
@@ -8,6 +9,7 @@ import {
 } from '../models/AutomatedModerationSignal'
 import { Book } from '../models/Book'
 import { Comment } from '../models/Comment'
+import { ContentFalsePositiveFeedback } from '../models/ContentFalsePositiveFeedback'
 import { ContentType } from '../models/BaseContent'
 import { ContentReport, ContentReportReason } from '../models/ContentReport'
 import { ContentModerationEvent, ModeratableContentType } from '../models/ContentModerationEvent'
@@ -21,8 +23,10 @@ import { UserModerationEvent } from '../models/UserModerationEvent'
 import { CreatorOperationalAction, User, UserRole } from '../models/User'
 import { Video } from '../models/Video'
 import { getMetricsSnapshot } from '../observability/metrics'
+import { adminContentService } from './adminContent.service'
 import { buildReportSignalSummary, isPriorityAtLeast } from './contentReport.service'
 import { CreatorRiskLevel, creatorTrustService } from './creatorTrust.service'
+import { surfaceControlService } from './surfaceControl.service'
 
 type StatusClass = '2xx' | '3xx' | '4xx' | '5xx'
 
@@ -68,6 +72,7 @@ interface AdminRouteErrors {
 type CreatorControlActionCounts = Record<CreatorOperationalAction, number>
 type CreatorRiskLevelCounts = Record<CreatorRiskLevel, number>
 type AutomatedModerationRuleCounts = Record<AutomatedModerationRule, number>
+type ContentJobTypeCounts = Record<AdminContentJobType, number>
 
 export interface AdminMetricsOverview {
   generatedAt: string
@@ -195,6 +200,16 @@ export interface AdminMetricsOverview {
       creatorsEvaluated: number
       needingIntervention: number
       byRiskLevel: CreatorRiskLevelCounts
+      falsePositiveEventsLast30d: number
+      creatorsWithFalsePositiveHistory: number
+    }
+    jobs: {
+      queued: number
+      running: number
+      completedLast24h: number
+      failedLast24h: number
+      byTypeActive: ContentJobTypeCounts
+      averageDurationMinutesLast7d: number | null
     }
   }
   operations: {
@@ -216,6 +231,67 @@ export interface AdminMetricsOverview {
       total: number
     }
   }
+}
+
+export interface AdminMetricsDrilldown {
+  generatedAt: string
+  creators: Array<{
+    creatorId: string
+    name: string
+    username: string
+    riskLevel: CreatorRiskLevel
+    trustScore: number
+    recommendedAction: string
+    openReports: number
+    criticalTargets: number
+    activeControls: number
+    falsePositiveEvents30d: number
+    falsePositiveRate30d: number
+  }>
+  targets: Array<{
+    contentType: ModeratableContentType
+    contentId: string
+    title: string
+    moderationStatus: string
+    reportPriority: string
+    openReports: number
+    automatedSeverity: string
+    creatorRiskLevel: CreatorRiskLevel | null
+    surfaceKey: string
+    creator: {
+      id: string
+      name?: string
+      username?: string
+    } | null
+  }>
+  surfaces: Array<{
+    key: string
+    label: string
+    enabled: boolean
+    impact: string
+    affectedFlaggedTargets: number
+    affectedCriticalTargets: number
+    activeAutomatedSignals: number
+    updatedAt: string | null
+    publicMessage: string | null
+  }>
+  jobs: Array<{
+    id: string
+    type: AdminContentJobType
+    status: AdminContentJobStatus
+    requested: number
+    processed: number
+    succeeded: number
+    failed: number
+    createdAt: string
+    startedAt: string | null
+    finishedAt: string | null
+    actor: {
+      id: string
+      name?: string
+      username?: string
+    } | null
+  }>
 }
 
 const BASE_CONTENT_TYPES: ContentType[] = ['article', 'video', 'course', 'live', 'podcast', 'book']
@@ -312,6 +388,11 @@ const emptyAutomatedModerationRuleCounts = (): AutomatedModerationRuleCounts => 
   mass_creation: 0,
 })
 
+const emptyContentJobTypeCounts = (): ContentJobTypeCounts => ({
+  bulk_moderate: 0,
+  bulk_rollback: 0,
+})
+
 const toObjectIds = (rawIds: string[]): mongoose.Types.ObjectId[] =>
   rawIds.filter((id) => mongoose.Types.ObjectId.isValid(id)).map((id) => new mongoose.Types.ObjectId(id))
 
@@ -336,6 +417,21 @@ const buildModerationQueueQuery = (
 
   return query
 }
+
+const getSurfaceKeysForContentType = (contentType: ModeratableContentType): string[] => {
+  if (contentType === 'comment') {
+    return ['comments_read', 'comments_write']
+  }
+
+  if (contentType === 'review') {
+    return ['reviews_read', 'reviews_write']
+  }
+
+  return ['editorial_home', 'editorial_verticals']
+}
+
+const getPrimarySurfaceKeyForContentType = (contentType: ModeratableContentType): string =>
+  getSurfaceKeysForContentType(contentType)[0]
 
 const mapStatusCodeToClass = (statusCode: number): StatusClass => {
   if (statusCode >= 500) return '5xx'
@@ -369,6 +465,160 @@ export class AdminMetricsService {
       engagement,
       moderation,
       operations,
+    }
+  }
+
+  async getDrilldown(limit = 6): Promise<AdminMetricsDrilldown> {
+    const now = new Date()
+    const normalizedLimit = Math.min(Math.max(Math.floor(limit) || 6, 1), 12)
+
+    const [creatorRows, flaggedQueue, surfaceControls, jobRows] = await Promise.all([
+      User.find({ role: 'creator' })
+        .select('_id name username creatorControls')
+        .lean<Array<{ _id: mongoose.Types.ObjectId; name?: string; username?: string; creatorControls?: any }>>(),
+      adminContentService.listQueue({ flaggedOnly: true }, { page: 1, limit: Math.max(normalizedLimit * 4, 24) }),
+      surfaceControlService.listControls(),
+      AdminContentJob.find({})
+        .sort({ createdAt: -1 })
+        .limit(normalizedLimit)
+        .populate('actor', 'name username email role')
+        .lean(),
+    ])
+
+    const creatorSignals = await creatorTrustService.getSignalsForCreators(
+      creatorRows.map((row) => String(row._id))
+    )
+
+    const creators = creatorRows
+      .map((row) => {
+        const signal = creatorSignals.get(String(row._id))
+        if (!signal) return null
+
+        const activeControls = signal.summary.activeControlFlags.length
+        return {
+          creatorId: String(row._id),
+          name: row.name ?? row.username ?? String(row._id),
+          username: row.username ?? String(row._id),
+          riskLevel: signal.riskLevel,
+          trustScore: signal.trustScore,
+          recommendedAction: signal.recommendedAction,
+          openReports: signal.summary.openReports,
+          criticalTargets: signal.summary.criticalTargets,
+          activeControls,
+          falsePositiveEvents30d: signal.summary.falsePositiveEvents30d,
+          falsePositiveRate30d: signal.summary.falsePositiveRate30d,
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => {
+        const riskOrder: Record<CreatorRiskLevel, number> = {
+          critical: 0,
+          high: 1,
+          medium: 2,
+          low: 3,
+        }
+
+        const riskDelta = riskOrder[a.riskLevel] - riskOrder[b.riskLevel]
+        if (riskDelta !== 0) return riskDelta
+
+        if (a.trustScore !== b.trustScore) return a.trustScore - b.trustScore
+        return b.openReports - a.openReports
+      })
+      .slice(0, normalizedLimit)
+
+    const targets = flaggedQueue.items.slice(0, normalizedLimit).map((item) => ({
+      contentType: item.contentType,
+      contentId: item.id,
+      title: item.title,
+      moderationStatus: item.moderationStatus,
+      reportPriority: item.reportSignals.priority,
+      openReports: item.reportSignals.openReports,
+      automatedSeverity: item.automatedSignals.severity,
+      creatorRiskLevel: item.creatorTrustSignals?.riskLevel ?? null,
+      surfaceKey: getPrimarySurfaceKeyForContentType(item.contentType),
+      creator: item.creator
+        ? {
+            id: typeof item.creator._id === 'string' ? item.creator._id : String(item.creator._id ?? item.creator.id),
+            name: item.creator.name,
+            username: item.creator.username,
+          }
+        : null,
+    }))
+
+    const surfaceAggregates = new Map<
+      string,
+      { flagged: number; critical: number; automated: number }
+    >()
+
+    for (const item of flaggedQueue.items) {
+      for (const surfaceKey of getSurfaceKeysForContentType(item.contentType)) {
+        const current = surfaceAggregates.get(surfaceKey) ?? {
+          flagged: 0,
+          critical: 0,
+          automated: 0,
+        }
+
+        current.flagged += 1
+        if (
+          item.reportSignals.priority === 'critical' ||
+          item.creatorTrustSignals?.riskLevel === 'critical'
+        ) {
+          current.critical += 1
+        }
+        if (item.automatedSignals.active) {
+          current.automated += 1
+        }
+
+        surfaceAggregates.set(surfaceKey, current)
+      }
+    }
+
+    const surfaces = surfaceControls.items.map((item) => {
+      const aggregate = surfaceAggregates.get(item.key) ?? {
+        flagged: 0,
+        critical: 0,
+        automated: 0,
+      }
+
+      return {
+        key: item.key,
+        label: item.label,
+        enabled: item.enabled,
+        impact: item.impact,
+        affectedFlaggedTargets: aggregate.flagged,
+        affectedCriticalTargets: aggregate.critical,
+        activeAutomatedSignals: aggregate.automated,
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : null,
+        publicMessage: item.publicMessage ?? null,
+      }
+    })
+
+    const jobs = jobRows.map((item: any) => ({
+      id: String(item._id),
+      type: item.type as AdminContentJobType,
+      status: item.status as AdminContentJobStatus,
+      requested: Number(item.progress?.requested ?? 0),
+      processed: Number(item.progress?.processed ?? 0),
+      succeeded: Number(item.progress?.succeeded ?? 0),
+      failed: Number(item.progress?.failed ?? 0),
+      createdAt: new Date(item.createdAt).toISOString(),
+      startedAt: item.startedAt ? new Date(item.startedAt).toISOString() : null,
+      finishedAt: item.finishedAt ? new Date(item.finishedAt).toISOString() : null,
+      actor: item.actor
+        ? {
+            id: String(item.actor._id ?? item.actor.id),
+            name: item.actor.name,
+            username: item.actor.username,
+          }
+        : null,
+    }))
+
+    return {
+      generatedAt: now.toISOString(),
+      creators,
+      targets,
+      surfaces,
+      jobs,
     }
   }
 
@@ -578,6 +828,14 @@ export class AdminMetricsService {
       creatorControlActions7d,
       creatorControlActionRows,
       creatorRows,
+      falsePositiveEventsLast30d,
+      falsePositiveCreatorRows,
+      queuedJobs,
+      runningJobs,
+      completedJobs24h,
+      failedJobs24h,
+      activeJobTypeRows,
+      completedJobs7d,
     ] = await Promise.all([
       ContentModerationEvent.countDocuments({ createdAt: { $gte: last24hStart } }),
       ContentModerationEvent.countDocuments({ createdAt: { $gte: last7dStart } }),
@@ -723,6 +981,50 @@ export class AdminMetricsService {
         },
       ]),
       User.find({ role: 'creator' }).select('_id').lean<Array<{ _id: mongoose.Types.ObjectId }>>(),
+      ContentFalsePositiveFeedback.countDocuments({ createdAt: { $gte: last30dStart } }),
+      ContentFalsePositiveFeedback.aggregate<{ _id: mongoose.Types.ObjectId | null; count: number }>([
+        {
+          $match: {
+            creatorId: { $ne: null },
+            createdAt: { $gte: last30dStart },
+          },
+        },
+        {
+          $group: {
+            _id: '$creatorId',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      AdminContentJob.countDocuments({ status: 'queued' }),
+      AdminContentJob.countDocuments({ status: 'running' }),
+      AdminContentJob.countDocuments({
+        status: { $in: ['completed', 'completed_with_errors'] },
+        finishedAt: { $gte: last24hStart },
+      }),
+      AdminContentJob.countDocuments({
+        status: 'failed',
+        finishedAt: { $gte: last24hStart },
+      }),
+      AdminContentJob.aggregate<{ _id: AdminContentJobType | null; count: number }>([
+        {
+          $match: {
+            status: { $in: ['queued', 'running'] },
+          },
+        },
+        {
+          $group: {
+            _id: '$type',
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+      AdminContentJob.find({
+        status: { $in: ['completed', 'completed_with_errors', 'failed'] },
+        finishedAt: { $gte: last7dStart },
+      })
+        .select('createdAt finishedAt')
+        .lean<Array<{ createdAt: Date; finishedAt?: Date | null }>>(),
     ])
 
     const volumeByTypeLast7d = emptyVolumeByType()
@@ -800,6 +1102,25 @@ export class AdminMetricsService {
         creatorsNeedingIntervention += 1
       }
     }
+
+    const activeJobsByType = emptyContentJobTypeCounts()
+    for (const row of activeJobTypeRows) {
+      if (row._id && row._id in activeJobsByType) {
+        activeJobsByType[row._id] = row.count
+      }
+    }
+
+    const completedJobDurations = completedJobs7d
+      .filter((job) => job.finishedAt instanceof Date)
+      .map((job) => Math.max(job.finishedAt!.getTime() - job.createdAt.getTime(), 0) / 60000)
+    const averageJobDurationMinutes =
+      completedJobDurations.length > 0
+        ? round(
+            completedJobDurations.reduce((sum, value) => sum + value, 0) /
+              completedJobDurations.length,
+            2
+          )
+        : null
 
     return {
       queue: {
@@ -882,6 +1203,16 @@ export class AdminMetricsService {
         creatorsEvaluated: creatorTrustSignals.size,
         needingIntervention: creatorsNeedingIntervention,
         byRiskLevel: creatorTrustByRiskLevel,
+        falsePositiveEventsLast30d,
+        creatorsWithFalsePositiveHistory: falsePositiveCreatorRows.length,
+      },
+      jobs: {
+        queued: queuedJobs,
+        running: runningJobs,
+        completedLast24h: completedJobs24h,
+        failedLast24h: failedJobs24h,
+        byTypeActive: activeJobsByType,
+        averageDurationMinutesLast7d: averageJobDurationMinutes,
       },
     }
   }
