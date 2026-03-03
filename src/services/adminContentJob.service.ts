@@ -1,10 +1,17 @@
+import crypto from 'crypto'
 import mongoose from 'mongoose'
+import os from 'os'
 import {
   AdminContentJob,
   AdminContentJobStatus,
   AdminContentJobType,
   IAdminContentJob,
 } from '../models/AdminContentJob'
+import {
+  AdminWorkerRuntime,
+  AdminWorkerRuntimeStatus,
+  IAdminWorkerRuntime,
+} from '../models/AdminWorkerRuntime'
 import {
   ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD,
   ADMIN_CONTENT_BULK_MAX_ITEMS,
@@ -29,10 +36,39 @@ interface AdminContentJobFilters {
 const DEFAULT_PAGE = 1
 const DEFAULT_LIMIT = 10
 const MAX_LIMIT = 50
-const STALE_RUNNING_MS = 10 * 60 * 1000
 const COMPLETED_JOB_TTL_DAYS = 90
 const FAILED_JOB_TTL_DAYS = 180
-const WORKER_STOP_POLL_MS = 100
+const DEFAULT_STOP_TIMEOUT_MS = 15_000
+const DEFAULT_WORKER_HEARTBEAT_MS = 5_000
+const DEFAULT_JOB_LEASE_MS = 60_000
+const DEFAULT_MAX_ATTEMPTS = 3
+const DEFAULT_WORKER_STOP_POLL_MS = 100
+const WORKER_RUNTIME_KEY = 'admin_content_jobs'
+
+const parsePositiveIntEnv = (value: string | undefined, fallback: number): number => {
+  if (!value) return fallback
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback
+  return parsed
+}
+
+const MAX_JOB_ATTEMPTS = parsePositiveIntEnv(
+  process.env.ADMIN_CONTENT_JOBS_MAX_ATTEMPTS,
+  DEFAULT_MAX_ATTEMPTS
+)
+const WORKER_HEARTBEAT_MS = parsePositiveIntEnv(
+  process.env.ADMIN_CONTENT_JOBS_WORKER_HEARTBEAT_MS,
+  DEFAULT_WORKER_HEARTBEAT_MS
+)
+const JOB_LEASE_MS = parsePositiveIntEnv(
+  process.env.ADMIN_CONTENT_JOBS_JOB_LEASE_MS,
+  DEFAULT_JOB_LEASE_MS
+)
+const WORKER_STOP_POLL_MS = parsePositiveIntEnv(
+  process.env.ADMIN_CONTENT_JOBS_WORKER_STOP_POLL_MS,
+  DEFAULT_WORKER_STOP_POLL_MS
+)
+const WORKER_STATUS_STALE_MS = Math.max(JOB_LEASE_MS, WORKER_HEARTBEAT_MS * 3)
 
 const normalizePage = (value?: number): number => {
   if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
@@ -52,6 +88,15 @@ const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId =
   return new mongoose.Types.ObjectId(rawId)
 }
 
+const nowPlusMs = (value: number): Date => new Date(Date.now() + value)
+
+const runtimeStatsDefaults = () => ({
+  claimedJobs: 0,
+  completedJobs: 0,
+  failedJobs: 0,
+  requeuedJobs: 0,
+})
+
 export const isValidAdminContentJobType = (value: unknown): value is AdminContentJobType =>
   value === 'bulk_moderate' || value === 'bulk_rollback'
 
@@ -63,20 +108,62 @@ export const isValidAdminContentJobStatus = (value: unknown): value is AdminCont
   value === 'failed'
 
 class AdminContentJobService {
+  private workerEnabled = false
   private workerScheduled = false
   private workerRunning = false
   private stopRequested = false
   private scheduledTimer: NodeJS.Timeout | null = null
+  private heartbeatTimer: NodeJS.Timeout | null = null
+  private workerId: string | null = null
+  private workerStartedAt: Date | null = null
+  private currentJobId: string | null = null
+  private currentJobType: AdminContentJobType | null = null
+  private currentJobStartedAt: Date | null = null
 
-  startWorker() {
+  async startWorker() {
+    if (this.workerEnabled) return
+
+    this.workerEnabled = true
     this.stopRequested = false
-    void this.requeueStaleRunningJobs().finally(() => {
-      this.scheduleWorker()
+    this.workerId =
+      process.env.ADMIN_CONTENT_JOBS_WORKER_ID?.trim() ||
+      `admin-content-jobs:${os.hostname()}:${process.pid}:${crypto.randomUUID().slice(0, 8)}`
+    this.workerStartedAt = new Date()
+
+    await this.upsertWorkerRuntime({
+      workerId: this.workerId,
+      status: 'starting',
+      processId: process.pid,
+      host: os.hostname(),
+      startedAt: this.workerStartedAt,
+      stoppedAt: null,
+      currentJobId: null,
+      currentJobType: null,
+      currentJobStartedAt: null,
+      lastError: null,
+      lastErrorAt: null,
     })
+
+    this.startHeartbeatLoop()
+    await this.refreshWorkerHeartbeat()
+    await this.requeueStaleRunningJobs()
+    await this.upsertWorkerRuntime({
+      status: 'idle',
+      workerId: this.workerId,
+      processId: process.pid,
+      host: os.hostname(),
+    })
+    this.scheduleWorker()
   }
 
-  async stopWorker(timeoutMs = 15_000) {
+  async stopWorker(timeoutMs = DEFAULT_STOP_TIMEOUT_MS) {
+    if (!this.workerEnabled) return true
+
     this.stopRequested = true
+    await this.upsertWorkerRuntime({
+      status: 'stopping',
+      workerId: this.workerId,
+    })
 
     if (this.scheduledTimer) {
       clearTimeout(this.scheduledTimer)
@@ -91,12 +178,34 @@ class AdminContentJobService {
       })
     }
 
+    let gracefulStop = true
     if (this.workerRunning) {
-      await this.requeueRunningJobs('Job reencaminhado apos paragem controlada do worker.')
-      return false
+      gracefulStop = false
+      await this.requeueRunningJobs('Job reencaminhado apos paragem controlada do worker.', {
+        onlyStale: false,
+      })
     }
 
-    return true
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+      this.heartbeatTimer = null
+    }
+
+    this.clearCurrentJobContextLocally()
+    this.workerEnabled = false
+    this.workerRunning = false
+    await this.upsertWorkerRuntime({
+      status: 'offline',
+      workerId: this.workerId,
+      processId: process.pid,
+      host: os.hostname(),
+      stoppedAt: new Date(),
+      currentJobId: null,
+      currentJobType: null,
+      currentJobStartedAt: null,
+    })
+
+    return gracefulStop
   }
 
   async queueBulkModerationJob(input: BulkModerateContentInput) {
@@ -118,6 +227,8 @@ class AdminContentJobService {
       reason: input.reason.trim(),
       note: input.note?.trim() ? input.note.trim() : null,
       confirm: input.confirm === true,
+      attemptCount: 0,
+      maxAttempts: MAX_JOB_ATTEMPTS,
       items: uniqueItems.map((item) => ({
         contentType: item.contentType,
         contentId: item.contentId,
@@ -160,6 +271,8 @@ class AdminContentJobService {
       note: input.note?.trim() ? input.note.trim() : null,
       confirm: input.confirm === true,
       markFalsePositive: input.markFalsePositive === true,
+      attemptCount: 0,
+      maxAttempts: MAX_JOB_ATTEMPTS,
       items: uniqueItems.map((item) => ({
         contentType: item.contentType,
         contentId: item.contentId,
@@ -226,8 +339,143 @@ class AdminContentJobService {
     return this.mapJob(job as any)
   }
 
+  async getWorkerStatus() {
+    const now = new Date()
+    const staleFallback = new Date(now.getTime() - JOB_LEASE_MS)
+    const runtime = await AdminWorkerRuntime.findOne({ key: WORKER_RUNTIME_KEY }).lean()
+
+    const currentJobPromise =
+      runtime?.currentJobId && mongoose.Types.ObjectId.isValid(runtime.currentJobId)
+        ? AdminContentJob.findById(runtime.currentJobId).populate('actor', 'name username email role').lean()
+        : Promise.resolve(null)
+
+    const [queued, running, staleRunning, retrying, maxAttemptsReached, failedLast24h, currentJob] =
+      await Promise.all([
+        AdminContentJob.countDocuments({ status: 'queued' }),
+        AdminContentJob.countDocuments({ status: 'running' }),
+        AdminContentJob.countDocuments({
+          status: 'running',
+          $or: [
+            { leaseExpiresAt: { $lt: now } },
+            { leaseExpiresAt: null, startedAt: { $lt: staleFallback } },
+          ],
+        }),
+        AdminContentJob.countDocuments({
+          $or: [
+            { status: 'queued', attemptCount: { $gt: 0 } },
+            { status: 'running', attemptCount: { $gt: 1 } },
+          ],
+        }),
+        AdminContentJob.countDocuments({
+          status: 'failed',
+          $expr: { $gte: ['$attemptCount', '$maxAttempts'] },
+        }),
+        AdminContentJob.countDocuments({
+          status: { $in: ['failed', 'completed_with_errors'] },
+          finishedAt: { $gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+        }),
+        currentJobPromise,
+      ])
+
+    const derivedStatus = this.resolveWorkerRuntimeStatus(runtime as Partial<IAdminWorkerRuntime> | null, now)
+
+    return {
+      generatedAt: now,
+      worker: {
+        key: WORKER_RUNTIME_KEY,
+        status: derivedStatus,
+        workerId: runtime?.workerId ?? null,
+        processId: typeof runtime?.processId === 'number' ? runtime.processId : null,
+        host: runtime?.host ?? null,
+        startedAt: runtime?.startedAt ?? null,
+        stoppedAt: runtime?.stoppedAt ?? null,
+        lastHeartbeatAt: runtime?.lastHeartbeatAt ?? null,
+        currentJobId: runtime?.currentJobId ?? null,
+        currentJobType:
+          runtime?.currentJobType === 'bulk_rollback'
+            ? 'bulk_rollback'
+            : runtime?.currentJobType === 'bulk_moderate'
+              ? 'bulk_moderate'
+              : null,
+        currentJobStartedAt: runtime?.currentJobStartedAt ?? null,
+        lastJobFinishedAt: runtime?.lastJobFinishedAt ?? null,
+        stats: {
+          claimedJobs: Number(runtime?.stats?.claimedJobs ?? 0),
+          completedJobs: Number(runtime?.stats?.completedJobs ?? 0),
+          failedJobs: Number(runtime?.stats?.failedJobs ?? 0),
+          requeuedJobs: Number(runtime?.stats?.requeuedJobs ?? 0),
+        },
+        lastError: runtime?.lastError ?? null,
+        lastErrorAt: runtime?.lastErrorAt ?? null,
+      },
+      queue: {
+        queued,
+        running,
+        staleRunning,
+        retrying,
+        maxAttemptsReached,
+        failedLast24h,
+      },
+      currentJob: currentJob ? this.mapJob(currentJob as any) : null,
+      config: {
+        leaseMs: JOB_LEASE_MS,
+        heartbeatMs: WORKER_HEARTBEAT_MS,
+        staleAfterMs: WORKER_STATUS_STALE_MS,
+        maxAttempts: MAX_JOB_ATTEMPTS,
+      },
+    }
+  }
+
+  private startHeartbeatLoop() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+    }
+
+    this.heartbeatTimer = setInterval(() => {
+      void this.refreshWorkerHeartbeat()
+    }, WORKER_HEARTBEAT_MS)
+  }
+
+  private async refreshWorkerHeartbeat() {
+    if (!this.workerEnabled || mongoose.connection.readyState !== 1) return
+
+    const now = new Date()
+    const nextLeaseAt = nowPlusMs(JOB_LEASE_MS)
+
+    await this.upsertWorkerRuntime({
+      workerId: this.workerId,
+      status: this.stopRequested ? 'stopping' : this.currentJobId ? 'processing' : 'idle',
+      processId: process.pid,
+      host: os.hostname(),
+      startedAt: this.workerStartedAt,
+      stoppedAt: null,
+      lastHeartbeatAt: now,
+      currentJobId: this.currentJobId,
+      currentJobType: this.currentJobType,
+      currentJobStartedAt: this.currentJobStartedAt,
+    })
+
+    if (!this.currentJobId || !mongoose.Types.ObjectId.isValid(this.currentJobId)) {
+      return
+    }
+
+    await AdminContentJob.updateOne(
+      {
+        _id: new mongoose.Types.ObjectId(this.currentJobId),
+        status: 'running',
+        workerId: this.workerId,
+      },
+      {
+        $set: {
+          lastHeartbeatAt: now,
+          leaseExpiresAt: nextLeaseAt,
+        },
+      }
+    )
+  }
+
   private scheduleWorker() {
-    if (this.workerScheduled || this.workerRunning || this.stopRequested) return
+    if (!this.workerEnabled || this.workerScheduled || this.workerRunning || this.stopRequested) return
     if (mongoose.connection.readyState !== 1) return
 
     this.workerScheduled = true
@@ -239,47 +487,117 @@ class AdminContentJobService {
   }
 
   private async requeueStaleRunningJobs() {
-    await this.requeueRunningJobs('Job reencaminhado apos execucao interrompida.')
+    await this.requeueRunningJobs('Job reencaminhado apos execucao interrompida.', {
+      onlyStale: true,
+    })
   }
 
-  private async requeueRunningJobs(message: string) {
+  private async requeueRunningJobs(
+    message: string,
+    options: {
+      onlyStale: boolean
+    }
+  ) {
     if (mongoose.connection.readyState !== 1) return
 
-    const staleBefore = new Date(Date.now() - STALE_RUNNING_MS)
+    const now = new Date()
+    const staleBefore = new Date(now.getTime() - JOB_LEASE_MS)
     const query: Record<string, unknown> = {
       status: 'running',
     }
 
-    if (!this.stopRequested) {
-      query.startedAt = { $lt: staleBefore }
+    if (options.onlyStale) {
+      query.$or = [
+        { leaseExpiresAt: { $lt: now } },
+        { leaseExpiresAt: null, startedAt: { $lt: staleBefore } },
+      ]
     }
 
-    await AdminContentJob.updateMany(query, {
-      $set: {
-        status: 'queued',
-        startedAt: null,
-        finishedAt: null,
-        expiresAt: null,
-        error: message,
-      },
-    })
+    const jobs = await AdminContentJob.find(query).lean()
+    let requeuedJobs = 0
+    let failedJobs = 0
+
+    for (const job of jobs) {
+      const attemptsUsed = Number(job.attemptCount ?? 0)
+      const maxAttempts = Number(job.maxAttempts ?? MAX_JOB_ATTEMPTS)
+      const exhaustedRetries = attemptsUsed >= maxAttempts
+      const errorMessage = exhaustedRetries
+        ? `${message} Limite de retry esgotado.`
+        : message
+
+      const update =
+        exhaustedRetries
+          ? {
+              status: 'failed' as const,
+              finishedAt: now,
+              expiresAt: this.getExpiresAt('failed'),
+            }
+          : {
+              status: 'queued' as const,
+              startedAt: null,
+              finishedAt: null,
+              expiresAt: null,
+            }
+
+      const result = await AdminContentJob.updateOne(
+        {
+          _id: job._id,
+          status: 'running',
+        },
+        {
+          $set: {
+            ...update,
+            error: errorMessage,
+            workerId: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: job.lastHeartbeatAt ?? null,
+          },
+        }
+      )
+
+      if (result.modifiedCount > 0) {
+        if (exhaustedRetries) {
+          failedJobs += 1
+        } else {
+          requeuedJobs += 1
+        }
+      }
+    }
+
+    if (requeuedJobs > 0 || failedJobs > 0) {
+      await this.incrementWorkerStats({
+        requeuedJobs,
+        failedJobs,
+      })
+    }
   }
 
   private async processNextJobs() {
-    if (this.workerRunning || mongoose.connection.readyState !== 1 || this.stopRequested) return
+    if (!this.workerEnabled || this.workerRunning || mongoose.connection.readyState !== 1 || this.stopRequested) {
+      return
+    }
+
     this.workerRunning = true
 
     try {
       while (!this.stopRequested) {
-        const job = await AdminContentJob.findOneAndUpdate(
+        const claimStartedAt = new Date()
+        const claimedJob = await AdminContentJob.findOneAndUpdate(
           { status: 'queued' },
           {
             $set: {
               status: 'running',
-              startedAt: new Date(),
+              startedAt: claimStartedAt,
               finishedAt: null,
               expiresAt: null,
               error: null,
+              workerId: this.workerId,
+              leaseExpiresAt: nowPlusMs(JOB_LEASE_MS),
+              lastHeartbeatAt: claimStartedAt,
+              lastAttemptAt: claimStartedAt,
+            },
+            $inc: {
+              attemptCount: 1,
             },
           },
           {
@@ -288,11 +606,27 @@ class AdminContentJobService {
           }
         )
 
-        if (!job) break
-        await this.executeJob(job)
+        if (!claimedJob) break
+
+        await this.incrementWorkerStats({ claimedJobs: 1 })
+        await this.setCurrentJobContext({
+          id: String(claimedJob._id),
+          type: claimedJob.type,
+          startedAt: claimedJob.startedAt ?? claimStartedAt,
+        })
+        await this.executeJob(claimedJob)
       }
     } finally {
       this.workerRunning = false
+      if (this.workerEnabled && mongoose.connection.readyState === 1) {
+        await this.upsertWorkerRuntime({
+          status: this.stopRequested ? 'stopping' : 'idle',
+          workerId: this.workerId,
+          currentJobId: this.currentJobId,
+          currentJobType: this.currentJobType,
+          currentJobStartedAt: this.currentJobStartedAt,
+        })
+      }
     }
   }
 
@@ -309,6 +643,7 @@ class AdminContentJobService {
       statusCode: item.statusCode ?? null,
     }))
     const progress = this.buildProgressFromItems(items, job.progress.requested)
+    const jobId = new mongoose.Types.ObjectId(String(job._id))
 
     try {
       for (let index = 0; index < items.length; index += 1) {
@@ -319,7 +654,7 @@ class AdminContentJobService {
         }
 
         if (this.stopRequested) {
-          await this.persistJobState(new mongoose.Types.ObjectId(String(job._id)), {
+          await this.persistJobState(jobId, {
             items,
             progress,
             status: 'queued',
@@ -327,7 +662,11 @@ class AdminContentJobService {
             finishedAt: null,
             expiresAt: null,
             error: 'Job reencaminhado apos paragem controlada do worker.',
+            workerId: null,
+            leaseExpiresAt: null,
+            lastHeartbeatAt: new Date(),
           })
+          await this.incrementWorkerStats({ requeuedJobs: 1 })
           return
         }
 
@@ -403,12 +742,15 @@ class AdminContentJobService {
         }
 
         progress.processed = progress.succeeded + progress.failed
-        await this.persistJobState(new mongoose.Types.ObjectId(String(job._id)), {
+        await this.persistJobState(jobId, {
           items,
           progress,
           status: 'running',
           startedAt: job.startedAt ?? null,
           expiresAt: null,
+          workerId: this.workerId,
+          leaseExpiresAt: nowPlusMs(JOB_LEASE_MS),
+          lastHeartbeatAt: new Date(),
         })
       }
 
@@ -418,26 +760,58 @@ class AdminContentJobService {
           : progress.succeeded === 0
             ? 'failed'
             : 'completed_with_errors'
+      const finishedAt = new Date()
+      const finalError =
+        finalStatus === 'failed' ? items.find((item) => item.error)?.error ?? null : null
 
-      await this.persistJobState(new mongoose.Types.ObjectId(String(job._id)), {
+      await this.persistJobState(jobId, {
         items,
         progress,
         status: finalStatus,
-        finishedAt: new Date(),
+        finishedAt,
         startedAt: job.startedAt ?? null,
         expiresAt: this.getExpiresAt(finalStatus),
-        error: finalStatus === 'failed' ? items.find((item) => item.error)?.error ?? null : null,
+        error: finalError,
+        workerId: null,
+        leaseExpiresAt: null,
+        lastHeartbeatAt: finishedAt,
+      })
+
+      await this.incrementWorkerStats({
+        completedJobs: finalStatus === 'completed' ? 1 : 0,
+        failedJobs: finalStatus === 'completed' ? 0 : 1,
+      })
+      await this.upsertWorkerRuntime({
+        lastJobFinishedAt: finishedAt,
+        lastError: finalStatus === 'completed' ? null : finalError ?? 'Job concluido com falhas.',
+        lastErrorAt: finalStatus === 'completed' ? null : finishedAt,
       })
     } catch (error: unknown) {
-      await this.persistJobState(new mongoose.Types.ObjectId(String(job._id)), {
+      const finishedAt = new Date()
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido ao processar job.'
+
+      await this.persistJobState(jobId, {
         items,
         progress,
         status: 'failed',
-        finishedAt: new Date(),
+        finishedAt,
         startedAt: job.startedAt ?? null,
         expiresAt: this.getExpiresAt('failed'),
-        error: error instanceof Error ? error.message : 'Erro desconhecido ao processar job.',
+        error: errorMessage,
+        workerId: null,
+        leaseExpiresAt: null,
+        lastHeartbeatAt: finishedAt,
       })
+
+      await this.incrementWorkerStats({ failedJobs: 1 })
+      await this.upsertWorkerRuntime({
+        lastJobFinishedAt: finishedAt,
+        lastError: errorMessage,
+        lastErrorAt: finishedAt,
+      })
+    } finally {
+      await this.clearCurrentJobContext()
     }
   }
 
@@ -481,6 +855,9 @@ class AdminContentJobService {
       finishedAt?: Date | null
       expiresAt?: Date | null
       error?: string | null
+      workerId?: string | null
+      leaseExpiresAt?: Date | null
+      lastHeartbeatAt?: Date | null
     }
   ) {
     await AdminContentJob.updateOne(
@@ -494,9 +871,139 @@ class AdminContentJobService {
           finishedAt: payload.finishedAt ?? null,
           expiresAt: payload.expiresAt ?? null,
           error: payload.error ?? null,
+          workerId: payload.workerId ?? null,
+          leaseExpiresAt: payload.leaseExpiresAt ?? null,
+          lastHeartbeatAt: payload.lastHeartbeatAt ?? null,
         },
       }
     )
+  }
+
+  private async setCurrentJobContext(input: {
+    id: string
+    type: AdminContentJobType
+    startedAt: Date
+  }) {
+    this.currentJobId = input.id
+    this.currentJobType = input.type
+    this.currentJobStartedAt = input.startedAt
+
+    await this.upsertWorkerRuntime({
+      status: 'processing',
+      workerId: this.workerId,
+      currentJobId: input.id,
+      currentJobType: input.type,
+      currentJobStartedAt: input.startedAt,
+    })
+  }
+
+  private async clearCurrentJobContext() {
+    this.clearCurrentJobContextLocally()
+    await this.upsertWorkerRuntime({
+      status: this.stopRequested ? 'stopping' : 'idle',
+      workerId: this.workerId,
+      currentJobId: null,
+      currentJobType: null,
+      currentJobStartedAt: null,
+    })
+  }
+
+  private clearCurrentJobContextLocally() {
+    this.currentJobId = null
+    this.currentJobType = null
+    this.currentJobStartedAt = null
+  }
+
+  private async upsertWorkerRuntime(
+    payload: Partial<IAdminWorkerRuntime> & {
+      status?: AdminWorkerRuntimeStatus
+    }
+  ) {
+    if (mongoose.connection.readyState !== 1) return
+
+    await AdminWorkerRuntime.findOneAndUpdate(
+      { key: WORKER_RUNTIME_KEY },
+      {
+        $set: {
+          ...(payload.workerId !== undefined ? { workerId: payload.workerId } : {}),
+          ...(payload.status !== undefined ? { status: payload.status } : {}),
+          ...(payload.processId !== undefined ? { processId: payload.processId } : {}),
+          ...(payload.host !== undefined ? { host: payload.host } : {}),
+          ...(payload.startedAt !== undefined ? { startedAt: payload.startedAt } : {}),
+          ...(payload.stoppedAt !== undefined ? { stoppedAt: payload.stoppedAt } : {}),
+          ...(payload.lastHeartbeatAt !== undefined ? { lastHeartbeatAt: payload.lastHeartbeatAt } : {}),
+          ...(payload.currentJobId !== undefined ? { currentJobId: payload.currentJobId } : {}),
+          ...(payload.currentJobType !== undefined ? { currentJobType: payload.currentJobType } : {}),
+          ...(payload.currentJobStartedAt !== undefined
+            ? { currentJobStartedAt: payload.currentJobStartedAt }
+            : {}),
+          ...(payload.lastJobFinishedAt !== undefined
+            ? { lastJobFinishedAt: payload.lastJobFinishedAt }
+            : {}),
+          ...(payload.lastError !== undefined ? { lastError: payload.lastError } : {}),
+          ...(payload.lastErrorAt !== undefined ? { lastErrorAt: payload.lastErrorAt } : {}),
+        },
+        $setOnInsert: {
+          key: WORKER_RUNTIME_KEY,
+          stats: runtimeStatsDefaults(),
+        },
+      },
+      {
+        upsert: true,
+      }
+    )
+  }
+
+  private async incrementWorkerStats(payload: {
+    claimedJobs?: number
+    completedJobs?: number
+    failedJobs?: number
+    requeuedJobs?: number
+  }) {
+    if (mongoose.connection.readyState !== 1) return
+
+    const increments: Record<string, number> = {}
+    if (payload.claimedJobs) increments['stats.claimedJobs'] = payload.claimedJobs
+    if (payload.completedJobs) increments['stats.completedJobs'] = payload.completedJobs
+    if (payload.failedJobs) increments['stats.failedJobs'] = payload.failedJobs
+    if (payload.requeuedJobs) increments['stats.requeuedJobs'] = payload.requeuedJobs
+    if (Object.keys(increments).length === 0) return
+
+    await AdminWorkerRuntime.findOneAndUpdate(
+      { key: WORKER_RUNTIME_KEY },
+      {
+        $inc: increments,
+        $setOnInsert: {
+          key: WORKER_RUNTIME_KEY,
+          status: 'offline',
+          stats: runtimeStatsDefaults(),
+        },
+      },
+      {
+        upsert: true,
+      }
+    )
+  }
+
+  private resolveWorkerRuntimeStatus(
+    runtime: Partial<IAdminWorkerRuntime> | null,
+    now: Date
+  ): AdminWorkerRuntimeStatus | 'stale' {
+    if (!runtime) return 'offline'
+    if (runtime.status === 'offline') return 'offline'
+
+    const lastHeartbeatAt =
+      runtime.lastHeartbeatAt instanceof Date
+        ? runtime.lastHeartbeatAt
+        : runtime.lastHeartbeatAt
+          ? new Date(runtime.lastHeartbeatAt)
+          : null
+
+    if (!lastHeartbeatAt || lastHeartbeatAt.getTime() < now.getTime() - WORKER_STATUS_STALE_MS) {
+      return 'stale'
+    }
+
+    return runtime.status ?? 'offline'
   }
 
   private mapJob(item: any) {
@@ -519,6 +1026,11 @@ class AdminContentJobService {
       note: item.note ?? null,
       confirm: item.confirm === true,
       markFalsePositive: item.markFalsePositive === true,
+      attemptCount: Number(item.attemptCount ?? 0),
+      maxAttempts: Number(item.maxAttempts ?? MAX_JOB_ATTEMPTS),
+      workerId: item.workerId ?? null,
+      leaseExpiresAt: item.leaseExpiresAt ?? null,
+      lastHeartbeatAt: item.lastHeartbeatAt ?? null,
       actor,
       items: Array.isArray(item.items)
         ? item.items.map((jobItem: any) => ({

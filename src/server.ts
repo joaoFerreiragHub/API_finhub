@@ -1,7 +1,6 @@
 import './config/env'
 import { connectToDatabase } from './config/database'
 import app from './app'
-import { adminContentJobService } from './services/adminContentJob.service'
 import { Server } from 'http'
 
 const PORT = process.env.PORT || 3000
@@ -11,7 +10,6 @@ let shutdownStarted = false
 async function startServer() {
   try {
     await connectToDatabase()
-    adminContentJobService.startWorker()
     server = app.listen(PORT, () => {
       console.log(`Servidor a correr em http://localhost:${PORT}`)
     })
@@ -38,11 +36,6 @@ async function shutdown(signal: NodeJS.Signals) {
           resolve()
         })
       })
-    }
-
-    const gracefulWorkerStop = await adminContentJobService.stopWorker()
-    if (!gracefulWorkerStop) {
-      console.warn('Worker de moderacao parado com requeue forcado de jobs em running.')
     }
 
     process.exit(0)

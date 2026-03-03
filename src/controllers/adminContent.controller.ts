@@ -714,6 +714,19 @@ export const getAdminContentJob = async (req: AuthRequest, res: Response) => {
 }
 
 /**
+ * GET /api/admin/content/jobs/worker-status
+ */
+export const getAdminContentJobWorkerStatus = async (_req: AuthRequest, res: Response) => {
+  try {
+    const result = await adminContentJobService.getWorkerStatus()
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('Get admin content job worker status error:', error)
+    return handleAdminContentError(res, error, 'Erro ao ler estado do worker de jobs.')
+  }
+}
+
+/**
  * POST /api/admin/content/bulk-moderate
  */
 export const bulkModerateContent = async (req: AuthRequest, res: Response) => {

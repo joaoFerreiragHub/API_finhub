@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "start:dev": "ts-node --transpile-only src/server.ts",
+    "start:worker:admin-content-jobs": "ts-node --transpile-only src/workers/adminContentJobs.worker.ts",
     "start": "node dist/server.js",
     "typecheck": "npx tsc --noEmit --pretty false",
     "contract:openapi": "node scripts/validate-openapi.js",

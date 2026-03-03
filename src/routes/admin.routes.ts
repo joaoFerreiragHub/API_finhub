@@ -14,6 +14,7 @@ import {
   createBulkModerationJob,
   createBulkRollbackJob,
   getAdminContentJob,
+  getAdminContentJobWorkerStatus,
   getContentRollbackReview,
   hideContent,
   hideContentFast,
@@ -300,6 +301,23 @@ router.get(
   }),
   requireAdminScope('admin.content.read'),
   listAdminContentJobs
+)
+
+/**
+ * @route   GET /api/admin/content/jobs/worker-status
+ * @desc    Ler estado do worker dedicado e backlog de jobs
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/jobs/worker-status',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.jobs.worker_status.read',
+    resourceType: 'content_job_worker',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  getAdminContentJobWorkerStatus
 )
 
 /**

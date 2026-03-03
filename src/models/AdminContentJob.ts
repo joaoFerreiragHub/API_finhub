@@ -42,12 +42,18 @@ export interface IAdminContentJob extends Document {
   markFalsePositive?: boolean
   items: AdminContentJobItem[]
   progress: AdminContentJobProgress
+  attemptCount: number
+  maxAttempts: number
   guardrails?: {
     maxItems: number
     confirmThreshold: number
     duplicatesSkipped: number
   } | null
   error?: string | null
+  workerId?: string | null
+  leaseExpiresAt?: Date | null
+  lastHeartbeatAt?: Date | null
+  lastAttemptAt?: Date | null
   startedAt?: Date | null
   finishedAt?: Date | null
   expiresAt?: Date | null
@@ -178,6 +184,18 @@ const AdminContentJobSchema = new Schema<IAdminContentJob>(
         changed: 0,
       }),
     },
+    attemptCount: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    maxAttempts: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 3,
+    },
     guardrails: {
       type: {
         maxItems: { type: Number, required: true },
@@ -190,6 +208,23 @@ const AdminContentJobSchema = new Schema<IAdminContentJob>(
       type: String,
       default: null,
       maxlength: 500,
+    },
+    workerId: {
+      type: String,
+      default: null,
+      maxlength: 200,
+    },
+    leaseExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    lastHeartbeatAt: {
+      type: Date,
+      default: null,
+    },
+    lastAttemptAt: {
+      type: Date,
+      default: null,
     },
     startedAt: {
       type: Date,
@@ -213,6 +248,7 @@ AdminContentJobSchema.index({ createdAt: -1 })
 AdminContentJobSchema.index({ type: 1, createdAt: -1 })
 AdminContentJobSchema.index({ status: 1, createdAt: 1 })
 AdminContentJobSchema.index({ status: 1, startedAt: 1 })
+AdminContentJobSchema.index({ status: 1, leaseExpiresAt: 1 })
 AdminContentJobSchema.index({ actor: 1, createdAt: -1 })
 AdminContentJobSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 

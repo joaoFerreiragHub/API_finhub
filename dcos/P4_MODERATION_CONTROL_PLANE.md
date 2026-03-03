@@ -867,6 +867,56 @@ Objetivo:
 - evitar moderacao duplicada apos requeue;
 - proteger rotas caras antes da migracao para worker/store dedicados.
 
+### 21. Bloco B fechado: jobs fora do processo web
+
+Foi fechada a migracao operacional do Bloco B.
+
+Entregue:
+
+- o processo HTTP deixa de arrancar o worker de jobs;
+- foi criado um entrypoint dedicado para jobs:
+  - `npm run start:worker:admin-content-jobs`
+  - `src/workers/adminContentJobs.worker.ts`
+- o worker passa a manter heartbeat/lease persistidos em Mongo via `AdminWorkerRuntime`;
+- `AdminContentJob` passa a guardar `attemptCount`, `maxAttempts`, `workerId`, `leaseExpiresAt`, `lastHeartbeatAt` e `lastAttemptAt`;
+- jobs `running` com lease expirado passam a ser reencaminhados no arranque do worker;
+- quando o numero maximo de tentativas e esgotado, o job passa a `failed` explicitamente em vez de ficar a requeue infinito.
+
+Contrato admin novo:
+
+- `GET /api/admin/content/jobs/worker-status`
+
+Objetivo:
+
+- dar ao admin visibilidade real do worker, backlog, retries em curso, jobs stale e falhas recentes;
+- deixar a operacao dependente de um processo proprio e nao do ciclo de vida do servidor web;
+- preparar a migracao futura para store/worker mais externos sem perder o contrato operativo.
+
+Frontend ligado:
+
+- `ContentModerationPage` passa a mostrar o estado do worker dedicado;
+- jobs recentes passam a mostrar tentativa atual, worker responsavel e heartbeat/lease quando em `running`.
+
+Guardrails desta iteracao:
+
+- heartbeat configuravel por env;
+- lease configuravel por env;
+- max retries configuravel por env;
+- shutdown controlado continua a reencaminhar jobs `running` antes de terminar quando possivel.
+
+Flags introduzidas:
+
+- `ADMIN_CONTENT_JOBS_MAX_ATTEMPTS`
+- `ADMIN_CONTENT_JOBS_WORKER_HEARTBEAT_MS`
+- `ADMIN_CONTENT_JOBS_JOB_LEASE_MS`
+- `ADMIN_CONTENT_JOBS_WORKER_STOP_POLL_MS`
+
+Validacao desta iteracao:
+
+- `npm run typecheck` no backend;
+- `npm run typecheck:p1` no frontend;
+- `npx jest --no-cache src/__tests__/features/admin/adminContentService.test.ts`
+
 ## Porque esta abordagem
 
 ### Fast hide
@@ -890,12 +940,11 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 
 Estas sao as proximas camadas que fazem mais sentido:
 
-1. Jobs assincros com worker dedicado e politicas de retry/retencao.
-2. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
-3. Afinar trust scoring com sinais automaticos, falso positivo e thresholds por categoria.
-4. Rollback em lote com aprovacao faseada e amostragem de validacao.
-5. Deep-links mais finos entre dashboard, queue, trust profile e jobs.
-6. Alertas especificos para backlog de jobs e falsos positivos anormais.
+1. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+2. Afinar trust scoring com sinais automaticos, falso positivo e thresholds por categoria.
+3. Rollback em lote com aprovacao faseada e amostragem de validacao.
+4. Deep-links mais finos entre dashboard, queue, trust profile e jobs.
+5. Alertas especificos para backlog de jobs stale/retries e falsos positivos anormais.
 
 ## Pre-release obrigatorio
 
@@ -915,9 +964,8 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. jobs assincros com worker dedicado;
-2. afinacao adicional do trust score por falso positivo/categoria;
-3. rollback em lote com aprovacao faseada.
+1. afinacao adicional do trust score por falso positivo/categoria;
+2. rollback em lote com aprovacao faseada.
 
 ## Plano de ataque da proxima fase
 
@@ -949,21 +997,23 @@ Validacao:
 
 ### Bloco B. Tirar os jobs do processo web
 
-Objetivo:
+Estado:
 
-- remover risco operacional de jobs presos no processo HTTP;
-- preparar retry, concorrencia controlada e retencao.
+- fechado em 2026-03-03.
 
-Escopo:
+Entregue:
 
-1. migrar `AdminContentJob` para worker/processo dedicado;
-2. adicionar politicas de retry, timeout e requeue explicitas;
-3. expor no admin o estado real do worker, backlog e falhas por job.
+1. worker dedicado em `src/workers/adminContentJobs.worker.ts`;
+2. servidor web deixa de arrancar/parar jobs em-process;
+3. retry, lease timeout e requeue explicitados no modelo e no worker;
+4. endpoint admin para estado do worker e backlog;
+5. frontend admin com leitura operacional do worker e attempts por job.
 
-Dependencias:
+Validacao:
 
-- fila/worker dedicado;
-- observabilidade minima para jobs.
+1. `npm run typecheck` no backend;
+2. `npm run typecheck:p1` no frontend;
+3. `npx jest --no-cache src/__tests__/features/admin/adminContentService.test.ts`
 
 ### Bloco C. Afinar decisao automatica com feedback real
 
@@ -1002,9 +1052,8 @@ Dependencias:
 
 ### Ordem recomendada
 
-1. Bloco B
-2. Bloco C
-3. Bloco D
+1. Bloco C
+2. Bloco D
 
 ### Regra de execucao
 
