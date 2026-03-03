@@ -10,6 +10,7 @@ interface SurfaceControlDefinition {
   label: string
   description: string
   impact: 'read' | 'write'
+  defaultEnabled?: boolean
 }
 
 interface SurfaceControlActor {
@@ -41,6 +42,26 @@ const SURFACE_CONTROL_DEFINITIONS: SurfaceControlDefinition[] = [
     label: 'Landings editoriais',
     description: 'Landings/show-all das verticais editoriais.',
     impact: 'read',
+  },
+  {
+    key: 'creator_page',
+    label: 'Pagina de creator',
+    description: 'Listagens e perfis publicos de creators.',
+    impact: 'read',
+  },
+  {
+    key: 'search',
+    label: 'Pesquisa global',
+    description: 'Pesquisa publica e atalhos globais de descoberta.',
+    impact: 'read',
+    defaultEnabled: false,
+  },
+  {
+    key: 'derived_feeds',
+    label: 'Feeds derivados',
+    description: 'Feeds agregados/personalizados de atividade e descoberta.',
+    impact: 'read',
+    defaultEnabled: false,
   },
   {
     key: 'comments_read',
@@ -98,21 +119,23 @@ export class SurfaceControlServiceError extends Error {
 
 export class SurfaceControlService {
   async listControls() {
-    const rows = (await PlatformSurfaceControl.find({
-      key: { $in: SURFACE_KEYS },
-    })
-      .populate('updatedBy', 'name username email role')
-      .lean()) as Array<Partial<IPlatformSurfaceControl> & { updatedBy?: SurfaceControlActor | null }>
-
-    const lookup = new Map<string, Partial<IPlatformSurfaceControl> & { updatedBy?: SurfaceControlActor | null }>()
-    for (const row of rows) {
-      lookup.set(String(row.key), row)
-    }
+    const lookup = await this.getControlLookup()
 
     return {
       generatedAt: new Date(),
       items: SURFACE_CONTROL_DEFINITIONS.map((definition) =>
         this.mapControl(definition, lookup.get(definition.key) ?? null)
+      ),
+    }
+  }
+
+  async listPublicControls() {
+    const lookup = await this.getControlLookup()
+
+    return {
+      generatedAt: new Date(),
+      items: SURFACE_CONTROL_DEFINITIONS.map((definition) =>
+        this.mapPublicControl(definition, lookup.get(definition.key) ?? null)
       ),
     }
   }
@@ -161,15 +184,29 @@ export class SurfaceControlService {
       throw new SurfaceControlServiceError(400, 'surfaceKey invalido.')
     }
 
+    const definition = SURFACE_CONTROL_DEFINITIONS.find((item) => item.key === key)
+    if (!definition) {
+      throw new SurfaceControlServiceError(400, 'surfaceKey invalido.')
+    }
+
     const doc = (await PlatformSurfaceControl.findOne({ key }).lean()) as Partial<IPlatformSurfaceControl> | null
 
-    return {
-      key,
-      enabled: doc?.enabled !== false,
-      publicMessage: doc?.publicMessage ?? null,
-      reason: doc?.reason ?? null,
-      updatedAt: doc?.updatedAt ?? null,
+    return this.mapPublicControl(definition, doc)
+  }
+
+  private async getControlLookup() {
+    const rows = (await PlatformSurfaceControl.find({
+      key: { $in: SURFACE_KEYS },
+    })
+      .populate('updatedBy', 'name username email role')
+      .lean()) as Array<Partial<IPlatformSurfaceControl> & { updatedBy?: SurfaceControlActor | null }>
+
+    const lookup = new Map<string, Partial<IPlatformSurfaceControl> & { updatedBy?: SurfaceControlActor | null }>()
+    for (const row of rows) {
+      lookup.set(String(row.key), row)
     }
+
+    return lookup
   }
 
   private mapControl(
@@ -181,12 +218,25 @@ export class SurfaceControlService {
       label: definition.label,
       description: definition.description,
       impact: definition.impact,
-      enabled: row?.enabled !== false,
+      enabled: typeof row?.enabled === 'boolean' ? row.enabled : definition.defaultEnabled !== false,
       reason: row?.reason ?? null,
       note: row?.note ?? null,
       publicMessage: row?.publicMessage ?? null,
       updatedAt: row?.updatedAt ?? null,
       updatedBy: row?.updatedBy ?? null,
+    }
+  }
+
+  private mapPublicControl(
+    definition: SurfaceControlDefinition,
+    row: Partial<IPlatformSurfaceControl> | null
+  ) {
+    return {
+      key: definition.key,
+      enabled: typeof row?.enabled === 'boolean' ? row.enabled : definition.defaultEnabled !== false,
+      publicMessage: row?.publicMessage ?? null,
+      reason: row?.reason ?? null,
+      updatedAt: row?.updatedAt ?? null,
     }
   }
 }

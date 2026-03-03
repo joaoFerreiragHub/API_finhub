@@ -26,6 +26,7 @@ import etfYahooRoutes from './etfYahoo.routes'
 import reitRoutes from './reit.routes'
 import adminRoutes from './admin.routes'
 import editorialRoutes from './editorial.routes'
+import platformRoutes from './platform.routes'
 
 const router = Router()
 
@@ -66,6 +67,7 @@ router.get('/', (req, res) => {
       },
       admin: '/api/admin',
       editorial: '/api/editorial',
+      platform: '/api/platform',
     },
     timestamp: new Date().toISOString()
   })
@@ -118,5 +120,8 @@ router.use('/admin', adminRoutes)
 
 // Rotas editoriais publicas
 router.use('/editorial', editorialRoutes)
+
+// Rotas de superfícies publicas/operacionais
+router.use('/platform', platformRoutes)
 
 export default router

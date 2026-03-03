@@ -11,7 +11,7 @@ Dar ao admin e aos gestores uma camada de controlo operacional sobre conteudo e 
 
 ## Estado atual implementado
 
-Data desta iteracao consolidada: 2026-03-01.
+Data desta iteracao consolidada: 2026-03-03.
 
 ### 1. Fast hide operacional
 
@@ -607,7 +607,7 @@ Objetivo:
 - reduzir blast radius sem depender de deploy ou alteracoes manuais dispersas;
 - dar ao admin um ponto unico de operacao para contencao rapida.
 
-Superficies cobertas nesta iteracao:
+Superficies cobertas inicialmente:
 
 - `editorial_home`
 - `editorial_verticals`
@@ -660,7 +660,57 @@ Notas operacionais:
 - o kill switch nao substitui moderacao por item, mas reduz exposicao enquanto a triagem decorre;
 - a mensagem publica deve ser curta, neutra e nao revelar detalhe interno do incidente.
 
-### 16.1. Notificacao ao creator em `hide` e `restrict`
+### 16.1. Bloco A fechado: creator page, search e feeds derivados
+
+Foi fechada a expansao prevista para o Bloco A.
+
+Superficies adicionais:
+
+- `creator_page`
+- `search`
+- `derived_feeds`
+
+Backend adicional:
+
+- `GET /api/platform/surfaces`
+- `GET /api/platform/surfaces/:surfaceKey`
+
+Objetivo:
+
+- permitir ao frontend publico ler o estado operacional das superficies sem depender dos contratos admin;
+- centralizar fallback e messaging publica num endpoint leve e cacheavel;
+- deixar dashboard, alerts e UX publica a consumir a mesma fonte de verdade.
+
+Comportamento desta iteracao:
+
+- `creator_page` nasce `enabled` por omissao;
+- `search` nasce `disabled` por omissao;
+- `derived_feeds` nasce `disabled` por omissao.
+
+Nota operacional:
+
+- `search` e `derived_feeds` ficam desligados por defeito ate a superficie publica final estar pronta ponta-a-ponta;
+- isto evita expor UI navegavel para contratos ainda incompletos ou em hardening.
+
+Observabilidade:
+
+- `GET /api/admin/metrics/overview` e `GET /api/admin/metrics/drilldown` passam a incluir estas superficies na leitura agregada;
+- `GET /api/admin/alerts/internal` passa a incluir `surface_disabled` quando um kill switch de superficie e ativado com sucesso;
+- a auditoria admin passa a guardar `enabled`, `publicMessage` e `note` no update da superficie.
+
+Frontend publico ligado:
+
+- paginas publicas de creators;
+- pesquisa global e atalho `Ctrl+K`;
+- feeds derivados e blocos de atividade dependentes desses agregados.
+
+Validacao desta iteracao:
+
+- `npm run typecheck` no backend;
+- `npm run typecheck:p1` no frontend;
+- testes direcionados para parsing de `surface_disabled` e `/platform/surfaces`.
+
+### 16.2. Notificacao ao creator em `hide` e `restrict`
 
 Foi ligada uma notificacao operacional ao creator quando a equipa aplica `hide` ou `restrict`
 manuais ao seu conteudo.
@@ -840,13 +890,12 @@ Isto preserva rastreabilidade para suporte, revisao interna e analise posterior.
 
 Estas sao as proximas camadas que fazem mais sentido:
 
-1. Kill switches adicionais por superficie: creator page, search, feeds derivados.
-2. Jobs assincros com worker dedicado e politicas de retry/retencao.
-3. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
-4. Afinar trust scoring com sinais automaticos, falso positivo e thresholds por categoria.
-5. Rollback em lote com aprovacao faseada e amostragem de validacao.
-6. Deep-links mais finos entre dashboard, queue, trust profile e jobs.
-7. Alertas especificos para backlog de jobs e falsos positivos anormais.
+1. Jobs assincros com worker dedicado e politicas de retry/retencao.
+2. Escalonamento entre fila humana e auto-acao preventiva multi-nivel.
+3. Afinar trust scoring com sinais automaticos, falso positivo e thresholds por categoria.
+4. Rollback em lote com aprovacao faseada e amostragem de validacao.
+5. Deep-links mais finos entre dashboard, queue, trust profile e jobs.
+6. Alertas especificos para backlog de jobs e falsos positivos anormais.
 
 ## Pre-release obrigatorio
 
@@ -866,10 +915,9 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. kill switches adicionais por superficie;
-2. jobs assincros com worker dedicado;
-3. afinacao adicional do trust score por falso positivo/categoria;
-4. rollback em lote com aprovacao faseada.
+1. jobs assincros com worker dedicado;
+2. afinacao adicional do trust score por falso positivo/categoria;
+3. rollback em lote com aprovacao faseada.
 
 ## Plano de ataque da proxima fase
 
@@ -882,16 +930,22 @@ Objetivo:
 - aumentar o raio de cobertura dos kill switches sem obrigar a hide individual;
 - reduzir tempo de resposta quando ha abuso coordenado ou spam em escala.
 
-Escopo:
+Estado:
 
-1. estender kill switches a `creator page`, `search` e `feeds derivados`;
-2. garantir que dashboard, queue e board de creators mostram o estado dessas superficies;
-3. adicionar auditoria e alertas especificos por superficie desligada.
+- fechado em 2026-03-03.
 
-Dependencias:
+Entregue:
 
-- backend de surface control;
-- frontend admin dashboard e superficies de triagem.
+1. kill switches estendidos a `creator_page`, `search` e `derived_feeds`;
+2. endpoint publico `/api/platform/surfaces` para leitura publica de estado operacional;
+3. dashboard/alerts/frontend alinhados com estas superficies;
+4. alerta `surface_disabled` e auditoria reforcada por update de superficie.
+
+Validacao:
+
+1. `npm run typecheck` no backend;
+2. `npm run typecheck:p1` no frontend;
+3. Jest direcionado para alerts e public surface controls.
 
 ### Bloco B. Tirar os jobs do processo web
 
@@ -948,10 +1002,9 @@ Dependencias:
 
 ### Ordem recomendada
 
-1. Bloco A
-2. Bloco B
-3. Bloco C
-4. Bloco D
+1. Bloco B
+2. Bloco C
+3. Bloco D
 
 ### Regra de execucao
 

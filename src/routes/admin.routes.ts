@@ -169,6 +169,12 @@ router.post(
     resourceType: 'platform_surface_control',
     scope: 'admin.content.moderate',
     getResourceId: (req) => req.params.surfaceKey,
+    getMetadata: (req) => ({
+      enabled: typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined,
+      publicMessage:
+        typeof req.body?.publicMessage === 'string' ? req.body.publicMessage.trim() || null : undefined,
+      note: typeof req.body?.note === 'string' ? req.body.note.trim() || null : undefined,
+    }),
   }),
   requireAdminScope('admin.content.moderate'),
   updateAdminSurfaceControl

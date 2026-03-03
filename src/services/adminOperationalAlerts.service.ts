@@ -12,6 +12,7 @@ import { buildReportSignalSummary, isPriorityAtLeast } from './contentReport.ser
 
 export type AdminOperationalAlertType =
   | 'ban_applied'
+  | 'surface_disabled'
   | 'content_hide_spike'
   | 'delegated_access_started'
   | 'critical_report_target'
@@ -294,6 +295,7 @@ export class AdminOperationalAlertsService {
 
     const [
       banAlerts,
+      surfaceDisabledAlerts,
       delegatedAlerts,
       hideSpikeAlerts,
       reportRiskAlerts,
@@ -303,6 +305,7 @@ export class AdminOperationalAlertsService {
       creatorControlAlerts,
     ] = await Promise.all([
       this.listBanAlerts(windowStart, limit),
+      this.listSurfaceDisabledAlerts(windowStart, limit),
       this.listDelegatedAccessAlerts(windowStart, limit),
       this.listHideSpikeAlerts(limit),
       this.listCriticalReportAlerts(windowStart, limit),
@@ -314,6 +317,7 @@ export class AdminOperationalAlertsService {
 
     const items = [
       ...banAlerts,
+      ...surfaceDisabledAlerts,
       ...delegatedAlerts,
       ...hideSpikeAlerts,
       ...reportRiskAlerts,
@@ -420,6 +424,56 @@ export class AdminOperationalAlertsService {
           row.metadata && typeof row.metadata === 'object'
             ? (row.metadata as Record<string, unknown>)
             : undefined,
+      })
+    }
+
+    return alerts
+  }
+
+  private async listSurfaceDisabledAlerts(
+    windowStart: Date,
+    limit: number
+  ): Promise<AdminOperationalAlert[]> {
+    const rows = (await AdminAuditLog.find({
+      action: 'admin.platform.surfaces.update',
+      outcome: 'success',
+      createdAt: { $gte: windowStart },
+      'metadata.enabled': false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('actor', 'name username email role')
+      .lean()) as AuditLogLike[]
+
+    const alerts: AdminOperationalAlert[] = []
+    for (const row of rows) {
+      const id = resolveAnyId(row._id)
+      const detectedAt = toDate(row.createdAt)
+      if (!id || !detectedAt) continue
+
+      const metadata = toMetadataRecord(row.metadata)
+      const surfaceKey = toStringSafe(row.resourceId) ?? 'surface-desconhecida'
+      const publicMessage =
+        metadata?.publicMessage && typeof metadata.publicMessage === 'string'
+          ? metadata.publicMessage
+          : null
+
+      alerts.push({
+        id: `surface-disabled:${id}`,
+        type: 'surface_disabled',
+        severity: 'high',
+        title: 'Kill switch de superficie ativado',
+        description: `Superficie ${surfaceKey} foi desligada para conter exposicao publica.`,
+        action: 'admin.platform.surfaces.update',
+        resourceType: 'platform_surface_control',
+        resourceId: surfaceKey,
+        detectedAt: detectedAt.toISOString(),
+        actor: mapActor(row.actor),
+        metadata: {
+          ...(metadata ?? {}),
+          surfaceKey,
+          publicMessage,
+        },
       })
     }
 

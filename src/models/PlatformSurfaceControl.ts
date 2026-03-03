@@ -3,6 +3,9 @@ import mongoose, { Document, Schema } from 'mongoose'
 export type PlatformSurfaceKey =
   | 'editorial_home'
   | 'editorial_verticals'
+  | 'creator_page'
+  | 'search'
+  | 'derived_feeds'
   | 'comments_read'
   | 'comments_write'
   | 'reviews_read'
@@ -26,6 +29,9 @@ const PlatformSurfaceControlSchema = new Schema<IPlatformSurfaceControl>(
       enum: [
         'editorial_home',
         'editorial_verticals',
+        'creator_page',
+        'search',
+        'derived_feeds',
         'comments_read',
         'comments_write',
         'reviews_read',

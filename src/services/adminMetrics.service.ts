@@ -432,7 +432,7 @@ const getSurfaceKeysForContentType = (contentType: ModeratableContentType): stri
     return ['reviews_read', 'reviews_write']
   }
 
-  return ['editorial_home', 'editorial_verticals']
+  return ['editorial_home', 'editorial_verticals', 'creator_page', 'search', 'derived_feeds']
 }
 
 const getPrimarySurfaceKeyForContentType = (contentType: ModeratableContentType): string =>
