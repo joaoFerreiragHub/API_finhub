@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose'
 import { ContentModerationAction, ModeratableContentType } from './ContentModerationEvent'
 import { ContentModerationStatus } from './BaseContent'
+import { AutomatedModerationSeverity } from './AutomatedModerationSignal'
 
 export type AdminContentJobType = 'bulk_moderate' | 'bulk_rollback'
 export type AdminContentJobStatus =
@@ -10,6 +11,45 @@ export type AdminContentJobStatus =
   | 'completed_with_errors'
   | 'failed'
 export type AdminContentJobItemStatus = 'pending' | 'success' | 'failed'
+export type AdminContentJobApprovalStatus = 'draft' | 'review' | 'approved'
+
+export interface AdminContentJobApprovalSampleItem {
+  contentType: ModeratableContentType
+  contentId: string
+  eventId: string
+  title: string
+  targetStatus: ContentModerationStatus
+  openReports: number
+  uniqueReporters: number
+  automatedSeverity: AutomatedModerationSeverity
+  creatorRiskLevel: 'low' | 'medium' | 'high' | 'critical' | null
+  requiresConfirm: boolean
+  warnings: string[]
+}
+
+export interface AdminContentJobApproval {
+  required: boolean
+  reviewStatus: AdminContentJobApprovalStatus
+  reviewNote?: string | null
+  reviewRequestedAt?: Date | null
+  reviewRequestedBy?: mongoose.Types.ObjectId | null
+  approvalNote?: string | null
+  approvedAt?: Date | null
+  approvedBy?: mongoose.Types.ObjectId | null
+  sampleRequired: boolean
+  recommendedSampleSize: number
+  reviewedSampleKeys: string[]
+  sampleItems: AdminContentJobApprovalSampleItem[]
+  riskSummary: {
+    restoreVisibleCount: number
+    activeRiskCount: number
+    highRiskCount: number
+    criticalRiskCount: number
+    falsePositiveEligibleCount: number
+  }
+  falsePositiveValidationRequired: boolean
+  falsePositiveValidated: boolean
+}
 
 export interface AdminContentJobItem {
   contentType: ModeratableContentType
@@ -54,6 +94,7 @@ export interface IAdminContentJob extends Document {
   leaseExpiresAt?: Date | null
   lastHeartbeatAt?: Date | null
   lastAttemptAt?: Date | null
+  approval?: AdminContentJobApproval | null
   startedAt?: Date | null
   finishedAt?: Date | null
   expiresAt?: Date | null
@@ -118,6 +159,157 @@ const AdminContentJobProgressSchema = new Schema<AdminContentJobProgress>(
     succeeded: { type: Number, required: true, min: 0, default: 0 },
     failed: { type: Number, required: true, min: 0, default: 0 },
     changed: { type: Number, required: true, min: 0, default: 0 },
+  },
+  {
+    _id: false,
+  }
+)
+
+const AdminContentJobApprovalSampleItemSchema = new Schema<AdminContentJobApprovalSampleItem>(
+  {
+    contentType: {
+      type: String,
+      enum: ['article', 'video', 'course', 'live', 'podcast', 'book', 'comment', 'review'],
+      required: true,
+    },
+    contentId: {
+      type: String,
+      required: true,
+    },
+    eventId: {
+      type: String,
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      maxlength: 160,
+    },
+    targetStatus: {
+      type: String,
+      enum: ['visible', 'hidden', 'restricted'],
+      required: true,
+    },
+    openReports: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    uniqueReporters: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    automatedSeverity: {
+      type: String,
+      enum: ['none', 'low', 'medium', 'high', 'critical'],
+      required: true,
+      default: 'none',
+    },
+    creatorRiskLevel: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'critical'],
+      default: null,
+    },
+    requiresConfirm: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    warnings: {
+      type: [String],
+      default: [],
+    },
+  },
+  {
+    _id: false,
+  }
+)
+
+const AdminContentJobApprovalSchema = new Schema<AdminContentJobApproval>(
+  {
+    required: {
+      type: Boolean,
+      default: false,
+    },
+    reviewStatus: {
+      type: String,
+      enum: ['draft', 'review', 'approved'],
+      default: 'draft',
+    },
+    reviewNote: {
+      type: String,
+      default: null,
+      maxlength: 2000,
+    },
+    reviewRequestedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewRequestedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    approvalNote: {
+      type: String,
+      default: null,
+      maxlength: 2000,
+    },
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+    approvedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    sampleRequired: {
+      type: Boolean,
+      default: false,
+    },
+    recommendedSampleSize: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    reviewedSampleKeys: {
+      type: [String],
+      default: [],
+    },
+    sampleItems: {
+      type: [AdminContentJobApprovalSampleItemSchema],
+      default: [],
+    },
+    riskSummary: {
+      type: {
+        restoreVisibleCount: { type: Number, required: true, min: 0, default: 0 },
+        activeRiskCount: { type: Number, required: true, min: 0, default: 0 },
+        highRiskCount: { type: Number, required: true, min: 0, default: 0 },
+        criticalRiskCount: { type: Number, required: true, min: 0, default: 0 },
+        falsePositiveEligibleCount: { type: Number, required: true, min: 0, default: 0 },
+      },
+      required: true,
+      default: () => ({
+        restoreVisibleCount: 0,
+        activeRiskCount: 0,
+        highRiskCount: 0,
+        criticalRiskCount: 0,
+        falsePositiveEligibleCount: 0,
+      }),
+    },
+    falsePositiveValidationRequired: {
+      type: Boolean,
+      default: false,
+    },
+    falsePositiveValidated: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     _id: false,
@@ -224,6 +416,10 @@ const AdminContentJobSchema = new Schema<IAdminContentJob>(
     },
     lastAttemptAt: {
       type: Date,
+      default: null,
+    },
+    approval: {
+      type: AdminContentJobApprovalSchema,
       default: null,
     },
     startedAt: {

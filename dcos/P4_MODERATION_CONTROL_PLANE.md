@@ -1060,9 +1060,35 @@ Dependencias:
 - jobs assincronos mais robustos;
 - UX admin para revisao e aprovacao.
 
+Estado:
+
+- Bloco D fechado nesta iteracao.
+
+Entregue no backend:
+
+1. jobs `bulk_rollback` passam a nascer com envelope `approval`, faseado em `draft -> review -> approved`, com `riskSummary`, `sampleItems`, `reviewedSampleKeys` e flags de validacao de `falsePositive`;
+2. novos endpoints admin `POST /api/admin/content/jobs/:jobId/request-review` e `POST /api/admin/content/jobs/:jobId/approve`;
+3. aprovacao passa a exigir:
+   - `confirm=true` quando o lote tem thresholds criticos;
+   - revisao completa da amostra recomendada quando `sampleRequired=true`;
+   - `falsePositiveValidated=true` quando o lote pede marcacao de false positive;
+4. o worker dedicado deixa de reclamar rollbacks em `draft/review`, e `worker-status` passa a expor `awaitingApproval`;
+5. metricas de jobs deixam de tratar rollbacks sem aprovacao como backlog executavel.
+
+Notas operacionais:
+
+- o estado tecnico do job continua em `queued/running/completed/...`; a fase humana vive em `approval.reviewStatus`;
+- jobs legacy sem `approval.required` continuam executaveis para backward compatibility;
+- a criacao de rollback em lote falha cedo quando algum item nao pode ser revertido ou nao e elegivel para false positive em lote.
+
+Validacao desta iteracao:
+
+1. `npm run typecheck`
+
 ### Ordem recomendada
 
-1. Bloco D
+1. Blocos A-D fechados.
+2. A partir daqui, o foco passa para E2E, runbooks e hardening pre-release.
 
 ### Regra de execucao
 

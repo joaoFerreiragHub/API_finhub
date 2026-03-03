@@ -129,6 +129,30 @@ const extractBulkRollbackItems = (
     }))
 }
 
+const extractReviewedSampleItems = (
+  req: AuthRequest
+): Array<{ contentType: ModeratableContentType; contentId: string; eventId: string }> | undefined => {
+  const body = extractBodyRecord(req)
+  if (!body || !Array.isArray(body.reviewedSampleItems)) return undefined
+
+  return body.reviewedSampleItems
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    .map((item) => ({
+      contentType: item.contentType as ModeratableContentType,
+      contentId: typeof item.contentId === 'string' ? item.contentId : '',
+      eventId: typeof item.eventId === 'string' ? item.eventId : '',
+    }))
+}
+
+const extractFalsePositiveValidated = (req: AuthRequest): boolean | undefined => {
+  const body = extractBodyRecord(req)
+  if (!body) return undefined
+
+  const falsePositiveValidated = body.falsePositiveValidated
+  if (typeof falsePositiveValidated === 'boolean') return falsePositiveValidated
+  return undefined
+}
+
 const handleAdminContentError = (res: Response, error: unknown, fallbackMessage: string) => {
   if (error instanceof AdminContentServiceError) {
     return res.status(error.statusCode).json({
@@ -660,6 +684,67 @@ export const createBulkRollbackJob = async (req: AuthRequest, res: Response) => 
   } catch (error: unknown) {
     console.error('Create bulk rollback job error:', error)
     return handleAdminContentError(res, error, 'Erro ao criar job de rollback em lote.')
+  }
+}
+
+/**
+ * POST /api/admin/content/jobs/:jobId/request-review
+ */
+export const requestBulkRollbackJobReview = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const job = await adminContentJobService.requestBulkRollbackJobReview({
+      actorId: req.user.id,
+      jobId: req.params.jobId,
+      note: extractNote(req),
+    })
+
+    return res.status(202).json({
+      message: 'Job de rollback em lote submetido para revisao.',
+      job,
+    })
+  } catch (error: unknown) {
+    console.error('Request bulk rollback job review error:', error)
+    return handleAdminContentError(
+      res,
+      error,
+      'Erro ao submeter job de rollback em lote para revisao.'
+    )
+  }
+}
+
+/**
+ * POST /api/admin/content/jobs/:jobId/approve
+ */
+export const approveBulkRollbackJob = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const job = await adminContentJobService.approveBulkRollbackJob({
+      actorId: req.user.id,
+      jobId: req.params.jobId,
+      note: extractNote(req),
+      confirm: extractConfirm(req),
+      falsePositiveValidated: extractFalsePositiveValidated(req),
+      reviewedSampleItems: extractReviewedSampleItems(req),
+    })
+
+    return res.status(202).json({
+      message: 'Job de rollback em lote aprovado.',
+      job,
+    })
+  } catch (error: unknown) {
+    console.error('Approve bulk rollback job error:', error)
+    return handleAdminContentError(res, error, 'Erro ao aprovar job de rollback em lote.')
   }
 }
 

@@ -3,6 +3,8 @@ import mongoose from 'mongoose'
 import os from 'os'
 import {
   AdminContentJob,
+  AdminContentJobApproval,
+  AdminContentJobApprovalStatus,
   AdminContentJobStatus,
   AdminContentJobType,
   IAdminContentJob,
@@ -31,6 +33,12 @@ interface PaginationOptions {
 interface AdminContentJobFilters {
   type?: AdminContentJobType
   status?: AdminContentJobStatus
+}
+
+interface BulkRollbackReviewSampleItemInput {
+  contentType: BulkRollbackContentInput['items'][number]['contentType']
+  contentId: string
+  eventId: string
 }
 
 const DEFAULT_PAGE = 1
@@ -106,6 +114,14 @@ export const isValidAdminContentJobStatus = (value: unknown): value is AdminCont
   value === 'completed' ||
   value === 'completed_with_errors' ||
   value === 'failed'
+
+const isValidAdminContentJobApprovalStatus = (
+  value: unknown
+): value is AdminContentJobApprovalStatus =>
+  value === 'draft' || value === 'review' || value === 'approved'
+
+const toSampleKey = (item: { contentType: string; contentId: string; eventId: string | null | undefined }) =>
+  `${item.contentType}:${item.contentId}:${item.eventId ?? ''}`
 
 class AdminContentJobService {
   private workerEnabled = false
@@ -255,13 +271,7 @@ class AdminContentJobService {
   async queueBulkRollbackJob(input: BulkRollbackContentInput) {
     const actorId = toObjectId(input.actorId, 'actorId')
     const { uniqueItems, duplicatesSkipped } = normalizeBulkRollbackItems(input.items)
-
-    if (uniqueItems.length >= ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD && input.confirm !== true) {
-      throw new AdminContentServiceError(
-        400,
-        `Lotes com ${ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD} ou mais itens exigem confirm=true.`
-      )
-    }
+    const approval = await this.buildBulkRollbackApproval(uniqueItems, input.markFalsePositive === true)
 
     const job = await AdminContentJob.create({
       type: 'bulk_rollback',
@@ -273,6 +283,7 @@ class AdminContentJobService {
       markFalsePositive: input.markFalsePositive === true,
       attemptCount: 0,
       maxAttempts: MAX_JOB_ATTEMPTS,
+      approval,
       items: uniqueItems.map((item) => ({
         contentType: item.contentType,
         contentId: item.contentId,
@@ -292,6 +303,111 @@ class AdminContentJobService {
         duplicatesSkipped,
       },
     })
+    return this.getJob(String(job._id))
+  }
+
+  async requestBulkRollbackJobReview(input: {
+    actorId: string
+    jobId: string
+    note?: string
+  }) {
+    const actorId = toObjectId(input.actorId, 'actorId')
+    const jobId = toObjectId(input.jobId, 'jobId')
+    const now = new Date()
+    const note = input.note?.trim() ? input.note.trim() : null
+
+    const job = await AdminContentJob.findOneAndUpdate(
+      {
+        _id: jobId,
+        type: 'bulk_rollback',
+        status: 'queued',
+        'approval.required': true,
+        'approval.reviewStatus': 'draft',
+      },
+      {
+        $set: {
+          'approval.reviewStatus': 'review',
+          'approval.reviewNote': note,
+          'approval.reviewRequestedAt': now,
+          'approval.reviewRequestedBy': actorId,
+        },
+      },
+      {
+        new: true,
+      }
+    )
+
+    if (!job) {
+      throw new AdminContentServiceError(
+        409,
+        'Job de rollback em lote indisponivel para revisao nesta fase.'
+      )
+    }
+
+    return this.getJob(String(job._id))
+  }
+
+  async approveBulkRollbackJob(input: {
+    actorId: string
+    jobId: string
+    note?: string
+    confirm?: boolean
+    falsePositiveValidated?: boolean
+    reviewedSampleItems?: BulkRollbackReviewSampleItemInput[]
+  }) {
+    const actorId = toObjectId(input.actorId, 'actorId')
+    const jobId = toObjectId(input.jobId, 'jobId')
+    const job = await AdminContentJob.findById(jobId)
+
+    if (!job || job.type !== 'bulk_rollback' || job.status !== 'queued' || !job.approval?.required) {
+      throw new AdminContentServiceError(404, 'Job de rollback em lote nao encontrado.')
+    }
+
+    if (job.approval.reviewStatus !== 'review') {
+      throw new AdminContentServiceError(
+        409,
+        'Job de rollback em lote tem de passar por revisao antes da aprovacao.'
+      )
+    }
+
+    const approval = job.approval as AdminContentJobApproval
+    const criticalRiskCount = Number(approval.riskSummary?.criticalRiskCount ?? 0)
+    if (criticalRiskCount > 0 && input.confirm !== true) {
+      throw new AdminContentServiceError(
+        400,
+        'Aprovacao exige confirm=true porque existem thresholds criticos ativos no lote.'
+      )
+    }
+
+    const reviewedSampleKeys = Array.from(
+      new Set((input.reviewedSampleItems ?? []).map((item) => toSampleKey(item)))
+    )
+    const requiredSampleKeys = Array.isArray(approval.sampleItems)
+      ? approval.sampleItems.map((item) => toSampleKey(item))
+      : []
+
+    if (approval.sampleRequired && requiredSampleKeys.some((key) => !reviewedSampleKeys.includes(key))) {
+      throw new AdminContentServiceError(
+        400,
+        'Aprovacao exige revisao explicita de todos os itens da amostra recomendada.'
+      )
+    }
+
+    if (job.markFalsePositive === true && approval.falsePositiveValidationRequired && input.falsePositiveValidated !== true) {
+      throw new AdminContentServiceError(
+        400,
+        'Aprovacao exige validacao explicita dos false positives antes de executar rollback em lote.'
+      )
+    }
+
+    job.confirm = job.confirm === true || input.confirm === true
+    job.approval.reviewStatus = 'approved'
+    job.approval.approvalNote = input.note?.trim() ? input.note.trim() : null
+    job.approval.approvedAt = new Date()
+    job.approval.approvedBy = actorId
+    job.approval.reviewedSampleKeys = reviewedSampleKeys
+    job.approval.falsePositiveValidated = input.falsePositiveValidated === true
+    await job.save()
 
     this.scheduleWorker()
     return this.getJob(String(job._id))
@@ -312,6 +428,8 @@ class AdminContentJobService {
         .skip(skip)
         .limit(limit)
         .populate('actor', 'name username email role')
+        .populate('approval.reviewRequestedBy', 'name username email role')
+        .populate('approval.approvedBy', 'name username email role')
         .lean(),
       AdminContentJob.countDocuments(query),
     ])
@@ -330,7 +448,11 @@ class AdminContentJobService {
   async getJob(jobId: string) {
     toObjectId(jobId, 'jobId')
 
-    const job = await AdminContentJob.findById(jobId).populate('actor', 'name username email role').lean()
+    const job = await AdminContentJob.findById(jobId)
+      .populate('actor', 'name username email role')
+      .populate('approval.reviewRequestedBy', 'name username email role')
+      .populate('approval.approvedBy', 'name username email role')
+      .lean()
 
     if (!job) {
       throw new AdminContentServiceError(404, 'Job de moderacao nao encontrado.')
@@ -346,12 +468,35 @@ class AdminContentJobService {
 
     const currentJobPromise =
       runtime?.currentJobId && mongoose.Types.ObjectId.isValid(runtime.currentJobId)
-        ? AdminContentJob.findById(runtime.currentJobId).populate('actor', 'name username email role').lean()
+        ? AdminContentJob.findById(runtime.currentJobId)
+            .populate('actor', 'name username email role')
+            .populate('approval.reviewRequestedBy', 'name username email role')
+            .populate('approval.approvedBy', 'name username email role')
+            .lean()
         : Promise.resolve(null)
 
-    const [queued, running, staleRunning, retrying, maxAttemptsReached, failedLast24h, currentJob] =
+    const [queued, awaitingApproval, running, staleRunning, retrying, maxAttemptsReached, failedLast24h, currentJob] =
       await Promise.all([
-        AdminContentJob.countDocuments({ status: 'queued' }),
+        AdminContentJob.countDocuments({
+          status: 'queued',
+          $or: [
+            { type: 'bulk_moderate' },
+            {
+              type: 'bulk_rollback',
+              'approval.required': { $ne: true },
+            },
+            {
+              type: 'bulk_rollback',
+              'approval.reviewStatus': 'approved',
+            },
+          ],
+        }),
+        AdminContentJob.countDocuments({
+          type: 'bulk_rollback',
+          status: 'queued',
+          'approval.required': true,
+          'approval.reviewStatus': { $in: ['draft', 'review'] },
+        }),
         AdminContentJob.countDocuments({ status: 'running' }),
         AdminContentJob.countDocuments({
           status: 'running',
@@ -410,6 +555,7 @@ class AdminContentJobService {
       },
       queue: {
         queued,
+        awaitingApproval,
         running,
         staleRunning,
         retrying,
@@ -423,6 +569,176 @@ class AdminContentJobService {
         staleAfterMs: WORKER_STATUS_STALE_MS,
         maxAttempts: MAX_JOB_ATTEMPTS,
       },
+    }
+  }
+
+  private async buildBulkRollbackApproval(
+    items: BulkRollbackContentInput['items'],
+    markFalsePositive: boolean
+  ): Promise<AdminContentJobApproval> {
+    const automatedSeverityRank: Record<'none' | 'low' | 'medium' | 'high' | 'critical', number> = {
+      none: 0,
+      low: 1,
+      medium: 2,
+      high: 3,
+      critical: 4,
+    }
+    const creatorRiskRank: Record<'low' | 'medium' | 'high' | 'critical', number> = {
+      low: 1,
+      medium: 2,
+      high: 3,
+      critical: 4,
+    }
+
+    const reviewedItems = await Promise.all(
+      items.map(async (item) => {
+        const review = await adminContentService.getRollbackReview({
+          contentType: item.contentType,
+          contentId: item.contentId,
+          eventId: item.eventId,
+        })
+
+        if (!review.rollback.canRollback) {
+          throw new AdminContentServiceError(
+            409,
+            `Rollback em lote bloqueado para ${item.contentType}:${item.contentId}. ${review.rollback.blockers[0] ?? 'Rollback indisponivel.'}`
+          )
+        }
+
+        if (markFalsePositive && !review.rollback.falsePositiveEligible) {
+          throw new AdminContentServiceError(
+            400,
+            `False positive em lote so e permitido quando ${item.contentType}:${item.contentId} volta a visivel.`
+          )
+        }
+
+        const automatedSeverity =
+          review.rollback.checks.automatedSeverity in automatedSeverityRank
+            ? (review.rollback.checks.automatedSeverity as keyof typeof automatedSeverityRank)
+            : 'none'
+        const creatorRiskLevel =
+          review.rollback.checks.creatorRiskLevel &&
+          review.rollback.checks.creatorRiskLevel in creatorRiskRank
+            ? (review.rollback.checks.creatorRiskLevel as keyof typeof creatorRiskRank)
+            : null
+        const highRisk =
+          review.rollback.requiresConfirm ||
+          automatedSeverity === 'high' ||
+          automatedSeverity === 'critical' ||
+          creatorRiskLevel === 'high' ||
+          creatorRiskLevel === 'critical' ||
+          review.rollback.checks.openReports >= 3
+        const criticalRisk =
+          automatedSeverity === 'critical' ||
+          creatorRiskLevel === 'critical' ||
+          review.rollback.checks.openReports >= 5
+        const riskScore =
+          (criticalRisk ? 200 : highRisk ? 100 : 0) +
+          (review.rollback.requiresConfirm ? 50 : 0) +
+          review.rollback.checks.openReports * 4 +
+          review.rollback.checks.uniqueReporters * 3 +
+          automatedSeverityRank[automatedSeverity] * 6 +
+          (creatorRiskLevel ? creatorRiskRank[creatorRiskLevel] * 5 : 0)
+
+        return {
+          review,
+          highRisk,
+          criticalRisk,
+          riskScore,
+        }
+      })
+    )
+
+    const riskSummary = reviewedItems.reduce(
+      (summary, item) => {
+        if (item.review.rollback.targetStatus === 'visible') {
+          summary.restoreVisibleCount += 1
+        }
+        if (
+          item.review.rollback.requiresConfirm ||
+          item.review.rollback.checks.openReports > 0 ||
+          item.review.rollback.checks.automatedSignalActive
+        ) {
+          summary.activeRiskCount += 1
+        }
+        if (item.highRisk) {
+          summary.highRiskCount += 1
+        }
+        if (item.criticalRisk) {
+          summary.criticalRiskCount += 1
+        }
+        if (item.review.rollback.falsePositiveEligible) {
+          summary.falsePositiveEligibleCount += 1
+        }
+
+        return summary
+      },
+      {
+        restoreVisibleCount: 0,
+        activeRiskCount: 0,
+        highRiskCount: 0,
+        criticalRiskCount: 0,
+        falsePositiveEligibleCount: 0,
+      }
+    )
+
+    const sampleRequired =
+      riskSummary.criticalRiskCount > 0 ||
+      riskSummary.highRiskCount >= 3 ||
+      riskSummary.restoreVisibleCount >= ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD ||
+      markFalsePositive
+    const recommendedSampleSize = sampleRequired
+      ? Math.min(
+          reviewedItems.length,
+          Math.max(
+            1,
+            Math.min(
+              6,
+              Math.max(
+                riskSummary.criticalRiskCount > 0 ? 3 : 2,
+                Math.ceil(reviewedItems.length / 4)
+              )
+            )
+          )
+        )
+      : 0
+
+    const sampleItems =
+      recommendedSampleSize > 0
+        ? reviewedItems
+            .sort((left, right) => right.riskScore - left.riskScore)
+            .slice(0, recommendedSampleSize)
+            .map(({ review }) => ({
+              contentType: review.content.contentType,
+              contentId: review.content.id,
+              eventId: review.event.id,
+              title: review.content.title || `${review.content.contentType}:${review.content.id}`,
+              targetStatus: review.rollback.targetStatus,
+              openReports: review.rollback.checks.openReports,
+              uniqueReporters: review.rollback.checks.uniqueReporters,
+              automatedSeverity: review.rollback.checks.automatedSeverity,
+              creatorRiskLevel: review.rollback.checks.creatorRiskLevel,
+              requiresConfirm: review.rollback.requiresConfirm,
+              warnings: review.rollback.warnings.slice(0, 4),
+            }))
+        : []
+
+    return {
+      required: true,
+      reviewStatus: 'draft',
+      reviewNote: null,
+      reviewRequestedAt: null,
+      reviewRequestedBy: null,
+      approvalNote: null,
+      approvedAt: null,
+      approvedBy: null,
+      sampleRequired,
+      recommendedSampleSize,
+      reviewedSampleKeys: [],
+      sampleItems,
+      riskSummary,
+      falsePositiveValidationRequired: markFalsePositive,
+      falsePositiveValidated: false,
     }
   }
 
@@ -583,7 +899,20 @@ class AdminContentJobService {
       while (!this.stopRequested) {
         const claimStartedAt = new Date()
         const claimedJob = await AdminContentJob.findOneAndUpdate(
-          { status: 'queued' },
+          {
+            status: 'queued',
+            $or: [
+              { type: 'bulk_moderate' },
+              {
+                type: 'bulk_rollback',
+                'approval.required': { $ne: true },
+              },
+              {
+                type: 'bulk_rollback',
+                'approval.reviewStatus': 'approved',
+              },
+            ],
+          },
           {
             $set: {
               status: 'running',
@@ -1016,6 +1345,30 @@ class AdminContentJobService {
           role: item.actor.role,
         }
       : null
+    const reviewRequestedBy = item.approval?.reviewRequestedBy
+      ? {
+          id:
+            typeof item.approval.reviewRequestedBy._id === 'string'
+              ? item.approval.reviewRequestedBy._id
+              : String(item.approval.reviewRequestedBy._id ?? item.approval.reviewRequestedBy),
+          name: item.approval.reviewRequestedBy.name,
+          username: item.approval.reviewRequestedBy.username,
+          email: item.approval.reviewRequestedBy.email,
+          role: item.approval.reviewRequestedBy.role,
+        }
+      : null
+    const approvedBy = item.approval?.approvedBy
+      ? {
+          id:
+            typeof item.approval.approvedBy._id === 'string'
+              ? item.approval.approvedBy._id
+              : String(item.approval.approvedBy._id ?? item.approval.approvedBy),
+          name: item.approval.approvedBy.name,
+          username: item.approval.approvedBy.username,
+          email: item.approval.approvedBy.email,
+          role: item.approval.approvedBy.role,
+        }
+      : null
 
     return {
       id: String(item._id),
@@ -1061,6 +1414,58 @@ class AdminContentJobService {
             duplicatesSkipped: Number(item.guardrails.duplicatesSkipped ?? 0),
           }
         : null,
+      approval:
+        item.approval && item.type === 'bulk_rollback'
+          ? {
+              required: item.approval.required === true,
+              reviewStatus: isValidAdminContentJobApprovalStatus(item.approval.reviewStatus)
+                ? item.approval.reviewStatus
+                : 'draft',
+              reviewNote: item.approval.reviewNote ?? null,
+              reviewRequestedAt: item.approval.reviewRequestedAt ?? null,
+              reviewRequestedBy,
+              approvalNote: item.approval.approvalNote ?? null,
+              approvedAt: item.approval.approvedAt ?? null,
+              approvedBy,
+              sampleRequired: item.approval.sampleRequired === true,
+              recommendedSampleSize: Number(item.approval.recommendedSampleSize ?? 0),
+              reviewedSampleKeys: Array.isArray(item.approval.reviewedSampleKeys)
+                ? item.approval.reviewedSampleKeys.filter(
+                    (sampleKey: unknown): sampleKey is string => typeof sampleKey === 'string'
+                  )
+                : [],
+              sampleItems: Array.isArray(item.approval.sampleItems)
+                ? item.approval.sampleItems.map((sampleItem: any) => ({
+                    contentType: sampleItem.contentType,
+                    contentId: sampleItem.contentId,
+                    eventId: sampleItem.eventId,
+                    title: sampleItem.title,
+                    targetStatus: sampleItem.targetStatus,
+                    openReports: Number(sampleItem.openReports ?? 0),
+                    uniqueReporters: Number(sampleItem.uniqueReporters ?? 0),
+                    automatedSeverity: sampleItem.automatedSeverity ?? 'none',
+                    creatorRiskLevel: sampleItem.creatorRiskLevel ?? null,
+                    requiresConfirm: sampleItem.requiresConfirm === true,
+                    warnings: Array.isArray(sampleItem.warnings)
+                      ? sampleItem.warnings.filter(
+                          (warning: unknown): warning is string => typeof warning === 'string'
+                        )
+                      : [],
+                  }))
+                : [],
+              riskSummary: {
+                restoreVisibleCount: Number(item.approval.riskSummary?.restoreVisibleCount ?? 0),
+                activeRiskCount: Number(item.approval.riskSummary?.activeRiskCount ?? 0),
+                highRiskCount: Number(item.approval.riskSummary?.highRiskCount ?? 0),
+                criticalRiskCount: Number(item.approval.riskSummary?.criticalRiskCount ?? 0),
+                falsePositiveEligibleCount: Number(
+                  item.approval.riskSummary?.falsePositiveEligibleCount ?? 0
+                ),
+              },
+              falsePositiveValidationRequired: item.approval.falsePositiveValidationRequired === true,
+              falsePositiveValidated: item.approval.falsePositiveValidated === true,
+            }
+          : null,
       error: item.error ?? null,
       startedAt: item.startedAt ?? null,
       finishedAt: item.finishedAt ?? null,

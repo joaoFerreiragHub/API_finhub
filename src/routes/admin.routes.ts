@@ -9,6 +9,7 @@ import {
   startAdminAssistedSession,
 } from '../controllers/adminAssistedSession.controller'
 import {
+  approveBulkRollbackJob,
   bulkModerateContent,
   bulkRollbackContent,
   createBulkModerationJob,
@@ -22,6 +23,7 @@ import {
   listAdminContentQueue,
   listContentReports,
   listContentModerationHistory,
+  requestBulkRollbackJobReview,
   rollbackContent,
   restrictContent,
   unhideContent,
@@ -318,6 +320,44 @@ router.get(
   }),
   requireAdminScope('admin.content.read'),
   getAdminContentJobWorkerStatus
+)
+
+/**
+ * @route   POST /api/admin/content/jobs/:jobId/request-review
+ * @desc    Submeter job de rollback em lote para revisao operacional
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/jobs/:jobId/request-review',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.content.bulk_rollback_job.request_review',
+    resourceType: 'content_job',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.jobId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  requestBulkRollbackJobReview
+)
+
+/**
+ * @route   POST /api/admin/content/jobs/:jobId/approve
+ * @desc    Aprovar job de rollback em lote apos revisao faseada
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/jobs/:jobId/approve',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.content.bulk_rollback_job.approve',
+    resourceType: 'content_job',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.jobId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  approveBulkRollbackJob
 )
 
 /**

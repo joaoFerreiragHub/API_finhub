@@ -1026,7 +1026,14 @@ export class AdminMetricsService {
           },
         },
       ]),
-      AdminContentJob.countDocuments({ status: 'queued' }),
+      AdminContentJob.countDocuments({
+        status: 'queued',
+        $or: [
+          { type: 'bulk_moderate' },
+          { type: 'bulk_rollback', 'approval.required': { $ne: true } },
+          { type: 'bulk_rollback', 'approval.reviewStatus': 'approved' },
+        ],
+      }),
       AdminContentJob.countDocuments({ status: 'running' }),
       AdminContentJob.countDocuments({
         status: { $in: ['completed', 'completed_with_errors'] },
@@ -1039,7 +1046,25 @@ export class AdminMetricsService {
       AdminContentJob.aggregate<{ _id: AdminContentJobType | null; count: number }>([
         {
           $match: {
-            status: { $in: ['queued', 'running'] },
+            $or: [
+              {
+                status: 'running',
+              },
+              {
+                status: 'queued',
+                type: 'bulk_moderate',
+              },
+              {
+                status: 'queued',
+                type: 'bulk_rollback',
+                'approval.required': { $ne: true },
+              },
+              {
+                status: 'queued',
+                type: 'bulk_rollback',
+                'approval.reviewStatus': 'approved',
+              },
+            ],
           },
         },
         {
