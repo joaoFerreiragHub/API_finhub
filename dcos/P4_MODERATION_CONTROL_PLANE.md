@@ -964,8 +964,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
 Se continuarmos na mesma linha, a sequencia com melhor retorno e:
 
-1. afinacao adicional do trust score por falso positivo/categoria;
-2. rollback em lote com aprovacao faseada.
+1. rollback em lote com aprovacao faseada.
 
 ## Plano de ataque da proxima fase
 
@@ -1017,21 +1016,32 @@ Validacao:
 
 ### Bloco C. Afinar decisao automatica com feedback real
 
+Estado:
+
+- fechado em 2026-03-03.
+
 Objetivo:
 
 - usar falso positivo e reincidencia para reduzir ruído e melhorar acerto;
 - evitar que automacao penalize creators validos com demasiada facilidade.
 
-Escopo:
+Entregue:
 
-1. pesar falso positivo por categoria e por regra automatica;
-2. separar thresholds por tipo de alvo e superficie;
-3. refletir esse ajuste no trust score, policy engine e recomendacoes do admin.
+1. trust score passa a compensar falso positivo com pesos por `category` e por `automatedRules`;
+2. `ContentFalsePositiveFeedback` fica enriquecido com `surfaceKey`, `surfaceKeys`, `policyProfile`, `reportPriority` e regras automaticas ativas no momento da marcacao;
+3. policy engine passa a devolver perfis aplicados por tipo de alvo e superficie:
+   - `multi_surface_discovery`
+   - `discussion_comments`
+   - `discussion_reviews`
+4. thresholds de decisao ficam separados entre `review`, `restrict`, `hide/high` e `hide/high-risk`, alem do `auto-hide` aplicado por perfil;
+5. queue admin e trust profile passam a expor compensacao de falso positivo, categoria dominante e regra automatica dominante.
 
-Dependencias:
+Validacao:
 
-- historico de `ContentFalsePositiveFeedback`;
-- sinais automaticos persistidos.
+1. `npm run typecheck` no backend;
+2. `npm run typecheck:p1` no frontend;
+3. `npx jest --no-cache src/__tests__/features/admin/adminUsersService.test.ts`;
+4. `npx jest --no-cache src/__tests__/features/admin/adminContentService.test.ts`
 
 ### Bloco D. Rollback em lote com mais seguranca
 
@@ -1052,8 +1062,7 @@ Dependencias:
 
 ### Ordem recomendada
 
-1. Bloco C
-2. Bloco D
+1. Bloco D
 
 ### Regra de execucao
 

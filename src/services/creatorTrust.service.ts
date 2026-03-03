@@ -1,9 +1,13 @@
 import mongoose from 'mongoose'
+import { AutomatedModerationRule } from '../models/AutomatedModerationSignal'
 import { Article } from '../models/Article'
 import { ContentModerationStatus } from '../models/BaseContent'
 import { Book } from '../models/Book'
 import { Comment } from '../models/Comment'
-import { ContentFalsePositiveFeedback } from '../models/ContentFalsePositiveFeedback'
+import {
+  ContentFalsePositiveCategory,
+  ContentFalsePositiveFeedback,
+} from '../models/ContentFalsePositiveFeedback'
 import { ContentReport, ContentReportReason } from '../models/ContentReport'
 import { ContentModerationEvent, ModeratableContentType } from '../models/ContentModerationEvent'
 import { Course } from '../models/Course'
@@ -23,6 +27,20 @@ export type CreatorTrustRecommendedAction =
   | 'block_publishing'
   | 'suspend_creator_ops'
 
+export interface CreatorFalsePositiveCategoryBreakdown {
+  reports: number
+  policy_auto_hide: number
+  automated_detection: number
+  manual_moderation: number
+}
+
+export interface CreatorAutomatedFalsePositiveRuleBreakdown {
+  spam: number
+  suspicious_link: number
+  flood: number
+  mass_creation: number
+}
+
 export interface CreatorTrustSignals {
   trustScore: number
   riskLevel: CreatorRiskLevel
@@ -40,6 +58,11 @@ export interface CreatorTrustSignals {
     falsePositiveEvents30d: number
     automatedFalsePositiveEvents30d: number
     falsePositiveRate30d: number
+    falsePositiveCompensationScore30d: number
+    dominantFalsePositiveCategory30d: ContentFalsePositiveCategory | null
+    dominantAutomatedFalsePositiveRule30d: AutomatedModerationRule | null
+    falsePositiveCategoryBreakdown30d: CreatorFalsePositiveCategoryBreakdown
+    automatedFalsePositiveRuleBreakdown30d: CreatorAutomatedFalsePositiveRuleBreakdown
     activeControlFlags: string[]
   }
   flags: string[]
@@ -76,6 +99,8 @@ interface CreatorAccumulator {
   recentCreatorControlActions30d: number
   falsePositiveEvents30d: number
   automatedFalsePositiveEvents30d: number
+  falsePositiveCategoryBreakdown30d: CreatorFalsePositiveCategoryBreakdown
+  automatedFalsePositiveRuleBreakdown30d: CreatorAutomatedFalsePositiveRuleBreakdown
   reasonCounts: Map<string, number>
 }
 
@@ -90,6 +115,27 @@ const CONTENT_TYPES: ModeratableContentType[] = [
   'comment',
   'review',
 ]
+const FALSE_POSITIVE_CATEGORIES: ContentFalsePositiveCategory[] = [
+  'reports',
+  'policy_auto_hide',
+  'automated_detection',
+  'manual_moderation',
+]
+const AUTOMATED_RULES: AutomatedModerationRule[] = ['spam', 'suspicious_link', 'flood', 'mass_creation']
+
+const FALSE_POSITIVE_CATEGORY_WEIGHTS: Record<ContentFalsePositiveCategory, number> = {
+  reports: 2.5,
+  policy_auto_hide: 4.5,
+  automated_detection: 3.5,
+  manual_moderation: 1.5,
+}
+
+const FALSE_POSITIVE_RULE_WEIGHTS: Record<AutomatedModerationRule, number> = {
+  spam: 0.5,
+  suspicious_link: 1.5,
+  flood: 1,
+  mass_creation: 0.75,
+}
 
 interface ModeratableModel {
   find(query: Record<string, unknown>): {
@@ -156,6 +202,54 @@ const pushReason = (reasons: string[], reason: string) => {
   }
 }
 
+const createEmptyFalsePositiveCategoryBreakdown = (): CreatorFalsePositiveCategoryBreakdown => ({
+  reports: 0,
+  policy_auto_hide: 0,
+  automated_detection: 0,
+  manual_moderation: 0,
+})
+
+const createEmptyAutomatedFalsePositiveRuleBreakdown = (): CreatorAutomatedFalsePositiveRuleBreakdown => ({
+  spam: 0,
+  suspicious_link: 0,
+  flood: 0,
+  mass_creation: 0,
+})
+
+const getDominantFalsePositiveCategory = (
+  breakdown: CreatorFalsePositiveCategoryBreakdown
+): ContentFalsePositiveCategory | null => {
+  const rows = FALSE_POSITIVE_CATEGORIES.map((category) => [category, breakdown[category]] as const).sort(
+    (left, right) => right[1] - left[1] || left[0].localeCompare(right[0])
+  )
+
+  return rows[0] && rows[0][1] > 0 ? rows[0][0] : null
+}
+
+const getDominantAutomatedRule = (
+  breakdown: CreatorAutomatedFalsePositiveRuleBreakdown
+): AutomatedModerationRule | null => {
+  const rows = AUTOMATED_RULES.map((rule) => [rule, breakdown[rule]] as const).sort(
+    (left, right) => right[1] - left[1] || left[0].localeCompare(right[0])
+  )
+
+  return rows[0] && rows[0][1] > 0 ? rows[0][0] : null
+}
+
+const buildFalsePositiveCompensation = (acc: CreatorAccumulator): number => {
+  const categoryScore = FALSE_POSITIVE_CATEGORIES.reduce(
+    (sum, category) => sum + acc.falsePositiveCategoryBreakdown30d[category] * FALSE_POSITIVE_CATEGORY_WEIGHTS[category],
+    0
+  )
+  const ruleScore = AUTOMATED_RULES.reduce(
+    (sum, rule) => sum + acc.automatedFalsePositiveRuleBreakdown30d[rule] * FALSE_POSITIVE_RULE_WEIGHTS[rule],
+    0
+  )
+  const streakBonus = acc.falsePositiveEvents30d >= 2 ? 2 : 0
+
+  return clamp(round(categoryScore + ruleScore + streakBonus), 0, 24)
+}
+
 const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSignals => {
   const falsePositiveRate30d =
     acc.recentModerationActions30d > 0
@@ -177,15 +271,14 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
     (acc.activeControlFlags.has('publishing_blocked') ? 12 : 0) +
     (acc.activeControlFlags.has('cooldown_active') ? 6 : 0)
 
-  const falsePositiveCompensation = clamp(
-    acc.falsePositiveEvents30d * 3 +
-      acc.automatedFalsePositiveEvents30d * 2 +
-      (acc.falsePositiveEvents30d >= 2 ? 4 : 0),
-    0,
-    18
+  const falsePositiveCompensationScore30d = buildFalsePositiveCompensation(acc)
+  const trustScore = clamp(100 - penalties + falsePositiveCompensationScore30d, 0, 100)
+  const dominantFalsePositiveCategory30d = getDominantFalsePositiveCategory(
+    acc.falsePositiveCategoryBreakdown30d
   )
-
-  const trustScore = clamp(100 - penalties + falsePositiveCompensation, 0, 100)
+  const dominantAutomatedFalsePositiveRule30d = getDominantAutomatedRule(
+    acc.automatedFalsePositiveRuleBreakdown30d
+  )
   let riskLevel: CreatorRiskLevel = 'low'
 
   if (trustScore <= 25 || acc.criticalTargets >= 2) {
@@ -229,6 +322,10 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
   if (acc.hiddenItems > 0) flags.push('hidden_content_present')
   if (acc.repeatModerationTargets30d > 0) flags.push('repeat_moderation_targets')
   if (acc.falsePositiveEvents30d > 0) flags.push('false_positive_feedback')
+  if (acc.falsePositiveCategoryBreakdown30d.policy_auto_hide > 0) flags.push('policy_false_positive_feedback')
+  if (acc.falsePositiveCategoryBreakdown30d.automated_detection > 0) {
+    flags.push('automated_false_positive_feedback')
+  }
 
   const reasons: string[] = []
   if (acc.criticalTargets > 0) {
@@ -252,7 +349,19 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
   if (acc.falsePositiveEvents30d > 0) {
     pushReason(
       reasons,
-      `${acc.falsePositiveEvents30d} reversao(oes) marcada(s) como falso positivo em 30 dias.`
+      `${acc.falsePositiveEvents30d} reversao(oes) marcada(s) como falso positivo em 30 dias; compensacao ${falsePositiveCompensationScore30d} pts.`
+    )
+  }
+  if (dominantFalsePositiveCategory30d) {
+    pushReason(
+      reasons,
+      `Categoria FP dominante: ${dominantFalsePositiveCategory30d} (${acc.falsePositiveCategoryBreakdown30d[dominantFalsePositiveCategory30d]}).`
+    )
+  }
+  if (dominantAutomatedFalsePositiveRule30d) {
+    pushReason(
+      reasons,
+      `Regra automatica mais revertida: ${dominantAutomatedFalsePositiveRule30d} (${acc.automatedFalsePositiveRuleBreakdown30d[dominantAutomatedFalsePositiveRule30d]}).`
     )
   }
   if (reasons.length === 0 && acc.openReports > 0) {
@@ -260,7 +369,7 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
   }
 
   const topReasonRows = Array.from(acc.reasonCounts.entries())
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
     .slice(0, 2)
 
   for (const [reason, count] of topReasonRows) {
@@ -284,10 +393,15 @@ const buildTrustSignals = (acc: CreatorAccumulator, now: Date): CreatorTrustSign
       falsePositiveEvents30d: acc.falsePositiveEvents30d,
       automatedFalsePositiveEvents30d: acc.automatedFalsePositiveEvents30d,
       falsePositiveRate30d,
+      falsePositiveCompensationScore30d,
+      dominantFalsePositiveCategory30d,
+      dominantAutomatedFalsePositiveRule30d,
+      falsePositiveCategoryBreakdown30d: { ...acc.falsePositiveCategoryBreakdown30d },
+      automatedFalsePositiveRuleBreakdown30d: { ...acc.automatedFalsePositiveRuleBreakdown30d },
       activeControlFlags: Array.from(acc.activeControlFlags),
     },
     flags,
-    reasons: reasons.slice(0, 4),
+    reasons: reasons.slice(0, 5),
   }
 }
 
@@ -304,6 +418,8 @@ const createAccumulator = (snapshot: CreatorSnapshot, now: Date): CreatorAccumul
   recentCreatorControlActions30d: 0,
   falsePositiveEvents30d: 0,
   automatedFalsePositiveEvents30d: 0,
+  falsePositiveCategoryBreakdown30d: createEmptyFalsePositiveCategoryBreakdown(),
+  automatedFalsePositiveRuleBreakdown30d: createEmptyAutomatedFalsePositiveRuleBreakdown(),
   reasonCounts: new Map<string, number>(),
 })
 
@@ -508,11 +624,28 @@ export class CreatorTrustService {
       _id: mongoose.Types.ObjectId
       count: number
       automatedCount: number
+      reportsCount: number
+      policyAutoHideCount: number
+      automatedDetectionCount: number
+      manualModerationCount: number
+      spamRuleCount: number
+      suspiciousLinkRuleCount: number
+      floodRuleCount: number
+      massCreationRuleCount: number
     }>([
       {
         $match: {
           creatorId: { $in: ownerObjectIds },
           createdAt: { $gte: last30dStart },
+        },
+      },
+      {
+        $project: {
+          creatorId: 1,
+          categories: 1,
+          automatedRules: {
+            $cond: [{ $isArray: '$metadata.automatedRules' }, '$metadata.automatedRules', []],
+          },
         },
       },
       {
@@ -522,6 +655,46 @@ export class CreatorTrustService {
           automatedCount: {
             $sum: {
               $cond: [{ $in: ['automated_detection', '$categories'] }, 1, 0],
+            },
+          },
+          reportsCount: {
+            $sum: {
+              $cond: [{ $in: ['reports', '$categories'] }, 1, 0],
+            },
+          },
+          policyAutoHideCount: {
+            $sum: {
+              $cond: [{ $in: ['policy_auto_hide', '$categories'] }, 1, 0],
+            },
+          },
+          automatedDetectionCount: {
+            $sum: {
+              $cond: [{ $in: ['automated_detection', '$categories'] }, 1, 0],
+            },
+          },
+          manualModerationCount: {
+            $sum: {
+              $cond: [{ $in: ['manual_moderation', '$categories'] }, 1, 0],
+            },
+          },
+          spamRuleCount: {
+            $sum: {
+              $cond: [{ $in: ['spam', '$automatedRules'] }, 1, 0],
+            },
+          },
+          suspiciousLinkRuleCount: {
+            $sum: {
+              $cond: [{ $in: ['suspicious_link', '$automatedRules'] }, 1, 0],
+            },
+          },
+          floodRuleCount: {
+            $sum: {
+              $cond: [{ $in: ['flood', '$automatedRules'] }, 1, 0],
+            },
+          },
+          massCreationRuleCount: {
+            $sum: {
+              $cond: [{ $in: ['mass_creation', '$automatedRules'] }, 1, 0],
             },
           },
         },
@@ -534,6 +707,14 @@ export class CreatorTrustService {
 
       acc.falsePositiveEvents30d = row.count
       acc.automatedFalsePositiveEvents30d = row.automatedCount
+      acc.falsePositiveCategoryBreakdown30d.reports = row.reportsCount
+      acc.falsePositiveCategoryBreakdown30d.policy_auto_hide = row.policyAutoHideCount
+      acc.falsePositiveCategoryBreakdown30d.automated_detection = row.automatedDetectionCount
+      acc.falsePositiveCategoryBreakdown30d.manual_moderation = row.manualModerationCount
+      acc.automatedFalsePositiveRuleBreakdown30d.spam = row.spamRuleCount
+      acc.automatedFalsePositiveRuleBreakdown30d.suspicious_link = row.suspiciousLinkRuleCount
+      acc.automatedFalsePositiveRuleBreakdown30d.flood = row.floodRuleCount
+      acc.automatedFalsePositiveRuleBreakdown30d.mass_creation = row.massCreationRuleCount
     }
 
     const signalMap = new Map<string, CreatorTrustSignals>()

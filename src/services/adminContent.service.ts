@@ -973,6 +973,17 @@ export class AdminContentService {
     }
 
     const eventId = hasEventId ? new mongoose.Types.ObjectId(input.eventId!) : null
+    const targets = [{ contentType: input.contentType, contentId: input.contentId }]
+    const [reportSummaries, automatedSummaries] = await Promise.all([
+      contentReportService.getOpenReportSummaries(targets),
+      automatedModerationService.getActiveSummaries(targets),
+    ])
+    const reportSignals =
+      reportSummaries.get(`${input.contentType}:${input.contentId}`) ?? contentReportService.getEmptySummary()
+    const automatedSignals =
+      automatedSummaries.get(`${input.contentType}:${input.contentId}`) ??
+      automatedModerationService.getEmptySummary()
+    const policyProfile = moderationPolicyService.getPolicyProfile(input.contentType)
 
     const feedback = await ContentFalsePositiveFeedback.create({
       contentType: input.contentType,
@@ -984,7 +995,21 @@ export class AdminContentService {
       categories,
       reason: input.reason.trim(),
       note: input.note?.trim() ? input.note.trim() : null,
-      metadata: input.metadata ?? null,
+      metadata: {
+        surfaceKey: policyProfile.primarySurface,
+        surfaceKeys: policyProfile.surfaces,
+        policyProfile: policyProfile.key,
+        policyAutoHideMinPriority: policyProfile.thresholds.autoHideMinPriority,
+        policyAutoHideMinUniqueReporters: policyProfile.thresholds.autoHideMinUniqueReporters,
+        reportPriority: reportSignals.priority,
+        reportReasons: reportSignals.topReasons.map((item) => item.reason),
+        openReports: reportSignals.openReports,
+        uniqueReporters: reportSignals.uniqueReporters,
+        automatedRules: automatedSignals.triggeredRules.map((item) => item.rule),
+        automatedSeverity: automatedSignals.severity,
+        automatedScore: automatedSignals.score,
+        ...(input.metadata ?? {}),
+      },
     })
 
     return {
@@ -1428,6 +1453,7 @@ export class AdminContentService {
           ? creatorTrustSignals.get(resolveAnyId(item.creator) ?? '') ?? null
           : null,
       policySignals: moderationPolicyService.buildPolicySignals(
+        item.contentType,
         summaries.get(`${item.contentType}:${item.id}`) ?? contentReportService.getEmptySummary(),
         toModerationStatus(item.moderationStatus)
       ),
