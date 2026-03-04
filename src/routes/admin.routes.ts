@@ -1,6 +1,10 @@
 import { Router } from 'express'
-import { listAdminAuditLogs } from '../controllers/adminAudit.controller'
-import { listAdminInternalAlerts } from '../controllers/adminOperationalAlerts.controller'
+import { exportAdminAuditLogsCsv, listAdminAuditLogs } from '../controllers/adminAudit.controller'
+import {
+  acknowledgeAdminInternalAlert,
+  dismissAdminInternalAlert,
+  listAdminInternalAlerts,
+} from '../controllers/adminOperationalAlerts.controller'
 import {
   listAdminAssistedSessionHistory,
   listAdminAssistedSessions,
@@ -73,6 +77,23 @@ import { requireAdminScope } from '../middlewares/roleGuard'
 const router = Router()
 
 /**
+ * @route   GET /api/admin/audit-logs/export.csv
+ * @desc    Exportar logs de auditoria administrativa em CSV
+ * @access  Private (Admin com escopo admin.audit.read)
+ */
+router.get(
+  '/audit-logs/export.csv',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.audit_logs.export_csv',
+    resourceType: 'admin_audit_log',
+    scope: 'admin.audit.read',
+  }),
+  requireAdminScope('admin.audit.read'),
+  exportAdminAuditLogsCsv
+)
+
+/**
  * @route   GET /api/admin/audit-logs
  * @desc    Listar logs de auditoria administrativa
  * @access  Private (Admin com escopo admin.audit.read)
@@ -104,6 +125,42 @@ router.get(
   }),
   requireAdminScope('admin.audit.read'),
   listAdminInternalAlerts
+)
+
+/**
+ * @route   POST /api/admin/alerts/internal/:alertId/acknowledge
+ * @desc    Marcar alerta interno como acknowledged
+ * @access  Private (Admin com escopo admin.audit.read)
+ */
+router.post(
+  '/alerts/internal/:alertId/acknowledge',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.alerts.internal.acknowledge',
+    resourceType: 'admin_operational_alert',
+    scope: 'admin.audit.read',
+    getResourceId: (req) => req.params.alertId,
+  }),
+  requireAdminScope('admin.audit.read'),
+  acknowledgeAdminInternalAlert
+)
+
+/**
+ * @route   POST /api/admin/alerts/internal/:alertId/dismiss
+ * @desc    Marcar alerta interno como dismissed
+ * @access  Private (Admin com escopo admin.audit.read)
+ */
+router.post(
+  '/alerts/internal/:alertId/dismiss',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.alerts.internal.dismiss',
+    resourceType: 'admin_operational_alert',
+    scope: 'admin.audit.read',
+    getResourceId: (req) => req.params.alertId,
+  }),
+  requireAdminScope('admin.audit.read'),
+  dismissAdminInternalAlert
 )
 
 /**
@@ -446,6 +503,15 @@ router.post(
     resourceType: 'content',
     scope: 'admin.content.moderate',
     getResourceId: () => 'bulk',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      const action = typeof body.action === 'string' ? body.action : null
+      const bulkItemCount = Array.isArray(body.items) ? body.items.length : 0
+      return {
+        bulkAction: action,
+        bulkItemCount,
+      }
+    },
   }),
   requireAdminScope('admin.content.moderate'),
   bulkModerateContent
@@ -465,6 +531,13 @@ router.post(
     resourceType: 'content',
     scope: 'admin.content.moderate',
     getResourceId: () => 'bulk',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      const bulkItemCount = Array.isArray(body.items) ? body.items.length : 0
+      return {
+        bulkItemCount,
+      }
+    },
   }),
   requireAdminScope('admin.content.moderate'),
   bulkRollbackContent
@@ -766,7 +839,7 @@ router.patch(
 /**
  * @route   POST /api/admin/directories/:vertical/:entryId/publish
  * @desc    Publicar entrada de diretorio
- * @access  Private (Admin com escopo admin.content.publish)
+ * @access  Private (Admin com escopo admin.directory.manage)
  */
 router.post(
   '/directories/:vertical/:entryId/publish',
@@ -774,17 +847,17 @@ router.post(
   auditAdminAction({
     action: 'admin.directories.publish',
     resourceType: 'directory_entry',
-    scope: 'admin.content.publish',
+    scope: 'admin.directory.manage',
     getResourceId: (req) => req.params.entryId,
   }),
-  requireAdminScope('admin.content.publish'),
+  requireAdminScope('admin.directory.manage'),
   publishAdminDirectory
 )
 
 /**
  * @route   POST /api/admin/directories/:vertical/:entryId/archive
  * @desc    Arquivar entrada de diretorio
- * @access  Private (Admin com escopo admin.content.archive)
+ * @access  Private (Admin com escopo admin.directory.manage)
  */
 router.post(
   '/directories/:vertical/:entryId/archive',
@@ -792,10 +865,10 @@ router.post(
   auditAdminAction({
     action: 'admin.directories.archive',
     resourceType: 'directory_entry',
-    scope: 'admin.content.archive',
+    scope: 'admin.directory.manage',
     getResourceId: (req) => req.params.entryId,
   }),
-  requireAdminScope('admin.content.archive'),
+  requireAdminScope('admin.directory.manage'),
   archiveAdminDirectory
 )
 

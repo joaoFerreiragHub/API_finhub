@@ -92,6 +92,20 @@ const ADMIN_WRITE_SCOPES = new Set<AdminScope>([
 
 const VALID_ADMIN_SCOPE_SET = new Set<string>(ADMIN_SCOPES)
 
+const parseBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
+  if (typeof value !== 'string') return defaultValue
+  const normalized = value.trim().toLowerCase()
+  if (normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on') {
+    return true
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') {
+    return false
+  }
+  return defaultValue
+}
+
+export const ADMIN_SCOPES_FAIL_CLOSED = parseBoolean(process.env.ADMIN_SCOPES_FAIL_CLOSED, false)
+
 const normalizeAdminScopes = (scopes?: string[] | null): AdminScope[] => {
   if (!scopes || scopes.length === 0) return []
 
@@ -115,6 +129,10 @@ export const getAdminScopesForUser = (user: Pick<IUser, 'role' | 'adminScopes'>)
     return new Set<AdminScope>(explicitScopes)
   }
 
+  if (ADMIN_SCOPES_FAIL_CLOSED) {
+    return new Set<AdminScope>()
+  }
+
   // Backward compatibility: admin sem escopo explicito recebe permissao total.
   return new Set<AdminScope>(ADMIN_SCOPES)
 }
@@ -127,6 +145,14 @@ export const canAdminUseScope = (
 ): { allowed: boolean; reason?: string } => {
   if (user.role !== 'admin') {
     return { allowed: false, reason: 'Acesso negado. Permissoes insuficientes.' }
+  }
+
+  const explicitScopes = normalizeAdminScopes(user.adminScopes)
+  if (explicitScopes.length === 0 && ADMIN_SCOPES_FAIL_CLOSED) {
+    return {
+      allowed: false,
+      reason: 'Perfil admin sem scopes atribuidos. Solicita atribuicao de permissoes.',
+    }
   }
 
   const scopeSet = getAdminScopesForUser(user)

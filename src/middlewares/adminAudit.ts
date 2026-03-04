@@ -46,19 +46,22 @@ export const auditAdminAction = (options: AuditAdminActionOptions) => {
     const startedAtMs = Date.now()
 
     res.on('finish', () => {
+      const baseMetadata: Record<string, unknown> = {
+        durationMs: Date.now() - startedAtMs,
+        assistedSession: req.assistedSession
+          ? {
+              sessionId: req.assistedSession.sessionId,
+              adminUserId: req.assistedSession.adminUserId,
+              targetUserId: req.assistedSession.targetUserId,
+              scope: req.assistedSession.scope,
+            }
+          : null,
+      }
+      const extraMetadata = options.getMetadata?.(req, res)
       const metadata =
-        options.getMetadata?.(req, res) ??
-        ({
-          durationMs: Date.now() - startedAtMs,
-          assistedSession: req.assistedSession
-            ? {
-                sessionId: req.assistedSession.sessionId,
-                adminUserId: req.assistedSession.adminUserId,
-                targetUserId: req.assistedSession.targetUserId,
-                scope: req.assistedSession.scope,
-              }
-            : null,
-        } as Record<string, unknown>)
+        extraMetadata && typeof extraMetadata === 'object'
+          ? { ...baseMetadata, ...extraMetadata }
+          : baseMetadata
 
       void adminAuditService
         .record({

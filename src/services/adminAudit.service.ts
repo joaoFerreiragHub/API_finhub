@@ -26,6 +26,8 @@ export interface AdminAuditFilters {
   resourceType?: string
   outcome?: AdminAuditOutcome
   requestId?: string
+  from?: Date
+  to?: Date
 }
 
 export interface PaginationOptions {
@@ -33,32 +35,17 @@ export interface PaginationOptions {
   limit?: number
 }
 
+export interface AuditExportOptions {
+  limit?: number
+}
+
+const DEFAULT_PAGE = 1
+const DEFAULT_LIMIT = 50
+const DEFAULT_EXPORT_LIMIT = 2000
+const MAX_EXPORT_LIMIT = 5000
+
 export class AdminAuditService {
-  async record(input: RecordAdminAuditInput) {
-    return AdminAuditLog.create({
-      actor: input.actorId,
-      actorRole: input.actorRole,
-      action: input.action,
-      scope: input.scope ?? null,
-      resourceType: input.resourceType,
-      resourceId: input.resourceId ?? null,
-      reason: input.reason ?? null,
-      requestId: input.requestId ?? null,
-      method: input.method,
-      path: input.path,
-      statusCode: input.statusCode,
-      outcome: input.outcome,
-      ip: input.ip ?? null,
-      userAgent: input.userAgent ?? null,
-      metadata: input.metadata ?? null,
-    })
-  }
-
-  async list(filters: AdminAuditFilters = {}, options: PaginationOptions = {}) {
-    const page = options.page || 1
-    const limit = options.limit || 50
-    const skip = (page - 1) * limit
-
+  private buildQuery(filters: AdminAuditFilters): Record<string, unknown> {
     const query: Record<string, unknown> = {}
 
     if (filters.actorId && mongoose.Types.ObjectId.isValid(filters.actorId)) {
@@ -81,6 +68,43 @@ export class AdminAuditService {
       query.requestId = filters.requestId
     }
 
+    if (filters.from || filters.to) {
+      const createdAtQuery: Record<string, unknown> = {}
+      if (filters.from) createdAtQuery.$gte = filters.from
+      if (filters.to) createdAtQuery.$lte = filters.to
+      query.createdAt = createdAtQuery
+    }
+
+    return query
+  }
+
+  async record(input: RecordAdminAuditInput) {
+    return AdminAuditLog.create({
+      actor: input.actorId,
+      actorRole: input.actorRole,
+      action: input.action,
+      scope: input.scope ?? null,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId ?? null,
+      reason: input.reason ?? null,
+      requestId: input.requestId ?? null,
+      method: input.method,
+      path: input.path,
+      statusCode: input.statusCode,
+      outcome: input.outcome,
+      ip: input.ip ?? null,
+      userAgent: input.userAgent ?? null,
+      metadata: input.metadata ?? null,
+    })
+  }
+
+  async list(filters: AdminAuditFilters = {}, options: PaginationOptions = {}) {
+    const page = Math.max(Math.floor(options.page || DEFAULT_PAGE), 1)
+    const limit = Math.max(Math.floor(options.limit || DEFAULT_LIMIT), 1)
+    const skip = (page - 1) * limit
+
+    const query = this.buildQuery(filters)
+
     const [items, total] = await Promise.all([
       AdminAuditLog.find(query)
         .sort({ createdAt: -1 })
@@ -99,6 +123,17 @@ export class AdminAuditService {
         pages: Math.ceil(total / limit),
       },
     }
+  }
+
+  async listForExport(filters: AdminAuditFilters = {}, options: AuditExportOptions = {}) {
+    const requestedLimit = Math.floor(options.limit || DEFAULT_EXPORT_LIMIT)
+    const limit = Math.min(Math.max(requestedLimit, 1), MAX_EXPORT_LIMIT)
+    const query = this.buildQuery(filters)
+
+    return AdminAuditLog.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('actor', 'name username email role')
   }
 }
 

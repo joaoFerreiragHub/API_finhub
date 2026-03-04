@@ -1,6 +1,10 @@
 import mongoose from 'mongoose'
 import { AdminAuditLog } from '../models/AdminAuditLog'
 import {
+  AdminOperationalAlertState,
+  AdminOperationalAlertStateValue,
+} from '../models/AdminOperationalAlertState'
+import {
   AutomatedModerationRule,
   AutomatedModerationSeverity,
   AutomatedModerationSignal,
@@ -23,6 +27,7 @@ export type AdminOperationalAlertType =
   | 'automated_detection_auto_hide_failed'
   | 'creator_control_applied'
 export type AdminOperationalAlertSeverity = 'critical' | 'high' | 'medium'
+export type AdminOperationalAlertStateStatus = 'open' | 'acknowledged' | 'dismissed'
 
 interface AdminAlertActorSummary {
   id: string
@@ -36,6 +41,7 @@ export interface AdminOperationalAlert {
   id: string
   type: AdminOperationalAlertType
   severity: AdminOperationalAlertSeverity
+  state?: AdminOperationalAlertStateStatus
   title: string
   description: string
   action: string
@@ -43,12 +49,17 @@ export interface AdminOperationalAlert {
   resourceId?: string
   detectedAt: string
   actor: AdminAlertActorSummary | null
+  stateChangedAt?: string
+  stateReason?: string
+  stateChangedBy?: AdminAlertActorSummary | null
   metadata?: Record<string, unknown>
 }
 
 export interface ListAdminOperationalAlertsOptions {
   windowHours?: number
   limit?: number
+  state?: AdminOperationalAlertStateStatus | 'all'
+  includeDismissed?: boolean
 }
 
 export interface AdminOperationalAlertsResponse {
@@ -66,6 +77,12 @@ export interface AdminOperationalAlertsResponse {
     critical: number
     high: number
     medium: number
+    total: number
+  }
+  stateSummary: {
+    open: number
+    acknowledged: number
+    dismissed: number
     total: number
   }
   items: AdminOperationalAlert[]
@@ -94,6 +111,7 @@ interface AuditLogLike {
 interface HideSpikeAggregateRow {
   _id: mongoose.Types.ObjectId | null
   total: number
+  rawEvents: number
   lastAt: Date
   distinctTargets: string[]
 }
@@ -137,13 +155,31 @@ interface AutomatedDetectionAlertRow {
   } | null
 }
 
+interface AlertStateRowLike {
+  alertId: string
+  state: AdminOperationalAlertStateValue
+  reason?: unknown
+  changedAt?: unknown
+  changedBy?: unknown
+}
+
 const DEFAULT_WINDOW_HOURS = 24
 const MAX_WINDOW_HOURS = 24 * 7
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
 
-const HIDE_SPIKE_THRESHOLD = 5
-const HIDE_SPIKE_WINDOW_MINUTES = 30
+const parseEnvPositiveInt = (value: string | undefined, fallback: number): number => {
+  if (typeof value !== 'string') return fallback
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback
+  return parsed
+}
+
+const HIDE_SPIKE_THRESHOLD = parseEnvPositiveInt(process.env.ADMIN_ALERT_HIDE_SPIKE_THRESHOLD, 5)
+const HIDE_SPIKE_WINDOW_MINUTES = parseEnvPositiveInt(
+  process.env.ADMIN_ALERT_HIDE_SPIKE_WINDOW_MINUTES,
+  30
+)
 const REPORT_ALERT_MIN_OPEN_REPORTS = 3
 const AUTOMATED_DETECTION_ALERT_MIN_SEVERITY: AutomatedModerationSeverity = 'high'
 const RESTRICTIVE_CREATOR_CONTROL_ACTIONS: CreatorOperationalAction[] = [
@@ -235,6 +271,33 @@ const getSeveritySummary = (items: AdminOperationalAlert[]) => {
   }
 }
 
+const getStateSummary = (items: AdminOperationalAlert[]) => {
+  let open = 0
+  let acknowledged = 0
+  let dismissed = 0
+
+  for (const item of items) {
+    const state = item.state ?? 'open'
+    if (state === 'open') open += 1
+    if (state === 'acknowledged') acknowledged += 1
+    if (state === 'dismissed') dismissed += 1
+  }
+
+  return {
+    open,
+    acknowledged,
+    dismissed,
+    total: items.length,
+  }
+}
+
+const toAlertStateFilter = (value: unknown): AdminOperationalAlertStateStatus | 'all' => {
+  if (value === 'open' || value === 'acknowledged' || value === 'dismissed') {
+    return value
+  }
+  return 'all'
+}
+
 const toMetadataRecord = (value: unknown): Record<string, unknown> | undefined =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined
 
@@ -281,6 +344,102 @@ const mapCreatorControlTitle = (action: CreatorOperationalAction | null): string
 }
 
 export class AdminOperationalAlertsService {
+  private async loadStateByAlertId(alertIds: string[]): Promise<Map<string, AlertStateRowLike>> {
+    const uniqueIds = Array.from(
+      new Set(alertIds.filter((item) => typeof item === 'string' && item.trim().length > 0))
+    )
+    if (uniqueIds.length === 0) return new Map<string, AlertStateRowLike>()
+
+    const rows = (await AdminOperationalAlertState.find({
+      alertId: { $in: uniqueIds },
+    })
+      .populate('changedBy', 'name username email role')
+      .lean()) as unknown as AlertStateRowLike[]
+
+    const byAlertId = new Map<string, AlertStateRowLike>()
+    for (const row of rows) {
+      if (typeof row.alertId === 'string' && row.alertId.length > 0) {
+        byAlertId.set(row.alertId, row)
+      }
+    }
+
+    return byAlertId
+  }
+
+  private applyState(
+    item: AdminOperationalAlert,
+    stateRow: AlertStateRowLike | undefined
+  ): AdminOperationalAlert {
+    if (!stateRow) return { ...item, state: 'open' }
+
+    return {
+      ...item,
+      state: stateRow.state,
+      stateChangedAt: toDate(stateRow.changedAt)?.toISOString(),
+      stateReason: toStringSafe(stateRow.reason) ?? undefined,
+      stateChangedBy: mapActor(stateRow.changedBy),
+    }
+  }
+
+  async setAlertState(input: {
+    alertId: string
+    state: AdminOperationalAlertStateValue
+    actorId: string
+    reason?: string
+  }): Promise<{
+    alertId: string
+    state: AdminOperationalAlertStateStatus
+    changedAt: string
+    reason?: string
+    changedBy: AdminAlertActorSummary | null
+  }> {
+    const alertId = typeof input.alertId === 'string' ? input.alertId.trim() : ''
+    if (!alertId) {
+      throw new Error('alertId obrigatorio.')
+    }
+    if (alertId.length > 256) {
+      throw new Error('alertId excede o limite maximo de 256 caracteres.')
+    }
+    if (!mongoose.Types.ObjectId.isValid(input.actorId)) {
+      throw new Error('actorId invalido.')
+    }
+
+    const changedAt = new Date()
+    const reason = typeof input.reason === 'string' && input.reason.trim().length > 0
+      ? input.reason.trim()
+      : undefined
+
+    const updated = await AdminOperationalAlertState.findOneAndUpdate(
+      { alertId },
+      {
+        $set: {
+          state: input.state,
+          changedBy: new mongoose.Types.ObjectId(input.actorId),
+          changedAt,
+          reason: reason ?? null,
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    )
+      .populate('changedBy', 'name username email role')
+      .lean()
+
+    const changedBy = updated ? mapActor((updated as any).changedBy) : null
+    const state = updated?.state === 'dismissed' ? 'dismissed' : updated?.state === 'acknowledged' ? 'acknowledged' : 'open'
+
+    return {
+      alertId,
+      state,
+      changedAt: toDate(updated?.changedAt)?.toISOString() ?? changedAt.toISOString(),
+      reason,
+      changedBy,
+    }
+  }
+
   async listInternalAlerts(
     options: ListAdminOperationalAlertsOptions = {}
   ): Promise<AdminOperationalAlertsResponse> {
@@ -291,6 +450,8 @@ export class AdminOperationalAlertsService {
       MAX_WINDOW_HOURS
     )
     const limit = clamp(toPositiveInt(options.limit, DEFAULT_LIMIT), 1, MAX_LIMIT)
+    const stateFilter = toAlertStateFilter(options.state)
+    const includeDismissed = options.includeDismissed === true
     const windowStart = new Date(now.getTime() - windowHours * 60 * 60 * 1000)
 
     const [
@@ -315,7 +476,7 @@ export class AdminOperationalAlertsService {
       this.listCreatorControlAlerts(windowStart, limit),
     ])
 
-    const items = [
+    const baseItems = [
       ...banAlerts,
       ...surfaceDisabledAlerts,
       ...delegatedAlerts,
@@ -329,6 +490,16 @@ export class AdminOperationalAlertsService {
       .sort((a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime())
       .slice(0, limit)
 
+    const stateByAlertId = await this.loadStateByAlertId(baseItems.map((item) => item.id))
+    const enrichedItems = baseItems.map((item) => this.applyState(item, stateByAlertId.get(item.id)))
+
+    const items = enrichedItems.filter((item) => {
+      const state = item.state ?? 'open'
+      if (stateFilter !== 'all') return state === stateFilter
+      if (!includeDismissed && state === 'dismissed') return false
+      return true
+    })
+
     return {
       generatedAt: now.toISOString(),
       windowHours,
@@ -341,6 +512,7 @@ export class AdminOperationalAlertsService {
         creatorControlRestrictiveActions: RESTRICTIVE_CREATOR_CONTROL_ACTIONS,
       },
       summary: getSeveritySummary(items),
+      stateSummary: getStateSummary(enrichedItems),
       items,
     }
   }
@@ -486,15 +658,59 @@ export class AdminOperationalAlertsService {
     const grouped = await AdminAuditLog.aggregate<HideSpikeAggregateRow>([
       {
         $match: {
-          action: 'admin.content.hide',
+          action: {
+            $in: ['admin.content.hide', 'admin.content.hide_fast', 'admin.content.bulk_moderate'],
+          },
           outcome: 'success',
           createdAt: { $gte: hideWindowStart },
         },
       },
       {
+        $addFields: {
+          hideWeight: {
+            $switch: {
+              branches: [
+                {
+                  case: { $in: ['$action', ['admin.content.hide', 'admin.content.hide_fast']] },
+                  then: 1,
+                },
+                {
+                  case: {
+                    $and: [
+                      { $eq: ['$action', 'admin.content.bulk_moderate'] },
+                      { $eq: ['$metadata.bulkAction', 'hide'] },
+                    ],
+                  },
+                  then: {
+                    $max: [
+                      1,
+                      {
+                        $convert: {
+                          input: '$metadata.bulkItemCount',
+                          to: 'int',
+                          onError: 1,
+                          onNull: 1,
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+              default: 0,
+            },
+          },
+        },
+      },
+      {
+        $match: {
+          hideWeight: { $gt: 0 },
+        },
+      },
+      {
         $group: {
           _id: '$actor',
-          total: { $sum: 1 },
+          total: { $sum: '$hideWeight' },
+          rawEvents: { $sum: 1 },
           lastAt: { $max: '$createdAt' },
           distinctTargets: { $addToSet: '$resourceId' },
         },
@@ -558,16 +774,18 @@ export class AdminOperationalAlertsService {
         type: 'content_hide_spike',
         severity,
         title: 'Spike de ocultacao de conteudo',
-        description: `${item.total} ocultacoes executadas nos ultimos ${HIDE_SPIKE_WINDOW_MINUTES} minutos.`,
+        description: `${item.total} ocultacoes (em ${item.rawEvents} eventos) nos ultimos ${HIDE_SPIKE_WINDOW_MINUTES} minutos.`,
         action: 'admin.content.hide',
         resourceType: 'content',
         detectedAt: detectedAt.toISOString(),
         actor: actorById.get(actorId) ?? { id: actorId },
         metadata: {
           hideCount: item.total,
+          rawEvents: item.rawEvents,
           distinctTargetCount,
           windowMinutes: HIDE_SPIKE_WINDOW_MINUTES,
           threshold: HIDE_SPIKE_THRESHOLD,
+          includedActions: ['admin.content.hide', 'admin.content.hide_fast', 'admin.content.bulk_moderate'],
         },
       })
     }
