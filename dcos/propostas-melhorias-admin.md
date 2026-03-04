@@ -17,6 +17,7 @@ Itens ja implementados desde esta analise:
 3. Export CSV dos audit logs (`/api/admin/audit-logs/export.csv`) + UI dedicada de auditoria.
 4. Alertas internos com `acknowledge/dismiss` e estado persistido (`open/acknowledged/dismissed`).
 5. Polling dinamico nas views operacionais criticas (10s em foco, pausa em background).
+6. Queue de moderacao com suporte a cursor pagination (`cursor.current/next/hasMore`) com compatibilidade `page/limit`.
 
 ## A. PROBLEMAS IDENTIFICADOS
 

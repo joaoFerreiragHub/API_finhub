@@ -71,6 +71,53 @@ export interface AdminContentQueueFilters {
 export interface PaginationOptions {
   page?: number
   limit?: number
+  cursor?: string
+}
+
+interface QueueCursorPayload {
+  contentType: ModeratableContentType
+  id: string
+  riskScore: number
+  riskDate: number
+  updatedAt: number
+}
+
+const encodeQueueCursor = (payload: QueueCursorPayload): string =>
+  Buffer.from(JSON.stringify(payload), 'utf8').toString('base64')
+
+const decodeQueueCursor = (value?: string): QueueCursorPayload | null => {
+  if (typeof value !== 'string' || value.trim().length === 0) return null
+
+  try {
+    const decoded = Buffer.from(value, 'base64').toString('utf8')
+    const parsed = JSON.parse(decoded) as Partial<QueueCursorPayload>
+
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      !isValidContentType(parsed.contentType) ||
+      typeof parsed.id !== 'string' ||
+      parsed.id.trim().length === 0 ||
+      typeof parsed.riskScore !== 'number' ||
+      !Number.isFinite(parsed.riskScore) ||
+      typeof parsed.riskDate !== 'number' ||
+      !Number.isFinite(parsed.riskDate) ||
+      typeof parsed.updatedAt !== 'number' ||
+      !Number.isFinite(parsed.updatedAt)
+    ) {
+      return null
+    }
+
+    return {
+      contentType: parsed.contentType,
+      id: parsed.id.trim(),
+      riskScore: parsed.riskScore,
+      riskDate: parsed.riskDate,
+      updatedAt: parsed.updatedAt,
+    }
+  } catch (_error) {
+    return null
+  }
 }
 
 export interface ModerateContentInput {
@@ -337,6 +384,81 @@ export const normalizeBulkRollbackItems = (
 }
 
 export class AdminContentService {
+  private getQueueItemRiskScore(item: any): number {
+    return Math.max(item.reportSignals.priorityScore, item.automatedSignals.score)
+  }
+
+  private getQueueItemRiskDate(item: any): number {
+    const reportDate = this.toSortableDate(item.reportSignals.latestReportAt)
+    const automationDate = this.toSortableDate(item.automatedSignals.lastDetectedAt)
+    return Math.max(reportDate, automationDate)
+  }
+
+  private getQueueItemTieKey(item: any): string {
+    const contentType = typeof item.contentType === 'string' ? item.contentType : 'unknown'
+    const id = typeof item.id === 'string' ? item.id : ''
+    return `${contentType}:${id}`
+  }
+
+  private compareQueueItems(a: any, b: any): number {
+    const aRiskScore = this.getQueueItemRiskScore(a)
+    const bRiskScore = this.getQueueItemRiskScore(b)
+    if (bRiskScore !== aRiskScore) {
+      return bRiskScore - aRiskScore
+    }
+
+    const aRiskDate = this.getQueueItemRiskDate(a)
+    const bRiskDate = this.getQueueItemRiskDate(b)
+    if (bRiskDate !== aRiskDate) {
+      return bRiskDate - aRiskDate
+    }
+
+    const updatedDateDelta = this.toSortableDate(b.updatedAt) - this.toSortableDate(a.updatedAt)
+    if (updatedDateDelta !== 0) {
+      return updatedDateDelta
+    }
+
+    return this.getQueueItemTieKey(a).localeCompare(this.getQueueItemTieKey(b))
+  }
+
+  private compareQueueItemToCursor(item: any, cursor: QueueCursorPayload): number {
+    const scoreDelta = cursor.riskScore - this.getQueueItemRiskScore(item)
+    if (scoreDelta !== 0) return scoreDelta
+
+    const riskDateDelta = cursor.riskDate - this.getQueueItemRiskDate(item)
+    if (riskDateDelta !== 0) return riskDateDelta
+
+    const updatedAtDelta = cursor.updatedAt - this.toSortableDate(item.updatedAt)
+    if (updatedAtDelta !== 0) return updatedAtDelta
+
+    const cursorTieKey = `${cursor.contentType}:${cursor.id}`
+    return this.getQueueItemTieKey(item).localeCompare(cursorTieKey)
+  }
+
+  private buildQueueCursorPayload(item: any): QueueCursorPayload {
+    return {
+      contentType: item.contentType,
+      id: item.id,
+      riskScore: this.getQueueItemRiskScore(item),
+      riskDate: this.getQueueItemRiskDate(item),
+      updatedAt: this.toSortableDate(item.updatedAt),
+    }
+  }
+
+  private resolveCursorStartIndex(items: any[], cursor: QueueCursorPayload): number {
+    const exactIndex = items.findIndex(
+      (item) => item.contentType === cursor.contentType && item.id === cursor.id
+    )
+    if (exactIndex >= 0) {
+      return exactIndex + 1
+    }
+
+    const firstAfterCursorIndex = items.findIndex(
+      (item) => this.compareQueueItemToCursor(item, cursor) > 0
+    )
+    return firstAfterCursorIndex >= 0 ? firstAfterCursorIndex : items.length
+  }
+
   async listQueue(filters: AdminContentQueueFilters = {}, options: PaginationOptions = {}) {
     const page = normalizePage(options.page)
     const limit = normalizeLimit(options.limit)
@@ -385,36 +507,36 @@ export class AdminContentService {
 
         return true
       })
-      .sort((a, b) => {
-        const aRiskScore = Math.max(a.reportSignals.priorityScore, a.automatedSignals.score)
-        const bRiskScore = Math.max(b.reportSignals.priorityScore, b.automatedSignals.score)
-        if (bRiskScore !== aRiskScore) {
-          return bRiskScore - aRiskScore
-        }
-
-        const aReportDate = this.toSortableDate(a.reportSignals.latestReportAt)
-        const bReportDate = this.toSortableDate(b.reportSignals.latestReportAt)
-        const aAutomationDate = this.toSortableDate(a.automatedSignals.lastDetectedAt)
-        const bAutomationDate = this.toSortableDate(b.automatedSignals.lastDetectedAt)
-        const aRiskDate = Math.max(aReportDate, aAutomationDate)
-        const bRiskDate = Math.max(bReportDate, bAutomationDate)
-        if (bRiskDate !== aRiskDate) {
-          return bRiskDate - aRiskDate
-        }
-
-        return this.toSortableDate(b.updatedAt) - this.toSortableDate(a.updatedAt)
-      })
+      .sort((a, b) => this.compareQueueItems(a, b))
 
     const total = filteredItems.length
-    const paginatedItems = filteredItems.slice(skip, skip + limit)
+    const cursorFromQuery = decodeQueueCursor(options.cursor)
+    if (options.cursor && !cursorFromQuery) {
+      throw new AdminContentServiceError(400, 'cursor invalido.')
+    }
+    const isCursorMode = Boolean(cursorFromQuery)
+    const startIndex = cursorFromQuery ? this.resolveCursorStartIndex(filteredItems, cursorFromQuery) : skip
+    const paginatedItems = filteredItems.slice(startIndex, startIndex + limit)
+    const hasMore = startIndex + paginatedItems.length < total
+    const nextCursor =
+      hasMore && paginatedItems.length > 0
+        ? encodeQueueCursor(this.buildQueueCursorPayload(paginatedItems[paginatedItems.length - 1]))
+        : null
+    const effectivePage = Math.max(1, Math.floor(startIndex / limit) + 1)
 
     return {
       items: paginatedItems,
       pagination: {
-        page,
+        page: effectivePage,
         limit,
         total,
         pages: Math.max(1, Math.ceil(total / limit)),
+      },
+      cursor: {
+        mode: isCursorMode ? 'cursor' : 'offset',
+        current: cursorFromQuery ? options.cursor ?? null : null,
+        next: nextCursor,
+        hasMore,
       },
     }
   }

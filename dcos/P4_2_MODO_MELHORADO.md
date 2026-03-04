@@ -300,10 +300,13 @@ Concluido nesta iteracao (backend + frontend):
    - estado `open/acknowledged/dismissed` em backend.
    - endpoints de `acknowledge/dismiss`.
    - acoes no dashboard para operar estados.
+8. `P4.2-04` cursor pagination da queue:
+   - backend suporta `cursor` mantendo `page/limit` por compatibilidade.
+   - resposta inclui metadados `cursor.current/next/hasMore`.
+   - frontend da moderacao usa navegacao por cursor (next/prev) sem perder filtros.
 
 Pendencias principais para fechar P4.2:
 
-1. Cursor pagination da queue de moderacao (`P4.2-04`).
-2. Rate limiter distribuido Redis conforme criterio de ambiente (`P4.2-03`).
-3. Gestao de admins via UI (editar scopes/readOnly) (`P4.2-17`).
-4. Cobertura de testes estruturada por rota/scope (`P4.2-12`).
+1. Rate limiter distribuido Redis conforme criterio de ambiente (`P4.2-03`).
+2. Gestao de admins via UI (editar scopes/readOnly) (`P4.2-17`).
+3. Cobertura de testes estruturada por rota/scope (`P4.2-12`).

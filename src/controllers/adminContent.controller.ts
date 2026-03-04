@@ -302,6 +302,7 @@ export const listAdminContentQueue = async (req: AuthRequest, res: Response) => 
           | undefined,
       },
       {
+        cursor: typeof req.query.cursor === 'string' ? req.query.cursor : undefined,
         page: parsePositiveInt(req.query.page),
         limit: parsePositiveInt(req.query.limit),
       }
