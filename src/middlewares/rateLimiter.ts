@@ -1,41 +1,194 @@
 import { Request } from 'express'
-import rateLimit, { IncrementCallback } from 'express-rate-limit'
+import rateLimit, {
+  MemoryStore,
+  Options as RateLimitOptions,
+  RateLimitRequestHandler,
+  Store,
+} from 'express-rate-limit'
+import { RedisStore, SendCommandFn } from 'rate-limit-redis'
+import {
+  AppRedisClient,
+  closeRedisClient,
+  connectRedisClient,
+  getOrCreateRedisClient,
+} from '../config/redis'
+import { recordRateLimitExceededMetric, setRateLimiterBackendMode } from '../observability/metrics'
 import { ResponseBuilder, ErrorCodes } from '../types/responses'
+import { logError, logInfo, logWarn } from '../utils/logger'
 
-const store = new Map<string, { count: number; resetTime: number }>()
+type RateLimiterName =
+  | 'api'
+  | 'news'
+  | 'search'
+  | 'stats'
+  | 'admin'
+  | 'adminModerationAction'
+  | 'adminModerationBulk'
+  | 'adminMetricsDrilldown'
+  | 'userReport'
+  | 'general'
 
-const incrFn = (key: string, callback: IncrementCallback): void => {
-  const now = Date.now()
-  const entry = store.get(key)
+type StoreMode = 'auto' | 'memory' | 'redis'
 
-  if (!entry || now > entry.resetTime) {
-    const resetTime = now + 60000
-    store.set(key, { count: 1, resetTime })
-    callback(undefined, 1, new Date(resetTime))
-    return
+interface LimiterDefinition {
+  name: RateLimiterName
+  envKey: string
+  keyPrefix: string
+  defaultWindowMs: number
+  defaultLimit: number
+  message: string
+}
+
+interface LimiterRuntimeConfig {
+  name: RateLimiterName
+  keyPrefix: string
+  windowMs: number
+  limit: number
+  message: string
+}
+
+const parseBooleanEnv = (envName: string, fallback: boolean): boolean => {
+  const rawValue = process.env[envName]
+  if (rawValue === undefined) {
+    return fallback
   }
 
-  entry.count += 1
-  callback(undefined, entry.count, new Date(entry.resetTime))
+  const normalized = rawValue.trim().toLowerCase()
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true
+  }
+
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false
+  }
+
+  logWarn('rate_limiter_invalid_boolean_env', { envName, rawValue, fallback })
+  return fallback
 }
 
-const memoryStore = {
-  incr: incrFn,
-  decrement: (key: string): void => {
-    const entry = store.get(key)
-    if (entry && entry.count > 0) {
-      entry.count -= 1
-    }
-  },
-  resetKey: (key: string, callback?: (error?: Error) => void): void => {
-    store.delete(key)
-    callback?.()
-  },
-  resetAll: (callback?: (error?: Error) => void): void => {
-    store.clear()
-    callback?.()
-  },
+const parsePositiveIntegerEnv = (envName: string, fallback: number): number => {
+  const rawValue = process.env[envName]
+  if (rawValue === undefined) {
+    return fallback
+  }
+
+  const parsed = Number.parseInt(rawValue, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    logWarn('rate_limiter_invalid_numeric_env', { envName, rawValue, fallback })
+    return fallback
+  }
+
+  return parsed
 }
+
+const rawStoreMode = (process.env.RATE_LIMIT_STORE_MODE ?? 'auto').trim().toLowerCase()
+const rateLimitStoreMode: StoreMode =
+  rawStoreMode === 'auto' || rawStoreMode === 'memory' || rawStoreMode === 'redis'
+    ? rawStoreMode
+    : 'auto'
+
+if (rawStoreMode !== rateLimitStoreMode) {
+  logWarn('rate_limiter_invalid_store_mode', {
+    rawStoreMode,
+    fallback: 'auto',
+    allowed: ['auto', 'memory', 'redis'],
+  })
+}
+
+const allowMemoryFallback = parseBooleanEnv('RATE_LIMIT_ALLOW_MEMORY_FALLBACK', true)
+const redisRequiredByEnv = parseBooleanEnv(
+  'RATE_LIMIT_REDIS_REQUIRED',
+  rateLimitStoreMode === 'redis'
+)
+const redisUrl = (process.env.RATE_LIMIT_REDIS_URL ?? process.env.REDIS_URL ?? '').trim()
+const redisPrefix = (process.env.RATE_LIMIT_REDIS_PREFIX ?? 'finhub:ratelimit:').trim()
+const redisConnectTimeoutMs = parsePositiveIntegerEnv(
+  'RATE_LIMIT_REDIS_CONNECT_TIMEOUT_MS',
+  parsePositiveIntegerEnv('REDIS_CONNECT_TIMEOUT_MS', 5000)
+)
+
+const limiterDefinitions: LimiterDefinition[] = [
+  {
+    name: 'api',
+    envKey: 'API',
+    keyPrefix: 'api',
+    defaultWindowMs: 15 * 60 * 1000,
+    defaultLimit: 1000,
+    message: 'Muitas requisicoes. Tente novamente em 15 minutos.',
+  },
+  {
+    name: 'news',
+    envKey: 'NEWS',
+    keyPrefix: 'news',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 60,
+    message: 'Muitas requisicoes de noticias. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'search',
+    envKey: 'SEARCH',
+    keyPrefix: 'search',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 30,
+    message: 'Muitas pesquisas. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'stats',
+    envKey: 'STATS',
+    keyPrefix: 'stats',
+    defaultWindowMs: 5 * 60 * 1000,
+    defaultLimit: 50,
+    message: 'Muitas requisicoes de estatisticas. Tente novamente em 5 minutos.',
+  },
+  {
+    name: 'admin',
+    envKey: 'ADMIN',
+    keyPrefix: 'admin',
+    defaultWindowMs: 60 * 60 * 1000,
+    defaultLimit: 10,
+    message: 'Muitas operacoes administrativas. Tente novamente em 1 hora.',
+  },
+  {
+    name: 'adminModerationAction',
+    envKey: 'ADMIN_MODERATION_ACTION',
+    keyPrefix: 'admin-moderation-action',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 30,
+    message: 'Muitas acoes de moderacao. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'adminModerationBulk',
+    envKey: 'ADMIN_MODERATION_BULK',
+    keyPrefix: 'admin-moderation-bulk',
+    defaultWindowMs: 10 * 60 * 1000,
+    defaultLimit: 10,
+    message: 'Muitos lotes de moderacao. Tente novamente em 10 minutos.',
+  },
+  {
+    name: 'adminMetricsDrilldown',
+    envKey: 'ADMIN_METRICS_DRILLDOWN',
+    keyPrefix: 'admin-metrics-drilldown',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 5,
+    message: 'Muitos pedidos de drill-down. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'userReport',
+    envKey: 'USER_REPORT',
+    keyPrefix: 'user-report',
+    defaultWindowMs: 10 * 60 * 1000,
+    defaultLimit: 20,
+    message: 'Muitos reports enviados. Tente novamente em 10 minutos.',
+  },
+  {
+    name: 'general',
+    envKey: 'GENERAL',
+    keyPrefix: 'general',
+    defaultWindowMs: 5 * 60 * 1000,
+    defaultLimit: 100,
+    message: 'Muitas requisicoes. Tente novamente em 5 minutos.',
+  },
+]
 
 const getRequesterKey = (req: Request): string => {
   const authReq = req as Request & {
@@ -63,83 +216,313 @@ const getRequesterKey = (req: Request): string => {
   return `ip:${requestIp}`
 }
 
-const createLimiter = (
-  windowMs: number,
-  max: number,
-  message: string,
-  options?: { keyPrefix?: string }
-) => {
-  const keyPrefix = options?.keyPrefix ?? 'default'
+const buildRuntimeConfig = (
+  definition: LimiterDefinition
+): LimiterRuntimeConfig => ({
+  name: definition.name,
+  keyPrefix: definition.keyPrefix,
+  windowMs: parsePositiveIntegerEnv(
+    `RATE_LIMIT_${definition.envKey}_WINDOW_MS`,
+    definition.defaultWindowMs
+  ),
+  limit: parsePositiveIntegerEnv(
+    `RATE_LIMIT_${definition.envKey}_MAX`,
+    definition.defaultLimit
+  ),
+  message: definition.message,
+})
 
-  return rateLimit({
-    windowMs,
-    max,
-    message: ResponseBuilder.error(ErrorCodes.RATE_LIMIT_EXCEEDED, message),
+const limiterConfigByName = limiterDefinitions.reduce(
+  (acc, definition) => {
+    acc[definition.name] = buildRuntimeConfig(definition)
+    return acc
+  },
+  {} as Record<RateLimiterName, LimiterRuntimeConfig>
+)
+
+const adaptiveStores = new Map<RateLimiterName, AdaptiveRateLimitStore>()
+
+const disableRedisForAllStores = (reason: string): void => {
+  for (const store of adaptiveStores.values()) {
+    store.disableRedis()
+  }
+
+  setRateLimiterBackendMode('memory', reason)
+}
+
+class AdaptiveRateLimitStore implements Store {
+  private readonly memoryStore = new MemoryStore()
+  private redisStore: RedisStore | null = null
+  private options: RateLimitOptions | null = null
+
+  constructor(private readonly limiterName: RateLimiterName, readonly prefix: string) {}
+
+  get localKeys(): boolean {
+    return this.redisStore === null
+  }
+
+  init(options: RateLimitOptions): void {
+    this.options = options
+    this.memoryStore.init(options)
+    this.redisStore?.init(options)
+  }
+
+  enableRedis(sendCommand: SendCommandFn): void {
+    const redisStore = new RedisStore({
+      sendCommand,
+      prefix: `${redisPrefix}${this.prefix}:`,
+    })
+
+    if (this.options) {
+      redisStore.init(this.options)
+    }
+
+    this.redisStore = redisStore
+  }
+
+  disableRedis(): void {
+    this.redisStore = null
+  }
+
+  async get(key: string) {
+    const activeStore = this.redisStore ?? this.memoryStore
+    try {
+      return await activeStore.get?.(key)
+    } catch (error) {
+      return this.handleStoreError('get', key, error, () => this.memoryStore.get(key))
+    }
+  }
+
+  async increment(key: string) {
+    const activeStore = this.redisStore ?? this.memoryStore
+    try {
+      return await activeStore.increment(key)
+    } catch (error) {
+      return this.handleStoreError('increment', key, error, () => this.memoryStore.increment(key))
+    }
+  }
+
+  async decrement(key: string) {
+    const activeStore = this.redisStore ?? this.memoryStore
+    try {
+      await activeStore.decrement(key)
+    } catch (error) {
+      await this.handleStoreError('decrement', key, error, () =>
+        this.memoryStore.decrement(key)
+      )
+    }
+  }
+
+  async resetKey(key: string) {
+    const activeStore = this.redisStore ?? this.memoryStore
+    try {
+      await activeStore.resetKey(key)
+    } catch (error) {
+      await this.handleStoreError('resetKey', key, error, () =>
+        this.memoryStore.resetKey(key)
+      )
+    }
+  }
+
+  async resetAll() {
+    if (this.redisStore) {
+      return
+    }
+
+    await this.memoryStore.resetAll()
+  }
+
+  async shutdown() {
+    this.memoryStore.shutdown()
+  }
+
+  private async handleStoreError<T>(
+    operation: string,
+    key: string,
+    error: unknown,
+    fallbackFn: () => Promise<T>
+  ): Promise<T> {
+    if (!this.redisStore) {
+      throw error
+    }
+
+    if (!allowMemoryFallback) {
+      throw error
+    }
+
+    const keyType = key.startsWith('user:') ? 'user' : key.startsWith('ip:') ? 'ip' : 'unknown'
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    logWarn('rate_limiter_redis_runtime_error', {
+      limiter: this.limiterName,
+      operation,
+      keyType,
+      errorMessage,
+      fallback: 'memory',
+    })
+
+    disableRedisForAllStores(`redis_runtime_error:${this.limiterName}`)
+
+    return fallbackFn()
+  }
+}
+
+const createAdaptiveStore = (
+  limiterName: RateLimiterName,
+  keyPrefix: string
+): AdaptiveRateLimitStore => {
+  const store = new AdaptiveRateLimitStore(limiterName, keyPrefix)
+  adaptiveStores.set(limiterName, store)
+  return store
+}
+
+const createLimiter = (
+  config: LimiterRuntimeConfig,
+  store: AdaptiveRateLimitStore
+): RateLimitRequestHandler =>
+  rateLimit({
+    windowMs: config.windowMs,
+    limit: config.limit,
+    message: ResponseBuilder.error(ErrorCodes.RATE_LIMIT_EXCEEDED, config.message),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `${keyPrefix}:${getRequesterKey(req)}`,
-    store: {
-      incr: incrFn,
-      decrement: memoryStore.decrement,
-      resetKey: memoryStore.resetKey,
-      resetAll: memoryStore.resetAll,
-    },
+    keyGenerator: (req) => getRequesterKey(req),
+    store,
     skip: () => false,
     skipFailedRequests: false,
     skipSuccessfulRequests: false,
+    passOnStoreError: false,
+    handler: (_req, res, _next, optionsUsed) => {
+      const requesterKey = getRequesterKey(_req)
+      recordRateLimitExceededMetric(config.name, requesterKey)
+      res.status(optionsUsed.statusCode).send(optionsUsed.message)
+    },
   })
+
+const buildLimiter = (name: RateLimiterName): RateLimitRequestHandler => {
+  const config = limiterConfigByName[name]
+  const store = createAdaptiveStore(name, config.keyPrefix)
+  return createLimiter(config, store)
 }
 
-export const rateLimiter = {
-  api: createLimiter(15 * 60 * 1000, 1000, 'Muitas requisicoes. Tente novamente em 15 minutos.', {
-    keyPrefix: 'api',
-  }),
-  news: createLimiter(1 * 60 * 1000, 60, 'Muitas requisicoes de noticias. Tente novamente em 1 minuto.', {
-    keyPrefix: 'news',
-  }),
-  search: createLimiter(1 * 60 * 1000, 30, 'Muitas pesquisas. Tente novamente em 1 minuto.', {
-    keyPrefix: 'search',
-  }),
-  stats: createLimiter(
-    5 * 60 * 1000,
-    50,
-    'Muitas requisicoes de estatisticas. Tente novamente em 5 minutos.',
-    { keyPrefix: 'stats' }
-  ),
-  admin: createLimiter(60 * 60 * 1000, 10, 'Muitas operacoes administrativas. Tente novamente em 1 hora.', {
-    keyPrefix: 'admin',
-  }),
-  adminModerationAction: createLimiter(
-    1 * 60 * 1000,
-    30,
-    'Muitas acoes de moderacao. Tente novamente em 1 minuto.',
-    { keyPrefix: 'admin-moderation-action' }
-  ),
-  adminModerationBulk: createLimiter(
-    10 * 60 * 1000,
-    10,
-    'Muitos lotes de moderacao. Tente novamente em 10 minutos.',
-    { keyPrefix: 'admin-moderation-bulk' }
-  ),
-  adminMetricsDrilldown: createLimiter(
-    1 * 60 * 1000,
-    5,
-    'Muitos pedidos de drill-down. Tente novamente em 1 minuto.',
-    { keyPrefix: 'admin-metrics-drilldown' }
-  ),
-  userReport: createLimiter(10 * 60 * 1000, 20, 'Muitos reports enviados. Tente novamente em 10 minutos.', {
-    keyPrefix: 'user-report',
-  }),
-  general: createLimiter(5 * 60 * 1000, 100, 'Muitas requisicoes. Tente novamente em 5 minutos.', {
-    keyPrefix: 'general',
-  }),
+export const rateLimiter: Record<RateLimiterName, RateLimitRequestHandler> = {
+  api: buildLimiter('api'),
+  news: buildLimiter('news'),
+  search: buildLimiter('search'),
+  stats: buildLimiter('stats'),
+  admin: buildLimiter('admin'),
+  adminModerationAction: buildLimiter('adminModerationAction'),
+  adminModerationBulk: buildLimiter('adminModerationBulk'),
+  adminMetricsDrilldown: buildLimiter('adminMetricsDrilldown'),
+  userReport: buildLimiter('userReport'),
+  general: buildLimiter('general'),
 }
 
-setInterval((): void => {
-  const now = Date.now()
-  for (const [key, entry] of store.entries()) {
-    if (now > entry.resetTime) {
-      store.delete(key)
-    }
+let initialized = false
+let redisEnabled = false
+let redisClient: AppRedisClient | null = null
+
+export const initializeRateLimiter = async (): Promise<void> => {
+  if (initialized) {
+    return
   }
-}, 5 * 60 * 1000)
+
+  if (rateLimitStoreMode === 'memory') {
+    setRateLimiterBackendMode('memory', 'config_memory_mode')
+    logInfo('rate_limiter_initialized', {
+      mode: 'memory',
+      reason: 'RATE_LIMIT_STORE_MODE=memory',
+    })
+    initialized = true
+    return
+  }
+
+  if (!redisUrl) {
+    const missingUrlMessage =
+      'RATE_LIMIT_REDIS_URL/REDIS_URL nao configurado para modo redis de rate limiter.'
+
+    if (redisRequiredByEnv || rateLimitStoreMode === 'redis') {
+      throw new Error(missingUrlMessage)
+    }
+
+    logWarn('rate_limiter_redis_url_missing', {
+      fallback: 'memory',
+      allowMemoryFallback,
+    })
+    setRateLimiterBackendMode('memory', 'redis_url_missing')
+    initialized = true
+    return
+  }
+
+  try {
+    const client = getOrCreateRedisClient({
+      url: redisUrl,
+      connectTimeoutMs: redisConnectTimeoutMs,
+      label: 'rate_limiter',
+    })
+    redisClient = client
+
+    await connectRedisClient(client)
+
+    const sendCommand: SendCommandFn = (...args: string[]) =>
+      client.sendCommand(args as unknown as [string, ...string[]])
+
+    for (const store of adaptiveStores.values()) {
+      store.enableRedis(sendCommand)
+    }
+
+    redisEnabled = true
+    initialized = true
+    setRateLimiterBackendMode('redis', 'redis_connected')
+    logInfo('rate_limiter_initialized', {
+      mode: 'redis',
+      limiterCount: adaptiveStores.size,
+      redisPrefix,
+      connectTimeoutMs: redisConnectTimeoutMs,
+    })
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    if (redisRequiredByEnv || rateLimitStoreMode === 'redis' || !allowMemoryFallback) {
+      logError('rate_limiter_redis_init_failed', error, {
+        fallbackAllowed: allowMemoryFallback,
+      })
+      throw new Error(`Falha ao inicializar rate limiter Redis: ${errorMessage}`)
+    }
+
+    disableRedisForAllStores('redis_connect_failed')
+    initialized = true
+    logWarn('rate_limiter_redis_unavailable_memory_fallback', {
+      errorMessage,
+      allowMemoryFallback,
+    })
+  }
+}
+
+export const shutdownRateLimiter = async (): Promise<void> => {
+  if (!initialized) {
+    return
+  }
+
+  for (const store of adaptiveStores.values()) {
+    await store.shutdown()
+  }
+
+  if (redisEnabled) {
+    await closeRedisClient()
+  }
+
+  redisClient = null
+  redisEnabled = false
+  initialized = false
+  disableRedisForAllStores('shutdown')
+}
+
+export const getRateLimiterRuntimeState = () => ({
+  initialized,
+  activeMode: redisEnabled ? 'redis' : 'memory',
+  configuredStoreMode: rateLimitStoreMode,
+  redisConfigured: redisUrl.length > 0,
+  redisRequired: redisRequiredByEnv,
+  memoryFallbackAllowed: allowMemoryFallback,
+})

@@ -2,6 +2,7 @@ import './config/env'
 import { connectToDatabase } from './config/database'
 import app from './app'
 import { Server } from 'http'
+import { initializeRateLimiter, shutdownRateLimiter } from './middlewares/rateLimiter'
 
 const PORT = process.env.PORT || 3000
 let server: Server | null = null
@@ -9,6 +10,7 @@ let shutdownStarted = false
 
 async function startServer() {
   try {
+    await initializeRateLimiter()
     await connectToDatabase()
     server = app.listen(PORT, () => {
       console.log(`Servidor a correr em http://localhost:${PORT}`)
@@ -37,6 +39,8 @@ async function shutdown(signal: NodeJS.Signals) {
         })
       })
     }
+
+    await shutdownRateLimiter()
 
     process.exit(0)
   } catch (error) {
