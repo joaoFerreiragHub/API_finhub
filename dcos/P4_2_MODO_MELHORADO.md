@@ -331,6 +331,11 @@ Concluido nesta iteracao (backend + frontend):
      - comportamento read-only por tipo de scope;
      - middleware `requireAdminScope` com casos `401`, `403` e allow com `next()`.
    - execucao atual: `OK: 58 rotas admin com escopo e 11 scopes validados (allow/deny).`
+12. `P4.2-05` guardas de rota frontend por scope:
+   - frontend deixou de depender apenas de `role=admin` em `/admin/*`;
+   - `requireAdmin` agora valida `pathname` com `canAccessAdminPath`;
+   - wrappers SSR de `pages/admin/**` exigem `requiredAdminModule`;
+   - cobertura frontend adicionada para contrato `path -> module` e loader `requireAdmin`.
 
 ### 7.1 Configuracao operacional do P4.2-03
 
