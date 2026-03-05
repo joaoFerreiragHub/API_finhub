@@ -1,6 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../types/auth'
 import { CreatorOperationalAction, UserAccountStatus, UserRole } from '../models/User'
+import { ADMIN_SCOPES, ADMIN_SCOPE_PROFILES } from '../admin/permissions'
 import {
   AdminUserServiceError,
   AdminUserSortField,
@@ -31,6 +32,8 @@ const VALID_CREATOR_CONTROL_ACTIONS = new Set<CreatorOperationalAction>([
   'suspend_creator_ops',
   'restore_creator_ops',
 ])
+const VALID_ADMIN_SCOPE_SET = new Set<string>(ADMIN_SCOPES)
+const VALID_ADMIN_PROFILE_SET = new Set<string>(Object.keys(ADMIN_SCOPE_PROFILES))
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -74,6 +77,33 @@ const extractNote = (req: AuthRequest): string | undefined => {
 
   return undefined
 }
+
+const sortScopes = (scopes: string[]): string[] =>
+  [...scopes].sort((left, right) => left.localeCompare(right))
+
+const normalizeScopes = (scopes: string[]): string[] => {
+  const unique = new Set<string>()
+
+  for (const scope of scopes) {
+    if (!VALID_ADMIN_SCOPE_SET.has(scope)) continue
+    unique.add(scope)
+  }
+
+  return sortScopes([...unique])
+}
+
+const sanitizePermissionSnapshot = (
+  snapshot:
+    | {
+        adminReadOnly?: boolean
+        adminScopes?: string[]
+      }
+    | null
+    | undefined
+) => ({
+  adminReadOnly: Boolean(snapshot?.adminReadOnly),
+  adminScopes: normalizeScopes(snapshot?.adminScopes ?? []),
+})
 
 const mapUserResponse = (user: {
   id: string
@@ -354,6 +384,116 @@ export const forceLogoutUser = async (req: AuthRequest, res: Response) => {
   } catch (error: unknown) {
     console.error('Force logout user error:', error)
     return handleAdminUserError(res, error, 'Erro ao aplicar force logout.')
+  }
+}
+
+/**
+ * POST /api/admin/users/:userId/admin-permissions
+ */
+export const updateAdminUserPermissions = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const reason = extractReason(req)
+    if (!reason) {
+      return res.status(400).json({
+        error: 'Motivo obrigatorio para atualizar permissoes admin.',
+      })
+    }
+
+    const adminReadOnlyRaw = req.body?.adminReadOnly
+    if (typeof adminReadOnlyRaw !== 'boolean') {
+      return res.status(400).json({
+        error: 'Campo adminReadOnly obrigatorio e deve ser boolean.',
+      })
+    }
+
+    const profileRaw =
+      typeof req.body?.profile === 'string' && req.body.profile.trim().length > 0
+        ? req.body.profile.trim()
+        : undefined
+
+    if (profileRaw && !VALID_ADMIN_PROFILE_SET.has(profileRaw)) {
+      return res.status(400).json({
+        error: 'Perfil admin invalido.',
+      })
+    }
+
+    const bodyScopes = req.body?.adminScopes
+    if (!profileRaw && !Array.isArray(bodyScopes)) {
+      return res.status(400).json({
+        error: 'Envia um perfil valido ou uma lista adminScopes.',
+      })
+    }
+
+    if (Array.isArray(bodyScopes) && bodyScopes.some((scope) => typeof scope !== 'string')) {
+      return res.status(400).json({
+        error: 'adminScopes deve conter apenas strings.',
+      })
+    }
+
+    if (
+      Array.isArray(bodyScopes) &&
+      bodyScopes.some((scope) => typeof scope === 'string' && !VALID_ADMIN_SCOPE_SET.has(scope))
+    ) {
+      return res.status(400).json({
+        error: 'adminScopes contem valores invalidos.',
+      })
+    }
+
+    const result = await adminUserService.updateAdminPermissions({
+      actorId: req.user.id,
+      targetUserId: req.params.userId,
+      reason,
+      note: extractNote(req),
+      adminReadOnly: adminReadOnlyRaw,
+      adminScopes: Array.isArray(bodyScopes)
+        ? bodyScopes.filter((scope): scope is string => typeof scope === 'string')
+        : undefined,
+      profile: profileRaw,
+    })
+
+    ;(res.locals as Record<string, unknown>).adminPermissionsChange = {
+      changed: result.changed,
+      profile: result.profile,
+      before: sanitizePermissionSnapshot(result.before),
+      after: sanitizePermissionSnapshot(result.after),
+    }
+
+    return res.status(200).json({
+      message: result.changed
+        ? 'Permissoes administrativas atualizadas com sucesso.'
+        : 'Sem alteracoes de permissoes para aplicar.',
+      changed: result.changed,
+      profile: result.profile,
+      before: sanitizePermissionSnapshot(result.before),
+      after: sanitizePermissionSnapshot(result.after),
+      user: mapUserResponse({
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        username: result.user.username,
+        avatar: result.user.avatar,
+        role: result.user.role,
+        accountStatus: result.user.accountStatus,
+        adminReadOnly: result.user.adminReadOnly,
+        adminScopes: result.user.adminScopes ?? [],
+        statusReason: result.user.statusReason,
+        statusChangedAt: result.user.statusChangedAt,
+        creatorControls: result.user.creatorControls,
+        tokenVersion: result.user.tokenVersion,
+        lastForcedLogoutAt: result.user.lastForcedLogoutAt,
+        lastLoginAt: result.user.lastLoginAt,
+        lastActiveAt: result.user.lastActiveAt,
+      }),
+    })
+  } catch (error: unknown) {
+    console.error('Update admin user permissions error:', error)
+    return handleAdminUserError(res, error, 'Erro ao atualizar permissoes administrativas.')
   }
 }
 

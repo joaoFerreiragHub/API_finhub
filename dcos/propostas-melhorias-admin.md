@@ -18,6 +18,7 @@ Itens ja implementados desde esta analise:
 4. Alertas internos com `acknowledge/dismiss` e estado persistido (`open/acknowledged/dismissed`).
 5. Polling dinamico nas views operacionais criticas (10s em foco, pausa em background).
 6. Queue de moderacao com suporte a cursor pagination (`cursor.current/next/hasMore`) com compatibilidade `page/limit`.
+7. Gestao de permissao de admins via UI (`/admin/users`) com endpoint dedicado (`POST /api/admin/users/:userId/admin-permissions`), diff `before/after` e bloqueio de self-update.
 
 ## A. PROBLEMAS IDENTIFICADOS
 

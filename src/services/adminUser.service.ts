@@ -6,6 +6,7 @@ import {
   UserAccountStatus,
   UserRole,
 } from '../models/User'
+import { ADMIN_SCOPES, ADMIN_SCOPE_PROFILES, AdminScope } from '../admin/permissions'
 import { UserModerationEvent } from '../models/UserModerationEvent'
 import { creatorTrustService } from './creatorTrust.service'
 
@@ -44,6 +45,17 @@ export interface AdminCreatorControlInput extends AdminUserActionInput {
   cooldownHours?: number
 }
 
+export interface AdminPermissionSnapshot {
+  adminReadOnly: boolean
+  adminScopes: AdminScope[]
+}
+
+export interface AdminUpdatePermissionsInput extends AdminUserActionInput {
+  adminReadOnly: boolean
+  adminScopes?: string[]
+  profile?: string
+}
+
 export class AdminUserServiceError extends Error {
   statusCode: number
 
@@ -57,6 +69,7 @@ const MAX_LIMIT = 100
 const DEFAULT_LIMIT = 25
 const DEFAULT_PAGE = 1
 const MAX_COOLDOWN_HOURS = 24 * 30
+const VALID_ADMIN_SCOPE_SET = new Set<string>(ADMIN_SCOPES)
 
 const normalizePage = (value?: number): number => {
   if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
@@ -87,6 +100,42 @@ const isAllowedSortField = (value?: string): value is AdminUserSortField => {
     value === 'username' ||
     value === 'email'
   )
+}
+
+const sortAdminScopes = (scopes: AdminScope[]): AdminScope[] =>
+  [...scopes].sort((left, right) => left.localeCompare(right))
+
+const normalizeAdminScopes = (scopes?: string[] | null): AdminScope[] => {
+  if (!Array.isArray(scopes) || scopes.length === 0) return []
+
+  const unique = new Set<AdminScope>()
+  for (const scope of scopes) {
+    if (!VALID_ADMIN_SCOPE_SET.has(scope)) continue
+    unique.add(scope as AdminScope)
+  }
+
+  return sortAdminScopes([...unique])
+}
+
+const resolveProfileScopes = (profileRaw?: string): { profile: string; scopes: AdminScope[] } | null => {
+  if (typeof profileRaw !== 'string' || profileRaw.trim().length === 0) return null
+
+  const profile = profileRaw.trim()
+  const scopes = ADMIN_SCOPE_PROFILES[profile]
+  if (!Array.isArray(scopes)) return null
+
+  return {
+    profile,
+    scopes: sortAdminScopes([...scopes]),
+  }
+}
+
+const areScopesEqual = (left: AdminScope[], right: AdminScope[]): boolean => {
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false
+  }
+  return true
 }
 
 export class AdminUserService {
@@ -178,6 +227,94 @@ export class AdminUserService {
         total,
         pages: Math.ceil(total / limit),
       },
+    }
+  }
+
+  async updateAdminPermissions(input: AdminUpdatePermissionsInput) {
+    const actorId = toObjectId(input.actorId, 'actorId')
+    const targetUserId = toObjectId(input.targetUserId, 'targetUserId')
+
+    if (actorId.equals(targetUserId)) {
+      throw new AdminUserServiceError(
+        403,
+        'Nao podes alterar as tuas proprias permissoes administrativas.'
+      )
+    }
+
+    const [actorUser, targetUser] = await Promise.all([
+      User.findById(actorId).select('role'),
+      User.findById(targetUserId).select(
+        'email name username avatar role accountStatus adminReadOnly adminScopes statusReason statusChangedAt statusChangedBy creatorControls tokenVersion lastForcedLogoutAt lastLoginAt lastActiveAt createdAt updatedAt'
+      ),
+    ])
+
+    if (!actorUser || actorUser.role !== 'admin') {
+      throw new AdminUserServiceError(403, 'Apenas admins podem alterar permissoes admin.')
+    }
+
+    if (!targetUser) {
+      throw new AdminUserServiceError(404, 'Utilizador alvo nao encontrado.')
+    }
+
+    if (targetUser.role !== 'admin') {
+      throw new AdminUserServiceError(409, 'Atualizacao de permissoes aplica-se apenas a contas admin.')
+    }
+
+    const resolvedProfile = resolveProfileScopes(input.profile)
+    if (input.profile && !resolvedProfile) {
+      throw new AdminUserServiceError(400, 'Perfil admin invalido para atribuicao de scopes.')
+    }
+
+    const normalizedScopes = resolvedProfile
+      ? resolvedProfile.scopes
+      : normalizeAdminScopes(input.adminScopes)
+
+    if (normalizedScopes.length === 0) {
+      throw new AdminUserServiceError(
+        400,
+        'Pelo menos um scope admin valido e obrigatorio para atualizar permissoes.'
+      )
+    }
+
+    if (
+      Array.isArray(input.adminScopes) &&
+      input.adminScopes.some((scope) => !VALID_ADMIN_SCOPE_SET.has(scope))
+    ) {
+      throw new AdminUserServiceError(400, 'Payload contem scopes admin invalidos.')
+    }
+
+    const before = this.mapPermissionSnapshot(targetUser)
+    const after: AdminPermissionSnapshot = {
+      adminReadOnly: input.adminReadOnly,
+      adminScopes: normalizedScopes,
+    }
+
+    const changed =
+      before.adminReadOnly !== after.adminReadOnly ||
+      !areScopesEqual(before.adminScopes, after.adminScopes)
+
+    if (changed) {
+      targetUser.adminReadOnly = after.adminReadOnly
+      targetUser.adminScopes = after.adminScopes
+      await targetUser.save()
+    }
+
+    const refreshedUser = changed
+      ? await User.findById(targetUserId).select(
+          'email name username avatar role accountStatus adminReadOnly adminScopes statusReason statusChangedAt statusChangedBy creatorControls tokenVersion lastForcedLogoutAt lastLoginAt lastActiveAt createdAt updatedAt'
+        )
+      : targetUser
+
+    if (!refreshedUser) {
+      throw new AdminUserServiceError(404, 'Utilizador alvo nao encontrado apos atualizacao.')
+    }
+
+    return {
+      changed,
+      profile: resolvedProfile?.profile ?? null,
+      before,
+      after,
+      user: refreshedUser,
     }
   }
 
@@ -506,6 +643,13 @@ export class AdminUserService {
         updatedAt: user.updatedAt,
       },
       trustSignals: trustSignals.get(String(user._id)) ?? null,
+    }
+  }
+
+  private mapPermissionSnapshot(user: Pick<IUser, 'adminReadOnly' | 'adminScopes'>): AdminPermissionSnapshot {
+    return {
+      adminReadOnly: Boolean(user.adminReadOnly),
+      adminScopes: normalizeAdminScopes(user.adminScopes),
     }
   }
 

@@ -49,6 +49,7 @@ import {
   listAdminUsers,
   listUserModerationHistory,
   suspendUser,
+  updateAdminUserPermissions,
   unbanUser,
 } from '../controllers/adminUser.controller'
 import {
@@ -1010,6 +1011,29 @@ router.get(
   }),
   requireAdminScope('admin.users.read'),
   listUserModerationHistory
+)
+
+/**
+ * @route   POST /api/admin/users/:userId/admin-permissions
+ * @desc    Atualizar permissoes administrativas (scopes/read-only) de um admin
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/users/:userId/admin-permissions',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.users.permissions.update',
+    resourceType: 'user',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.userId,
+    getMetadata: (_req, res) => {
+      const metadata = (res.locals as Record<string, unknown>).adminPermissionsChange
+      if (!metadata || typeof metadata !== 'object') return undefined
+      return metadata as Record<string, unknown>
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  updateAdminUserPermissions
 )
 
 /**

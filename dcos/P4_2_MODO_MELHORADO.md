@@ -304,9 +304,13 @@ Concluido nesta iteracao (backend + frontend):
    - backend suporta `cursor` mantendo `page/limit` por compatibilidade.
    - resposta inclui metadados `cursor.current/next/hasMore`.
    - frontend da moderacao usa navegacao por cursor (next/prev) sem perder filtros.
+9. `P4.2-17` gestao de admins via UI:
+   - endpoint backend `POST /api/admin/users/:userId/admin-permissions` para atualizar `adminScopes` e `adminReadOnly`.
+   - bloqueio de auto-escalacao (self-update) e validacao de profile/scopes.
+   - auditoria inclui metadata `before/after` da alteracao.
+   - frontend em `/admin/users` com dialogo de permissoes, selecao por perfil recomendado/custom e preview de diff antes de confirmar.
 
 Pendencias principais para fechar P4.2:
 
 1. Rate limiter distribuido Redis conforme criterio de ambiente (`P4.2-03`).
-2. Gestao de admins via UI (editar scopes/readOnly) (`P4.2-17`).
-3. Cobertura de testes estruturada por rota/scope (`P4.2-12`).
+2. Cobertura de testes estruturada por rota/scope (`P4.2-12`).
