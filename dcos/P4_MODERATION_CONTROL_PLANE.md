@@ -950,7 +950,7 @@ Estas sao as proximas camadas que fazem mais sentido:
 
 Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
-1. Trocar o rate limiter em memoria por Redis ou store partilhada.
+1. Validar operacao do rate limiter distribuido em Redis (migrado em 2026-03-05), incluindo fallback controlado e alertas de degradacao.
 2. Medir e alertar picos de `hide-fast`, `bulk-moderate` e falhas por item.
 3. Garantir scopes minimos para admins e perfis read-only.
 4. Remover qualquer bypass TLS de ambiente (`NODE_TLS_REJECT_UNAUTHORIZED=0` ou equivalente) e configurar CA/proxy corretamente para npm, CI e deploy.

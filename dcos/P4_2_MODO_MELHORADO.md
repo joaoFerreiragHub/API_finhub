@@ -1,6 +1,6 @@
 # P4.2 Modo Melhorado - Admin Front + Backend
 
-Data: 2026-03-04
+Data: 2026-03-05
 Estado: Proposta executavel
 Escopo: `API_finhub` + `FinHub-Vite`
 
@@ -279,7 +279,7 @@ Sprint 4:
 9. Testes de regressao para permissoes, queue, jobs e alertas.
 10. Documentacao (`dcos`) atualizada com runbooks e matriz de scopes.
 
-## 7) Progresso de implementacao (2026-03-04)
+## 7) Progresso de implementacao (2026-03-05)
 
 Concluido nesta iteracao (backend + frontend):
 
@@ -309,8 +309,41 @@ Concluido nesta iteracao (backend + frontend):
    - bloqueio de auto-escalacao (self-update) e validacao de profile/scopes.
    - auditoria inclui metadata `before/after` da alteracao.
    - frontend em `/admin/users` com dialogo de permissoes, selecao por perfil recomendado/custom e preview de diff antes de confirmar.
+10. `P4.2-03` rate limiter distribuido Redis:
+   - `src/middlewares/rateLimiter.ts` migrou de store local (`Map`) para `RedisStore` (`rate-limit-redis`) com chave por requester (`user:id` ou `ip`).
+   - startup/shutdown explicitos em `src/server.ts` (`initializeRateLimiter` / `shutdownRateLimiter`).
+   - fallback controlado de Redis para memory mode sem bypass silencioso:
+     - se `RATE_LIMIT_REDIS_REQUIRED=true` (ou `RATE_LIMIT_STORE_MODE=redis`) e Redis falha, o servidor nao arranca;
+     - caso contrario, entra em modo degradado com log estruturado e metrica de backend.
+   - limites por endpoint externalizados por env (`RATE_LIMIT_<LIMITER>_WINDOW_MS` e `RATE_LIMIT_<LIMITER>_MAX`).
+   - metricas tecnicas adicionadas:
+     - `finhub_rate_limiter_backend_info`
+     - `finhub_rate_limit_exceeded_total` (com `limiter`, `key_type`, `key_hash`).
+
+### 7.1 Configuracao operacional do P4.2-03
+
+Flags principais:
+
+1. `RATE_LIMIT_STORE_MODE=auto|memory|redis` (default: `auto`).
+2. `RATE_LIMIT_REDIS_URL` (fallback para `REDIS_URL`).
+3. `RATE_LIMIT_REDIS_REQUIRED=true|false` (default: `true` quando `RATE_LIMIT_STORE_MODE=redis`).
+4. `RATE_LIMIT_ALLOW_MEMORY_FALLBACK=true|false` (default: `true`).
+5. `RATE_LIMIT_REDIS_PREFIX` (default: `finhub:ratelimit:`).
+6. `RATE_LIMIT_REDIS_CONNECT_TIMEOUT_MS` (fallback para `REDIS_CONNECT_TIMEOUT_MS`, default 5000ms).
+
+Overrides por limiter:
+
+1. `RATE_LIMIT_API_WINDOW_MS` / `RATE_LIMIT_API_MAX`
+2. `RATE_LIMIT_NEWS_WINDOW_MS` / `RATE_LIMIT_NEWS_MAX`
+3. `RATE_LIMIT_SEARCH_WINDOW_MS` / `RATE_LIMIT_SEARCH_MAX`
+4. `RATE_LIMIT_STATS_WINDOW_MS` / `RATE_LIMIT_STATS_MAX`
+5. `RATE_LIMIT_ADMIN_WINDOW_MS` / `RATE_LIMIT_ADMIN_MAX`
+6. `RATE_LIMIT_ADMIN_MODERATION_ACTION_WINDOW_MS` / `RATE_LIMIT_ADMIN_MODERATION_ACTION_MAX`
+7. `RATE_LIMIT_ADMIN_MODERATION_BULK_WINDOW_MS` / `RATE_LIMIT_ADMIN_MODERATION_BULK_MAX`
+8. `RATE_LIMIT_ADMIN_METRICS_DRILLDOWN_WINDOW_MS` / `RATE_LIMIT_ADMIN_METRICS_DRILLDOWN_MAX`
+9. `RATE_LIMIT_USER_REPORT_WINDOW_MS` / `RATE_LIMIT_USER_REPORT_MAX`
+10. `RATE_LIMIT_GENERAL_WINDOW_MS` / `RATE_LIMIT_GENERAL_MAX`
 
 Pendencias principais para fechar P4.2:
 
-1. Rate limiter distribuido Redis conforme criterio de ambiente (`P4.2-03`).
-2. Cobertura de testes estruturada por rota/scope (`P4.2-12`).
+1. Cobertura de testes estruturada por rota/scope (`P4.2-12`).
