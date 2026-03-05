@@ -1,7 +1,7 @@
 # P4.2 Modo Melhorado - Admin Front + Backend
 
 Data: 2026-03-05
-Estado: Proposta executavel
+Estado: Fechado (P4.2 concluido tecnicamente)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Resultado da analise do ficheiro `propostas-melhorias-admin.md`
@@ -319,6 +319,18 @@ Concluido nesta iteracao (backend + frontend):
    - metricas tecnicas adicionadas:
      - `finhub_rate_limiter_backend_info`
      - `finhub_rate_limit_exceeded_total` (com `limiter`, `key_type`, `key_hash`).
+11. `P4.2-12` cobertura de testes estruturada por rota/scope:
+   - script automatizado `npm run test:admin:scopes`.
+   - validacao AST de contrato em `src/routes/admin.routes.ts`:
+     - 100% das rotas admin com `requireAdminScope(...)`;
+     - escopos apenas dentro de `ADMIN_SCOPES`.
+   - validacao allow/deny para todos os scopes usados em rota:
+     - allow com scope explicito;
+     - deny com scope diferente;
+     - deny para role nao-admin;
+     - comportamento read-only por tipo de scope;
+     - middleware `requireAdminScope` com casos `401`, `403` e allow com `next()`.
+   - execucao atual: `OK: 58 rotas admin com escopo e 11 scopes validados (allow/deny).`
 
 ### 7.1 Configuracao operacional do P4.2-03
 
@@ -346,4 +358,4 @@ Overrides por limiter:
 
 Pendencias principais para fechar P4.2:
 
-1. Cobertura de testes estruturada por rota/scope (`P4.2-12`).
+1. Nenhuma pendencia tecnica aberta no escopo P4.2.
