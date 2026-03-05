@@ -20,7 +20,8 @@
     "test:pre-p1": "powershell -ExecutionPolicy Bypass -File scripts/pre-p1-smoke.ps1",
     "test:sector-smoke": "node scripts/quick-analysis-sector-smoke.js",
     "build": "tsc",
-    "seed": "ts-node src/scripts/seed.ts"
+    "seed": "ts-node src/scripts/seed.ts",
+    "test:admin:scopes": "ts-node --transpile-only scripts/test-admin-scope-contract.ts"
   },
   "dependencies": {
     "@types/multer": "^2.0.0",
