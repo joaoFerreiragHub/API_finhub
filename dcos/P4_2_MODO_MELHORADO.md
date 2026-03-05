@@ -336,6 +336,18 @@ Concluido nesta iteracao (backend + frontend):
    - `requireAdmin` agora valida `pathname` com `canAccessAdminPath`;
    - wrappers SSR de `pages/admin/**` exigem `requiredAdminModule`;
    - cobertura frontend adicionada para contrato `path -> module` e loader `requireAdmin`.
+13. `P4.2-14` validacao em tempo real de formularios admin:
+   - helper frontend `formValidation` para regras partilhadas de `required`, `double-confirm` e `inteiro positivo`.
+   - dialogs criticos em `/admin/users` passaram a mostrar erro inline e bloquear submit enquanto houver erro:
+     - acoes admin;
+     - creator controls;
+     - permissoes admin.
+   - dialogs criticos em `/admin/conteudo` passaram a mostrar erro inline e bloquear submit enquanto houver erro:
+     - acao individual;
+     - rollback assistido;
+     - job de moderacao em lote.
+   - cobertura frontend adicionada para o helper:
+     - `src/__tests__/features/admin/adminFormValidation.test.ts`.
 
 ### 7.1 Configuracao operacional do P4.2-03
 
