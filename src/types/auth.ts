@@ -12,6 +12,20 @@ export interface AuthCreatorControlsResponse {
   updatedBy?: string | null
 }
 
+export interface RegisterLegalAcceptanceDTO {
+  termsAccepted: boolean
+  privacyAccepted: boolean
+  financialDisclaimerAccepted: boolean
+  version?: string
+}
+
+export interface CookieConsentDTO {
+  analytics?: boolean
+  marketing?: boolean
+  preferences?: boolean
+  version?: string
+}
+
 /**
  * Request estendido com user autenticado
  */
@@ -46,6 +60,20 @@ export interface AuthResponse {
     accountStatus: UserAccountStatus
     adminReadOnly: boolean
     adminScopes: string[]
+    legalAcceptance?: {
+      termsAcceptedAt?: Date | null
+      privacyAcceptedAt?: Date | null
+      financialDisclaimerAcceptedAt?: Date | null
+      version?: string | null
+    }
+    cookieConsent?: {
+      essential: boolean
+      analytics: boolean
+      marketing: boolean
+      preferences: boolean
+      consentedAt?: Date | null
+      version?: string | null
+    }
     creatorControls: AuthCreatorControlsResponse
     assistedSession?: AssistedSessionTokenPayload
   }
@@ -64,6 +92,8 @@ export interface RegisterDTO {
   name: string
   username: string
   role?: 'free' | 'creator'
+  legalAcceptance?: RegisterLegalAcceptanceDTO
+  cookieConsent?: CookieConsentDTO
 }
 
 export interface LoginDTO {
@@ -83,3 +113,5 @@ export interface ResetPasswordDTO {
   token: string
   newPassword: string
 }
+
+export interface UpdateCookieConsentDTO extends CookieConsentDTO {}

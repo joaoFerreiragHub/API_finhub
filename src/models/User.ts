@@ -23,6 +23,22 @@ export interface ICreatorControls {
   updatedBy?: mongoose.Types.ObjectId
 }
 
+export interface ILegalAcceptance {
+  termsAcceptedAt?: Date | null
+  privacyAcceptedAt?: Date | null
+  financialDisclaimerAcceptedAt?: Date | null
+  version?: string | null
+}
+
+export interface ICookieConsent {
+  essential: boolean
+  analytics: boolean
+  marketing: boolean
+  preferences: boolean
+  consentedAt?: Date | null
+  version?: string | null
+}
+
 export interface IUser extends Document {
   email: string
   emailVerified: boolean
@@ -34,6 +50,8 @@ export interface IUser extends Document {
   adminScopes?: string[]
   adminReadOnly: boolean
   accountStatus: UserAccountStatus
+  legalAcceptance: ILegalAcceptance
+  cookieConsent: ICookieConsent
   statusReason?: string
   statusChangedAt?: Date
   statusChangedBy?: mongoose.Types.ObjectId
@@ -122,6 +140,52 @@ const UserSchema = new Schema<IUser>(
     adminReadOnly: {
       type: Boolean,
       default: false,
+    },
+    legalAcceptance: {
+      termsAcceptedAt: {
+        type: Date,
+        default: null,
+      },
+      privacyAcceptedAt: {
+        type: Date,
+        default: null,
+      },
+      financialDisclaimerAcceptedAt: {
+        type: Date,
+        default: null,
+      },
+      version: {
+        type: String,
+        default: null,
+        maxlength: 50,
+      },
+    },
+    cookieConsent: {
+      essential: {
+        type: Boolean,
+        default: true,
+      },
+      analytics: {
+        type: Boolean,
+        default: false,
+      },
+      marketing: {
+        type: Boolean,
+        default: false,
+      },
+      preferences: {
+        type: Boolean,
+        default: false,
+      },
+      consentedAt: {
+        type: Date,
+        default: null,
+      },
+      version: {
+        type: String,
+        default: 'v1',
+        maxlength: 50,
+      },
     },
     accountStatus: {
       type: String,
@@ -253,6 +317,8 @@ UserSchema.index({ username: 1 })
 UserSchema.index({ role: 1 })
 UserSchema.index({ role: 1, adminReadOnly: 1 })
 UserSchema.index({ accountStatus: 1, role: 1 })
+UserSchema.index({ 'legalAcceptance.termsAcceptedAt': -1 })
+UserSchema.index({ 'cookieConsent.consentedAt': -1 })
 UserSchema.index({ role: 1, 'creatorControls.creationBlocked': 1 })
 UserSchema.index({ role: 1, 'creatorControls.publishingBlocked': 1 })
 UserSchema.index({ role: 1, 'creatorControls.cooldownUntil': 1 })
@@ -297,4 +363,3 @@ UserSchema.methods.toJSON = function () {
 }
 
 export const User = mongoose.model<IUser>('User', UserSchema)
-

@@ -10,6 +10,7 @@ import {
   RegisterDTO,
   RefreshTokenDTO,
   ResetPasswordDTO,
+  UpdateCookieConsentDTO,
 } from '../types/auth'
 import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
 import { emailService } from '../services/email.service'
@@ -42,6 +43,26 @@ const mapCreatorControls = (creatorControls: any): AuthResponse['user']['creator
       : null,
 })
 
+const mapLegalAcceptance = (
+  legalAcceptance: any
+): NonNullable<AuthResponse['user']['legalAcceptance']> => ({
+  termsAcceptedAt: legalAcceptance?.termsAcceptedAt ?? null,
+  privacyAcceptedAt: legalAcceptance?.privacyAcceptedAt ?? null,
+  financialDisclaimerAcceptedAt: legalAcceptance?.financialDisclaimerAcceptedAt ?? null,
+  version: typeof legalAcceptance?.version === 'string' ? legalAcceptance.version : null,
+})
+
+const mapCookieConsent = (
+  cookieConsent: any
+): NonNullable<AuthResponse['user']['cookieConsent']> => ({
+  essential: Boolean(cookieConsent?.essential ?? true),
+  analytics: Boolean(cookieConsent?.analytics),
+  marketing: Boolean(cookieConsent?.marketing),
+  preferences: Boolean(cookieConsent?.preferences),
+  consentedAt: cookieConsent?.consentedAt ?? null,
+  version: typeof cookieConsent?.version === 'string' ? cookieConsent.version : null,
+})
+
 const mapAuthResponseUser = (user: {
   id: string
   email: string
@@ -53,6 +74,8 @@ const mapAuthResponseUser = (user: {
   accountStatus: AuthResponse['user']['accountStatus']
   adminReadOnly?: boolean
   adminScopes?: string[]
+  legalAcceptance?: AuthResponse['user']['legalAcceptance']
+  cookieConsent?: AuthResponse['user']['cookieConsent']
   creatorControls?: AuthResponse['user']['creatorControls']
   assistedSession?: AuthResponse['user']['assistedSession']
 }): AuthResponse['user'] => ({
@@ -66,6 +89,8 @@ const mapAuthResponseUser = (user: {
   accountStatus: user.accountStatus,
   adminReadOnly: Boolean(user.adminReadOnly),
   adminScopes: Array.isArray(user.adminScopes) ? user.adminScopes : [],
+  legalAcceptance: mapLegalAcceptance(user.legalAcceptance),
+  cookieConsent: mapCookieConsent(user.cookieConsent),
   creatorControls: user.creatorControls ?? mapCreatorControls(undefined),
   assistedSession: user.assistedSession,
 })
@@ -92,6 +117,9 @@ const EMAIL_VERIFICATION_TOKEN_TTL_HOURS = parsePositiveInteger(
   process.env.EMAIL_VERIFICATION_TOKEN_TTL_HOURS,
   24
 )
+const LEGAL_VERSION = (process.env.LEGAL_VERSION ?? 'v1').trim() || 'v1'
+const COOKIE_CONSENT_VERSION =
+  (process.env.COOKIE_CONSENT_VERSION ?? LEGAL_VERSION).trim() || LEGAL_VERSION
 
 const hashToken = (token: string): string =>
   crypto.createHash('sha256').update(token).digest('hex')
@@ -116,10 +144,24 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
     const name = req.body.name?.trim()
     const username = req.body.username?.trim().toLowerCase()
     const role = req.body.role
+    const legalAcceptance = req.body.legalAcceptance
+    const cookieConsent = req.body.cookieConsent
 
     if (!email || !password || !name || !username) {
       return res.status(400).json({
         error: 'Campos obrigatorios: email, password, name, username',
+      })
+    }
+
+    if (
+      !legalAcceptance ||
+      legalAcceptance.termsAccepted !== true ||
+      legalAcceptance.privacyAccepted !== true ||
+      legalAcceptance.financialDisclaimerAccepted !== true
+    ) {
+      return res.status(400).json({
+        error:
+          'Aceitacao de termos, privacidade e aviso financeiro e obrigatoria para registo.',
       })
     }
 
@@ -155,6 +197,20 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
       emailVerified: false,
       emailVerificationTokenHash: verificationTokenHash,
       emailVerificationTokenExpiresAt: verificationExpiresAt,
+      legalAcceptance: {
+        termsAcceptedAt: now,
+        privacyAcceptedAt: now,
+        financialDisclaimerAcceptedAt: now,
+        version: legalAcceptance.version?.trim() || LEGAL_VERSION,
+      },
+      cookieConsent: {
+        essential: true,
+        analytics: Boolean(cookieConsent?.analytics),
+        marketing: Boolean(cookieConsent?.marketing),
+        preferences: Boolean(cookieConsent?.preferences),
+        consentedAt: now,
+        version: cookieConsent?.version?.trim() || COOKIE_CONSENT_VERSION,
+      },
     })
 
     const tokens = generateTokens({
@@ -176,6 +232,8 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
         accountStatus: user.accountStatus,
         adminReadOnly: user.adminReadOnly,
         adminScopes: user.adminScopes,
+        legalAcceptance: mapLegalAcceptance(user.legalAcceptance),
+        cookieConsent: mapCookieConsent(user.cookieConsent),
         creatorControls: mapCreatorControls(user.creatorControls),
       }),
       tokens,
@@ -391,6 +449,53 @@ export const resendVerification = async (req: AuthRequest, res: Response) => {
 }
 
 /**
+ * Update Cookie Consent - Atualizar preferencias de consentimento
+ * PATCH /api/auth/cookie-consent
+ */
+export const updateCookieConsent = async (
+  req: Request<{}, {}, UpdateCookieConsentDTO> & AuthRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Nao autenticado.',
+      })
+    }
+
+    const now = new Date()
+    const user = await User.findById(req.user.id)
+    if (!user) {
+      return res.status(404).json({
+        error: 'Utilizador nao encontrado.',
+      })
+    }
+
+    user.cookieConsent = {
+      essential: true,
+      analytics: Boolean(req.body.analytics),
+      marketing: Boolean(req.body.marketing),
+      preferences: Boolean(req.body.preferences),
+      consentedAt: now,
+      version: req.body.version?.trim() || COOKIE_CONSENT_VERSION,
+    }
+
+    await user.save()
+
+    return res.status(200).json({
+      message: 'Consentimento de cookies atualizado.',
+      cookieConsent: mapCookieConsent(user.cookieConsent),
+    })
+  } catch (error: any) {
+    console.error('Update cookie consent error:', error)
+    return res.status(500).json({
+      error: 'Erro ao atualizar consentimento de cookies.',
+      details: error.message,
+    })
+  }
+}
+
+/**
  * Reset Password - Validar token e atualizar password
  * POST /api/auth/reset-password
  */
@@ -500,6 +605,8 @@ export const login = async (req: Request<{}, {}, LoginDTO>, res: Response) => {
         accountStatus: user.accountStatus,
         adminReadOnly: user.adminReadOnly,
         adminScopes: user.adminScopes,
+        legalAcceptance: mapLegalAcceptance(user.legalAcceptance),
+        cookieConsent: mapCookieConsent(user.cookieConsent),
         creatorControls: mapCreatorControls(user.creatorControls),
       }),
       tokens,
@@ -624,6 +731,8 @@ export const me = async (req: AuthRequest, res: Response) => {
         accountStatus: req.user.accountStatus,
         adminReadOnly: req.user.adminReadOnly,
         adminScopes: req.user.adminScopes ?? [],
+        legalAcceptance: mapLegalAcceptance(req.user.legalAcceptance),
+        cookieConsent: mapCookieConsent(req.user.cookieConsent),
         creatorControls: mapCreatorControls(req.user.creatorControls),
         assistedSession: req.assistedSession,
         bio: req.user.bio,

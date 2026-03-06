@@ -68,6 +68,7 @@ router.get('/', (req, res) => {
       admin: '/api/admin',
       editorial: '/api/editorial',
       platform: '/api/platform',
+      legal: '/api/platform/legal',
     },
     timestamp: new Date().toISOString()
   })

@@ -10,6 +10,7 @@ import {
   resetPassword,
   verifyEmail,
   resendVerification,
+  updateCookieConsent,
 } from '../controllers/auth.controller'
 import {
   listMyActiveAssistedSessions,
@@ -63,6 +64,13 @@ router.get('/verify-email', rateLimiter.general, verifyEmail)
  * @access  Private
  */
 router.post('/resend-verification', authenticate, rateLimiter.general, resendVerification)
+
+/**
+ * @route   PATCH /api/auth/cookie-consent
+ * @desc    Atualizar consentimento de cookies
+ * @access  Private
+ */
+router.patch('/cookie-consent', authenticate, rateLimiter.general, updateCookieConsent)
 
 /**
  * @route   POST /api/auth/refresh
