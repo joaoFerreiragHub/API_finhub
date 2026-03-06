@@ -16,6 +16,8 @@ Objetivo: registar ideias e futuros P's ainda nao iniciados.
 |---|---|---|---|---|---|
 | P4-MODERATION-HARDENING | Moderation Control Plane | Hardening pre-release (E2E, runbooks, robustez operacional) | Alta | em_curso | `dcos/P4_MODERATION_CONTROL_PLANE.md` |
 | P4.3-4.5-BACKOFFICE | Backoffice negocio/revenue | Camada de negocio apos fecho tecnico do P4.2 | Alta | planeado | `dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md` |
+| P5-PRE-BETA | Pre-beta da plataforma | Hardening e gate operacional antes de beta | Alta | em_curso | `dcos/P5_PRE_BETA_PLATAFORMA.md` |
+| P5-BETA-EXEC | Roadmap de execucao beta | Sequencia semanal e criterios de aceite para beta fechado | Alta | em_curso | `dcos/ROADMAP_BETA_EXECUCAO.md` |
 
 ## Backlog futuro (propostas ainda nao iniciadas)
 
@@ -25,4 +27,8 @@ Objetivo: registar ideias e futuros P's ainda nao iniciados.
 | P5-CRIADORES | Criadores de conteudo | Camada de negocio para creators alem de risk/trust | Media | proposto | `dcos/P5_CRIADORES_CONTEUDO.md` |
 | P5-FERRAMENTAS | Ferramentas de mercado (audit + propostas) | Auditoria e evolucao das tools financeiras (stocks/REIT/ETF/crypto/watchlist) | Media | proposto | `dcos/P5_FERRAMENTAS_AUDIT_E_NOVAS.md` |
 | P5-FIRE | FIRE Portfolio Simulator | Simulador FIRE com dados reais e cenarios de evolucao de carteira | Media | proposto | `dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md` |
-| P5-PRE-BETA | Pre-beta da plataforma | Hardening e gate operacional antes de beta | Alta | proposto | `dcos/P5_PRE_BETA_PLATAFORMA.md` |
+| P5-HUB-PESSOAL | Hub financeiro pessoal integrado (V2) | Visao de ferramentas integradas com perfil financeiro e supervisao continua | Media | proposto | `dcos/P5_VISAO_HUB_FINANCEIRO_PESSOAL.md` |
+| P5-EDUCACAO | Educacao e literacia financeira | Camada educativa contextual (learning paths, glossario, quizzes) sem competir com criadores | Media | proposto | `dcos/P5_EDUCACAO_LITERACIA.md` |
+| P5-COMUNIDADE | Comunidade social (many-to-many) | Discussions, reputacao, Q&A, integracao com ferramentas e criadores | Media | proposto | `dcos/P5_COMUNIDADE_SOCIAL.md` |
+| P5-CONTEXTO | Contexto de mercado e inteligencia | Market Pulse, impacto pessoal, trending, alertas contextuais, contexto em conteudo | Media | proposto | `dcos/P5_CONTEXTO_MERCADO.md` |
+| P5-ACCOUNTABILITY | Accountability e gamificacao | Objetivos pessoais, streaks, achievements, leaderboards, challenges | Media | proposto | `dcos/P5_ACCOUNTABILITY_GAMIFICACAO.md` |
