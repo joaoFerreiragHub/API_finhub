@@ -20,6 +20,7 @@ import {
 } from '../services/contentReport.service'
 import { ContentModerationAction, ModeratableContentType } from '../models/ContentModerationEvent'
 import { ContentModerationStatus, PublishStatus } from '../models/BaseContent'
+import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -28,33 +29,26 @@ const parsePositiveInt = (value: unknown): number | undefined => {
   return parsed
 }
 
-const extractReason = (req: AuthRequest): string | undefined => {
-  const body = req.body
-  if (body && typeof body === 'object') {
-    const reason = (body as Record<string, unknown>).reason
-    if (typeof reason === 'string' && reason.trim().length > 0) {
-      return reason.trim()
-    }
+const resolveReason = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminReason(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
   }
-
-  const headerReason = req.headers['x-admin-reason']
-  if (typeof headerReason === 'string' && headerReason.trim().length > 0) {
-    return headerReason.trim()
-  }
-
-  return undefined
+  return parsed.value
 }
 
-const extractNote = (req: AuthRequest): string | undefined => {
-  const body = req.body
-  if (body && typeof body === 'object') {
-    const note = (body as Record<string, unknown>).note
-    if (typeof note === 'string' && note.trim().length > 0) {
-      return note.trim()
-    }
+const resolveNote = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminNote(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
   }
-
-  return undefined
+  return parsed.value
 }
 
 const extractBodyRecord = (req: AuthRequest): Record<string, unknown> | undefined => {
@@ -185,12 +179,16 @@ const applyContentAction = async (
     })
   }
 
-  const reason = extractReason(req)
+  const reason = resolveReason(req, res)
+  if (reason === null) return
   if (!reason) {
     return res.status(400).json({
       error: 'Motivo obrigatorio para esta acao.',
     })
   }
+
+  const note = resolveNote(req, res)
+  if (note === null) return
 
   const contentType = req.params.contentType
   if (!isValidContentTypeFilter(contentType)) {
@@ -205,7 +203,7 @@ const applyContentAction = async (
     contentId: req.params.contentId,
     action,
     reason,
-    note: extractNote(req),
+    note,
   })
 
   let falsePositiveRecorded = false
@@ -217,7 +215,7 @@ const applyContentAction = async (
       creatorId: result.content?.creator?.id ?? result.content?.creator?._id ?? null,
       source: 'manual_unhide',
       reason,
-      note: extractNote(req),
+      note,
       categories: [
         ...(result.content?.reportSignals?.openReports > 0 ? ['reports' as const] : []),
         ...(result.content?.automatedSignals?.active ? ['automated_detection' as const] : []),
@@ -445,12 +443,18 @@ export const hideContentFast = async (req: AuthRequest, res: Response) => {
       })
     }
 
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+
+    const note = resolveNote(req, res)
+    if (note === null) return
+
     const result = await adminContentService.fastHideContent({
       actorId: req.user.id,
       contentType: contentType as ModeratableContentType,
       contentId: req.params.contentId,
-      reason: extractReason(req),
-      note: extractNote(req),
+      reason,
+      note,
     })
 
     return res.status(200).json({
@@ -516,12 +520,16 @@ export const rollbackContent = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para rollback.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const result = await adminContentService.rollbackContent({
       actorId: req.user.id,
@@ -529,7 +537,7 @@ export const rollbackContent = async (req: AuthRequest, res: Response) => {
       contentId: req.params.contentId,
       eventId,
       reason,
-      note: extractNote(req),
+      note,
       confirm: extractConfirm(req),
       markFalsePositive: extractMarkFalsePositive(req),
     })
@@ -559,12 +567,16 @@ export const bulkRollbackContent = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para rollback em lote.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const items = extractBulkRollbackItems(req)
     if (!items || items.length === 0) {
@@ -576,7 +588,7 @@ export const bulkRollbackContent = async (req: AuthRequest, res: Response) => {
     const result = await adminContentService.bulkRollbackContent({
       actorId: req.user.id,
       reason,
-      note: extractNote(req),
+      note,
       confirm: extractConfirm(req),
       markFalsePositive: extractMarkFalsePositive(req),
       items,
@@ -611,12 +623,16 @@ export const createBulkModerationJob = async (req: AuthRequest, res: Response) =
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para criar job em lote.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const items = extractBulkItems(req)
     if (!items || items.length === 0) {
@@ -629,7 +645,7 @@ export const createBulkModerationJob = async (req: AuthRequest, res: Response) =
       actorId: req.user.id,
       action,
       reason,
-      note: extractNote(req),
+      note,
       confirm: extractConfirm(req),
       items,
     })
@@ -655,12 +671,16 @@ export const createBulkRollbackJob = async (req: AuthRequest, res: Response) => 
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para criar job de rollback.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const items = extractBulkRollbackItems(req)
     if (!items || items.length === 0) {
@@ -672,7 +692,7 @@ export const createBulkRollbackJob = async (req: AuthRequest, res: Response) => 
     const job = await adminContentJobService.queueBulkRollbackJob({
       actorId: req.user.id,
       reason,
-      note: extractNote(req),
+      note,
       confirm: extractConfirm(req),
       markFalsePositive: extractMarkFalsePositive(req),
       items,
@@ -699,10 +719,13 @@ export const requestBulkRollbackJobReview = async (req: AuthRequest, res: Respon
       })
     }
 
+    const note = resolveNote(req, res)
+    if (note === null) return
+
     const job = await adminContentJobService.requestBulkRollbackJobReview({
       actorId: req.user.id,
       jobId: req.params.jobId,
-      note: extractNote(req),
+      note,
     })
 
     return res.status(202).json({
@@ -730,10 +753,13 @@ export const approveBulkRollbackJob = async (req: AuthRequest, res: Response) =>
       })
     }
 
+    const note = resolveNote(req, res)
+    if (note === null) return
+
     const job = await adminContentJobService.approveBulkRollbackJob({
       actorId: req.user.id,
       jobId: req.params.jobId,
-      note: extractNote(req),
+      note,
       confirm: extractConfirm(req),
       falsePositiveValidated: extractFalsePositiveValidated(req),
       reviewedSampleItems: extractReviewedSampleItems(req),
@@ -831,12 +857,16 @@ export const bulkModerateContent = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para moderacao em lote.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const items = extractBulkItems(req)
     if (!items || items.length === 0) {
@@ -849,7 +879,7 @@ export const bulkModerateContent = async (req: AuthRequest, res: Response) => {
       actorId: req.user.id,
       action,
       reason,
-      note: extractNote(req),
+      note,
       confirm: extractConfirm(req),
       items,
     })

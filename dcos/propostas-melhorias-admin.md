@@ -19,6 +19,7 @@ Itens ja implementados desde esta analise:
 5. Polling dinamico nas views operacionais criticas (10s em foco, pausa em background).
 6. Queue de moderacao com suporte a cursor pagination (`cursor.current/next/hasMore`) com compatibilidade `page/limit`.
 7. Gestao de permissao de admins via UI (`/admin/users`) com endpoint dedicado (`POST /api/admin/users/:userId/admin-permissions`), diff `before/after` e bloqueio de self-update.
+8. Validacao centralizada de `reason`/`note`/`publicMessage` em controllers admin com limites uniformes antes dos services/modelos.
 
 ## A. PROBLEMAS IDENTIFICADOS
 

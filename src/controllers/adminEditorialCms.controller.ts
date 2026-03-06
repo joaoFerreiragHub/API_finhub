@@ -9,6 +9,7 @@ import {
   isValidDirectoryVerticalType,
   isValidSectionStatus,
 } from '../services/adminEditorialCms.service'
+import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -24,21 +25,26 @@ const parseBoolean = (value: unknown): boolean | undefined => {
   return undefined
 }
 
-const extractReason = (req: AuthRequest): string | undefined => {
-  const body = req.body
-  if (body && typeof body === 'object') {
-    const reason = (body as Record<string, unknown>).reason
-    if (typeof reason === 'string' && reason.trim().length > 0) {
-      return reason.trim()
-    }
+const resolveReason = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminReason(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
   }
+  return parsed.value
+}
 
-  const headerReason = req.headers['x-admin-reason']
-  if (typeof headerReason === 'string' && headerReason.trim().length > 0) {
-    return headerReason.trim()
+const resolveNote = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminNote(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
   }
-
-  return undefined
+  return parsed.value
 }
 
 const handleAdminEditorialError = (res: Response, error: unknown, fallbackMessage: string) => {
@@ -418,11 +424,14 @@ export const publishAdminDirectory = async (req: AuthRequest, res: Response) => 
       })
     }
 
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+
     const result = await adminEditorialCmsService.publishDirectory(
       vertical,
       req.params.entryId,
       actorId,
-      extractReason(req)
+      reason
     )
     return res.status(200).json(result)
   } catch (error: unknown) {
@@ -446,7 +455,8 @@ export const archiveAdminDirectory = async (req: AuthRequest, res: Response) => 
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para arquivar entrada.',
@@ -545,9 +555,12 @@ export const approveAdminClaim = async (req: AuthRequest, res: Response) => {
     const actorId = getActorId(req, res)
     if (!actorId) return
 
+    const note = resolveNote(req, res)
+    if (note === null) return
+
     const result = await adminEditorialCmsService.approveClaim(req.params.claimId, {
       actorId,
-      note: typeof req.body?.note === 'string' ? req.body.note : undefined,
+      note,
     })
 
     return res.status(200).json(result)
@@ -565,9 +578,12 @@ export const rejectAdminClaim = async (req: AuthRequest, res: Response) => {
     const actorId = getActorId(req, res)
     if (!actorId) return
 
+    const note = resolveNote(req, res)
+    if (note === null) return
+
     const result = await adminEditorialCmsService.rejectClaim(req.params.claimId, {
       actorId,
-      note: typeof req.body?.note === 'string' ? req.body.note : undefined,
+      note,
     })
 
     return res.status(200).json(result)
@@ -585,12 +601,16 @@ export const transferAdminOwnership = async (req: AuthRequest, res: Response) =>
     const actorId = getActorId(req, res)
     if (!actorId) return
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para transferencia de ownership.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const result = await adminEditorialCmsService.transferOwnership({
       actorId,
@@ -602,7 +622,7 @@ export const transferAdminOwnership = async (req: AuthRequest, res: Response) =>
           ? req.body.toOwnerUserId
           : undefined,
       reason,
-      note: typeof req.body?.note === 'string' ? req.body.note : undefined,
+      note,
     })
 
     return res.status(200).json(result)

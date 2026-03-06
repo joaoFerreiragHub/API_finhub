@@ -4,6 +4,7 @@ import {
   adminOperationalAlertsService,
 } from '../services/adminOperationalAlerts.service'
 import { AuthRequest } from '../types/auth'
+import { readAdminReason } from '../utils/adminActionPayload'
 
 const parsePositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value !== 'string') return fallback
@@ -31,12 +32,15 @@ const parseAlertState = (value: unknown): AdminOperationalAlertStateStatus | 'al
   return 'all'
 }
 
-const extractReason = (req: AuthRequest): string | undefined => {
-  const body = req.body
-  if (!body || typeof body !== 'object') return undefined
-  const reason = (body as Record<string, unknown>).reason
-  if (typeof reason !== 'string' || reason.trim().length === 0) return undefined
-  return reason.trim()
+const resolveReason = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminReason(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
+  }
+  return parsed.value
 }
 
 const extractAlertId = (req: AuthRequest): string => {
@@ -110,11 +114,14 @@ export const acknowledgeAdminInternalAlert = async (req: AuthRequest, res: Respo
       return res.status(400).json({ error: 'Parametro alertId obrigatorio.' })
     }
 
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+
     const result = await adminOperationalAlertsService.setAlertState({
       alertId,
       state: 'acknowledged',
       actorId: req.user!.id,
-      reason: extractReason(req),
+      reason,
     })
 
     return res.status(200).json({
@@ -141,11 +148,14 @@ export const dismissAdminInternalAlert = async (req: AuthRequest, res: Response)
       return res.status(400).json({ error: 'Parametro alertId obrigatorio.' })
     }
 
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+
     const result = await adminOperationalAlertsService.setAlertState({
       alertId,
       state: 'dismissed',
       actorId: req.user!.id,
-      reason: extractReason(req),
+      reason,
     })
 
     return res.status(200).json({

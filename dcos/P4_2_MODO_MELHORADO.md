@@ -21,7 +21,7 @@ Depois de cruzar com o codigo atual e com a revisao de prioridade, este e o back
 | P4.2-06 | Pagina de Audit Log no frontend | Media | P1 | Sim | Backend existe; falta superficie operacional de consulta. |
 | P4.2-07 | Alertas operacionais sem acknowledge/dismiss | Media | P1 | Sim | Falta ciclo de vida de alerta para operacao diaria. |
 | P4.2-08 | Alertas de hide spike incompletos | Media | P1 | Sim | Cobrir `hide-fast` e fluxos em lote. |
-| P4.2-09 | Validacao centralizada de `reason`/`note` | Media | P2 | Sim | Uniformizar limites e mensagens antes do service/model. |
+| P4.2-09 | Validacao centralizada de `reason`/`note` | Media | P2 | Sim | Uniformizacao aplicada com helper partilhado e limites consistentes (backend). |
 | P4.2-10 | Limite de tamanho para `metadata` de auditoria | Media | P2 | Sim | Evita payloads grandes e crescimento descontrolado. |
 | P4.2-11 | Polling near-real-time nas views criticas | Media | P2 | Sim | Queue, jobs, worker-status e alertas devem atualizar automaticamente. |
 | P4.2-12 | Cobertura de testes de regressao admin | Media | P2 | Sim | Reforcar testes de permissao, queue e alertas. |
@@ -279,7 +279,7 @@ Sprint 4:
 9. Testes de regressao para permissoes, queue, jobs e alertas.
 10. Documentacao (`dcos`) atualizada com runbooks e matriz de scopes.
 
-## 7) Progresso de implementacao (2026-03-05)
+## 7) Progresso de implementacao (2026-03-06)
 
 Concluido nesta iteracao (backend + frontend):
 
@@ -375,6 +375,14 @@ Concluido nesta iteracao (backend + frontend):
      - KPI cards em `/admin/users` e `/admin/conteudo` com `2xl:grid-cols-8`;
      - painel de jobs em `/admin/conteudo` com proporcao `2xl` mais ampla para triagem lado a lado.
    - validacao executada: `npm run typecheck:p1` e `npm run build`.
+18. `P4.2-09` validacao centralizada de `reason`/`note`:
+   - helper backend partilhado em `src/utils/adminActionPayload.ts`.
+   - controllers admin migrados para leitura/validacao unificada de `reason`, `note` e `publicMessage` com limites consistentes:
+     - `reason` ate 500;
+     - `note` ate 2000;
+     - `publicMessage` ate 500.
+   - middleware `auditAdminAction` passou a reutilizar o mesmo parser para `reason` (com normalizacao segura para auditoria).
+   - validacao executada: `npm run typecheck`.
 
 ### 7.1 Configuracao operacional do P4.2-03
 

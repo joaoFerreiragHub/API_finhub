@@ -11,6 +11,7 @@ import {
   CreatorRiskLevel,
   CreatorTrustRecommendedAction,
 } from '../services/creatorTrust.service'
+import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
 
 const VALID_USER_ROLES = new Set<UserRole>(['visitor', 'free', 'premium', 'creator', 'admin'])
 const VALID_ACCOUNT_STATUSES = new Set<UserAccountStatus>(['active', 'suspended', 'banned'])
@@ -49,33 +50,26 @@ const parseBoolean = (value: unknown): boolean | undefined => {
   return undefined
 }
 
-const extractReason = (req: AuthRequest): string | undefined => {
-  const body = req.body
-  if (body && typeof body === 'object') {
-    const reason = (body as Record<string, unknown>).reason
-    if (typeof reason === 'string' && reason.trim().length > 0) {
-      return reason.trim()
-    }
+const resolveReason = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminReason(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
   }
-
-  const headerReason = req.headers['x-admin-reason']
-  if (typeof headerReason === 'string' && headerReason.trim().length > 0) {
-    return headerReason.trim()
-  }
-
-  return undefined
+  return parsed.value
 }
 
-const extractNote = (req: AuthRequest): string | undefined => {
-  const body = req.body
-  if (body && typeof body === 'object') {
-    const note = (body as Record<string, unknown>).note
-    if (typeof note === 'string' && note.trim().length > 0) {
-      return note.trim()
-    }
+const resolveNote = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminNote(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
   }
-
-  return undefined
+  return parsed.value
 }
 
 const sortScopes = (scopes: string[]): string[] =>
@@ -260,19 +254,23 @@ const applyStatusAction = async (
     })
   }
 
-  const reason = extractReason(req)
+  const reason = resolveReason(req, res)
+  if (reason === null) return
   if (!reason) {
     return res.status(400).json({
       error: 'Motivo obrigatorio para esta acao.',
     })
   }
 
+  const note = resolveNote(req, res)
+  if (note === null) return
+
   const result = await adminUserService.updateAccountStatus({
     actorId: req.user.id,
     targetUserId: req.params.userId,
     nextStatus,
     reason,
-    note: extractNote(req),
+    note,
   })
 
   return res.status(200).json({
@@ -347,18 +345,22 @@ export const forceLogoutUser = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para force logout.',
       })
     }
 
+    const note = resolveNote(req, res)
+    if (note === null) return
+
     const updatedUser = await adminUserService.forceLogout({
       actorId: req.user.id,
       targetUserId: req.params.userId,
       reason,
-      note: extractNote(req),
+      note,
     })
 
     return res.status(200).json({
@@ -398,12 +400,16 @@ export const updateAdminUserPermissions = async (req: AuthRequest, res: Response
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para atualizar permissoes admin.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const adminReadOnlyRaw = req.body?.adminReadOnly
     if (typeof adminReadOnlyRaw !== 'boolean') {
@@ -449,7 +455,7 @@ export const updateAdminUserPermissions = async (req: AuthRequest, res: Response
       actorId: req.user.id,
       targetUserId: req.params.userId,
       reason,
-      note: extractNote(req),
+      note,
       adminReadOnly: adminReadOnlyRaw,
       adminScopes: Array.isArray(bodyScopes)
         ? bodyScopes.filter((scope): scope is string => typeof scope === 'string')
@@ -515,12 +521,16 @@ export const applyCreatorControls = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para controlos do creator.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
 
     const cooldownHours =
       typeof req.body?.cooldownHours === 'number'
@@ -534,7 +544,7 @@ export const applyCreatorControls = async (req: AuthRequest, res: Response) => {
       targetUserId: req.params.userId,
       action: actionRaw as CreatorOperationalAction,
       reason,
-      note: extractNote(req),
+      note,
       cooldownHours,
     })
 
@@ -582,14 +592,17 @@ export const addUserInternalNote = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const note = extractNote(req)
+    const note = resolveNote(req, res)
+    if (note === null) return
     if (!note) {
       return res.status(400).json({
         error: 'Campo note e obrigatorio.',
       })
     }
 
-    const reason = extractReason(req) ?? 'Nota interna'
+    const reasonResult = resolveReason(req, res)
+    if (reasonResult === null) return
+    const reason = reasonResult ?? 'Nota interna'
     const event = await adminUserService.addInternalNote({
       actorId: req.user.id,
       targetUserId: req.params.userId,

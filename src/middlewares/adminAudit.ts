@@ -2,6 +2,7 @@ import { NextFunction, Response } from 'express'
 import { AdminScope } from '../admin/permissions'
 import { adminAuditService } from '../services/adminAudit.service'
 import { AuthRequest } from '../types/auth'
+import { readAdminReasonForAudit } from '../utils/adminActionPayload'
 
 interface AuditAdminActionOptions {
   action: string
@@ -15,25 +16,6 @@ const toOutcome = (statusCode: number): 'success' | 'forbidden' | 'error' => {
   if (statusCode >= 500) return 'error'
   if (statusCode >= 400) return 'forbidden'
   return 'success'
-}
-
-const extractReason = (req: AuthRequest): string | undefined => {
-  const reasonHeader = req.headers['x-admin-reason']
-  const reasonFromHeader =
-    typeof reasonHeader === 'string' && reasonHeader.trim().length > 0
-      ? reasonHeader.trim()
-      : undefined
-
-  const bodyValue = req.body
-  if (bodyValue && typeof bodyValue === 'object') {
-    const bodyRecord = bodyValue as Record<string, unknown>
-    const bodyReason = bodyRecord.reason
-    if (typeof bodyReason === 'string' && bodyReason.trim().length > 0) {
-      return bodyReason.trim()
-    }
-  }
-
-  return reasonFromHeader
 }
 
 export const auditAdminAction = (options: AuditAdminActionOptions) => {
@@ -71,7 +53,7 @@ export const auditAdminAction = (options: AuditAdminActionOptions) => {
           scope: options.scope,
           resourceType: options.resourceType,
           resourceId: options.getResourceId?.(req),
-          reason: extractReason(req),
+          reason: readAdminReasonForAudit(req),
           requestId: req.requestId,
           method: req.method,
           path: req.originalUrl,

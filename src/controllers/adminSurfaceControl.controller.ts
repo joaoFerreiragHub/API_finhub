@@ -5,11 +5,49 @@ import {
   surfaceControlService,
   SurfaceControlServiceError,
 } from '../services/surfaceControl.service'
+import {
+  readAdminNote,
+  readAdminPublicMessage,
+  readAdminReason,
+} from '../utils/adminActionPayload'
 
 const extractBodyRecord = (req: AuthRequest): Record<string, unknown> | undefined => {
   const body = req.body
   if (!body || typeof body !== 'object') return undefined
   return body as Record<string, unknown>
+}
+
+const resolveReason = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminReason(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
+  }
+  return parsed.value
+}
+
+const resolveNote = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminNote(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
+  }
+  return parsed.value
+}
+
+const resolvePublicMessage = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminPublicMessage(req)
+  if (parsed.error) {
+    res.status(400).json({
+      error: parsed.error,
+    })
+    return null
+  }
+  return parsed.value
 }
 
 const handleSurfaceControlError = (res: Response, error: unknown, fallbackMessage: string) => {
@@ -65,20 +103,27 @@ export const updateAdminSurfaceControl = async (req: AuthRequest, res: Response)
       })
     }
 
-    const reason = typeof body?.reason === 'string' ? body.reason : ''
-    if (!reason.trim()) {
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+    if (!reason) {
       return res.status(400).json({
         error: 'Motivo obrigatorio para atualizar kill switch.',
       })
     }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
+
+    const publicMessage = resolvePublicMessage(req, res)
+    if (publicMessage === null) return
 
     const result = await surfaceControlService.updateControl({
       actorId: req.user.id,
       key: surfaceKey,
       enabled,
       reason,
-      note: typeof body?.note === 'string' ? body.note : undefined,
-      publicMessage: typeof body?.publicMessage === 'string' ? body.publicMessage : undefined,
+      note,
+      publicMessage,
     })
 
     return res.status(200).json({

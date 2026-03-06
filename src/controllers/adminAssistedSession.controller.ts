@@ -6,6 +6,7 @@ import {
 } from '../services/assistedSession.service'
 import { assistedSessionAuditService } from '../services/assistedSessionAudit.service'
 import { AssistedSessionStatus } from '../models/AssistedSession'
+import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
 
 const VALID_STATUSES = new Set<AssistedSessionStatus>([
   'pending',
@@ -23,21 +24,22 @@ const parsePositiveInt = (value: unknown): number | undefined => {
   return parsed
 }
 
-const extractReason = (req: AuthRequest): string | undefined => {
-  const body = req.body
-  if (body && typeof body === 'object') {
-    const reason = (body as Record<string, unknown>).reason
-    if (typeof reason === 'string' && reason.trim().length > 0) {
-      return reason.trim()
-    }
+const resolveReason = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminReason(req)
+  if (parsed.error) {
+    res.status(400).json({ error: parsed.error })
+    return null
   }
+  return parsed.value
+}
 
-  const headerReason = req.headers['x-admin-reason']
-  if (typeof headerReason === 'string' && headerReason.trim().length > 0) {
-    return headerReason.trim()
+const resolveNote = (req: AuthRequest, res: Response): string | undefined | null => {
+  const parsed = readAdminNote(req)
+  if (parsed.error) {
+    res.status(400).json({ error: parsed.error })
+    return null
   }
-
-  return undefined
+  return parsed.value
 }
 
 const handleError = (res: Response, error: unknown, fallbackMessage: string) => {
@@ -96,7 +98,8 @@ export const requestAdminAssistedSession = async (req: AuthRequest, res: Respons
 
     const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
     const targetUserId = typeof body.targetUserId === 'string' ? body.targetUserId : ''
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
 
     if (!targetUserId) {
       return res.status(400).json({ error: 'Campo targetUserId e obrigatorio.' })
@@ -106,11 +109,14 @@ export const requestAdminAssistedSession = async (req: AuthRequest, res: Respons
       return res.status(400).json({ error: 'Motivo obrigatorio para solicitar sessao assistida.' })
     }
 
+    const note = resolveNote(req, res)
+    if (note === null) return
+
     const session = await assistedSessionService.requestSession({
       adminUserId: req.user.id,
       targetUserId,
       reason,
-      note: typeof body.note === 'string' ? body.note : undefined,
+      note,
       consentTtlMinutes:
         typeof body.consentTtlMinutes === 'number' ? body.consentTtlMinutes : undefined,
       sessionTtlMinutes:
@@ -160,7 +166,8 @@ export const revokeAdminAssistedSession = async (req: AuthRequest, res: Response
       return res.status(401).json({ error: 'Autenticacao necessaria.' })
     }
 
-    const reason = extractReason(req)
+    const reason = resolveReason(req, res)
+    if (reason === null) return
     if (!reason) {
       return res.status(400).json({ error: 'Motivo obrigatorio para revogar sessao assistida.' })
     }
