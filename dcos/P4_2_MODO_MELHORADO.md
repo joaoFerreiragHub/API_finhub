@@ -348,6 +348,12 @@ Concluido nesta iteracao (backend + frontend):
      - job de moderacao em lote.
    - cobertura frontend adicionada para o helper:
      - `src/__tests__/features/admin/adminFormValidation.test.ts`.
+14. `P4.2-13` modo card mobile para tabelas admin:
+   - `UsersManagementPage` com cards em mobile e tabela em desktop.
+   - `ContentModerationPage` com cards em mobile para a queue (inclui selecao e acoes de moderacao).
+   - `AdminAuditLogsPage` com cards em mobile e tabela completa em desktop.
+   - cobertura frontend adicionada:
+     - `src/__tests__/features/admin/AdminAuditLogsPage.test.tsx`.
 
 ### 7.1 Configuracao operacional do P4.2-03
 
