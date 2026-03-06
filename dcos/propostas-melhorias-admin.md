@@ -6,7 +6,7 @@ Este documento continua valido como inventario de problemas e oportunidades.
 A versao executavel consolidada por severidade, prioridade e passos de implementacao
 esta em:
 
-- `dcos/P4_2_MODO_MELHORADO.md`
+- `dcos/done/P4_2_MODO_MELHORADO.md`
 - `dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md` (roadmap pos-P4.2 para negocio/revenue e expansao operacional)
 
 ## Nota de progresso (2026-03-04)

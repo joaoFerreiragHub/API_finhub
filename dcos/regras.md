@@ -86,8 +86,12 @@ Para manter contexto maximo entre agentes, os P's devem estar sempre separados e
 2. Em curso (o que estamos a fazer):
    - ficam na raiz de `dcos/` apenas os P's ativos.
 3. Futuro (o que vamos fazer):
-   - qualquer ideia de novo P deve ser registada em `dcos/LISTA_IMPLEMENTACOES_A_FAZER.md`;
-   - cada entrada deve ter no minimo: ID, titulo, contexto, prioridade e estado (`proposto`).
+   - qualquer ideia de novo P deve ser registada em `dcos/LISTA_IMPLEMENTACOES_A_FAZER.md`.
+
+Lista central de pendentes:
+1. `dcos/LISTA_IMPLEMENTACOES_A_FAZER.md` deve conter:
+   - pendentes em curso (com ficheiro ativo em `dcos/`, estado `em_curso` ou `planeado`);
+   - backlog futuro (estado `proposto`).
 
 Regra de ouro:
 1. Nao misturar no mesmo sitio P's fechados, ativos e ideias futuras.
