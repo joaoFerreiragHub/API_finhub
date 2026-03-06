@@ -75,3 +75,19 @@ No fecho de cada ponto, o agente deve reportar:
 3. validacoes executadas;
 4. hash do commit;
 5. proximo ponto recomendado.
+
+## 10) Ciclo de vida dos ficheiros de P's (obrigatorio)
+
+Para manter contexto maximo entre agentes, os P's devem estar sempre separados em 3 estados:
+
+1. Feito (o que ja fizemos):
+   - quando um P fica concluido, o ficheiro deve ser movido para `dcos/done/`;
+   - o movimento deve ser feito no mesmo ciclo de fecho + commit.
+2. Em curso (o que estamos a fazer):
+   - ficam na raiz de `dcos/` apenas os P's ativos.
+3. Futuro (o que vamos fazer):
+   - qualquer ideia de novo P deve ser registada em `dcos/LISTA_IMPLEMENTACOES_A_FAZER.md`;
+   - cada entrada deve ter no minimo: ID, titulo, contexto, prioridade e estado (`proposto`).
+
+Regra de ouro:
+1. Nao misturar no mesmo sitio P's fechados, ativos e ideias futuras.
