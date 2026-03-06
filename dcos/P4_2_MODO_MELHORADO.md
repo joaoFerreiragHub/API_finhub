@@ -361,6 +361,13 @@ Concluido nesta iteracao (backend + frontend):
      - chave `creators` adicionada em `MODULE_ICONS`;
      - fallback defensivo `MODULE_ICONS[key] ?? Shield`.
    - validacao executada: `npm run typecheck:p1` e `npm run build`.
+16. `P4.2-15` atalhos de teclado e command palette admin:
+   - trigger de command palette no `AdminLayout` com `Ctrl/Cmd+K`.
+   - lista de modulos filtrada pelos scopes reais do admin.
+   - navegacao rapida por teclado com `G + tecla` (scope-aware) para dashboard/users/creators/content/editorial/support/recursos/auditoria/stats.
+   - guardrail de UX para nao disparar atalhos quando o foco esta em `input/textarea/select` ou `contenteditable`.
+   - cobertura frontend adicionada:
+     - `src/__tests__/features/admin/adminKeyboardShortcuts.test.ts`.
 
 ### 7.1 Configuracao operacional do P4.2-03
 
