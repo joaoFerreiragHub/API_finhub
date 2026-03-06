@@ -1,5 +1,14 @@
 import { Router } from 'express'
-import { register, login, refresh, logout, me, sendEmailTest } from '../controllers/auth.controller'
+import {
+  register,
+  login,
+  refresh,
+  logout,
+  me,
+  sendEmailTest,
+  forgotPassword,
+  resetPassword,
+} from '../controllers/auth.controller'
 import {
   listMyActiveAssistedSessions,
   listMyPendingAssistedSessionRequests,
@@ -24,6 +33,20 @@ router.post('/register', register)
  * @access  Public
  */
 router.post('/login', login)
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Iniciar fluxo de reset de password
+ * @access  Public
+ */
+router.post('/forgot-password', rateLimiter.general, forgotPassword)
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Concluir reset de password com token valido
+ * @access  Public
+ */
+router.post('/reset-password', rateLimiter.general, resetPassword)
 
 /**
  * @route   POST /api/auth/refresh

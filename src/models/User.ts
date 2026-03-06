@@ -41,6 +41,8 @@ export interface IUser extends Document {
   lastForcedLogoutAt?: Date
   lastLoginAt?: Date
   lastActiveAt?: Date
+  passwordResetTokenHash?: string
+  passwordResetTokenExpiresAt?: Date
 
   // Creator specific
   bio?: string
@@ -183,6 +185,16 @@ const UserSchema = new Schema<IUser>(
       type: Date,
       default: null,
     },
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    passwordResetTokenExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
 
     // Creator specific
     bio: {
@@ -228,6 +240,8 @@ UserSchema.index({ role: 1, 'creatorControls.publishingBlocked': 1 })
 UserSchema.index({ role: 1, 'creatorControls.cooldownUntil': 1 })
 UserSchema.index({ lastLoginAt: -1 })
 UserSchema.index({ accountStatus: 1, lastLoginAt: -1 })
+UserSchema.index({ passwordResetTokenHash: 1 })
+UserSchema.index({ passwordResetTokenExpiresAt: 1 })
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {

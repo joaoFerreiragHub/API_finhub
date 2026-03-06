@@ -1,7 +1,16 @@
 import { Request, Response } from 'express'
+import crypto from 'crypto'
 import { User, UserAccountStatus } from '../models/User'
 import { generateTokens, verifyRefreshToken } from '../utils/jwt'
-import { AuthRequest, AuthResponse, LoginDTO, RegisterDTO, RefreshTokenDTO } from '../types/auth'
+import {
+  AuthRequest,
+  AuthResponse,
+  ForgotPasswordDTO,
+  LoginDTO,
+  RegisterDTO,
+  RefreshTokenDTO,
+  ResetPasswordDTO,
+} from '../types/auth'
 import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
 import { emailService } from '../services/email.service'
 
@@ -62,6 +71,28 @@ const mapAuthResponseUser = (user: {
 const buildAccountStatusError = (status: Exclude<UserAccountStatus, 'active'>) => ({
   error: ACCOUNT_STATUS_MESSAGES[status],
   accountStatus: status,
+})
+
+const parsePositiveInteger = (rawValue: string | undefined, fallback: number): number => {
+  const parsed = Number.parseInt(rawValue ?? '', 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback
+  }
+
+  return parsed
+}
+
+const PASSWORD_RESET_TOKEN_TTL_MINUTES = parsePositiveInteger(
+  process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES,
+  30
+)
+
+const hashToken = (token: string): string =>
+  crypto.createHash('sha256').update(token).digest('hex')
+
+const buildForgotPasswordResponse = () => ({
+  message:
+    'Se o email existir, vais receber instrucoes para redefinir a password em breve.',
 })
 
 /**
@@ -184,6 +215,104 @@ export const sendEmailTest = async (req: AuthRequest, res: Response) => {
     console.error('Email test error:', error)
     return res.status(500).json({
       error: 'Erro ao enviar email de teste.',
+      details: error.message,
+    })
+  }
+}
+
+/**
+ * Forgot Password - Gerar token de reset e enviar email
+ * POST /api/auth/forgot-password
+ */
+export const forgotPassword = async (req: Request<{}, {}, ForgotPasswordDTO>, res: Response) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase()
+
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email e obrigatorio.',
+      })
+    }
+
+    const user = await User.findOne({ email }).select('+passwordResetTokenHash +passwordResetTokenExpiresAt')
+    if (!user) {
+      return res.status(200).json(buildForgotPasswordResponse())
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex')
+    const tokenHash = hashToken(rawToken)
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MINUTES * 60 * 1000)
+
+    user.passwordResetTokenHash = tokenHash
+    user.passwordResetTokenExpiresAt = expiresAt
+    await user.save()
+
+    await emailService.sendPasswordResetEmail({
+      toEmail: user.email,
+      recipientName: user.name,
+      resetToken: rawToken,
+      expiresInMinutes: PASSWORD_RESET_TOKEN_TTL_MINUTES,
+    })
+
+    return res.status(200).json(buildForgotPasswordResponse())
+  } catch (error: any) {
+    console.error('Forgot password error:', error)
+    return res.status(500).json({
+      error: 'Erro ao iniciar reset de password.',
+      details: error.message,
+    })
+  }
+}
+
+/**
+ * Reset Password - Validar token e atualizar password
+ * POST /api/auth/reset-password
+ */
+export const resetPassword = async (req: Request<{}, {}, ResetPasswordDTO>, res: Response) => {
+  try {
+    const token = req.body.token?.trim()
+    const newPassword = req.body.newPassword?.trim()
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        error: 'Token e nova password sao obrigatorios.',
+      })
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: 'A nova password deve ter pelo menos 6 caracteres.',
+      })
+    }
+
+    const tokenHash = hashToken(token)
+    const now = new Date()
+
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetTokenExpiresAt: { $gt: now },
+    }).select('+passwordResetTokenHash +passwordResetTokenExpiresAt')
+
+    if (!user) {
+      return res.status(400).json({
+        error: 'Token invalido ou expirado.',
+      })
+    }
+
+    user.password = newPassword
+    user.passwordResetTokenHash = undefined
+    user.passwordResetTokenExpiresAt = undefined
+    user.tokenVersion += 1
+    user.lastForcedLogoutAt = now
+    await user.save()
+
+    return res.status(200).json({
+      message: 'Password atualizada com sucesso.',
+    })
+  } catch (error: any) {
+    console.error('Reset password error:', error)
+    return res.status(500).json({
+      error: 'Erro ao redefinir password.',
       details: error.message,
     })
   }

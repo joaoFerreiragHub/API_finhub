@@ -73,3 +73,12 @@ export interface LoginDTO {
 export interface RefreshTokenDTO {
   refreshToken: string
 }
+
+export interface ForgotPasswordDTO {
+  email: string
+}
+
+export interface ResetPasswordDTO {
+  token: string
+  newPassword: string
+}
