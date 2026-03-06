@@ -23,5 +23,6 @@ Objetivo: registar ideias e futuros P's ainda nao iniciados.
 |---|---|---|---|---|---|
 | P5-MARCAS | Marcas e entidades | Backoffice de marcas/parcerias e operacao comercial | Media | proposto | `dcos/P5_MARCAS_ENTIDADES.md` |
 | P5-CRIADORES | Criadores de conteudo | Camada de negocio para creators alem de risk/trust | Media | proposto | `dcos/P5_CRIADORES_CONTEUDO.md` |
+| P5-FERRAMENTAS | Ferramentas de mercado (audit + propostas) | Auditoria e evolucao das tools financeiras (stocks/REIT/ETF/crypto/watchlist) | Media | proposto | `dcos/P5_FERRAMENTAS_AUDIT_E_NOVAS.md` |
 | P5-FIRE | FIRE Portfolio Simulator | Simulador FIRE com dados reais e cenarios de evolucao de carteira | Media | proposto | `dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md` |
 | P5-PRE-BETA | Pre-beta da plataforma | Hardening e gate operacional antes de beta | Alta | proposto | `dcos/P5_PRE_BETA_PLATAFORMA.md` |
