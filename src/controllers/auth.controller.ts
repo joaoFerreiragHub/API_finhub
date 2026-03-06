@@ -3,6 +3,7 @@ import { User, UserAccountStatus } from '../models/User'
 import { generateTokens, verifyRefreshToken } from '../utils/jwt'
 import { AuthRequest, AuthResponse, LoginDTO, RegisterDTO, RefreshTokenDTO } from '../types/auth'
 import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
+import { emailService } from '../services/email.service'
 
 const ACCOUNT_STATUS_MESSAGES: Record<Exclude<UserAccountStatus, 'active'>, string> = {
   suspended: 'Conta suspensa. Contacta o suporte para mais detalhes.',
@@ -125,11 +126,64 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
       tokens,
     }
 
+    void emailService
+      .sendWelcomeEmail({
+        toEmail: user.email,
+        recipientName: user.name,
+      })
+      .catch((emailError) => {
+        console.error('Welcome email error:', emailError)
+      })
+
     return res.status(201).json(response)
   } catch (error: any) {
     console.error('Register error:', error)
     return res.status(500).json({
       error: 'Erro ao criar conta.',
+      details: error.message,
+    })
+  }
+}
+
+/**
+ * Operational Email Test - Enviar email de teste para o utilizador autenticado
+ * POST /api/auth/email/test
+ */
+export const sendEmailTest = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Nao autenticado.',
+      })
+    }
+
+    const result = await emailService.sendOperationalTestEmail({
+      toEmail: req.user.email,
+      recipientName: req.user.name,
+    })
+
+    if (result.accepted) {
+      return res.status(200).json({
+        message: 'Email de teste enviado com sucesso.',
+        result,
+      })
+    }
+
+    if (result.skipped) {
+      return res.status(503).json({
+        error: 'Servico de email nao esta configurado para envio.',
+        result,
+      })
+    }
+
+    return res.status(502).json({
+      error: 'Falha ao enviar email de teste no provider configurado.',
+      result,
+    })
+  } catch (error: any) {
+    console.error('Email test error:', error)
+    return res.status(500).json({
+      error: 'Erro ao enviar email de teste.',
       details: error.message,
     })
   }

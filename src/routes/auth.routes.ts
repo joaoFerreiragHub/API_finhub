@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { register, login, refresh, logout, me } from '../controllers/auth.controller'
+import { register, login, refresh, logout, me, sendEmailTest } from '../controllers/auth.controller'
 import {
   listMyActiveAssistedSessions,
   listMyPendingAssistedSessionRequests,
@@ -7,6 +7,7 @@ import {
   revokeMyAssistedSession,
 } from '../controllers/authAssistedSession.controller'
 import { authenticate } from '../middlewares/auth'
+import { rateLimiter } from '../middlewares/rateLimiter'
 
 const router = Router()
 
@@ -44,6 +45,13 @@ router.post('/logout', authenticate, logout)
  * @access  Private
  */
 router.get('/me', authenticate, me)
+
+/**
+ * @route   POST /api/auth/email/test
+ * @desc    Enviar email de teste operacional para o utilizador autenticado
+ * @access  Private
+ */
+router.post('/email/test', authenticate, rateLimiter.general, sendEmailTest)
 
 /**
  * @route   GET /api/auth/assisted-sessions/pending

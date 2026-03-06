@@ -4,6 +4,12 @@ Data: 2026-03-06
 Objetivo: executar o beta fechado em ordem controlada, com entrega e commit por ponto.
 Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 
+## 0) Estado de Execucao
+
+| ID | Estado | Data | Entrega |
+|---|---|---|---|
+| O1-01 | concluido | 2026-03-06 | Servico de email transacional com providers (`resend`, `sendgrid`, `console`, `disabled`), welcome email no registo e endpoint `POST /api/auth/email/test`. |
+
 ## 1) Gate de Beta
 
 Go-live de beta fechado so e permitido quando os dois gates abaixo estiverem verdes:
