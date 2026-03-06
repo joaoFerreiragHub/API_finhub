@@ -354,6 +354,13 @@ Concluido nesta iteracao (backend + frontend):
    - `AdminAuditLogsPage` com cards em mobile e tabela completa em desktop.
    - cobertura frontend adicionada:
      - `src/__tests__/features/admin/AdminAuditLogsPage.test.tsx`.
+15. hotfix `/admin` (SSR/client) - `ModuleCard`:
+   - `ADMIN_MODULES` inclui modulo `creators`, mas o mapa `MODULE_ICONS` do dashboard nao tinha essa chave.
+   - resultado: `Icon=undefined` e erro runtime/hydration em `ModuleCard`.
+   - correcao aplicada no frontend:
+     - chave `creators` adicionada em `MODULE_ICONS`;
+     - fallback defensivo `MODULE_ICONS[key] ?? Shield`.
+   - validacao executada: `npm run typecheck:p1` e `npm run build`.
 
 ### 7.1 Configuracao operacional do P4.2-03
 
