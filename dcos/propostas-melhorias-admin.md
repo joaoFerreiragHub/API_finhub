@@ -20,6 +20,7 @@ Itens ja implementados desde esta analise:
 6. Queue de moderacao com suporte a cursor pagination (`cursor.current/next/hasMore`) com compatibilidade `page/limit`.
 7. Gestao de permissao de admins via UI (`/admin/users`) com endpoint dedicado (`POST /api/admin/users/:userId/admin-permissions`), diff `before/after` e bloqueio de self-update.
 8. Validacao centralizada de `reason`/`note`/`publicMessage` em controllers admin com limites uniformes antes dos services/modelos.
+9. `metadata` de auditoria com limite de tamanho (8192 bytes) e truncagem segura no pipeline de audit log.
 
 ## A. PROBLEMAS IDENTIFICADOS
 

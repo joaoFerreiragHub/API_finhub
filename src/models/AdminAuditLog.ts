@@ -1,5 +1,9 @@
 import mongoose, { Document, Schema } from 'mongoose'
 import { AdminScope } from '../admin/permissions'
+import {
+  ADMIN_AUDIT_METADATA_MAX_BYTES,
+  isAdminAuditMetadataWithinLimit,
+} from '../utils/adminAuditMetadata'
 
 export type AdminAuditOutcome = 'success' | 'forbidden' | 'error'
 
@@ -96,6 +100,10 @@ const AdminAuditLogSchema = new Schema<IAdminAuditLog>(
     metadata: {
       type: Schema.Types.Mixed,
       default: null,
+      validate: {
+        validator: isAdminAuditMetadataWithinLimit,
+        message: `metadata excede limite de ${ADMIN_AUDIT_METADATA_MAX_BYTES} bytes.`,
+      },
     },
   },
   {

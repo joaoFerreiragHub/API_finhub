@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import { AdminScope } from '../admin/permissions'
 import { AdminAuditLog, AdminAuditOutcome } from '../models/AdminAuditLog'
+import { normalizeAdminAuditMetadata } from '../utils/adminAuditMetadata'
 
 export interface RecordAdminAuditInput {
   actorId: string
@@ -79,6 +80,8 @@ export class AdminAuditService {
   }
 
   async record(input: RecordAdminAuditInput) {
+    const metadata = normalizeAdminAuditMetadata(input.metadata)
+
     return AdminAuditLog.create({
       actor: input.actorId,
       actorRole: input.actorRole,
@@ -94,7 +97,7 @@ export class AdminAuditService {
       outcome: input.outcome,
       ip: input.ip ?? null,
       userAgent: input.userAgent ?? null,
-      metadata: input.metadata ?? null,
+      metadata,
     })
   }
 

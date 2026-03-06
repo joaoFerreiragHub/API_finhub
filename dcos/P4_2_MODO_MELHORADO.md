@@ -22,7 +22,7 @@ Depois de cruzar com o codigo atual e com a revisao de prioridade, este e o back
 | P4.2-07 | Alertas operacionais sem acknowledge/dismiss | Media | P1 | Sim | Falta ciclo de vida de alerta para operacao diaria. |
 | P4.2-08 | Alertas de hide spike incompletos | Media | P1 | Sim | Cobrir `hide-fast` e fluxos em lote. |
 | P4.2-09 | Validacao centralizada de `reason`/`note` | Media | P2 | Sim | Uniformizacao aplicada com helper partilhado e limites consistentes (backend). |
-| P4.2-10 | Limite de tamanho para `metadata` de auditoria | Media | P2 | Sim | Evita payloads grandes e crescimento descontrolado. |
+| P4.2-10 | Limite de tamanho para `metadata` de auditoria | Media | P2 | Sim | Limite backend aplicado com normalizacao/truncagem segura antes da persistencia. |
 | P4.2-11 | Polling near-real-time nas views criticas | Media | P2 | Sim | Queue, jobs, worker-status e alertas devem atualizar automaticamente. |
 | P4.2-12 | Cobertura de testes de regressao admin | Media | P2 | Sim | Reforcar testes de permissao, queue e alertas. |
 | P4.2-13 | Modo card mobile para tabelas | Baixa | P3 | Nao | Impacta UX mobile, nao bloqueia fecho tecnico. |
@@ -382,6 +382,14 @@ Concluido nesta iteracao (backend + frontend):
      - `note` ate 2000;
      - `publicMessage` ate 500.
    - middleware `auditAdminAction` passou a reutilizar o mesmo parser para `reason` (com normalizacao segura para auditoria).
+   - validacao executada: `npm run typecheck`.
+19. `P4.2-10` limite de tamanho para `metadata` de auditoria:
+   - util backend `src/utils/adminAuditMetadata.ts` com:
+     - limite maximo de 8192 bytes por payload;
+     - normalizacao JSON-safe;
+     - truncagem para payload de controlo quando excede limite.
+   - `adminAuditService.record` passou a sanitizar metadata antes de `AdminAuditLog.create(...)`.
+   - `AdminAuditLog` ganhou validator de tamanho para reforco de integridade mesmo fora do caminho principal.
    - validacao executada: `npm run typecheck`.
 
 ### 7.1 Configuracao operacional do P4.2-03
