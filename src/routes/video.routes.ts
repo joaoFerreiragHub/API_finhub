@@ -13,7 +13,7 @@ import {
 } from '../controllers/video.controller'
 import { authenticate } from '../middlewares/auth'
 import { enforceCreatorOperationalControl } from '../middlewares/creatorOperationalControl'
-import { requireCreator } from '../middlewares/roleGuard'
+import { requireCreator, requireVerifiedEmail } from '../middlewares/roleGuard'
 
 const router = Router()
 
@@ -59,7 +59,7 @@ router.get('/stats', authenticate, requireCreator, getMyStats)
  * @desc    Criar novo artigo
  * @access  Private (Creator/Admin)
  */
-router.post('/', authenticate, requireCreator, enforceCreatorOperationalControl('create'), createVideo)
+router.post('/', authenticate, requireCreator, requireVerifiedEmail, enforceCreatorOperationalControl('create'), createVideo)
 
 /**
  * @route   PATCH /api/videos/:id
@@ -84,6 +84,7 @@ router.patch(
   '/:id/publish',
   authenticate,
   requireCreator,
+  requireVerifiedEmail,
   enforceCreatorOperationalControl('publish'),
   publishVideo
 )

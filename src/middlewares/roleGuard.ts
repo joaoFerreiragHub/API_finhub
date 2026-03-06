@@ -63,3 +63,23 @@ export const requireCreator = requireRole('creator', 'admin')
  * Middleware específico para premium
  */
 export const requirePremium = requireRole('premium', 'creator', 'admin')
+
+/**
+ * Middleware para garantir que o email da conta esta verificado.
+ */
+export const requireVerifiedEmail = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Autenticacao necessaria.',
+    })
+  }
+
+  if (!req.user.emailVerified) {
+    return res.status(403).json({
+      error: 'Verifica o teu email para continuar.',
+      code: 'EMAIL_NOT_VERIFIED',
+    })
+  }
+
+  next()
+}

@@ -38,6 +38,7 @@ export interface AuthResponse {
   user: {
     id: string
     email: string
+    emailVerified: boolean
     name: string
     username: string
     avatar?: string

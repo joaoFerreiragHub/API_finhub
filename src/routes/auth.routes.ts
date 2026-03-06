@@ -8,6 +8,8 @@ import {
   sendEmailTest,
   forgotPassword,
   resetPassword,
+  verifyEmail,
+  resendVerification,
 } from '../controllers/auth.controller'
 import {
   listMyActiveAssistedSessions,
@@ -47,6 +49,20 @@ router.post('/forgot-password', rateLimiter.general, forgotPassword)
  * @access  Public
  */
 router.post('/reset-password', rateLimiter.general, resetPassword)
+
+/**
+ * @route   GET /api/auth/verify-email
+ * @desc    Confirmar email por token
+ * @access  Public
+ */
+router.get('/verify-email', rateLimiter.general, verifyEmail)
+
+/**
+ * @route   POST /api/auth/resend-verification
+ * @desc    Reenviar email de verificacao para utilizador autenticado
+ * @access  Private
+ */
+router.post('/resend-verification', authenticate, rateLimiter.general, resendVerification)
 
 /**
  * @route   POST /api/auth/refresh

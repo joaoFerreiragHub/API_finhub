@@ -25,6 +25,7 @@ export interface ICreatorControls {
 
 export interface IUser extends Document {
   email: string
+  emailVerified: boolean
   password: string
   name: string
   username: string
@@ -43,6 +44,8 @@ export interface IUser extends Document {
   lastActiveAt?: Date
   passwordResetTokenHash?: string
   passwordResetTokenExpiresAt?: Date
+  emailVerificationTokenHash?: string
+  emailVerificationTokenExpiresAt?: Date
 
   // Creator specific
   bio?: string
@@ -76,13 +79,18 @@ const UserSchema = new Schema<IUser>(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Email inválido'],
+      match: [/^\S+@\S+\.\S+$/, 'Email invalido'],
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     password: {
       type: String,
       required: true,
       minlength: 6,
-      select: false, // Não retornar password por default
+      select: false, // Nao retornar password por default
     },
     name: {
       type: String,
@@ -96,7 +104,7 @@ const UserSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
       minlength: 3,
-      match: [/^[a-z0-9_]+$/, 'Username só pode conter letras, números e underscores'],
+      match: [/^[a-z0-9_]+$/, 'Username so pode conter letras, numeros e underscores'],
     },
     avatar: {
       type: String,
@@ -195,6 +203,16 @@ const UserSchema = new Schema<IUser>(
       default: null,
       select: false,
     },
+    emailVerificationTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    emailVerificationTokenExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
 
     // Creator specific
     bio: {
@@ -242,6 +260,9 @@ UserSchema.index({ lastLoginAt: -1 })
 UserSchema.index({ accountStatus: 1, lastLoginAt: -1 })
 UserSchema.index({ passwordResetTokenHash: 1 })
 UserSchema.index({ passwordResetTokenExpiresAt: 1 })
+UserSchema.index({ emailVerified: 1 })
+UserSchema.index({ emailVerificationTokenHash: 1 })
+UserSchema.index({ emailVerificationTokenExpiresAt: 1 })
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {
@@ -276,3 +297,4 @@ UserSchema.methods.toJSON = function () {
 }
 
 export const User = mongoose.model<IUser>('User', UserSchema)
+

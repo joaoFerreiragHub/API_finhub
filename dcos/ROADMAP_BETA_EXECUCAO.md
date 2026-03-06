@@ -10,6 +10,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 |---|---|---|---|
 | O1-01 | concluido | 2026-03-06 | Servico de email transacional com providers (`resend`, `sendgrid`, `console`, `disabled`), welcome email no registo e endpoint `POST /api/auth/email/test`. |
 | O1-02 | concluido | 2026-03-06 | Fluxo de reset de password com `POST /api/auth/forgot-password` e `POST /api/auth/reset-password`, token seguro com expiracao e invalidacao de sessoes apos reset. |
+| O1-03 | concluido | 2026-03-06 | Verificacao de email com `GET /api/auth/verify-email`, `POST /api/auth/resend-verification`, token com expiracao e guard `requireVerifiedEmail` nas acoes criticas (criar/publicar conteudo e comentar). |
 
 ## 1) Gate de Beta
 

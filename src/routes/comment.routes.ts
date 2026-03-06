@@ -10,6 +10,7 @@ import {
   togglePin,
 } from '../controllers/comment.controller'
 import { authenticate } from '../middlewares/auth'
+import { requireVerifiedEmail } from '../middlewares/roleGuard'
 
 const router = Router()
 
@@ -19,7 +20,7 @@ const router = Router()
  * @access  Private
  * @body    { targetType, targetId, content, parentCommentId? }
  */
-router.post('/', authenticate, createComment)
+router.post('/', authenticate, requireVerifiedEmail, createComment)
 
 /**
  * @route   GET /api/comments/:targetType/:targetId
