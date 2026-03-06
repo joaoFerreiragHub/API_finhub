@@ -368,6 +368,13 @@ Concluido nesta iteracao (backend + frontend):
    - guardrail de UX para nao disparar atalhos quando o foco esta em `input/textarea/select` ou `contenteditable`.
    - cobertura frontend adicionada:
      - `src/__tests__/features/admin/adminKeyboardShortcuts.test.ts`.
+17. `P4.2-16` layout ultrawide/adaptativo:
+   - `AdminLayout` passou a usar container ultrawide (`max-w-[1920px]`) e removeu o bloqueio `max-w-6xl` no corpo admin.
+   - `Header` e `AssistedSessionBanner` passaram a suportar `containerClassName`, mantendo default atual fora do contexto admin.
+   - vistas de maior densidade operacional ganharam distribuicao adicional em `2xl`:
+     - KPI cards em `/admin/users` e `/admin/conteudo` com `2xl:grid-cols-8`;
+     - painel de jobs em `/admin/conteudo` com proporcao `2xl` mais ampla para triagem lado a lado.
+   - validacao executada: `npm run typecheck:p1` e `npm run build`.
 
 ### 7.1 Configuracao operacional do P4.2-03
 
