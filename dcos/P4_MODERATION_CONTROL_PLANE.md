@@ -953,12 +953,13 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 1. Validar operacao do rate limiter distribuido em Redis (migrado em 2026-03-05), incluindo fallback controlado e alertas de degradacao.
 2. Medir e alertar picos de `hide-fast`, `bulk-moderate` e falhas por item.
 3. Garantir scopes minimos para admins e perfis read-only.
-4. Remover qualquer bypass TLS de ambiente (`NODE_TLS_REJECT_UNAUTHORIZED=0` ou equivalente) e configurar CA/proxy corretamente para npm, CI e deploy.
-5. Definir SLA operacional para fast hide e revisao posterior.
-6. Criar playbook de incidente para abuso, spam coordenado e conteudo sensivel.
-7. Adicionar testes de carga aos endpoints de moderacao.
-8. Garantir retention e consulta eficiente de auditoria e eventos.
-9. Preparar dashboard com visibilidade global por creator, alvo e superficie.
+4. Validar `/admin/*` com sessao real (JWT emitido pelo backend), nunca com tokens `dev-*`; em mock auth nao existe refresh real e os pedidos protegidos podem falhar com `401`.
+5. Remover qualquer bypass TLS de ambiente (`NODE_TLS_REJECT_UNAUTHORIZED=0` ou equivalente) e configurar CA/proxy corretamente para npm, CI e deploy.
+6. Definir SLA operacional para fast hide e revisao posterior.
+7. Criar playbook de incidente para abuso, spam coordenado e conteudo sensivel.
+8. Adicionar testes de carga aos endpoints de moderacao.
+9. Garantir retention e consulta eficiente de auditoria e eventos.
+10. Preparar dashboard com visibilidade global por creator, alvo e superficie.
 
 ## Proxima iteracao recomendada
 
