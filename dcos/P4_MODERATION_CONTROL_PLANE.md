@@ -1091,6 +1091,36 @@ Validacao desta iteracao:
 1. Blocos A-D fechados.
 2. A partir daqui, o foco passa para E2E, runbooks e hardening pre-release.
 
+### 22. O1-08 fase backend: smoke JWT real e runbook operacional
+
+Foi adicionada a primeira entrega formal de O1-08 no backend:
+
+1. novo smoke de moderacao pre-release em `scripts/moderation-pre-release-smoke.ps1`;
+2. novo comando de execucao: `npm run test:moderation:pre-release`;
+3. validacao explicita de token JWT real no smoke (bloqueia tokens `dev-*`);
+4. fluxo coberto no smoke:
+   - login admin/reporter;
+   - report de conteudo;
+   - queue flagged;
+   - hide-fast;
+   - rollback-review + rollback;
+   - worker-status + internal alerts;
+5. runbook dedicado publicado em `dcos/RUNBOOK_MODERATION_PRE_RELEASE.md`.
+
+Variaveis de apoio documentadas em `.env.example`:
+
+- `MODERATION_SMOKE_ADMIN_EMAIL`
+- `MODERATION_SMOKE_ADMIN_PASSWORD`
+- `MODERATION_SMOKE_REPORTER_EMAIL`
+- `MODERATION_SMOKE_REPORTER_PASSWORD`
+- `MODERATION_SMOKE_TARGET_TYPE`
+- `MODERATION_SMOKE_TARGET_ID`
+- `MODERATION_SMOKE_REPORT_REASON`
+
+Estado:
+
+- O1-08 continua `em_curso` ate fechar a validacao integrada frontend/admin e o ciclo final de evidencias pre-release.
+
 ### Regra de execucao
 
 Cada bloco deve fechar sempre estas quatro frentes antes de passar ao seguinte:
