@@ -21,6 +21,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O2-02 | concluido | 2026-03-07 | Paginas publicas de detalhe para `artigos`, `videos` e `cursos` ligadas a API por slug, com loading/error state, incremento de views e fallback para `/explorar/*` por vertical. |
 | O2-03 | concluido | 2026-03-07 | Listagem e perfil publico de creators fechados em frontend+backend: `GET /api/creators` e `GET /api/creators/:username` consumidos pelas paginas publicas com fallback controlado no perfil. |
 | O2-04 | concluido | 2026-03-07 | Endpoint publico de creators entregue em `GET /api/creators` com filtros base (`search`, `minFollowers`, `minRating`, `emailVerified`, paginacao e sort por `followers|rating|newest|recent`), incluindo rating agregado por creator (validado com `typecheck + build + contract:openapi`). |
+| O2-05 | concluido | 2026-03-07 | SEO base aplicado no frontend com meta tags dinamicas por rota publica (title/description/canonical/OG/Twitter), `robots.txt` e `sitemap.xml` estatico com rotas principais indexaveis. |
 
 ## 1) Gate de Beta
 
