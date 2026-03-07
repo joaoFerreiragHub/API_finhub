@@ -2,6 +2,8 @@ import { Router } from 'express'
 import {
   register,
   login,
+  googleOAuthStart,
+  googleOAuthCallback,
   refresh,
   logout,
   me,
@@ -36,6 +38,20 @@ router.post('/register', register)
  * @access  Public
  */
 router.post('/login', login)
+
+/**
+ * @route   GET /api/auth/google/start
+ * @desc    Iniciar OAuth com Google
+ * @access  Public
+ */
+router.get('/google/start', rateLimiter.general, googleOAuthStart)
+
+/**
+ * @route   GET /api/auth/google/callback
+ * @desc    Callback OAuth Google
+ * @access  Public
+ */
+router.get('/google/callback', rateLimiter.general, googleOAuthCallback)
 
 /**
  * @route   POST /api/auth/forgot-password

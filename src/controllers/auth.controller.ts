@@ -15,6 +15,29 @@ import {
 import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
 import { emailService } from '../services/email.service'
 
+interface GoogleOAuthStateEntry {
+  redirectPath: string
+  createdAt: number
+}
+
+interface GoogleOAuthTokenResponse {
+  access_token?: string
+  token_type?: string
+  expires_in?: number
+  scope?: string
+  id_token?: string
+}
+
+interface GoogleOAuthUserInfo {
+  sub?: string
+  email?: string
+  email_verified?: boolean
+  name?: string
+  given_name?: string
+  family_name?: string
+  picture?: string
+}
+
 const ACCOUNT_STATUS_MESSAGES: Record<Exclude<UserAccountStatus, 'active'>, string> = {
   suspended: 'Conta suspensa. Contacta o suporte para mais detalhes.',
   banned: 'Conta banida. Contacta o suporte para mais detalhes.',
@@ -120,6 +143,22 @@ const EMAIL_VERIFICATION_TOKEN_TTL_HOURS = parsePositiveInteger(
 const LEGAL_VERSION = (process.env.LEGAL_VERSION ?? 'v1').trim() || 'v1'
 const COOKIE_CONSENT_VERSION =
   (process.env.COOKIE_CONSENT_VERSION ?? LEGAL_VERSION).trim() || LEGAL_VERSION
+const GOOGLE_OAUTH_CLIENT_ID = (process.env.GOOGLE_OAUTH_CLIENT_ID ?? '').trim()
+const GOOGLE_OAUTH_CLIENT_SECRET = (process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? '').trim()
+const GOOGLE_OAUTH_REDIRECT_URI = (process.env.GOOGLE_OAUTH_REDIRECT_URI ?? '').trim()
+const GOOGLE_OAUTH_FRONTEND_CALLBACK_URL =
+  (process.env.GOOGLE_OAUTH_FRONTEND_CALLBACK_URL ?? '').trim() ||
+  `${(process.env.FRONTEND_URL ?? 'http://localhost:5173').replace(/\/+$/, '')}/oauth/google/callback`
+const GOOGLE_OAUTH_STATE_TTL_SECONDS = parsePositiveInteger(
+  process.env.GOOGLE_OAUTH_STATE_TTL_SECONDS,
+  600
+)
+const GOOGLE_OAUTH_STATE_TTL_MS = GOOGLE_OAUTH_STATE_TTL_SECONDS * 1000
+const GOOGLE_OAUTH_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const GOOGLE_OAUTH_USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
+
+const googleOAuthStateStore = new Map<string, GoogleOAuthStateEntry>()
 
 const hashToken = (token: string): string =>
   crypto.createHash('sha256').update(token).digest('hex')
@@ -132,6 +171,150 @@ const buildForgotPasswordResponse = () => ({
 const buildResendVerificationResponse = () => ({
   message: 'Se a conta existir e nao estiver verificada, enviamos novo email de verificacao.',
 })
+
+const isGoogleOAuthConfigured = (): boolean => {
+  return (
+    GOOGLE_OAUTH_CLIENT_ID.length > 0 &&
+    GOOGLE_OAUTH_CLIENT_SECRET.length > 0 &&
+    GOOGLE_OAUTH_REDIRECT_URI.length > 0
+  )
+}
+
+const normalizeRedirectPath = (input: unknown): string => {
+  if (typeof input !== 'string') return '/dashboard'
+  const value = input.trim()
+  if (!value.startsWith('/')) return '/dashboard'
+  if (value.startsWith('//')) return '/dashboard'
+  if (value.length > 400) return '/dashboard'
+  return value
+}
+
+const cleanupGoogleOAuthStateStore = () => {
+  const now = Date.now()
+  for (const [state, entry] of googleOAuthStateStore.entries()) {
+    if (entry.createdAt + GOOGLE_OAUTH_STATE_TTL_MS <= now) {
+      googleOAuthStateStore.delete(state)
+    }
+  }
+}
+
+const createGoogleOAuthState = (redirectPath: string): string => {
+  cleanupGoogleOAuthStateStore()
+
+  const state = crypto.randomBytes(24).toString('hex')
+  googleOAuthStateStore.set(state, {
+    redirectPath,
+    createdAt: Date.now(),
+  })
+
+  if (googleOAuthStateStore.size > 1000) {
+    const firstKey = googleOAuthStateStore.keys().next().value
+    if (firstKey) {
+      googleOAuthStateStore.delete(firstKey)
+    }
+  }
+
+  return state
+}
+
+const consumeGoogleOAuthState = (state: string): GoogleOAuthStateEntry | null => {
+  cleanupGoogleOAuthStateStore()
+  const entry = googleOAuthStateStore.get(state)
+  if (!entry) {
+    return null
+  }
+
+  googleOAuthStateStore.delete(state)
+  return entry
+}
+
+const normalizeUsernameBase = (rawValue: string): string => {
+  const normalized = rawValue
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+
+  if (normalized.length >= 3) {
+    return normalized.slice(0, 20)
+  }
+
+  return `user_${normalized || 'google'}`
+}
+
+const generateUniqueUsername = async (seed: string): Promise<string> => {
+  const base = normalizeUsernameBase(seed)
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = attempt === 0 ? base : `${base}_${attempt + 1}`
+    const exists = await User.exists({ username: candidate })
+    if (!exists) {
+      return candidate
+    }
+  }
+
+  return `user_${crypto.randomBytes(4).toString('hex')}`
+}
+
+const exchangeGoogleCodeForToken = async (code: string): Promise<GoogleOAuthTokenResponse> => {
+  const body = new URLSearchParams({
+    code,
+    client_id: GOOGLE_OAUTH_CLIENT_ID,
+    client_secret: GOOGLE_OAUTH_CLIENT_SECRET,
+    redirect_uri: GOOGLE_OAUTH_REDIRECT_URI,
+    grant_type: 'authorization_code',
+  })
+
+  const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+  })
+
+  if (!response.ok) {
+    const details = await response.text()
+    throw new Error(`Google token exchange falhou (${response.status}): ${details}`)
+  }
+
+  return (await response.json()) as GoogleOAuthTokenResponse
+}
+
+const fetchGoogleUserInfo = async (accessToken: string): Promise<GoogleOAuthUserInfo> => {
+  const response = await fetch(GOOGLE_OAUTH_USERINFO_URL, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const details = await response.text()
+    throw new Error(`Google userinfo falhou (${response.status}): ${details}`)
+  }
+
+  return (await response.json()) as GoogleOAuthUserInfo
+}
+
+const buildGoogleOAuthCallbackUrl = (params: {
+  accessToken?: string
+  refreshToken?: string
+  redirectPath?: string
+  error?: string
+  errorDescription?: string
+}) => {
+  const callbackUrl = new URL(GOOGLE_OAUTH_FRONTEND_CALLBACK_URL)
+  const fragment = new URLSearchParams()
+
+  if (params.accessToken) fragment.set('accessToken', params.accessToken)
+  if (params.refreshToken) fragment.set('refreshToken', params.refreshToken)
+  if (params.redirectPath) fragment.set('redirectPath', normalizeRedirectPath(params.redirectPath))
+  if (params.error) fragment.set('error', params.error)
+  if (params.errorDescription) fragment.set('errorDescription', params.errorDescription)
+
+  callbackUrl.hash = fragment.toString()
+  return callbackUrl.toString()
+}
 
 /**
  * Register - Criar nova conta
@@ -256,6 +439,152 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
       error: 'Erro ao criar conta.',
       details: error.message,
     })
+  }
+}
+
+/**
+ * Google OAuth Start
+ * GET /api/auth/google/start
+ */
+export const googleOAuthStart = async (req: Request, res: Response) => {
+  try {
+    if (!isGoogleOAuthConfigured()) {
+      return res.status(503).json({
+        error:
+          'Google OAuth nao configurado. Define GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET e GOOGLE_OAUTH_REDIRECT_URI.',
+      })
+    }
+
+    const redirectPath = normalizeRedirectPath(req.query.redirectPath)
+    const state = createGoogleOAuthState(redirectPath)
+
+    const query = new URLSearchParams({
+      client_id: GOOGLE_OAUTH_CLIENT_ID,
+      redirect_uri: GOOGLE_OAUTH_REDIRECT_URI,
+      response_type: 'code',
+      scope: 'openid email profile',
+      state,
+      prompt: 'select_account',
+    })
+
+    return res.redirect(`${GOOGLE_OAUTH_AUTH_URL}?${query.toString()}`)
+  } catch (error: any) {
+    console.error('Google OAuth start error:', error)
+    return res.status(500).json({
+      error: 'Erro ao iniciar autenticacao Google.',
+      details: error.message,
+    })
+  }
+}
+
+/**
+ * Google OAuth Callback
+ * GET /api/auth/google/callback
+ */
+export const googleOAuthCallback = async (req: Request, res: Response) => {
+  const redirectWithError = (errorCode: string, errorDescription: string) =>
+    res.redirect(
+      buildGoogleOAuthCallbackUrl({
+        error: errorCode,
+        errorDescription,
+      })
+    )
+
+  try {
+    if (!isGoogleOAuthConfigured()) {
+      return redirectWithError('oauth_not_configured', 'Google OAuth nao esta configurado no backend.')
+    }
+
+    const code = typeof req.query.code === 'string' ? req.query.code.trim() : ''
+    const state = typeof req.query.state === 'string' ? req.query.state.trim() : ''
+
+    if (!code || !state) {
+      return redirectWithError('invalid_oauth_callback', 'Parametros code/state em falta.')
+    }
+
+    const stateEntry = consumeGoogleOAuthState(state)
+    if (!stateEntry) {
+      return redirectWithError('invalid_oauth_state', 'State invalido ou expirado.')
+    }
+
+    const tokenResponse = await exchangeGoogleCodeForToken(code)
+    const accessToken = tokenResponse.access_token?.trim() || ''
+    if (!accessToken) {
+      return redirectWithError('google_token_missing', 'Google nao devolveu access token.')
+    }
+
+    const googleUser = await fetchGoogleUserInfo(accessToken)
+    const email = googleUser.email?.trim().toLowerCase() || ''
+    const isEmailVerified = Boolean(googleUser.email_verified)
+
+    if (!email) {
+      return redirectWithError('google_email_missing', 'Google nao devolveu email valido.')
+    }
+
+    if (!isEmailVerified) {
+      return redirectWithError('google_email_unverified', 'Conta Google sem email verificado.')
+    }
+
+    const displayName = googleUser.name?.trim() || email.split('@')[0]
+    const avatarUrl = googleUser.picture?.trim() || undefined
+    const now = new Date()
+
+    let user = await User.findOne({ email })
+    if (!user) {
+      const username = await generateUniqueUsername(email.split('@')[0] || displayName)
+      const generatedPassword = crypto.randomBytes(24).toString('hex')
+
+      user = await User.create({
+        email,
+        password: generatedPassword,
+        name: displayName,
+        username,
+        avatar: avatarUrl,
+        role: 'free',
+        emailVerified: true,
+        lastLoginAt: now,
+        lastActiveAt: now,
+      })
+    } else {
+      if (isAccountBlocked(user.accountStatus)) {
+        return redirectWithError('account_blocked', ACCOUNT_STATUS_MESSAGES[user.accountStatus])
+      }
+
+      user.lastLoginAt = now
+      user.lastActiveAt = now
+      if (!user.emailVerified) {
+        user.emailVerified = true
+      }
+      if (avatarUrl && avatarUrl !== user.avatar) {
+        user.avatar = avatarUrl
+      }
+      if (!user.name && displayName) {
+        user.name = displayName
+      }
+      await user.save()
+    }
+
+    if (isAccountBlocked(user.accountStatus)) {
+      return redirectWithError('account_blocked', ACCOUNT_STATUS_MESSAGES[user.accountStatus])
+    }
+
+    const tokens = generateTokens({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      tokenVersion: user.tokenVersion,
+    })
+
+    return res.redirect(
+      buildGoogleOAuthCallbackUrl({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        redirectPath: stateEntry.redirectPath,
+      })
+    )
+  } catch (error: any) {
+    console.error('Google OAuth callback error:', error)
+    return redirectWithError('oauth_callback_failed', error?.message || 'Erro interno no callback Google.')
   }
 }
 
