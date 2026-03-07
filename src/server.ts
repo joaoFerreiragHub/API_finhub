@@ -3,6 +3,7 @@ import { connectToDatabase } from './config/database'
 import app from './app'
 import { Server } from 'http'
 import { initializeRateLimiter, shutdownRateLimiter } from './middlewares/rateLimiter'
+import { uploadService } from './services/upload.service'
 
 const PORT = process.env.PORT || 3000
 let server: Server | null = null
@@ -12,6 +13,7 @@ async function startServer() {
   try {
     await initializeRateLimiter()
     await connectToDatabase()
+    console.log('Upload storage runtime:', uploadService.getRuntimeState())
     server = app.listen(PORT, () => {
       console.log(`Servidor a correr em http://localhost:${PORT}`)
     })

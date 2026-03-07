@@ -8,6 +8,7 @@ import { withRequestContext } from './middlewares/requestContext'
 import { requestLogger } from './middlewares/requestLogger'
 import { getMetricsSnapshot, renderPrometheusMetrics } from './observability/metrics'
 import { registerSocialEventHandlers } from './events/registerSocialEventHandlers'
+import { uploadService } from './services/upload.service'
 
 const app = express()
 
@@ -18,7 +19,9 @@ app.use(helmet())
 app.use(withRequestContext)
 app.use(requestLogger)
 app.use(express.json())
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
+if (uploadService.getRuntimeState().storageProvider === 'local') {
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
+}
 app.use('/openapi', express.static(path.join(process.cwd(), 'openapi')))
 
 app.get('/healthz', (_req, res) => {

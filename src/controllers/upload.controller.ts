@@ -17,7 +17,7 @@ export const uploadImage = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Nenhum ficheiro enviado' })
     }
 
-    const result = uploadService.processUpload(req.file)
+    const result = await uploadService.processUpload(req.file)
 
     return res.status(201).json(result)
   } catch (error: any) {
@@ -43,7 +43,7 @@ export const uploadVideo = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Nenhum ficheiro enviado' })
     }
 
-    const result = uploadService.processUpload(req.file)
+    const result = await uploadService.processUpload(req.file)
 
     return res.status(201).json(result)
   } catch (error: any) {
@@ -69,7 +69,7 @@ export const uploadAudio = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Nenhum ficheiro enviado' })
     }
 
-    const result = uploadService.processUpload(req.file)
+    const result = await uploadService.processUpload(req.file)
 
     return res.status(201).json(result)
   } catch (error: any) {
@@ -95,7 +95,7 @@ export const uploadDocument = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Nenhum ficheiro enviado' })
     }
 
-    const result = uploadService.processUpload(req.file)
+    const result = await uploadService.processUpload(req.file)
 
     return res.status(201).json(result)
   } catch (error: any) {

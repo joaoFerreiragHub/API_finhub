@@ -12,6 +12,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O1-02 | concluido | 2026-03-06 | Fluxo de reset de password com `POST /api/auth/forgot-password` e `POST /api/auth/reset-password`, token seguro com expiracao e invalidacao de sessoes apos reset. |
 | O1-03 | concluido | 2026-03-06 | Verificacao de email com `GET /api/auth/verify-email`, `POST /api/auth/resend-verification`, token com expiracao e guard `requireVerifiedEmail` nas acoes criticas (criar/publicar conteudo e comentar). |
 | O1-04 | em_curso (backend fechado) | 2026-03-06 | API publica de documentos legais (`/api/platform/legal/*`), aceite legal obrigatorio no registo e update de consentimento de cookies em `PATCH /api/auth/cookie-consent`. Pendente frontend (paginas e banner). |
+| O1-05 | concluido | 2026-03-07 | Upload service com provider `local|s3`, envio para bucket S3 (com fallback local seguro), delete/list/stats compativeis com S3 e configuracao por env para endpoint S3 compativel. |
 
 ## 1) Gate de Beta
 
