@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { NextFunction, Request, Response } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import path from 'path'
@@ -7,8 +7,10 @@ import routes from './routes'
 import { withRequestContext } from './middlewares/requestContext'
 import { requestLogger } from './middlewares/requestLogger'
 import { getMetricsSnapshot, renderPrometheusMetrics } from './observability/metrics'
+import { captureException } from './observability/sentry'
 import { registerSocialEventHandlers } from './events/registerSocialEventHandlers'
 import { uploadService } from './services/upload.service'
+import { logError } from './utils/logger'
 
 const app = express()
 
@@ -52,5 +54,62 @@ app.get('/metrics.json', (_req, res) => {
 })
 
 app.use('/api', routes)
+
+app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const statusCandidate =
+    error && typeof error === 'object' && 'status' in error
+      ? (error as { status?: unknown }).status
+      : undefined
+  const statusCode =
+    typeof statusCandidate === 'number' && statusCandidate >= 400 && statusCandidate < 600
+      ? statusCandidate
+      : 500
+
+  if (statusCode >= 500) {
+    const authReq = req as Request & {
+      user?: {
+        id?: string
+        _id?: unknown
+      }
+    }
+    const userId =
+      authReq.user?.id ||
+      (authReq.user?._id !== undefined && authReq.user?._id !== null
+        ? String(authReq.user._id)
+        : undefined)
+
+    captureException(error, {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.originalUrl || req.url,
+      userId,
+      statusCode,
+    })
+
+    logError('http_unhandled_error', error, {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.originalUrl || req.url,
+      statusCode,
+    })
+  }
+
+  const errorMessage =
+    statusCode >= 500
+      ? 'Erro interno do servidor.'
+      : error instanceof Error
+        ? error.message
+        : 'Pedido invalido.'
+
+  res.status(statusCode).json({
+    success: false,
+    error: {
+      code: statusCode >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR',
+      message: errorMessage,
+    },
+    requestId: req.requestId,
+    timestamp: new Date().toISOString(),
+  })
+})
 
 export default app
