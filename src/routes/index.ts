@@ -31,6 +31,7 @@ import adminRoutes from './admin.routes'
 import editorialRoutes from './editorial.routes'
 import platformRoutes from './platform.routes'
 import creatorRoutes from './creator.routes'
+import externalContentRoutes from './externalContent.routes'
 
 const router = Router()
 
@@ -78,6 +79,7 @@ router.get('/', (req, res) => {
       legal: '/api/platform/legal',
       monitoring: '/api/platform/monitoring/status',
       creators: '/api/creators',
+      externalContent: '/api/external-content',
     },
     timestamp: new Date().toISOString()
   })
@@ -137,6 +139,7 @@ router.use('/editorial', editorialRoutes)
 // Rotas de superfícies publicas/operacionais
 router.use('/platform', platformRoutes)
 router.use('/creators', creatorRoutes)
+router.use('/external-content', externalContentRoutes)
 
 export default router
 

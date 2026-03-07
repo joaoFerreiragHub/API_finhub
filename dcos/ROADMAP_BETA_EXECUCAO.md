@@ -28,6 +28,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O2-09 | concluido | 2026-03-07 | Backend Reels CRUD entregue com model/service/controller/routes (`/api/reels`), list/getBySlug/getById, create/update/delete/publish, like/favorite, endpoints de creator (`/me` e `/stats`) e registo no router principal. |
 | O2-10 | concluido | 2026-03-07 | Backend Playlists CRUD entregue com model/service/controller/routes (`/api/playlists`), list/getBySlug/getById, create/update/delete, endpoints de creator (`/me` e `/stats`) e registo no router principal. |
 | O2-11 | concluido | 2026-03-07 | Backend Announcements CRUD entregue com model/service/controller/routes (/api/announcements), list/getById, create/update/delete, endpoints de creator (/me e /stats) e suporte de visibilidade/expiracao/scope (creator|platform). |
+| O2-12 | concluido | 2026-03-07 | Importacao URL externa (oEmbed MVP) entregue com endpoint protegido POST /api/external-content/import-url, deteccao de provider (YouTube/Spotify/Instagram/TikTok/Vimeo/SoundCloud), extracao metadata com fallback e cache em memoria para prefill de drafts sourceType=external_content. |
 
 ## 1) Gate de Beta
 
