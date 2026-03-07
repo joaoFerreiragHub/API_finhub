@@ -1,0 +1,14 @@
+.git
+.github
+.claude
+node_modules
+dist
+dcos
+uploads
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+yarn-error.log*
+API_finhub.code-workspace

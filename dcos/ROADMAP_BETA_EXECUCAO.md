@@ -14,6 +14,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O1-04 | em_curso (backend fechado) | 2026-03-06 | API publica de documentos legais (`/api/platform/legal/*`), aceite legal obrigatorio no registo e update de consentimento de cookies em `PATCH /api/auth/cookie-consent`. Pendente frontend (paginas e banner). |
 | O1-05 | concluido | 2026-03-07 | Upload service com provider `local|s3`, envio para bucket S3 (com fallback local seguro), delete/list/stats compativeis com S3 e configuracao por env para endpoint S3 compativel. |
 | O1-06 | concluido | 2026-03-07 | Integracao Sentry no backend (`SENTRY_*`), captura global de erros HTTP/processo com flush em shutdown e endpoint de monitorizacao publica `GET /api/platform/monitoring/status`. |
+| O1-07 | concluido | 2026-03-07 | Dockerizacao backend (`Dockerfile`, `.dockerignore`, `docker-compose.yml`) + CI com smoke build da imagem e pipeline de publish para GHCR em `.github/workflows/deploy.yml`. |
 
 ## 1) Gate de Beta
 
