@@ -32,6 +32,7 @@ import editorialRoutes from './editorial.routes'
 import platformRoutes from './platform.routes'
 import creatorRoutes from './creator.routes'
 import externalContentRoutes from './externalContent.routes'
+import searchRoutes from './search.routes'
 
 const router = Router()
 
@@ -80,6 +81,7 @@ router.get('/', (req, res) => {
       monitoring: '/api/platform/monitoring/status',
       creators: '/api/creators',
       externalContent: '/api/external-content',
+      search: '/api/search',
     },
     timestamp: new Date().toISOString()
   })
@@ -140,6 +142,7 @@ router.use('/editorial', editorialRoutes)
 router.use('/platform', platformRoutes)
 router.use('/creators', creatorRoutes)
 router.use('/external-content', externalContentRoutes)
+router.use('/search', searchRoutes)
 
 export default router
 
