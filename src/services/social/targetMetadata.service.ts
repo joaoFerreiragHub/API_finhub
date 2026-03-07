@@ -6,6 +6,7 @@ import { Course } from '../../models/Course'
 import { LiveEvent } from '../../models/LiveEvent'
 import { Podcast } from '../../models/Podcast'
 import { Rating } from '../../models/Rating'
+import { Reel } from '../../models/Reel'
 import { User } from '../../models/User'
 import { Video } from '../../models/Video'
 
@@ -33,6 +34,14 @@ export const resolveTargetMetadata = async (
     }
     case 'video': {
       const doc = await Video.findById(targetId).select('creator tags title')
+      return {
+        ownerId: doc?.creator ? String(doc.creator) : null,
+        tags: getArrayTags(doc?.tags),
+        title: doc?.title,
+      }
+    }
+    case 'reel': {
+      const doc = await Reel.findById(targetId).select('creator tags title')
       return {
         ownerId: doc?.creator ? String(doc.creator) : null,
         tags: getArrayTags(doc?.tags),
