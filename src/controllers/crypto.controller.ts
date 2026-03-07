@@ -1,24 +1,16 @@
 import { Request, Response } from 'express'
 import axios from 'axios'
 
-// Binance API response format
-interface BinanceTicker {
+interface CoinGeckoMarketItem {
+  id: string
   symbol: string
-  priceChange: string
-  priceChangePercent: string
-  weightedAvgPrice: string
-  prevClosePrice: string
-  lastPrice: string
-  bidPrice: string
-  askPrice: string
-  openPrice: string
-  highPrice: string
-  lowPrice: string
-  volume: string
-  quoteVolume: string
-  openTime: number
-  closeTime: number
-  count: number
+  name: string
+  image: string
+  current_price: number
+  low_24h: number | null
+  high_24h: number | null
+  market_cap: number | null
+  price_change_percentage_24h: number | null
 }
 
 interface FormattedCrypto {
@@ -30,100 +22,65 @@ interface FormattedCrypto {
   dayLow: number
   dayHigh: number
   marketCap: number
+  change24hPercent: number
 }
 
 let cachedData: FormattedCrypto[] | null = null
 let lastFetchTime = 0
-const CACHE_DURATION = 15 * 60 * 1000 // 15 minutos
+const CACHE_DURATION = 15 * 60 * 1000
 
-// Usar Binance Public API (gratuita, sem autenticação, 1200 req/min)
-const binanceApi = axios.create({
-  baseURL: 'https://api.binance.com/api/v3',
+// CoinGecko fornece market cap real, volume e variacao 24h.
+const coinGeckoApi = axios.create({
+  baseURL: 'https://api.coingecko.com/api/v3',
   timeout: 15000,
 })
 
-// Mapeamento de símbolos Binance para nomes e IDs conhecidos
-const CRYPTO_NAMES: Record<string, { name: string; id: string }> = {
-  BTC: { name: 'Bitcoin', id: 'bitcoin' },
-  ETH: { name: 'Ethereum', id: 'ethereum' },
-  BNB: { name: 'Binance Coin', id: 'binancecoin' },
-  SOL: { name: 'Solana', id: 'solana' },
-  XRP: { name: 'Ripple', id: 'ripple' },
-  ADA: { name: 'Cardano', id: 'cardano' },
-  DOGE: { name: 'Dogecoin', id: 'dogecoin' },
-  AVAX: { name: 'Avalanche', id: 'avalanche-2' },
-  MATIC: { name: 'Polygon', id: 'matic-network' },
-  DOT: { name: 'Polkadot', id: 'polkadot' },
-  LINK: { name: 'Chainlink', id: 'chainlink' },
-  UNI: { name: 'Uniswap', id: 'uniswap' },
-  LTC: { name: 'Litecoin', id: 'litecoin' },
-  ATOM: { name: 'Cosmos', id: 'cosmos' },
-  XLM: { name: 'Stellar', id: 'stellar' },
-  BCH: { name: 'Bitcoin Cash', id: 'bitcoin-cash' },
-  ALGO: { name: 'Algorand', id: 'algorand' },
-  VET: { name: 'VeChain', id: 'vechain' },
-  TRX: { name: 'TRON', id: 'tron' },
-  FIL: { name: 'Filecoin', id: 'filecoin' },
-  ETC: { name: 'Ethereum Classic', id: 'ethereum-classic' },
-  NEAR: { name: 'NEAR Protocol', id: 'near' },
-  APT: { name: 'Aptos', id: 'aptos' },
-  ARB: { name: 'Arbitrum', id: 'arbitrum' },
-  OP: { name: 'Optimism', id: 'optimism' },
-  ICP: { name: 'Internet Computer', id: 'internet-computer' },
-  HBAR: { name: 'Hedera', id: 'hedera-hashgraph' },
-  INJ: { name: 'Injective', id: 'injective-protocol' },
-  STX: { name: 'Stacks', id: 'blockstack' },
-  IMX: { name: 'Immutable X', id: 'immutable-x' },
-}
-
 const fetchCryptoData = async (): Promise<FormattedCrypto[]> => {
   try {
-    console.log('📊 Fetching crypto data from Binance API...')
+    console.log('Fetching crypto data from CoinGecko API...')
 
-    // Buscar todos os tickers 24h
-    const response = await binanceApi.get<BinanceTicker[]>('/ticker/24hr')
+    const response = await coinGeckoApi.get<CoinGeckoMarketItem[]>('/coins/markets', {
+      params: {
+        vs_currency: 'usd',
+        order: 'market_cap_desc',
+        per_page: 200,
+        page: 1,
+        sparkline: false,
+        price_change_percentage: '24h',
+      },
+    })
 
-    if (!response.data || !Array.isArray(response.data)) {
-      throw new Error('Resposta inválida da API Binance')
+    if (!Array.isArray(response.data)) {
+      throw new Error('Resposta invalida da API CoinGecko')
     }
 
-    // Filtrar apenas pares USDT (equivalente a USD) e principais cryptos
-    const usdtPairs = response.data
-      .filter((ticker) => ticker.symbol.endsWith('USDT'))
-      .map((ticker) => {
-        const symbol = ticker.symbol.replace('USDT', '')
-        const price = parseFloat(ticker.lastPrice)
-        const high = parseFloat(ticker.highPrice)
-        const low = parseFloat(ticker.lowPrice)
-        const quoteVolume = parseFloat(ticker.quoteVolume)
-
-        // Estimar market cap baseado no volume de 24h em USDT
-        const marketCap = quoteVolume
-
-        const cryptoInfo = CRYPTO_NAMES[symbol] || {
-          name: symbol,
-          id: symbol.toLowerCase(),
-        }
+    const items = response.data
+      .map((item) => {
+        const price = Number(item.current_price ?? 0)
+        const dayLow = Number(item.low_24h ?? item.current_price ?? 0)
+        const dayHigh = Number(item.high_24h ?? item.current_price ?? 0)
+        const marketCap = Number(item.market_cap ?? 0)
+        const change24hPercent = Number(item.price_change_percentage_24h ?? 0)
 
         return {
-          id: cryptoInfo.id,
-          symbol: symbol,
-          name: cryptoInfo.name,
-          image: `https://assets.coincap.io/assets/icons/${symbol.toLowerCase()}@2x.png`,
-          price: price,
-          dayLow: low,
-          dayHigh: high,
-          marketCap: marketCap,
-        }
+          id: item.id,
+          symbol: item.symbol.toUpperCase(),
+          name: item.name,
+          image: item.image,
+          price,
+          dayLow,
+          dayHigh,
+          marketCap,
+          change24hPercent,
+        } satisfies FormattedCrypto
       })
-      .filter((crypto) => crypto.price > 0) // Remover cryptos sem preço
-      .sort((a, b) => b.marketCap - a.marketCap) // Ordenar por volume (proxy market cap)
-      .slice(0, 200) // Top 200 cryptos
+      .filter((crypto) => crypto.price > 0)
+      .sort((a, b) => b.marketCap - a.marketCap)
 
-    console.log(`✅ Fetched ${usdtPairs.length} cryptos from Binance`)
-    return usdtPairs
+    console.log(`Fetched ${items.length} cryptos from CoinGecko`)
+    return items
   } catch (error: any) {
-    console.error('❌ Erro ao buscar dados de criptomoedas:', error.message)
+    console.error('Erro ao buscar dados de criptomoedas:', error.message)
     if (error.response) {
       console.error('Response status:', error.response.status)
       console.error('Response data:', JSON.stringify(error.response.data).substring(0, 200))
@@ -132,32 +89,30 @@ const fetchCryptoData = async (): Promise<FormattedCrypto[]> => {
   }
 }
 
-export const getCryptoInfo = async (req: Request, res: Response) => {
+export const getCryptoInfo = async (_req: Request, res: Response) => {
   try {
     const currentTime = Date.now()
 
-    // Verificar se o cache é válido
     if (cachedData && currentTime - lastFetchTime < CACHE_DURATION) {
-      console.log('✅ Servindo dados do cache crypto')
+      console.log('Serving crypto data from cache')
       return res.json(cachedData)
     }
 
-    console.log('🔄 Buscando novos dados da API Binance...')
+    console.log('Refreshing crypto data from provider...')
     const cryptoData = await fetchCryptoData()
 
     if (cryptoData.length === 0) {
-      console.error('⚠️ Nenhum dado retornado pela API Binance')
+      console.error('No crypto data returned by provider')
       throw new Error('Nenhum dado retornado pela API.')
     }
 
-    // Atualizar o cache
     cachedData = cryptoData
     lastFetchTime = currentTime
 
-    console.log(`✅ Dados atualizados no cache: ${cryptoData.length} cryptos`)
+    console.log(`Crypto cache updated with ${cryptoData.length} assets`)
     res.json(cryptoData)
   } catch (error: any) {
-    console.error('❌ Erro ao processar a solicitação crypto:', error.message)
+    console.error('Erro ao processar a solicitacao crypto:', error.message)
     res.status(500).json({
       success: false,
       errorCode: 'FETCH_ERROR',

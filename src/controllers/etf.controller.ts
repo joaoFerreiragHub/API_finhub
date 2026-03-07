@@ -4,17 +4,17 @@ import axios from 'axios'
 const FMP_API_KEY = process.env.FMP_API_KEY
 
 export const getETFInfo = async (req: Request, res: Response) => {
-  const symbol = String(req.params.symbol ?? "")
+  const symbol = String(req.params.symbol ?? '')
 
   try {
-    // Usar endpoints /stable/ que funcionam no plano Starter
+    // Usa endpoints /stable/ compativeis com plano Starter.
     const [profileResponse, quoteResponse] = await Promise.all([
       axios.get(`https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_API_KEY}`),
       axios.get(`https://financialmodelingprep.com/stable/quote?symbol=${symbol}&apikey=${FMP_API_KEY}`),
     ])
 
     if (!profileResponse?.data?.[0]) {
-      return res.status(404).json({ error: 'ETF não encontrado.' })
+      return res.status(404).json({ error: 'ETF nao encontrado.' })
     }
 
     const profile = profileResponse.data[0]
@@ -38,7 +38,7 @@ export const getETFInfo = async (req: Request, res: Response) => {
       yearLow: quote.yearLow,
       yearHigh: quote.yearHigh,
       isEtf: profile.isEtf,
-      note: 'Informação básica. Para holdings detalhados e peso por setor, upgrade para FMP Premium.',
+      note: 'Informacao basica. Para holdings detalhados e peso por setor, usa endpoint Yahoo ou plano premium.',
     }
 
     res.json(aggregatedData)
@@ -49,13 +49,13 @@ export const getETFInfo = async (req: Request, res: Response) => {
       return res.status(error.response.status).json({ error: error.response.data })
     }
 
-    res.status(500).json({ error: 'Erro ao buscar informações do ETF.' })
+    res.status(500).json({ error: 'Erro ao buscar informacoes do ETF.' })
   }
 }
 
-export const listETFs = async (req: Request, res: Response) => {
+export const listETFs = async (_req: Request, res: Response) => {
   try {
-    // Lista simplificada de ETFs populares (sem endpoint disponível no Starter)
+    // Lista simplificada de ETFs populares sem endpoint dedicado no Starter.
     const popularETFs = [
       'SPY', 'VOO', 'IVV', 'QQQ', 'VTI', 'VEA', 'IEFA', 'AGG', 'VTV', 'VUG',
       'IWF', 'IWD', 'IWM', 'EFA', 'VWO', 'IEMG', 'BND', 'GLD', 'VNQ', 'XLF',
@@ -66,8 +66,8 @@ export const listETFs = async (req: Request, res: Response) => {
 
     res.json(response.data)
   } catch (error: any) {
-    console.error('Erro ao buscar a lista de ETFs:', error.message)
-    res.status(500).json({ error: 'Erro ao buscar a lista de ETFs.' })
+    console.error('Erro ao buscar lista de ETFs:', error.message)
+    res.status(500).json({ error: 'Erro ao buscar lista de ETFs.' })
   }
 }
 
@@ -75,13 +75,12 @@ export const getETFsOverlap = async (req: Request, res: Response) => {
   const { etf1, etf2 } = req.query
 
   if (!etf1 || !etf2) {
-    return res.status(400).json({ error: 'Parâmetros "etf1" e "etf2" são obrigatórios.' })
+    return res.status(400).json({ error: 'Parametros "etf1" e "etf2" sao obrigatorios.' })
   }
 
   try {
-    console.log(`📊 Comparando ETFs ${etf1} e ${etf2} usando stable endpoints (Starter plan)...`)
+    console.log(`Comparando ETFs ${etf1} e ${etf2} com estimativa setorial...`)
 
-    // Usar endpoints /stable/ que funcionam no plano Starter
     const [etf1ProfileResponse, etf2ProfileResponse] = await Promise.all([
       axios.get(`https://financialmodelingprep.com/stable/profile?symbol=${etf1}&apikey=${FMP_API_KEY}`),
       axios.get(`https://financialmodelingprep.com/stable/profile?symbol=${etf2}&apikey=${FMP_API_KEY}`),
@@ -89,45 +88,45 @@ export const getETFsOverlap = async (req: Request, res: Response) => {
 
     if (!etf1ProfileResponse?.data?.[0] || !etf2ProfileResponse?.data?.[0]) {
       return res.status(404).json({
-        error: 'Não foi possível encontrar perfil de um ou ambos os ETFs.',
+        error: 'Nao foi possivel encontrar perfil de um ou ambos os ETFs.',
       })
     }
 
     const etf1Profile = etf1ProfileResponse.data[0]
     const etf2Profile = etf2ProfileResponse.data[0]
 
-    // Comparação simplificada - criar holdings "mock" baseado em dados disponíveis
     const sameSector = etf1Profile.sector === etf2Profile.sector
     const sameIndustry = etf1Profile.industry === etf2Profile.industry
 
-    // Simular overlap baseado em similaridade
+    // Estimativa simplificada por similaridade setorial.
     let totalOverlapWeight = 0
-    if (sameSector && sameIndustry) totalOverlapWeight = 95 // muito similar
-    else if (sameSector) totalOverlapWeight = 60 // mesmo setor
-    else if (sameIndustry) totalOverlapWeight = 30 // mesma indústria
-    else totalOverlapWeight = 10 // diferente
+    if (sameSector && sameIndustry) totalOverlapWeight = 95
+    else if (sameSector) totalOverlapWeight = 60
+    else if (sameIndustry) totalOverlapWeight = 30
+    else totalOverlapWeight = 10
 
-    // Holdings simulados (frontend espera este formato)
     const overlappingHoldings: Record<string, number> = {}
-
-    // Se são muito similares, criar holdings mock
     if (totalOverlapWeight > 50) {
-      overlappingHoldings['Top Holdings (estimado)'] = totalOverlapWeight * 0.6
-      overlappingHoldings[etf1Profile.sector || 'Holdings'] = totalOverlapWeight * 0.4
+      overlappingHoldings['top_holdings_estimate'] = totalOverlapWeight * 0.6
+      overlappingHoldings[etf1Profile.sector || 'sector_estimate'] = totalOverlapWeight * 0.4
     }
 
     res.json({
       etf1: String(etf1),
       etf2: String(etf2),
+      source: 'estimated_sector_similarity',
+      isEstimated: true,
       totalOverlapWeight: parseFloat(totalOverlapWeight.toFixed(2)),
-      overlappingHoldings: overlappingHoldings,
-      _note: 'Holdings simulados. Para análise detalhada com holdings reais, upgrade para FMP Premium ($59/mês).',
+      overlappingHoldings,
+      disclaimer:
+        'Estimativa por setor/industria. Nao representa overlap real de holdings.',
+      recommendedRealHoldingsEndpoint: `/api/etfs/compare-yahoo?etf1=${String(etf1)}&etf2=${String(etf2)}`,
       _details: {
         etf1Name: etf1Profile.companyName,
         etf2Name: etf2Profile.companyName,
         sameSector,
         sameIndustry,
-      }
+      },
     })
   } catch (error: any) {
     console.error(`Erro ao comparar ETFs (${etf1} e ${etf2}):`, error.message)
@@ -136,9 +135,7 @@ export const getETFsOverlap = async (req: Request, res: Response) => {
       return res.status(error.response.status).json({ error: error.response.data })
     }
 
-    res.status(500).json({
-      error: 'Erro ao comparar os ETFs.',
-    })
+    res.status(500).json({ error: 'Erro ao comparar os ETFs.' })
   }
 }
 
@@ -146,13 +143,12 @@ export const getETFsSectorOverlap = async (req: Request, res: Response) => {
   const { etf1, etf2 } = req.query
 
   if (!etf1 || !etf2) {
-    return res.status(400).json({ error: 'Parâmetros "etf1" e "etf2" são obrigatórios.' })
+    return res.status(400).json({ error: 'Parametros "etf1" e "etf2" sao obrigatorios.' })
   }
 
   try {
-    console.log(`📊 Comparando setores dos ETFs ${etf1} e ${etf2} (versão simplificada)...`)
+    console.log(`Comparando setores dos ETFs ${etf1} e ${etf2} com estimativa setorial...`)
 
-    // Usar stable/profile endpoint que funciona no plano Starter
     const [etf1ProfileResponse, etf2ProfileResponse] = await Promise.all([
       axios.get(`https://financialmodelingprep.com/stable/profile?symbol=${etf1}&apikey=${FMP_API_KEY}`),
       axios.get(`https://financialmodelingprep.com/stable/profile?symbol=${etf2}&apikey=${FMP_API_KEY}`),
@@ -160,7 +156,7 @@ export const getETFsSectorOverlap = async (req: Request, res: Response) => {
 
     if (!etf1ProfileResponse?.data?.[0] || !etf2ProfileResponse?.data?.[0]) {
       return res.status(404).json({
-        error: 'Não foi possível encontrar perfil de um ou ambos os ETFs.',
+        error: 'Nao foi possivel encontrar perfil de um ou ambos os ETFs.',
       })
     }
 
@@ -170,16 +166,13 @@ export const getETFsSectorOverlap = async (req: Request, res: Response) => {
     const sameSector = etf1Profile.sector === etf2Profile.sector
     const sameIndustry = etf1Profile.industry === etf2Profile.industry
 
-    // Criar sector overlap simulado no formato que o frontend espera
     const sectorOverlap: Record<string, number> = {}
     let totalSectorOverlapWeight = 0
 
     if (sameSector && etf1Profile.sector) {
-      // Se são do mesmo setor, simular 100% overlap nesse setor
       sectorOverlap[etf1Profile.sector] = 85
       totalSectorOverlapWeight = 85
     } else {
-      // Setores diferentes, overlap mínimo
       if (etf1Profile.sector) sectorOverlap[etf1Profile.sector] = 5
       if (etf2Profile.sector && etf2Profile.sector !== etf1Profile.sector) {
         sectorOverlap[etf2Profile.sector] = 5
@@ -190,9 +183,13 @@ export const getETFsSectorOverlap = async (req: Request, res: Response) => {
     res.json({
       etf1: String(etf1),
       etf2: String(etf2),
+      source: 'estimated_sector_similarity',
+      isEstimated: true,
       totalSectorOverlapWeight: parseFloat(totalSectorOverlapWeight.toFixed(2)),
-      sectorOverlap: sectorOverlap,
-      _note: 'Setores simulados. Para peso exato por setor, upgrade para FMP Premium ($59/mês).',
+      sectorOverlap,
+      disclaimer:
+        'Estimativa por perfil setorial. Nao representa pesos reais de holdings por setor.',
+      recommendedRealHoldingsEndpoint: `/api/etfs/compare-yahoo?etf1=${String(etf1)}&etf2=${String(etf2)}`,
       _details: {
         etf1Sector: etf1Profile.sector,
         etf2Sector: etf2Profile.sector,
@@ -200,7 +197,7 @@ export const getETFsSectorOverlap = async (req: Request, res: Response) => {
         etf2Industry: etf2Profile.industry,
         sameSector,
         sameIndustry,
-      }
+      },
     })
   } catch (error: any) {
     console.error(`Erro ao comparar setores entre ETFs (${etf1} e ${etf2}):`, error.message)
@@ -209,8 +206,6 @@ export const getETFsSectorOverlap = async (req: Request, res: Response) => {
       return res.status(error.response.status).json({ error: error.response.data })
     }
 
-    res.status(500).json({
-      error: 'Erro ao comparar setores dos ETFs.',
-    })
+    res.status(500).json({ error: 'Erro ao comparar setores dos ETFs.' })
   }
 }

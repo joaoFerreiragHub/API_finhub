@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import axios from 'axios'
 import {
   fetchProfile,
   fetchScores,
@@ -11,6 +12,42 @@ import {
 import { buildQuickMetricGovernance } from '../utils/quickAnalysisMetrics'
 import { fillDerivedCurrentIndicadores } from '../utils/quickAnalysisDerivedMetrics'
 import { computeDataQualityScore, computeSectorContextScore } from '../utils/quickAnalysisSectorScoring'
+
+const FMP_API_KEY = process.env.FMP_API_KEY
+const MAX_BATCH_SYMBOLS = 50
+const BATCH_CACHE_HINT_SECONDS = 300
+
+interface BatchQuoteRecord {
+  symbol?: string
+  name?: string
+  price?: number
+  marketCap?: number
+  volume?: number
+  changePercentage?: number
+}
+
+interface BatchProfileRecord {
+  symbol?: string
+  companyName?: string
+  sector?: string
+}
+
+const normalizeRecords = <T>(value: unknown): T[] => {
+  if (Array.isArray(value)) return value as T[]
+  if (value && typeof value === 'object') return [value as T]
+  return []
+}
+
+const parseBatchSymbols = (rawValue: unknown): string[] => {
+  if (typeof rawValue !== 'string') return []
+
+  return rawValue
+    .split(',')
+    .map((symbol) => symbol.trim().toUpperCase())
+    .filter((symbol) => /^[A-Z0-9.\-]{1,20}$/.test(symbol))
+    .filter((symbol, index, all) => all.indexOf(symbol) === index)
+    .slice(0, MAX_BATCH_SYMBOLS)
+}
 
 function simplifyRating(rating: string): 'A' | 'B' | 'C' | 'D' | 'F' {
   const char = rating?.[0]?.toUpperCase() ?? 'C'
@@ -199,5 +236,84 @@ export const getQuickAnalysis = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Erro ao gerar análise rápida:', error)
     res.status(500).json({ error: 'Erro ao gerar análise rápida' })
+  }
+}
+
+/**
+ * Snapshot em lote para watchlist (1 chamada em vez de N quick-analysis).
+ * GET /api/stocks/batch-snapshot?symbols=AAPL,MSFT,GOOGL
+ */
+export const getBatchSnapshot = async (req: Request, res: Response) => {
+  try {
+    const symbols = parseBatchSymbols(req.query.symbols)
+
+    if (symbols.length === 0) {
+      return res.status(400).json({
+        error: 'Parametro symbols invalido. Ex: ?symbols=AAPL,MSFT,GOOGL',
+      })
+    }
+
+    if (!FMP_API_KEY) {
+      return res.status(503).json({
+        error: 'Servico indisponivel: FMP_API_KEY nao configurada.',
+      })
+    }
+
+    const joinedSymbols = symbols.join(',')
+
+    const [quotesResponse, profilesResponse] = await Promise.all([
+      axios.get(
+        `https://financialmodelingprep.com/stable/batch-quote?symbols=${joinedSymbols}&apikey=${FMP_API_KEY}`
+      ),
+      axios
+        .get(
+          `https://financialmodelingprep.com/stable/profile?symbol=${joinedSymbols}&apikey=${FMP_API_KEY}`
+        )
+        .catch(() => ({ data: [] as BatchProfileRecord[] })),
+    ])
+
+    const quotes = normalizeRecords<BatchQuoteRecord>(quotesResponse.data)
+    const profiles = normalizeRecords<BatchProfileRecord>(profilesResponse.data)
+
+    const quoteBySymbol = new Map<string, BatchQuoteRecord>()
+    for (const quote of quotes) {
+      const symbol = String(quote.symbol ?? '').toUpperCase()
+      if (symbol) quoteBySymbol.set(symbol, quote)
+    }
+
+    const profileBySymbol = new Map<string, BatchProfileRecord>()
+    for (const profile of profiles) {
+      const symbol = String(profile.symbol ?? '').toUpperCase()
+      if (symbol) profileBySymbol.set(symbol, profile)
+    }
+
+    const items = symbols.map((symbol) => {
+      const quote = quoteBySymbol.get(symbol)
+      const profile = profileBySymbol.get(symbol)
+
+      return {
+        symbol,
+        name: quote?.name ?? profile?.companyName ?? null,
+        price: Number(quote?.price ?? 0),
+        marketCap: Number(quote?.marketCap ?? 0),
+        volume: Number(quote?.volume ?? 0),
+        change24hPercent: Number(quote?.changePercentage ?? 0),
+        sector: profile?.sector ?? null,
+      }
+    })
+
+    return res.status(200).json({
+      items,
+      requested: symbols.length,
+      returned: items.filter((item) => item.price > 0 || item.marketCap > 0).length,
+      staleTimeSeconds: BATCH_CACHE_HINT_SECONDS,
+      source: 'fmp_stable_batch_quote',
+    })
+  } catch (error: any) {
+    console.error('Erro ao gerar snapshot em lote da watchlist:', error.message)
+    return res.status(500).json({
+      error: 'Erro ao gerar snapshot em lote da watchlist.',
+      details: error.message,
+    })
   }
 }
