@@ -27,6 +27,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O2-08 | concluido | 2026-03-07 | Fluxo criar/editar/publicar video fechado no frontend em `/dashboard` com gestao (`/dashboard/conteudo/videos`), criacao (`/dashboard/criar/video`), edicao (`/dashboard/conteudo/videos/:id/editar`) e publish de rascunhos. |
 | O2-09 | concluido | 2026-03-07 | Backend Reels CRUD entregue com model/service/controller/routes (`/api/reels`), list/getBySlug/getById, create/update/delete/publish, like/favorite, endpoints de creator (`/me` e `/stats`) e registo no router principal. |
 | O2-10 | concluido | 2026-03-07 | Backend Playlists CRUD entregue com model/service/controller/routes (`/api/playlists`), list/getBySlug/getById, create/update/delete, endpoints de creator (`/me` e `/stats`) e registo no router principal. |
+| O2-11 | concluido | 2026-03-07 | Backend Announcements CRUD entregue com model/service/controller/routes (/api/announcements), list/getById, create/update/delete, endpoints de creator (/me e /stats) e suporte de visibilidade/expiracao/scope (creator|platform). |
 
 ## 1) Gate de Beta
 

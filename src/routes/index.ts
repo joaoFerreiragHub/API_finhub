@@ -10,6 +10,7 @@ import liveeventRoutes from './liveevent.routes'
 import podcastRoutes from './podcast.routes'
 import bookRoutes from './book.routes'
 import playlistRoutes from './playlist.routes'
+import announcementRoutes from './announcement.routes'
 import reelRoutes from './reel.routes'
 import brandRoutes from './brand.routes'
 import uploadRoutes from './upload.routes'
@@ -49,6 +50,7 @@ router.get('/', (req, res) => {
         books: '/api/books',
         reels: '/api/reels',
         playlists: '/api/playlists',
+        announcements: '/api/announcements',
       },
       brands: '/api/brands',
       upload: '/api/upload',
@@ -93,6 +95,7 @@ router.use('/podcasts', podcastRoutes)
 router.use('/books', bookRoutes)
 router.use('/reels', reelRoutes)
 router.use('/playlists', playlistRoutes)
+router.use('/announcements', announcementRoutes)
 
 // Rotas de brands (admin)
 router.use('/brands', brandRoutes)
