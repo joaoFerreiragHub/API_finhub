@@ -31,6 +31,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O2-12 | concluido | 2026-03-07 | Importacao URL externa (oEmbed MVP) entregue com endpoint protegido POST /api/external-content/import-url, deteccao de provider (YouTube/Spotify/Instagram/TikTok/Vimeo/SoundCloud), extracao metadata com fallback e cache em memoria para prefill de drafts sourceType=external_content. |
 | O3-01 | concluido | 2026-03-07 | OAuth Google entregue com `GET /api/auth/google/start` e `GET /api/auth/google/callback`, state anti-CSRF com TTL, troca de code por token, resolve userinfo, auto-provisionamento/login por email verificado e redirect seguro para callback frontend com tokens (fragment hash). |
 | O3-02 | concluido | 2026-03-07 | Pesquisa global entregue com GET /api/search (filtros q, type, types, limit) cobrindo artigos/cursos/videos/eventos/livros/podcasts/criadores/recursos com ranking por relevancia e popularidade, pronta para o SearchPage e atalho Ctrl+K do frontend. |
+| O3-03 | concluido | 2026-03-07 | Centro de notificacoes fechado no frontend com NotificationBell integrado no header principal (desktop/mobile), dropdown operacional com mark-as-read em clique, ligacao para /notificacoes e consumo dos endpoints reais de notifications/preferences/subscriptions. |
 
 ## 1) Gate de Beta
 
