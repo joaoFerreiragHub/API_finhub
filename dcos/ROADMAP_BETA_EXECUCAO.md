@@ -17,6 +17,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O1-07 | concluido | 2026-03-07 | Dockerizacao backend (`Dockerfile`, `.dockerignore`, `docker-compose.yml`) + CI com smoke build da imagem e pipeline de publish para GHCR em `.github/workflows/deploy.yml`. |
 | O1-08 | em_curso (fase backend) | 2026-03-07 | Hardening de moderacao pre-release com smoke JWT real (`scripts/moderation-pre-release-smoke.ps1` + `npm run test:moderation:pre-release`), carregamento automatico de `.env/.env.local`, variaveis de execucao em `.env.example` e runbook operacional `dcos/RUNBOOK_MODERATION_PRE_RELEASE.md`. |
 | O1-09 | concluido | 2026-03-07 | Quick fixes tecnicos no backend concluidos: crypto market cap com CoinGecko, overlap ETF com disclaimer explicito de estimativa e endpoint batch watchlist `GET /api/stocks/batch-snapshot` (validado com `typecheck + build + contract:openapi`). |
+| O2-03 | em_curso (fase backend) | 2026-03-07 | Arranque backend para perfil publico de creators: endpoint `GET /api/creators/:username` adicionado com metadata publica e rating agregado; frontend da pagina publica segue em curso. |
 | O2-04 | concluido | 2026-03-07 | Endpoint publico de creators entregue em `GET /api/creators` com filtros base (`search`, `minFollowers`, `minRating`, `emailVerified`, paginacao e sort por `followers|rating|newest|recent`), incluindo rating agregado por creator (validado com `typecheck + build + contract:openapi`). |
 
 ## 1) Gate de Beta

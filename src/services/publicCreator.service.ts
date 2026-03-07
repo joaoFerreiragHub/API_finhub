@@ -1,5 +1,6 @@
 import { PipelineStage } from 'mongoose'
 import { User } from '../models/User'
+import { Rating } from '../models/Rating'
 
 export type CreatorListSortBy = 'followers' | 'rating' | 'newest' | 'recent'
 
@@ -83,6 +84,50 @@ const buildSortStage = (
 }
 
 export class PublicCreatorService {
+  private mapPublicCreator(item: {
+    _id: unknown
+    name: string
+    username: string
+    avatar?: string
+    bio?: string
+    socialLinks?: {
+      website?: string
+      twitter?: string
+      linkedin?: string
+      instagram?: string
+    }
+    followers: number
+    following: number
+    emailVerified: boolean
+    createdAt: Date
+    lastActiveAt?: Date
+    averageRating: number
+    ratingsCount: number
+  }) {
+    return {
+      id: String(item._id),
+      name: item.name,
+      username: item.username,
+      avatar: item.avatar ?? null,
+      bio: item.bio ?? null,
+      socialLinks: {
+        website: item.socialLinks?.website ?? null,
+        twitter: item.socialLinks?.twitter ?? null,
+        linkedin: item.socialLinks?.linkedin ?? null,
+        instagram: item.socialLinks?.instagram ?? null,
+      },
+      followers: Number(item.followers ?? 0),
+      following: Number(item.following ?? 0),
+      emailVerified: Boolean(item.emailVerified),
+      rating: {
+        average: Math.round(Number(item.averageRating ?? 0) * 10) / 10,
+        count: Number(item.ratingsCount ?? 0),
+      },
+      createdAt: item.createdAt,
+      lastActiveAt: item.lastActiveAt ?? null,
+    }
+  }
+
   async listPublicCreators(
     filters: PublicCreatorListFilters = {},
     options: PublicCreatorListOptions = {}
@@ -220,28 +265,7 @@ export class PublicCreatorService {
     const total = result?.total?.[0]?.count ?? 0
 
     return {
-      items: items.map((item) => ({
-        id: String(item._id),
-        name: item.name,
-        username: item.username,
-        avatar: item.avatar ?? null,
-        bio: item.bio ?? null,
-        socialLinks: {
-          website: item.socialLinks?.website ?? null,
-          twitter: item.socialLinks?.twitter ?? null,
-          linkedin: item.socialLinks?.linkedin ?? null,
-          instagram: item.socialLinks?.instagram ?? null,
-        },
-        followers: Number(item.followers ?? 0),
-        following: Number(item.following ?? 0),
-        emailVerified: Boolean(item.emailVerified),
-        rating: {
-          average: Math.round(Number(item.averageRating ?? 0) * 10) / 10,
-          count: Number(item.ratingsCount ?? 0),
-        },
-        createdAt: item.createdAt,
-        lastActiveAt: item.lastActiveAt ?? null,
-      })),
+      items: items.map((item) => this.mapPublicCreator(item)),
       filters: {
         search: filters.search?.trim() || null,
         minFollowers:
@@ -261,6 +285,70 @@ export class PublicCreatorService {
         pages: Math.max(1, Math.ceil(total / limit)),
       },
     }
+  }
+
+  async getPublicCreatorByUsername(usernameRaw: string) {
+    const normalizedUsername = usernameRaw.trim().toLowerCase()
+    if (!normalizedUsername) {
+      throw new PublicCreatorServiceError(400, 'Parametro username invalido.')
+    }
+
+    const creator = await User.findOne({
+      role: 'creator',
+      accountStatus: 'active',
+      username: normalizedUsername,
+    })
+      .select(
+        'name username avatar bio socialLinks followers following emailVerified createdAt lastActiveAt'
+      )
+      .lean()
+
+    if (!creator) {
+      throw new PublicCreatorServiceError(404, 'Creator nao encontrado.')
+    }
+
+    const [ratingStats] = await Rating.aggregate<{
+      averageRating: number
+      ratingsCount: number
+    }>([
+      {
+        $match: {
+          targetType: 'creator',
+          targetId: creator._id,
+          moderationStatus: 'visible',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$rating' },
+          ratingsCount: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          averageRating: 1,
+          ratingsCount: 1,
+        },
+      },
+    ])
+
+    return this.mapPublicCreator({
+      _id: creator._id,
+      name: creator.name,
+      username: creator.username,
+      avatar: creator.avatar ?? undefined,
+      bio: creator.bio ?? undefined,
+      socialLinks: creator.socialLinks ?? undefined,
+      followers: Number(creator.followers ?? 0),
+      following: Number(creator.following ?? 0),
+      emailVerified: Boolean(creator.emailVerified),
+      createdAt: creator.createdAt,
+      lastActiveAt: creator.lastActiveAt ?? undefined,
+      averageRating: Number(ratingStats?.averageRating ?? 0),
+      ratingsCount: Number(ratingStats?.ratingsCount ?? 0),
+    })
   }
 }
 

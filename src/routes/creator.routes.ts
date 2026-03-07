@@ -1,5 +1,8 @@
 import { Router } from 'express'
-import { listPublicCreators } from '../controllers/publicCreator.controller'
+import {
+  getPublicCreatorProfile,
+  listPublicCreators,
+} from '../controllers/publicCreator.controller'
 
 const router = Router()
 
@@ -9,5 +12,12 @@ const router = Router()
  * @access  Public
  */
 router.get('/', listPublicCreators)
+
+/**
+ * @route   GET /api/creators/:username
+ * @desc    Ler perfil publico resumido de um creator
+ * @access  Public
+ */
+router.get('/:username', getPublicCreatorProfile)
 
 export default router

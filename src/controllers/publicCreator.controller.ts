@@ -105,3 +105,34 @@ export const listPublicCreators = async (req: Request, res: Response) => {
     })
   }
 }
+
+/**
+ * GET /api/creators/:username
+ */
+export const getPublicCreatorProfile = async (req: Request, res: Response) => {
+  try {
+    const username = typeof req.params.username === 'string' ? req.params.username : ''
+    if (!username.trim()) {
+      return res.status(400).json({
+        error: 'Parametro username invalido.',
+      })
+    }
+
+    const creator = await publicCreatorService.getPublicCreatorByUsername(username)
+    return res.status(200).json({ creator })
+  } catch (error: unknown) {
+    console.error('Get public creator profile error:', error)
+
+    if (error instanceof PublicCreatorServiceError) {
+      return res.status(error.statusCode).json({
+        error: error.message,
+      })
+    }
+
+    const details = error instanceof Error ? error.message : undefined
+    return res.status(500).json({
+      error: 'Erro ao carregar perfil publico do creator.',
+      details,
+    })
+  }
+}
