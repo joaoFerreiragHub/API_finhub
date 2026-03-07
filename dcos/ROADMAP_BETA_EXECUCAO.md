@@ -15,7 +15,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O1-05 | concluido | 2026-03-07 | Upload service com provider `local|s3`, envio para bucket S3 (com fallback local seguro), delete/list/stats compativeis com S3 e configuracao por env para endpoint S3 compativel. |
 | O1-06 | concluido | 2026-03-07 | Integracao Sentry no backend (`SENTRY_*`), captura global de erros HTTP/processo com flush em shutdown e endpoint de monitorizacao publica `GET /api/platform/monitoring/status`. |
 | O1-07 | concluido | 2026-03-07 | Dockerizacao backend (`Dockerfile`, `.dockerignore`, `docker-compose.yml`) + CI com smoke build da imagem e pipeline de publish para GHCR em `.github/workflows/deploy.yml`. |
-| O1-08 | em_curso (fase backend) | 2026-03-07 | Hardening de moderacao pre-release com smoke JWT real (`scripts/moderation-pre-release-smoke.ps1` + `npm run test:moderation:pre-release`), variaveis de execucao em `.env.example` e runbook operacional `dcos/RUNBOOK_MODERATION_PRE_RELEASE.md`. |
+| O1-08 | em_curso (fase backend) | 2026-03-07 | Hardening de moderacao pre-release com smoke JWT real (`scripts/moderation-pre-release-smoke.ps1` + `npm run test:moderation:pre-release`), carregamento automatico de `.env/.env.local`, variaveis de execucao em `.env.example` e runbook operacional `dcos/RUNBOOK_MODERATION_PRE_RELEASE.md`. |
 | O1-09 | concluido | 2026-03-07 | Quick fixes tecnicos no backend concluidos: crypto market cap com CoinGecko, overlap ETF com disclaimer explicito de estimativa e endpoint batch watchlist `GET /api/stocks/batch-snapshot` (validado com `typecheck + build + contract:openapi`). |
 
 ## 1) Gate de Beta

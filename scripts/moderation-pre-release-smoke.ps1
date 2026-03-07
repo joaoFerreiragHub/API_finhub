@@ -12,6 +12,55 @@ param(
 $ErrorActionPreference = 'Stop'
 $BaseUrl = $BaseUrl.TrimEnd('/')
 
+function Import-DotEnvFile {
+  param([string]$FilePath)
+
+  if (-not (Test-Path -LiteralPath $FilePath)) {
+    return
+  }
+
+  foreach ($rawLine in Get-Content -LiteralPath $FilePath) {
+    $line = $rawLine.Trim()
+    if ($line.Length -eq 0 -or $line.StartsWith('#')) {
+      continue
+    }
+
+    $separatorIndex = $line.IndexOf('=')
+    if ($separatorIndex -le 0) {
+      continue
+    }
+
+    $name = $line.Substring(0, $separatorIndex).Trim()
+    if ($name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+      continue
+    }
+
+    $alreadySet = [Environment]::GetEnvironmentVariable($name, 'Process')
+    if (-not [string]::IsNullOrWhiteSpace($alreadySet)) {
+      continue
+    }
+
+    $value = $line.Substring($separatorIndex + 1)
+    if (
+      ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+      ($value.StartsWith("'") -and $value.EndsWith("'"))
+    ) {
+      $value = $value.Substring(1, $value.Length - 2)
+    }
+
+    [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+  }
+}
+
+function Load-SmokeEnvDefaults {
+  $scriptDir = Split-Path -Parent $PSCommandPath
+  $repoRoot = Resolve-Path (Join-Path $scriptDir '..')
+
+  foreach ($candidate in @('.env', '.env.local')) {
+    Import-DotEnvFile -FilePath (Join-Path $repoRoot $candidate)
+  }
+}
+
 function Assert-Condition {
   param([bool]$Condition, [string]$Message)
   if (-not $Condition) { throw $Message }
@@ -87,6 +136,8 @@ function Invoke-TestRequest {
     if ($null -ne $tmpBody) { Remove-Item $tmpBody.FullName -Force -ErrorAction SilentlyContinue }
   }
 }
+
+Load-SmokeEnvDefaults
 
 if ([string]::IsNullOrWhiteSpace($AdminEmail)) { $AdminEmail = $env:MODERATION_SMOKE_ADMIN_EMAIL }
 if ([string]::IsNullOrWhiteSpace($AdminPassword)) { $AdminPassword = $env:MODERATION_SMOKE_ADMIN_PASSWORD }

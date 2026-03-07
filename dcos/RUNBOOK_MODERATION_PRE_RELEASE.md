@@ -37,6 +37,12 @@ Variaveis necessarias (`.env` ou shell):
 6. `MODERATION_SMOKE_TARGET_ID`
 7. opcional: `MODERATION_SMOKE_REPORT_REASON`
 
+Notas de resolucao de variaveis:
+
+1. O script carrega automaticamente `.env` e `.env.local` na raiz do projeto.
+2. Variaveis ja definidas no processo/shell têm precedencia sobre os ficheiros.
+3. Em CI, preferir injetar via variaveis de ambiente seguras.
+
 Fluxo validado pelo smoke:
 
 1. login admin + reporter;
