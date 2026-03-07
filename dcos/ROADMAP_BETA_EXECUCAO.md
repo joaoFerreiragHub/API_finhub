@@ -24,6 +24,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O2-05 | concluido | 2026-03-07 | SEO base aplicado no frontend com meta tags dinamicas por rota publica (title/description/canonical/OG/Twitter), `robots.txt` e `sitemap.xml` estatico com rotas principais indexaveis. |
 | O2-06 | concluido | 2026-03-07 | Dashboard de criador (`/dashboard`) ligado a API com overview real (KPIs de conteudo proprio, top por views, recentes, followers via perfil publico) e fallback parcial por fonte. |
 | O2-07 | concluido | 2026-03-07 | Fluxo criar/editar/publicar artigo fechado no frontend em `/dashboard` com gestao real (`/dashboard/conteudo`), criacao (`/dashboard/criar`), edicao (`/dashboard/conteudo/artigos/:id/editar`) e acao de publicar para rascunhos. |
+| O2-08 | concluido | 2026-03-07 | Fluxo criar/editar/publicar video fechado no frontend em `/dashboard` com gestao (`/dashboard/conteudo/videos`), criacao (`/dashboard/criar/video`), edicao (`/dashboard/conteudo/videos/:id/editar`) e publish de rascunhos. |
 
 ## 1) Gate de Beta
 
