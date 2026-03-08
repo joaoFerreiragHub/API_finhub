@@ -43,7 +43,7 @@ Data desta avaliacao: 2026-03-06.
 |------|--------|
 | Email (verificacao, password reset, notificacoes) | Inexistente |
 | Pagamentos/Subscricoes | Inexistente |
-| Paginas legais (termos, privacidade, cookies) | Placeholder |
+| Paginas legais (termos, privacidade, cookies, aviso legal) | Fechado (2026-03-08) |
 | PWA / offline | Inexistente |
 | Testes E2E dos fluxos criticos | Config existe, testes nao |
 
@@ -121,7 +121,7 @@ Estes sao items que, se nao existirem, impedem um beta mesmo limitado.
 
 ### 2.4 Paginas legais
 
-**Estado:** Rotas existem (`/termos`, `/privacidade`) mas sao placeholder.
+**Estado:** FECHADO (2026-03-08). Frontend ligado a `/api/platform/legal/*` com paginas reais em `/termos`, `/privacidade`, `/cookies` e `/aviso-legal`, links no footer e banner RGPD de cookies com sync para `PATCH /api/auth/cookie-consent`.
 
 **O que construir:**
 
@@ -563,10 +563,10 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [ ] Email service (Resend/SendGrid) — transacional
 - [ ] Reset de password — endpoint + paginas
 - [ ] Verificacao de email — endpoint + banner
-- [ ] Aviso legal financeiro — pagina + footer link
-- [ ] Termos de servico — pagina com conteudo real
-- [ ] Politica de privacidade — pagina com conteudo real
-- [ ] Banner de consentimento de cookies — RGPD
+- [x] Aviso legal financeiro — pagina + footer link
+- [x] Termos de servico — pagina com conteudo real
+- [x] Politica de privacidade — pagina com conteudo real
+- [x] Banner de consentimento de cookies — RGPD
 - [ ] Paginas de conteudo minimas (explorar, detalhe artigo/curso/video)
 - [ ] Dashboard de criador minimo (overview, criar, listar)
 - [ ] Perfil publico de criador activado
