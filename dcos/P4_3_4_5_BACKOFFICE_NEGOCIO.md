@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01, P4.5-02, P4.5-03 e P4.5-04 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01, P4.5-02, P4.5-03, P4.5-04 e P4.5-05 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -595,6 +595,42 @@ Entregue no backend:
    - listagem com `admin.users.read`;
    - criacao/revogacao com `admin.users.write`.
 6. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
+3. `npm run checking`
+
+### 7.5 P4.5-05 Dark mode admin
+
+Objetivo:
+1. Suportar preferencia visual `light/dark/system` no contexto do dashboard admin.
+
+Backend:
+1. Persistir tema por admin no mesmo contrato de personalizacao.
+2. Expor tema no `GET` e aceitar atualizacao no `PATCH` de personalization.
+3. Garantir fallback seguro para preferencias antigas sem campo de tema.
+
+Frontend:
+1. Toggle de tema no painel admin (ainda pendente).
+2. Aplicacao de tokens/tema visual no layout admin (ainda pendente).
+
+Estado desta iteracao:
+1. backend MVP entregue com suporte a tema no dashboard personalization.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo `AdminDashboardPreference` evoluido com `theme`:
+   - modos suportados: `system`, `light`, `dark`;
+   - incluido tambem no snapshot de historico versionado.
+2. servico `adminDashboardPreference.service` evoluido para:
+   - retornar `theme` no payload de leitura;
+   - validar `theme` no patch (`PATCH /personalization`);
+   - resetar para `ADMIN_DASHBOARD_DEFAULT_THEME` no `reset`.
+3. compatibilidade backward:
+   - preferencia antiga sem `theme` recebe fallback seguro (`system` por default).
+4. variavel de ambiente nova:
+   - `ADMIN_DASHBOARD_DEFAULT_THEME` (default `system`).
 
 Validacao desta iteracao:
 1. `npm run typecheck`

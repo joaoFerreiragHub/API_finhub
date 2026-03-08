@@ -192,5 +192,6 @@ Integracao CI/CD:
 - 2026-03-08: P4.5-02 iniciou execucao com backend MVP de bulk import CSV operacional (modelo `AdminBulkImportJob`, preview por linha e execucao com jobs para subscricoes e campanhas).
 - 2026-03-08: P4.5-03 iniciou execucao com backend MVP de acoes agendadas (suporte `scheduledFor` em `AdminContentJob`, endpoint de agendamento de unhide e worker com fila future-aware).
 - 2026-03-08: P4.5-04 iniciou execucao com backend MVP de delegacao temporaria de scopes (modelo `AdminScopeDelegation`, endpoints admin e integracao no `requireAdminScope` para RBAC com expiracao automatica).
+- 2026-03-08: P4.5-05 iniciou execucao com backend MVP de dark mode admin (tema `system|light|dark` na personalizacao de dashboard com fallback de compatibilidade).
 - 2026-03-08: formalizada diretriz de monetizacao/ads (premium sem `external_ads`, sem popups para free, anuncios financeiros/contextuais e dashboards dedicados para admin/marcas/criadores).
 - 2026-03-08: integrada trilha estrategica `P_REVENUE_E_ADS_ESTRATEGIA.md` na auditoria como nao bloqueante para release, com guardrails de transparencia/compliance/seguranca.

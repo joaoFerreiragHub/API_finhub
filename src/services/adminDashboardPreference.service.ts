@@ -3,12 +3,14 @@ import { AdminScope, getAdminScopesForUser } from '../admin/permissions'
 import {
   ADMIN_DASHBOARD_DENSITY_MODES,
   ADMIN_DASHBOARD_PRESETS,
+  ADMIN_DASHBOARD_THEME_MODES,
   ADMIN_DASHBOARD_WIDGET_KEYS,
   AdminDashboardDensityMode,
   AdminDashboardLayoutItem,
   AdminDashboardPinnedFilter,
   AdminDashboardPreference,
   AdminDashboardPreset,
+  AdminDashboardThemeMode,
   AdminDashboardWidgetKey,
 } from '../models/AdminDashboardPreference'
 
@@ -30,6 +32,14 @@ const MAX_PINNED_FILTERS = (() => {
   return Math.min(20, Math.max(1, parsed))
 })()
 
+const DEFAULT_THEME: AdminDashboardThemeMode = (() => {
+  const raw = (process.env.ADMIN_DASHBOARD_DEFAULT_THEME ?? '').trim()
+  if (raw === 'light' || raw === 'dark' || raw === 'system') {
+    return raw
+  }
+  return 'system'
+})()
+
 const MAX_REASON_LENGTH = 500
 const MAX_NOTE_LENGTH = 2000
 
@@ -41,6 +51,9 @@ const isPreset = (value: unknown): value is AdminDashboardPreset =>
 
 const isDensity = (value: unknown): value is AdminDashboardDensityMode =>
   typeof value === 'string' && ADMIN_DASHBOARD_DENSITY_MODES.includes(value as AdminDashboardDensityMode)
+
+const isTheme = (value: unknown): value is AdminDashboardThemeMode =>
+  typeof value === 'string' && ADMIN_DASHBOARD_THEME_MODES.includes(value as AdminDashboardThemeMode)
 
 const isWidgetKey = (value: unknown): value is AdminDashboardWidgetKey =>
   typeof value === 'string' && ADMIN_DASHBOARD_WIDGET_KEYS.includes(value as AdminDashboardWidgetKey)
@@ -220,6 +233,7 @@ export interface AdminDashboardPreferenceResult {
   preference: {
     preset: AdminDashboardPreset
     density: AdminDashboardDensityMode
+    theme: AdminDashboardThemeMode
     refreshSeconds: number
     layout: AdminDashboardLayoutItem[]
     pinnedFilters: AdminDashboardPinnedFilter[]
@@ -353,6 +367,7 @@ export class AdminDashboardPreferenceService {
   private buildSnapshot(preference: {
     preset: AdminDashboardPreset
     density: AdminDashboardDensityMode
+    theme: AdminDashboardThemeMode
     refreshSeconds: number
     layout: AdminDashboardLayoutItem[]
     pinnedFilters: AdminDashboardPinnedFilter[]
@@ -360,6 +375,7 @@ export class AdminDashboardPreferenceService {
     return {
       preset: preference.preset,
       density: preference.density,
+      theme: preference.theme,
       refreshSeconds: preference.refreshSeconds,
       layout: preference.layout.map((item) => ({ ...item })),
       pinnedFilters: preference.pinnedFilters.map((filter) => ({ ...filter })),
@@ -379,6 +395,7 @@ export class AdminDashboardPreferenceService {
       user: actorId,
       preset: defaultPreset,
       density: 'comfortable',
+      theme: DEFAULT_THEME,
       refreshSeconds: DEFAULT_REFRESH_SECONDS,
       layout: defaultLayout,
       pinnedFilters: [],
@@ -396,6 +413,7 @@ export class AdminDashboardPreferenceService {
           snapshot: this.buildSnapshot({
             preset: defaultPreset,
             density: 'comfortable',
+            theme: DEFAULT_THEME,
             refreshSeconds: DEFAULT_REFRESH_SECONDS,
             layout: defaultLayout,
             pinnedFilters: [],
@@ -432,6 +450,7 @@ export class AdminDashboardPreferenceService {
       preference: {
         preset: isPreset(preference.preset) ? preference.preset : 'operations',
         density: isDensity(preference.density) ? preference.density : 'comfortable',
+        theme: isTheme(preference.theme) ? preference.theme : DEFAULT_THEME,
         refreshSeconds: toPositiveInt(preference.refreshSeconds, DEFAULT_REFRESH_SECONDS, 30, 3600),
         layout: fallbackLayout,
         pinnedFilters: this.sanitizePinnedFilters(preference.pinnedFilters),
@@ -463,6 +482,7 @@ export class AdminDashboardPreferenceService {
       this.buildSnapshot({
         preset: preference.preset,
         density: preference.density,
+        theme: isTheme(preference.theme) ? preference.theme : DEFAULT_THEME,
         refreshSeconds: preference.refreshSeconds,
         layout: this.sanitizeLayout(preference.layout, catalog),
         pinnedFilters: this.sanitizePinnedFilters(preference.pinnedFilters),
@@ -487,6 +507,16 @@ export class AdminDashboardPreferenceService {
       }
       if (preference.density !== patch.density) {
         preference.density = patch.density
+        changed = true
+      }
+    }
+
+    if ('theme' in patch) {
+      if (!isTheme(patch.theme)) {
+        throw new AdminDashboardPreferenceServiceError(400, 'theme invalido.')
+      }
+      if (preference.theme !== patch.theme) {
+        preference.theme = patch.theme
         changed = true
       }
     }
@@ -537,6 +567,7 @@ export class AdminDashboardPreferenceService {
       this.buildSnapshot({
         preset: preference.preset,
         density: preference.density,
+        theme: preference.theme,
         refreshSeconds: preference.refreshSeconds,
         layout: this.sanitizeLayout(preference.layout, catalog),
         pinnedFilters: this.sanitizePinnedFilters(preference.pinnedFilters),
@@ -559,6 +590,7 @@ export class AdminDashboardPreferenceService {
       snapshot: this.buildSnapshot({
         preset: preference.preset,
         density: preference.density,
+        theme: preference.theme,
         refreshSeconds: preference.refreshSeconds,
         layout: this.sanitizeLayout(preference.layout, catalog),
         pinnedFilters: this.sanitizePinnedFilters(preference.pinnedFilters),
@@ -584,6 +616,7 @@ export class AdminDashboardPreferenceService {
 
     preference.preset = nextPreset
     preference.density = 'comfortable'
+    preference.theme = DEFAULT_THEME
     preference.refreshSeconds = DEFAULT_REFRESH_SECONDS
     preference.layout = nextLayout
     preference.pinnedFilters = []
@@ -599,6 +632,7 @@ export class AdminDashboardPreferenceService {
       snapshot: this.buildSnapshot({
         preset: nextPreset,
         density: preference.density,
+        theme: preference.theme,
         refreshSeconds: preference.refreshSeconds,
         layout: nextLayout,
         pinnedFilters: [],

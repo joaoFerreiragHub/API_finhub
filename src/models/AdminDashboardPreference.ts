@@ -7,6 +7,7 @@ export const ADMIN_DASHBOARD_PRESETS = [
   'custom',
 ] as const
 export const ADMIN_DASHBOARD_DENSITY_MODES = ['comfortable', 'compact'] as const
+export const ADMIN_DASHBOARD_THEME_MODES = ['system', 'light', 'dark'] as const
 export const ADMIN_DASHBOARD_WIDGET_KEYS = [
   'kpi_usage_overview',
   'kpi_moderation_queue',
@@ -22,6 +23,7 @@ export const ADMIN_DASHBOARD_WIDGET_KEYS = [
 
 export type AdminDashboardPreset = (typeof ADMIN_DASHBOARD_PRESETS)[number]
 export type AdminDashboardDensityMode = (typeof ADMIN_DASHBOARD_DENSITY_MODES)[number]
+export type AdminDashboardThemeMode = (typeof ADMIN_DASHBOARD_THEME_MODES)[number]
 export type AdminDashboardWidgetKey = (typeof ADMIN_DASHBOARD_WIDGET_KEYS)[number]
 
 export interface AdminDashboardLayoutItem {
@@ -41,6 +43,7 @@ export interface AdminDashboardPinnedFilter {
 export interface AdminDashboardPreferenceSnapshot {
   preset: AdminDashboardPreset
   density: AdminDashboardDensityMode
+  theme: AdminDashboardThemeMode
   refreshSeconds: number
   layout: AdminDashboardLayoutItem[]
   pinnedFilters: AdminDashboardPinnedFilter[]
@@ -60,6 +63,7 @@ export interface IAdminDashboardPreference extends Document {
   user: mongoose.Types.ObjectId
   preset: AdminDashboardPreset
   density: AdminDashboardDensityMode
+  theme: AdminDashboardThemeMode
   refreshSeconds: number
   layout: AdminDashboardLayoutItem[]
   pinnedFilters: AdminDashboardPinnedFilter[]
@@ -145,6 +149,12 @@ const AdminDashboardPreferenceSnapshotSchema = new Schema<AdminDashboardPreferen
       enum: ADMIN_DASHBOARD_DENSITY_MODES,
       required: true,
     },
+    theme: {
+      type: String,
+      enum: ADMIN_DASHBOARD_THEME_MODES,
+      required: false,
+      default: 'system',
+    },
     refreshSeconds: {
       type: Number,
       required: true,
@@ -228,6 +238,12 @@ const AdminDashboardPreferenceSchema = new Schema<IAdminDashboardPreference>(
       enum: ADMIN_DASHBOARD_DENSITY_MODES,
       required: true,
       default: 'comfortable',
+    },
+    theme: {
+      type: String,
+      enum: ADMIN_DASHBOARD_THEME_MODES,
+      required: false,
+      default: 'system',
     },
     refreshSeconds: {
       type: Number,
