@@ -17,6 +17,10 @@ Garantir execucao consistente entre agentes: qualidade tecnica, rastreabilidade 
 3. Se o trabalho envolver frontend e backend, fechar ambos no ciclo e commitar no fim do ponto.
 4. Sempre atualizar a documentacao de progresso quando um item e fechado.
 5. Em caso de hotfix (ex: erro SSR/hydration/runtime), registar o incidente e a correcao nos docs.
+6. Organizacao de ficheiros e obrigatoria no fecho de cada ponto:
+   - mover imediatamente para `dcos/done/` o que ficou concluido;
+   - manter na raiz de `dcos/` apenas o que esta ativo;
+   - atualizar `dcos/audiotira_04.md` no mesmo ciclo de fecho.
 
 ## 3) Fluxo padrao por ponto
 
@@ -95,5 +99,12 @@ Lista central de pendentes:
 
 Regra de ouro:
 1. Nao misturar no mesmo sitio P's fechados, ativos e ideias futuras.
+
+Checklist obrigatoria de fecho (executar sempre):
+1. ponto implementado e validado;
+2. docs atualizadas;
+3. ficheiro do ponto movido para `dcos/done/` quando concluido;
+4. `audiotira_04.md` sincronizada com o novo estado;
+5. commit realizado sem deixar pendencias.
 
 
