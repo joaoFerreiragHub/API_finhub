@@ -70,6 +70,14 @@ import {
   revokeAdminSubscriptionEntitlement,
 } from '../controllers/adminSubscription.controller'
 import {
+  approveAdminBroadcast,
+  createAdminBroadcast,
+  getAdminBroadcast,
+  listAdminBroadcasts,
+  previewAdminBroadcastAudience,
+  sendAdminBroadcast,
+} from '../controllers/adminBroadcast.controller'
+import {
   applyCreatorControls,
   addUserInternalNote,
   banUser,
@@ -823,6 +831,134 @@ router.post(
   }),
   requireAdminScope('admin.users.write'),
   reactivateAdminSubscription
+)
+
+/**
+ * @route   GET /api/admin/communications/broadcasts
+ * @desc    Listar comunicacoes admin segmentadas
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/communications/broadcasts',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.communications.broadcasts.list',
+    resourceType: 'admin_broadcast',
+    scope: 'admin.users.read',
+  }),
+  requireAdminScope('admin.users.read'),
+  listAdminBroadcasts
+)
+
+/**
+ * @route   GET /api/admin/communications/broadcasts/:broadcastId
+ * @desc    Ler detalhe de broadcast administrativo
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/communications/broadcasts/:broadcastId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.communications.broadcasts.read',
+    resourceType: 'admin_broadcast',
+    scope: 'admin.users.read',
+    getResourceId: (req) => req.params.broadcastId,
+  }),
+  requireAdminScope('admin.users.read'),
+  getAdminBroadcast
+)
+
+/**
+ * @route   POST /api/admin/communications/broadcasts/preview
+ * @desc    Dry-run de audiencia para comunicacao segmentada
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.post(
+  '/communications/broadcasts/preview',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.communications.broadcasts.preview',
+    resourceType: 'admin_broadcast',
+    scope: 'admin.users.read',
+  }),
+  requireAdminScope('admin.users.read'),
+  previewAdminBroadcastAudience
+)
+
+/**
+ * @route   POST /api/admin/communications/broadcasts
+ * @desc    Criar broadcast administrativo segmentado
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/communications/broadcasts',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.communications.broadcasts.create',
+    resourceType: 'admin_broadcast',
+    scope: 'admin.users.write',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        title: typeof body.title === 'string' ? body.title : undefined,
+        channel: typeof body.channel === 'string' ? body.channel : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  createAdminBroadcast
+)
+
+/**
+ * @route   POST /api/admin/communications/broadcasts/:broadcastId/approve
+ * @desc    Aprovar broadcast (obrigatorio para envios massivos)
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/communications/broadcasts/:broadcastId/approve',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.communications.broadcasts.approve',
+    resourceType: 'admin_broadcast',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.broadcastId,
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  approveAdminBroadcast
+)
+
+/**
+ * @route   POST /api/admin/communications/broadcasts/:broadcastId/send
+ * @desc    Enviar broadcast para audiencia segmentada
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/communications/broadcasts/:broadcastId/send',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.communications.broadcasts.send',
+    resourceType: 'admin_broadcast',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.broadcastId,
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  sendAdminBroadcast
 )
 
 /**

@@ -171,4 +171,5 @@ Integracao CI/CD:
 - 2026-03-08: P4.3-01 iniciou execucao com backend MVP de paywall/acesso (modelo `ContentAccessPolicy`, preview de impacto e endpoints admin com RBAC/auditoria).
 - 2026-03-08: P4.3-02 iniciou execucao com backend MVP de subscricoes/planos (modelo `UserSubscription`, endpoints admin, timeline/versionamento e acoes controladas com motivo obrigatorio).
 - 2026-03-08: P4.3-03 iniciou execucao com backend MVP de workflow de apelacoes (modelo `ModerationAppeal`, endpoints user/admin, SLA e transicoes de estado auditaveis).
+- 2026-03-08: P4.3-05 iniciou execucao com backend MVP de comunicacoes admin por segmento (modelo `AdminBroadcast`, preview de audiencia, aprovacao massiva e envio in-app por lotes).
 - 2026-03-08: formalizada diretriz de monetizacao/ads (premium sem `external_ads`, sem popups para free, anuncios financeiros/contextuais e dashboards dedicados para admin/marcas/criadores).

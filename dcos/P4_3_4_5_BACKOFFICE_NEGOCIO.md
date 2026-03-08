@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03 e P4.3-04 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04 e P4.3-05 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -260,6 +260,46 @@ Frontend:
 1. Area `Comunicacoes` com composer e preview.
 2. Segmentacao por role/plano/atividade.
 3. Historico de envios e taxa de entrega.
+
+Estado desta iteracao:
+1. backend MVP entregue com modelo de broadcast, preview de audiencia e fluxo de aprovacao/envio.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo `AdminBroadcast` com:
+   - estado (`draft`, `approved`, `sent`, `failed`, `canceled`);
+   - segmentacao por `roles`, `accountStatuses`, `includeUsers`, `excludeUsers`, `lastActiveWithinDays`;
+   - trilho de aprovacao (`approval.required`, `approvedBy`, `approvedAt`, `reason`);
+   - trilho de entrega (`attempted`, `sent`, `failed`, `sentAt`, `lastError`);
+   - `version` + `history` de operacoes.
+2. endpoints admin:
+   - `GET /api/admin/communications/broadcasts`;
+   - `GET /api/admin/communications/broadcasts/:broadcastId`;
+   - `POST /api/admin/communications/broadcasts/preview`;
+   - `POST /api/admin/communications/broadcasts`;
+   - `POST /api/admin/communications/broadcasts/:broadcastId/approve`;
+   - `POST /api/admin/communications/broadcasts/:broadcastId/send`.
+3. dry-run de audiencia (`preview`) com:
+   - estimativa de alcance;
+   - amostra de utilizadores alvo;
+   - flag de exigencia de aprovacao massiva.
+4. aprovacao dupla para envios massivos:
+   - threshold configuravel via `ADMIN_BROADCAST_MASS_APPROVAL_MIN_RECIPIENTS`;
+   - criador nao pode auto-aprovar broadcast quando `approval.required=true`.
+5. envio in-app com persistencia em notificacoes:
+   - cria notificacoes por lote para audiencia segmentada;
+   - guarda metrica de entrega e erro em `delivery`.
+6. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura/preview com `admin.users.read`;
+   - criacao/aprovacao/envio com `admin.users.write`.
+7. rate limit operacional aplicado:
+   - preview com `rateLimiter.adminMetricsDrilldown`;
+   - criacao/aprovacao com `rateLimiter.adminModerationAction`;
+   - envio com `rateLimiter.adminModerationBulk`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
 
 ## 6) P4.4 - Expansao operacional
 
