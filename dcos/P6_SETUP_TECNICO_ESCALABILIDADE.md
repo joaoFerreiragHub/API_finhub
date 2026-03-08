@@ -1,7 +1,7 @@
 # P6 - SETUP TECNICO ESCALABILIDADE (CLEAN CODE + DRY)
 
 Data: 2026-03-08  
-Status: EM CURSO (baseline inicial + T1, T2 e T3 concluidos)
+Status: EM CURSO (baseline inicial + T1, T2, T3 e T4 concluidos)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Objetivo
@@ -117,6 +117,18 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
   - normalizacao de `page/limit/skip` centralizada;
   - menos codigo repetido em servicos com maior superficie de manutencao.
 
+### 3.8 T4 Testes tecnicos de regressao (baseline entregue)
+
+- novo comando tecnico unico:
+  - `npm run test:technical:smoke`
+- composicao do smoke:
+  - `test:admin:scopes`
+  - `contract:openapi`
+  - `test:contracts:routes`
+  - `test:docs:smoke`
+- CI atualizado:
+  - `.github/workflows/ci.yml` passa a executar `test:technical:smoke` no job `validate`.
+
 ## 4) Backlog tecnico priorizado (proximo ciclo)
 
 ## T1) Logging e observability unificados (Alta)
@@ -137,6 +149,7 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - aceite: utilitarios partilhados por dominio + reducao de codigo repetido.
 
 ## T4) Testes tecnicos de regressao (Alta)
+- estado: CONCLUIDO (baseline de smoke tecnico consolidado e integrado em CI)
 - objetivo: complementar E2E com testes unitarios/integracao para camadas core;
 - aceite: smoke tecnico estavel no CI com cobertura dos caminhos de risco.
 

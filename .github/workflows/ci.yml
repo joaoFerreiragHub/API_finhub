@@ -31,11 +31,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Validate OpenAPI contract
-        run: npm run contract:openapi
-
-      - name: Docs audit smoke
-        run: npm run test:docs:smoke
+      - name: Technical regression smoke
+        run: npm run test:technical:smoke
 
   docker-smoke:
     runs-on: ubuntu-latest

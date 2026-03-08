@@ -25,6 +25,7 @@
     "test:docs:smoke": "node scripts/docs-auditoria-04-smoke.js",
     "test:docs:release-gate": "node scripts/docs-auditoria-04-smoke.js --strict-release",
     "test:contracts:routes": "node scripts/test-route-contracts.js",
+    "test:technical:smoke": "npm run test:admin:scopes && npm run contract:openapi && npm run test:contracts:routes && npm run test:docs:smoke",
     "checking": "npm run typecheck && npm run test:docs:smoke",
     "build": "tsc",
     "seed": "ts-node src/scripts/seed.ts",
