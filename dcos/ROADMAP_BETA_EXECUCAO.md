@@ -36,6 +36,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O3-05 | concluido | 2026-03-08 | CAPTCHA aplicado em auth (login/registo): backend com provider por env (disabled|turnstile|hcaptcha), validacao server-side de token em register/login e frontend com widget CAPTCHA e envio de captchaToken nos formularios. |
 | O3-06 | concluido | 2026-03-08 | Analytics real com PostHog e consentimento: eventos deixam de usar console, tracking ativado apenas com cookieConsent.analytics, identidade sincronizada por utilizador autenticado e page views ligadas nos layouts ativos. |
 | O3-07 | concluido | 2026-03-08 | Fluxos E2E obrigatorios de release fechados com suite dedicada: backend com smoke real `npm run test:release:e2e` (registo, login, consumo, publish creator e moderacao admin) e frontend com comando Playwright de release para validar gates principais. |
+| O3-08 | concluido | 2026-03-08 | Auditoria final pre-release fechada com comandos oficiais de audit backend/frontend (mocks, tipos, contratos, suites release/a11y), runbook de auditoria e baseline operacional para performance/a11y em staging. |
 
 ## 1) Gate de Beta
 
