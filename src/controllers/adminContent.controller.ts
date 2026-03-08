@@ -98,6 +98,21 @@ const extractMarkFalsePositive = (req: AuthRequest): boolean | undefined => {
   return undefined
 }
 
+const extractScheduledFor = (req: AuthRequest): string | undefined => {
+  const body = extractBodyRecord(req)
+  if (!body) return undefined
+
+  if (typeof body.scheduledFor === 'string' && body.scheduledFor.trim().length > 0) {
+    return body.scheduledFor.trim()
+  }
+
+  if (typeof body.scheduleAt === 'string' && body.scheduleAt.trim().length > 0) {
+    return body.scheduleAt.trim()
+  }
+
+  return undefined
+}
+
 const extractEventId = (req: AuthRequest): string | undefined => {
   const body = extractBodyRecord(req)
   if (body && typeof body.eventId === 'string' && body.eventId.trim().length > 0) {
@@ -487,6 +502,61 @@ export const unhideContent = async (req: AuthRequest, res: Response) => {
 }
 
 /**
+ * POST /api/admin/content/:contentType/:contentId/unhide/schedule
+ */
+export const scheduleContentUnhide = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const contentType = req.params.contentType
+    if (!isValidContentTypeFilter(contentType)) {
+      return res.status(400).json({
+        error: 'Parametro contentType invalido.',
+      })
+    }
+
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+    if (!reason) {
+      return res.status(400).json({
+        error: 'Motivo obrigatorio para agendar unhide.',
+      })
+    }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
+
+    const scheduledFor = extractScheduledFor(req)
+    if (!scheduledFor) {
+      return res.status(400).json({
+        error: 'Parametro scheduledFor obrigatorio para agendar unhide.',
+      })
+    }
+
+    const job = await adminContentJobService.queueScheduledUnhideJob({
+      actorId: req.user.id,
+      reason,
+      note,
+      contentType: contentType as ModeratableContentType,
+      contentId: req.params.contentId,
+      scheduledFor,
+    })
+
+    return res.status(202).json({
+      message: 'Job de unhide agendado com sucesso.',
+      job,
+    })
+  } catch (error: unknown) {
+    logControllerError(CONTROLLER_DOMAIN, 'schedule_content_unhide', error, req)
+    return handleAdminContentError(res, error, 'Erro ao agendar unhide de conteudo.')
+  }
+}
+
+/**
  * POST /api/admin/content/:contentType/:contentId/restrict
  */
 export const restrictContent = async (req: AuthRequest, res: Response) => {
@@ -644,17 +714,19 @@ export const createBulkModerationJob = async (req: AuthRequest, res: Response) =
       })
     }
 
+    const scheduledFor = extractScheduledFor(req)
     const job = await adminContentJobService.queueBulkModerationJob({
       actorId: req.user.id,
       action,
       reason,
       note,
       confirm: extractConfirm(req),
+      scheduledFor,
       items,
     })
 
     return res.status(202).json({
-      message: 'Job de moderacao em lote criado.',
+      message: scheduledFor ? 'Job de moderacao em lote agendado.' : 'Job de moderacao em lote criado.',
       job,
     })
   } catch (error: unknown) {

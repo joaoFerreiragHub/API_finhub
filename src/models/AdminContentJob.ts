@@ -94,6 +94,7 @@ export interface IAdminContentJob extends Document {
   leaseExpiresAt?: Date | null
   lastHeartbeatAt?: Date | null
   lastAttemptAt?: Date | null
+  scheduledFor?: Date | null
   approval?: AdminContentJobApproval | null
   startedAt?: Date | null
   finishedAt?: Date | null
@@ -418,6 +419,11 @@ const AdminContentJobSchema = new Schema<IAdminContentJob>(
       type: Date,
       default: null,
     },
+    scheduledFor: {
+      type: Date,
+      default: null,
+      index: true,
+    },
     approval: {
       type: AdminContentJobApprovalSchema,
       default: null,
@@ -443,6 +449,7 @@ const AdminContentJobSchema = new Schema<IAdminContentJob>(
 AdminContentJobSchema.index({ createdAt: -1 })
 AdminContentJobSchema.index({ type: 1, createdAt: -1 })
 AdminContentJobSchema.index({ status: 1, createdAt: 1 })
+AdminContentJobSchema.index({ status: 1, scheduledFor: 1, createdAt: 1 })
 AdminContentJobSchema.index({ status: 1, startedAt: 1 })
 AdminContentJobSchema.index({ status: 1, leaseExpiresAt: 1 })
 AdminContentJobSchema.index({ actor: 1, createdAt: -1 })

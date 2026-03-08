@@ -29,6 +29,7 @@ import {
   listContentModerationHistory,
   requestBulkRollbackJobReview,
   rollbackContent,
+  scheduleContentUnhide,
   restrictContent,
   unhideContent,
 } from '../controllers/adminContent.controller'
@@ -1604,6 +1605,14 @@ router.post(
     resourceType: 'content_job',
     scope: 'admin.content.moderate',
     getResourceId: () => 'bulk_moderate',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        bulkAction: typeof body.action === 'string' ? body.action : undefined,
+        bulkItemCount: Array.isArray(body.items) ? body.items.length : 0,
+        scheduledFor: typeof body.scheduledFor === 'string' ? body.scheduledFor : undefined,
+      }
+    },
   }),
   requireAdminScope('admin.content.moderate'),
   createBulkModerationJob
@@ -1683,6 +1692,31 @@ router.post(
   }),
   requireAdminScope('admin.content.moderate'),
   unhideContent
+)
+
+/**
+ * @route   POST /api/admin/content/:contentType/:contentId/unhide/schedule
+ * @desc    Agendar reativacao automatica de conteudo (unhide)
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/:contentType/:contentId/unhide/schedule',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.unhide.schedule',
+    resourceType: 'content_job',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => `${req.params.contentType}:${req.params.contentId}`,
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        scheduledFor: typeof body.scheduledFor === 'string' ? body.scheduledFor : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.content.moderate'),
+  scheduleContentUnhide
 )
 
 /**

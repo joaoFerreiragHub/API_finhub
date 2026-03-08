@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01 e P4.5-02 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01, P4.5-02 e P4.5-03 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -515,6 +515,42 @@ Entregue no backend:
    - preview/escrita com `admin.users.write`.
 6. rate limit operacional aplicado:
    - preview e execucao com `rateLimiter.adminModerationBulk`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
+3. `npm run checking`
+
+### 7.3 P4.5-03 Acoes agendadas (unhide automatico)
+
+Objetivo:
+1. Permitir agendar reativacao de conteudo sem intervencao manual no momento de expiracao.
+
+Backend:
+1. Suportar jobs `queued` com `scheduledFor`, executados apenas quando due.
+2. Expor endpoint para agendar `unhide` por conteudo.
+3. Manter observabilidade do backlog agendado no estado do worker.
+
+Frontend:
+1. Acao admin para definir data/hora de unhide automatico (ainda pendente).
+2. Visualizacao de jobs agendados no painel operacional (ainda pendente).
+
+Estado desta iteracao:
+1. backend MVP entregue com agendamento de `unhide` e processamento assíncrono por worker.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo `AdminContentJob` evoluido com `scheduledFor` e indice operacional por `status + scheduledFor`.
+2. worker `adminContentJobService` evoluido para:
+   - reclamar apenas jobs due (`scheduledFor <= now` ou sem schedule);
+   - manter timer interno para proximo job agendado;
+   - expor no `getWorkerStatus` os campos `scheduled` e `nextScheduledAt`.
+3. endpoint admin novo:
+   - `POST /api/admin/content/:contentType/:contentId/unhide/schedule`
+4. endpoint existente evoluido:
+   - `POST /api/admin/content/bulk-moderate/jobs` aceita `scheduledFor` (nesta iteracao, apenas para `action=unhide`).
+5. auditoria administrativa e `requireAdminScope` aplicados com `admin.content.moderate`.
+6. rate limit operacional aplicado com `rateLimiter.adminModerationAction` e `rateLimiter.adminModerationBulk`.
 
 Validacao desta iteracao:
 1. `npm run typecheck`

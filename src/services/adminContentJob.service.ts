@@ -25,6 +25,7 @@ import {
   adminContentService,
 } from './adminContent.service'
 import { resolvePagination } from '../utils/pagination'
+import { ModeratableContentType } from '../models/ContentModerationEvent'
 
 interface PaginationOptions {
   page?: number
@@ -53,6 +54,8 @@ const DEFAULT_JOB_LEASE_MS = 60_000
 const DEFAULT_MAX_ATTEMPTS = 3
 const DEFAULT_WORKER_STOP_POLL_MS = 100
 const WORKER_RUNTIME_KEY = 'admin_content_jobs'
+const DEFAULT_MAX_SCHEDULE_AHEAD_HOURS = 24 * 30
+const SCHEDULE_TIMER_MAX_DELAY_MS = 6 * 60 * 60 * 1000
 
 const parsePositiveIntEnv = (value: string | undefined, fallback: number): number => {
   if (!value) return fallback
@@ -77,7 +80,33 @@ const WORKER_STOP_POLL_MS = parsePositiveIntEnv(
   process.env.ADMIN_CONTENT_JOBS_WORKER_STOP_POLL_MS,
   DEFAULT_WORKER_STOP_POLL_MS
 )
+const MAX_SCHEDULE_AHEAD_HOURS = parsePositiveIntEnv(
+  process.env.ADMIN_CONTENT_JOBS_MAX_SCHEDULE_AHEAD_HOURS,
+  DEFAULT_MAX_SCHEDULE_AHEAD_HOURS
+)
 const WORKER_STATUS_STALE_MS = Math.max(JOB_LEASE_MS, WORKER_HEARTBEAT_MS * 3)
+
+const buildRunnableJobTypeQuery = (): Record<string, unknown> => ({
+  $or: [
+    { type: 'bulk_moderate' },
+    {
+      type: 'bulk_rollback',
+      'approval.required': { $ne: true },
+    },
+    {
+      type: 'bulk_rollback',
+      'approval.reviewStatus': 'approved',
+    },
+  ],
+})
+
+const buildDueJobQuery = (now: Date): Record<string, unknown> => ({
+  $or: [
+    { scheduledFor: { $exists: false } },
+    { scheduledFor: null },
+    { scheduledFor: { $lte: now } },
+  ],
+})
 
 const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId => {
   if (!mongoose.Types.ObjectId.isValid(rawId)) {
@@ -95,6 +124,35 @@ const runtimeStatsDefaults = () => ({
   failedJobs: 0,
   requeuedJobs: 0,
 })
+
+const normalizeScheduledFor = (value: unknown): Date | null => {
+  if (value === undefined || value === null || value === '') return null
+
+  const parsed =
+    value instanceof Date
+      ? new Date(value.getTime())
+      : typeof value === 'string'
+        ? new Date(value)
+        : null
+  if (!parsed || Number.isNaN(parsed.getTime())) {
+    throw new AdminContentServiceError(400, 'Parametro scheduledFor invalido.')
+  }
+
+  const now = Date.now()
+  if (parsed.getTime() <= now) {
+    throw new AdminContentServiceError(400, 'scheduledFor deve ser uma data futura.')
+  }
+
+  const maxAheadMs = MAX_SCHEDULE_AHEAD_HOURS * 60 * 60 * 1000
+  if (parsed.getTime() > now + maxAheadMs) {
+    throw new AdminContentServiceError(
+      400,
+      `scheduledFor excede horizonte maximo de ${MAX_SCHEDULE_AHEAD_HOURS} horas.`
+    )
+  }
+
+  return parsed
+}
 
 export const isValidAdminContentJobType = (value: unknown): value is AdminContentJobType =>
   value === 'bulk_moderate' || value === 'bulk_rollback'
@@ -215,8 +273,17 @@ class AdminContentJobService {
     return gracefulStop
   }
 
-  async queueBulkModerationJob(input: BulkModerateContentInput) {
+  async queueBulkModerationJob(input: BulkModerateContentInput & { scheduledFor?: string | Date | null }) {
     const actorId = toObjectId(input.actorId, 'actorId')
+    const scheduledFor = normalizeScheduledFor(input.scheduledFor)
+
+    if (scheduledFor && input.action !== 'unhide') {
+      throw new AdminContentServiceError(
+        400,
+        'Agendamento suportado apenas para acao unhide nesta iteracao.'
+      )
+    }
+
     const { uniqueItems, duplicatesSkipped } = normalizeBulkModerationItems(input.items)
 
     if (uniqueItems.length >= ADMIN_CONTENT_BULK_CONFIRM_THRESHOLD && input.confirm !== true) {
@@ -236,6 +303,7 @@ class AdminContentJobService {
       confirm: input.confirm === true,
       attemptCount: 0,
       maxAttempts: MAX_JOB_ATTEMPTS,
+      scheduledFor,
       items: uniqueItems.map((item) => ({
         contentType: item.contentType,
         contentId: item.contentId,
@@ -257,6 +325,30 @@ class AdminContentJobService {
 
     this.scheduleWorker()
     return this.getJob(String(job._id))
+  }
+
+  async queueScheduledUnhideJob(input: {
+    actorId: string
+    reason: string
+    note?: string
+    contentType: ModeratableContentType
+    contentId: string
+    scheduledFor: string | Date
+  }) {
+    return this.queueBulkModerationJob({
+      actorId: input.actorId,
+      action: 'unhide',
+      reason: input.reason,
+      note: input.note,
+      confirm: false,
+      scheduledFor: input.scheduledFor,
+      items: [
+        {
+          contentType: input.contentType,
+          contentId: input.contentId,
+        },
+      ],
+    })
   }
 
   async queueBulkRollbackJob(input: BulkRollbackContentInput) {
@@ -468,22 +560,34 @@ class AdminContentJobService {
             .lean()
         : Promise.resolve(null)
 
-    const [queued, awaitingApproval, running, staleRunning, retrying, maxAttemptsReached, failedLast24h, currentJob] =
+    const [
+      queued,
+      scheduled,
+      nextScheduledJob,
+      awaitingApproval,
+      running,
+      staleRunning,
+      retrying,
+      maxAttemptsReached,
+      failedLast24h,
+      currentJob,
+    ] =
       await Promise.all([
         AdminContentJob.countDocuments({
           status: 'queued',
-          $or: [
-            { type: 'bulk_moderate' },
-            {
-              type: 'bulk_rollback',
-              'approval.required': { $ne: true },
-            },
-            {
-              type: 'bulk_rollback',
-              'approval.reviewStatus': 'approved',
-            },
-          ],
+          $and: [buildRunnableJobTypeQuery(), buildDueJobQuery(now)],
         }),
+        AdminContentJob.countDocuments({
+          status: 'queued',
+          $and: [buildRunnableJobTypeQuery(), { scheduledFor: { $gt: now } }],
+        }),
+        AdminContentJob.findOne({
+          status: 'queued',
+          $and: [buildRunnableJobTypeQuery(), { scheduledFor: { $gt: now } }],
+        })
+          .sort({ scheduledFor: 1, createdAt: 1 })
+          .select({ scheduledFor: 1 })
+          .lean(),
         AdminContentJob.countDocuments({
           type: 'bulk_rollback',
           status: 'queued',
@@ -548,6 +652,8 @@ class AdminContentJobService {
       },
       queue: {
         queued,
+        scheduled,
+        nextScheduledAt: nextScheduledJob?.scheduledFor ?? null,
         awaitingApproval,
         running,
         staleRunning,
@@ -783,16 +889,37 @@ class AdminContentJobService {
     )
   }
 
-  private scheduleWorker() {
+  private scheduleWorker(delayMs = 0) {
     if (!this.workerEnabled || this.workerScheduled || this.workerRunning || this.stopRequested) return
     if (mongoose.connection.readyState !== 1) return
+
+    const safeDelay = Math.max(0, Math.min(delayMs, SCHEDULE_TIMER_MAX_DELAY_MS))
 
     this.workerScheduled = true
     this.scheduledTimer = setTimeout(() => {
       this.workerScheduled = false
       this.scheduledTimer = null
       void this.processNextJobs()
-    }, 0)
+    }, safeDelay)
+  }
+
+  private async scheduleNextDueJob() {
+    if (!this.workerEnabled || this.workerScheduled || this.workerRunning || this.stopRequested) return
+    if (mongoose.connection.readyState !== 1) return
+
+    const now = new Date()
+    const nextJob = await AdminContentJob.findOne({
+      status: 'queued',
+      $and: [buildRunnableJobTypeQuery(), { scheduledFor: { $gt: now } }],
+    })
+      .sort({ scheduledFor: 1, createdAt: 1 })
+      .select({ scheduledFor: 1 })
+      .lean()
+
+    if (!nextJob?.scheduledFor) return
+
+    const delayMs = Math.max(0, new Date(nextJob.scheduledFor).getTime() - Date.now())
+    this.scheduleWorker(delayMs)
   }
 
   private async requeueStaleRunningJobs() {
@@ -894,17 +1021,7 @@ class AdminContentJobService {
         const claimedJob = await AdminContentJob.findOneAndUpdate(
           {
             status: 'queued',
-            $or: [
-              { type: 'bulk_moderate' },
-              {
-                type: 'bulk_rollback',
-                'approval.required': { $ne: true },
-              },
-              {
-                type: 'bulk_rollback',
-                'approval.reviewStatus': 'approved',
-              },
-            ],
+            $and: [buildRunnableJobTypeQuery(), buildDueJobQuery(claimStartedAt)],
           },
           {
             $set: {
@@ -928,7 +1045,10 @@ class AdminContentJobService {
           }
         )
 
-        if (!claimedJob) break
+        if (!claimedJob) {
+          await this.scheduleNextDueJob()
+          break
+        }
 
         await this.incrementWorkerStats({ claimedJobs: 1 })
         await this.setCurrentJobContext({
@@ -1377,6 +1497,7 @@ class AdminContentJobService {
       workerId: item.workerId ?? null,
       leaseExpiresAt: item.leaseExpiresAt ?? null,
       lastHeartbeatAt: item.lastHeartbeatAt ?? null,
+      scheduledFor: item.scheduledFor ?? null,
       actor,
       items: Array.isArray(item.items)
         ? item.items.map((jobItem: any) => ({
