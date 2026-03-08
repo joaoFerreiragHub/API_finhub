@@ -33,6 +33,7 @@ import platformRoutes from './platform.routes'
 import creatorRoutes from './creator.routes'
 import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
+import feedRoutes from './feed.routes'
 
 const router = Router()
 
@@ -61,6 +62,7 @@ router.get('/', (req, res) => {
         favorites: '/api/favorites',
         notifications: '/api/notifications',
       },
+      feed: '/api/feed',
       universal: {
         ratings: '/api/ratings',
         comments: '/api/comments',
@@ -111,6 +113,7 @@ router.use('/upload', uploadRoutes)
 router.use('/follow', followRoutes)
 router.use('/favorites', favoriteRoutes)
 router.use('/notifications', notificationRoutes)
+router.use('/feed', feedRoutes)
 
 // Rotas universais (ratings & comments)
 router.use('/ratings', ratingRoutes)
@@ -145,5 +148,4 @@ router.use('/external-content', externalContentRoutes)
 router.use('/search', searchRoutes)
 
 export default router
-
 

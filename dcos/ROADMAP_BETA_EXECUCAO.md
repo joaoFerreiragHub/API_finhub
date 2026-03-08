@@ -32,6 +32,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O3-01 | concluido | 2026-03-07 | OAuth Google entregue com `GET /api/auth/google/start` e `GET /api/auth/google/callback`, state anti-CSRF com TTL, troca de code por token, resolve userinfo, auto-provisionamento/login por email verificado e redirect seguro para callback frontend com tokens (fragment hash). |
 | O3-02 | concluido | 2026-03-07 | Pesquisa global entregue com GET /api/search (filtros q, type, types, limit) cobrindo artigos/cursos/videos/eventos/livros/podcasts/criadores/recursos com ranking por relevancia e popularidade, pronta para o SearchPage e atalho Ctrl+K do frontend. |
 | O3-03 | concluido | 2026-03-07 | Centro de notificacoes fechado no frontend com NotificationBell integrado no header principal (desktop/mobile), dropdown operacional com mark-as-read em clique, ligacao para /notificacoes e consumo dos endpoints reais de notifications/preferences/subscriptions. |
+| O3-04 | concluido | 2026-03-07 | Feed cronologico "a seguir" fechado em backend+frontend: novo endpoint autenticado GET /api/feed (filtros following, page, limit) com agregacao multi-conteudo por data de publicacao, frontend ligado a /feed com paginacao infinita e pagina /a-seguir sem placeholder. |
 
 ## 1) Gate de Beta
 
@@ -127,4 +128,3 @@ Antes de convidar users:
 4. Paginas legais e disclaimer financeiro visiveis.
 5. Fluxo E2E minimo verde: registo -> login -> consumir conteudo -> criador publicar -> admin moderar.
 6. Paginas criticas carregam em SLA aceitavel (publicas <3s, ferramentas <5s em ambiente alvo).
-
