@@ -92,6 +92,7 @@ export interface RegisterDTO {
   name: string
   username: string
   role?: 'free' | 'creator'
+  captchaToken?: string
   legalAcceptance?: RegisterLegalAcceptanceDTO
   cookieConsent?: CookieConsentDTO
 }
@@ -99,6 +100,7 @@ export interface RegisterDTO {
 export interface LoginDTO {
   email: string
   password: string
+  captchaToken?: string
 }
 
 export interface RefreshTokenDTO {

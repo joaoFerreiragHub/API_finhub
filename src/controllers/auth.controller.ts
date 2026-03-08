@@ -14,6 +14,7 @@ import {
 } from '../types/auth'
 import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
 import { emailService } from '../services/email.service'
+import { captchaService, CaptchaServiceError } from '../services/captcha.service'
 
 interface GoogleOAuthStateEntry {
   redirectPath: string
@@ -334,6 +335,18 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
       return res.status(400).json({
         error: 'Campos obrigatorios: email, password, name, username',
       })
+    }
+
+    try {
+      await captchaService.assertToken(req.body.captchaToken, req.ip)
+    } catch (captchaError) {
+      if (captchaError instanceof CaptchaServiceError) {
+        return res.status(captchaError.statusCode).json({
+          error: captchaError.message,
+          provider: captchaService.getProvider(),
+        })
+      }
+      throw captchaError
     }
 
     if (
@@ -890,6 +903,18 @@ export const login = async (req: Request<{}, {}, LoginDTO>, res: Response) => {
       return res.status(400).json({
         error: 'Email e password sao obrigatorios.',
       })
+    }
+
+    try {
+      await captchaService.assertToken(req.body.captchaToken, req.ip)
+    } catch (captchaError) {
+      if (captchaError instanceof CaptchaServiceError) {
+        return res.status(captchaError.statusCode).json({
+          error: captchaError.message,
+          provider: captchaService.getProvider(),
+        })
+      }
+      throw captchaError
     }
 
     const user = await User.findOne({ email }).select('+password')
