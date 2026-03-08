@@ -129,6 +129,30 @@ export class AdminScopeDelegationServiceError extends Error {
 }
 
 export class AdminScopeDelegationService {
+  async listActiveDelegatedScopes(targetAdminIdRaw: string): Promise<AdminScope[]> {
+    if (!mongoose.Types.ObjectId.isValid(targetAdminIdRaw)) return []
+
+    const now = new Date()
+    const rows = await AdminScopeDelegation.find({
+      delegatedTo: new mongoose.Types.ObjectId(targetAdminIdRaw),
+      revokedAt: null,
+      startsAt: { $lte: now },
+      expiresAt: { $gt: now },
+    })
+      .select({ scope: 1, _id: 0 })
+      .lean()
+
+    const unique = new Set<AdminScope>()
+    for (const row of rows) {
+      const scope = typeof row.scope === 'string' ? row.scope : null
+      if (scope && VALID_ADMIN_SCOPE_SET.has(scope)) {
+        unique.add(scope as AdminScope)
+      }
+    }
+
+    return [...unique].sort((left, right) => left.localeCompare(right))
+  }
+
   async hasActiveScopeDelegation(targetAdminIdRaw: string, scope: AdminScope): Promise<boolean> {
     if (!mongoose.Types.ObjectId.isValid(targetAdminIdRaw)) return false
 
@@ -381,10 +405,12 @@ export class AdminScopeDelegationService {
 
     const changed = delegation.revokedAt == null
     if (changed) {
+      const purgeAt = new Date(Date.now() + RETENTION_DAYS * 24 * 60 * 60 * 1000)
       delegation.revokedAt = new Date()
       delegation.revokedBy = actorId
       delegation.revokeReason = reason
       delegation.revokeNote = note
+      delegation.purgeAt = purgeAt
       await delegation.save()
     }
 

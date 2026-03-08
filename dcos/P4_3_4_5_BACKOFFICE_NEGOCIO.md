@@ -591,10 +591,12 @@ Entregue no backend:
 4. integracao RBAC:
    - `requireAdminScope` passa a aceitar scopes delegados ativos para admins;
    - mantem bloqueio `adminReadOnly` para scopes de escrita, mesmo com delegacao.
-5. auditoria administrativa e `requireAdminScope` aplicados:
+5. alinhamento de comportamento em servicos:
+   - personalizacao de dashboard passa a considerar scopes delegados ativos ao resolver widgets disponiveis.
+6. auditoria administrativa e `requireAdminScope` aplicados:
    - listagem com `admin.users.read`;
    - criacao/revogacao com `admin.users.write`.
-6. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
+7. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
 
 Validacao desta iteracao:
 1. `npm run typecheck`

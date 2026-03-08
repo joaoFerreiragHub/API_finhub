@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import { AdminScope, getAdminScopesForUser } from '../admin/permissions'
+import { adminScopeDelegationService } from './adminScopeDelegation.service'
 import {
   ADMIN_DASHBOARD_DENSITY_MODES,
   ADMIN_DASHBOARD_PRESETS,
@@ -263,12 +264,24 @@ export class AdminDashboardPreferenceService {
     return new mongoose.Types.ObjectId(actor.id)
   }
 
-  private resolveCatalog(actor: AdminDashboardActor): AdminDashboardWidgetDefinition[] {
+  private async resolveScopeSet(actor: AdminDashboardActor): Promise<Set<AdminScope>> {
     const scopeSet = getAdminScopesForUser({
       role: 'admin',
       adminScopes: actor.adminScopes ?? [],
     } as any)
 
+    if (mongoose.Types.ObjectId.isValid(actor.id)) {
+      const delegatedScopes = await adminScopeDelegationService.listActiveDelegatedScopes(actor.id)
+      for (const scope of delegatedScopes) {
+        scopeSet.add(scope)
+      }
+    }
+
+    return scopeSet
+  }
+
+  private async resolveCatalog(actor: AdminDashboardActor): Promise<AdminDashboardWidgetDefinition[]> {
+    const scopeSet = await this.resolveScopeSet(actor)
     return WIDGET_CATALOG.filter((widget) =>
       widget.requiredScopes.every((scope) => scopeSet.has(scope))
     )
@@ -463,7 +476,7 @@ export class AdminDashboardPreferenceService {
 
   async getPreference(actor: AdminDashboardActor): Promise<AdminDashboardPreferenceResult> {
     const actorId = this.validateActor(actor)
-    const catalog = this.resolveCatalog(actor)
+    const catalog = await this.resolveCatalog(actor)
     const preference = await this.ensurePreference(actorId, catalog)
     return this.presentResult(preference.toObject(), catalog)
   }
@@ -475,7 +488,7 @@ export class AdminDashboardPreferenceService {
     noteInput?: unknown
   ): Promise<AdminDashboardPreferenceResult> {
     const actorId = this.validateActor(actor)
-    const catalog = this.resolveCatalog(actor)
+    const catalog = await this.resolveCatalog(actor)
     const preference = await this.ensurePreference(actorId, catalog)
 
     const before = JSON.stringify(
@@ -608,7 +621,7 @@ export class AdminDashboardPreferenceService {
     noteInput?: unknown
   ): Promise<AdminDashboardPreferenceResult> {
     const actorId = this.validateActor(actor)
-    const catalog = this.resolveCatalog(actor)
+    const catalog = await this.resolveCatalog(actor)
     const preference = await this.ensurePreference(actorId, catalog)
 
     const nextPreset: AdminDashboardPreset = isPreset(presetInput) ? presetInput : 'operations'
