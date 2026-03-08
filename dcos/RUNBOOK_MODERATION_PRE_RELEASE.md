@@ -1,4 +1,4 @@
-# Runbook Moderation Pre-Release (O1-08)
+﻿# Runbook Moderation Pre-Release (O1-08)
 
 Data: 2026-03-07  
 Escopo: backend `API_finhub` (`P4-MODERATION-HARDENING`)
@@ -21,6 +21,8 @@ Ter um procedimento unico para validar e operar moderacao antes do beta fechado,
 
 ## 3) Smoke de moderacao (JWT real)
 
+Importante: este gate deve ser executado como uma das ultimas validacoes do pre-release (T-1/T-0), apos typecheck, suites de testes e gate de release E2E estarem verdes.
+
 Script oficial:
 
 ```bash
@@ -40,7 +42,7 @@ Variaveis necessarias (`.env` ou shell):
 Notas de resolucao de variaveis:
 
 1. O script carrega automaticamente `.env` e `.env.local` na raiz do projeto.
-2. Variaveis ja definidas no processo/shell têm precedencia sobre os ficheiros.
+2. Variaveis ja definidas no processo/shell tÃªm precedencia sobre os ficheiros.
 3. Em CI, preferir injetar via variaveis de ambiente seguras.
 
 Fluxo validado pelo smoke:
@@ -92,3 +94,4 @@ npm run typecheck
 npm run test:admin:scopes
 npm run test:moderation:pre-release
 ```
+

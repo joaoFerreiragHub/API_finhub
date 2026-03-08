@@ -1,4 +1,4 @@
-# P4 Moderation Control Plane
+﻿# P4 Moderation Control Plane
 
 ## Objetivo
 
@@ -960,6 +960,7 @@ Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 8. Adicionar testes de carga aos endpoints de moderacao.
 9. Garantir retention e consulta eficiente de auditoria e eventos.
 10. Preparar dashboard com visibilidade global por creator, alvo e superficie.
+11. Executar `npm run test:moderation:pre-release` como uma das ultimas validacoes de pre-release (T-1/T-0), com todas as variaveis `MODERATION_SMOKE_*` preenchidas e contas reais.
 
 ## Proxima iteracao recomendada
 
@@ -1023,7 +1024,7 @@ Estado:
 
 Objetivo:
 
-- usar falso positivo e reincidencia para reduzir ruído e melhorar acerto;
+- usar falso positivo e reincidencia para reduzir ruÃ­do e melhorar acerto;
 - evitar que automacao penalize creators validos com demasiada facilidade.
 
 Entregue:
@@ -1129,3 +1130,4 @@ Cada bloco deve fechar sempre estas quatro frentes antes de passar ao seguinte:
 2. surface admin/frontend
 3. testes e validacao de CLI
 4. documentacao operacional e pre-release
+
