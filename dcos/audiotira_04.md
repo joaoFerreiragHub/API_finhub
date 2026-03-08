@@ -185,5 +185,6 @@ Integracao CI/CD:
 - 2026-03-08: P4.3-02 iniciou execucao com backend MVP de subscricoes/planos (modelo `UserSubscription`, endpoints admin, timeline/versionamento e acoes controladas com motivo obrigatorio).
 - 2026-03-08: P4.3-03 iniciou execucao com backend MVP de workflow de apelacoes (modelo `ModerationAppeal`, endpoints user/admin, SLA e transicoes de estado auditaveis).
 - 2026-03-08: P4.3-05 iniciou execucao com backend MVP de comunicacoes admin por segmento (modelo `AdminBroadcast`, preview de audiencia, aprovacao massiva e envio in-app por lotes).
+- 2026-03-08: P4.4-03 iniciou execucao com backend MVP de anuncios/partnerships (modelos `AdSlotConfig` e `AdCampaign`, inventory overview e endpoints admin para slots/campanhas).
 - 2026-03-08: formalizada diretriz de monetizacao/ads (premium sem `external_ads`, sem popups para free, anuncios financeiros/contextuais e dashboards dedicados para admin/marcas/criadores).
 - 2026-03-08: integrada trilha estrategica `P_REVENUE_E_ADS_ESTRATEGIA.md` na auditoria como nao bloqueante para release, com guardrails de transparencia/compliance/seguranca.

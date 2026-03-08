@@ -78,6 +78,18 @@ import {
   sendAdminBroadcast,
 } from '../controllers/adminBroadcast.controller'
 import {
+  activateAdminAdCampaign,
+  createAdminAdCampaign,
+  createAdminAdSlot,
+  getAdminAdCampaign,
+  getAdminAdsInventoryOverview,
+  listAdminAdCampaigns,
+  listAdminAdSlots,
+  pauseAdminAdCampaign,
+  updateAdminAdCampaign,
+  updateAdminAdSlot,
+} from '../controllers/adminAdPartnership.controller'
+import {
   applyCreatorControls,
   addUserInternalNote,
   banUser,
@@ -959,6 +971,201 @@ router.post(
   }),
   requireAdminScope('admin.users.write'),
   sendAdminBroadcast
+)
+
+/**
+ * @route   GET /api/admin/ads/inventory/overview
+ * @desc    Overview de inventario e cobertura de campanhas por superficie
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/ads/inventory/overview',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.ads.inventory.overview.read',
+    resourceType: 'ad_inventory',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  getAdminAdsInventoryOverview
+)
+
+/**
+ * @route   GET /api/admin/ads/slots
+ * @desc    Listar configuracoes de slots publicitarios
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/ads/slots',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.ads.slots.list',
+    resourceType: 'ad_slot_config',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminAdSlots
+)
+
+/**
+ * @route   POST /api/admin/ads/slots
+ * @desc    Criar configuracao de slot publicitario
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/ads/slots',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.slots.create',
+    resourceType: 'ad_slot_config',
+    scope: 'admin.content.moderate',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        slotId: typeof body.slotId === 'string' ? body.slotId : undefined,
+        surface: typeof body.surface === 'string' ? body.surface : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.content.moderate'),
+  createAdminAdSlot
+)
+
+/**
+ * @route   PATCH /api/admin/ads/slots/:slotId
+ * @desc    Atualizar configuracao de slot publicitario
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.patch(
+  '/ads/slots/:slotId',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.slots.update',
+    resourceType: 'ad_slot_config',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.slotId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminAdSlot
+)
+
+/**
+ * @route   GET /api/admin/ads/campaigns
+ * @desc    Listar campanhas de anuncios e partnerships
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/ads/campaigns',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.list',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminAdCampaigns
+)
+
+/**
+ * @route   GET /api/admin/ads/campaigns/:campaignId
+ * @desc    Ler detalhe de campanha de anuncios
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/ads/campaigns/:campaignId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.read',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.read',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.content.read'),
+  getAdminAdCampaign
+)
+
+/**
+ * @route   POST /api/admin/ads/campaigns
+ * @desc    Criar campanha de anuncios/partnership
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/ads/campaigns',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.create',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.moderate',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        code: typeof body.code === 'string' ? body.code : undefined,
+        adType: typeof body.adType === 'string' ? body.adType : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.content.moderate'),
+  createAdminAdCampaign
+)
+
+/**
+ * @route   PATCH /api/admin/ads/campaigns/:campaignId
+ * @desc    Atualizar campanha de anuncios/partnership
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.patch(
+  '/ads/campaigns/:campaignId',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.update',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminAdCampaign
+)
+
+/**
+ * @route   POST /api/admin/ads/campaigns/:campaignId/activate
+ * @desc    Ativar campanha de anuncios
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/ads/campaigns/:campaignId/activate',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.activate',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  activateAdminAdCampaign
+)
+
+/**
+ * @route   POST /api/admin/ads/campaigns/:campaignId/pause
+ * @desc    Pausar campanha de anuncios
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/ads/campaigns/:campaignId/pause',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.pause',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  pauseAdminAdCampaign
 )
 
 /**

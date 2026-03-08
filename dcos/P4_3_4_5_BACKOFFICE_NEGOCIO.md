@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04 e P4.3-05 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05 e P4.4-03 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -341,6 +341,41 @@ Validacao desta iteracao:
    - admin: inventory map, aprovacoes, performance e revenue;
    - marca: campanhas, gasto, CTR/conversao, placements ativos;
    - criador: campanhas proprias, patrocinio e performance por placement.
+
+Estado desta iteracao:
+1. backend MVP entregue com inventario de slots, campanhas e governanca operacional no admin.
+2. frontend admin (dashboards/workflows visuais) ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelos:
+   - `AdSlotConfig` para inventario de placements por superficie/posicao/device;
+   - `AdCampaign` para campanhas/parcerias com estado, janela, sponsor e target.
+2. endpoints admin:
+   - `GET /api/admin/ads/inventory/overview`;
+   - `GET /api/admin/ads/slots`;
+   - `POST /api/admin/ads/slots`;
+   - `PATCH /api/admin/ads/slots/:slotId`;
+   - `GET /api/admin/ads/campaigns`;
+   - `GET /api/admin/ads/campaigns/:campaignId`;
+   - `POST /api/admin/ads/campaigns`;
+   - `PATCH /api/admin/ads/campaigns/:campaignId`;
+   - `POST /api/admin/ads/campaigns/:campaignId/activate`;
+   - `POST /api/admin/ads/campaigns/:campaignId/pause`.
+3. regras de negocio aplicadas no backend:
+   - `external_ads` bloqueado para visibilidade premium/all (campanha e slot);
+   - validacao de compatibilidade entre `adType` da campanha e `allowedTypes` dos slots;
+   - validacao de janela `startAt/endAt` para ativacao.
+4. overview operacional:
+   - cobertura de slots por superficie (total/ativo);
+   - campanhas por tipo e campanhas ativas por superficie.
+5. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura com `admin.content.read`;
+   - mutacoes com `admin.content.moderate`.
+6. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
 
 ## 7) P4.5 - Opcional (produtividade/UX)
 
