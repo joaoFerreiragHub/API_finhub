@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Planeado (post-P4.2)
+Estado: Em curso (P4.3-04 backend MVP entregue)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -105,6 +105,31 @@ Frontend:
 1. Selector de template nos dialogs de acao critica.
 2. Auto-fill de `reason`/`note` com override permitido.
 3. Telemetria de uso por template.
+
+Estado desta iteracao:
+1. backend MVP entregue com modelo versionado, historico e RBAC admin.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo `AdminModerationTemplate` com:
+   - `code`, `label`, `reason`, `defaultNote`, `tags`;
+   - flags `active`, `requiresNote`, `requiresDoubleConfirm`;
+   - `version` + `history` de alteracoes.
+2. endpoints admin:
+   - `GET /api/admin/content/moderation-templates`
+   - `GET /api/admin/content/moderation-templates/:templateId`
+   - `POST /api/admin/content/moderation-templates`
+   - `PATCH /api/admin/content/moderation-templates/:templateId`
+   - `POST /api/admin/content/moderation-templates/:templateId/activate`
+   - `POST /api/admin/content/moderation-templates/:templateId/deactivate`
+3. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura com `admin.content.read`;
+   - escrita com `admin.content.moderate`.
+4. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
 
 ### 5.5 P4.3-05 Comunicacoes admin por segmento
 

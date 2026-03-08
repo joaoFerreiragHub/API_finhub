@@ -43,7 +43,7 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 | Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
 |---|---|---|---|
 | P4.2 | dcos/P4_MODERATION_CONTROL_PLANE.md | em_curso | Sim |
-| P4.3-4.5 | dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md | planeado | Sim |
+| P4.3-4.5 | dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md | em_curso | Sim |
 | P5 pre-beta | dcos/P5_PRE_BETA_PLATAFORMA.md | em_curso | Sim |
 | P5 marcas | dcos/P5_MARCAS_ENTIDADES.md | proposto | Sim |
 | P5 criadores | dcos/P5_CRIADORES_CONTEUDO.md | proposto | Sim |
@@ -150,3 +150,4 @@ Integracao CI/CD:
 - 2026-03-08: T5 concluido no P6 setup tecnico (baseline de indices criticos + smoke `npm run test:perf:indexes`).
 - 2026-03-08: T6 concluido no P6 setup tecnico (guardas de seguranca em runtime + checklist operacional + smoke `npm run test:security:smoke`).
 - 2026-03-08: P4 evoluido com novos alertas operacionais (`content_jobs_stale_backlog`, `content_jobs_retry_spike`, `false_positive_spike`) e thresholds configuraveis por env.
+- 2026-03-08: P4.3-04 iniciou execucao com backend MVP de templates de moderacao (modelo versionado + endpoints admin + RBAC/auditoria).

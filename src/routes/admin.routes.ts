@@ -41,6 +41,14 @@ import {
   updateAdminSurfaceControl,
 } from '../controllers/adminSurfaceControl.controller'
 import {
+  activateAdminModerationTemplate,
+  createAdminModerationTemplate,
+  deactivateAdminModerationTemplate,
+  getAdminModerationTemplate,
+  listAdminModerationTemplates,
+  updateAdminModerationTemplate,
+} from '../controllers/adminModerationTemplate.controller'
+import {
   applyCreatorControls,
   addUserInternalNote,
   banUser,
@@ -499,6 +507,125 @@ router.get(
   }),
   requireAdminScope('admin.content.read'),
   listContentReports
+)
+
+/**
+ * @route   GET /api/admin/content/moderation-templates
+ * @desc    Listar templates de moderacao operacionais
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/moderation-templates',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.moderation_templates.list',
+    resourceType: 'moderation_template',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminModerationTemplates
+)
+
+/**
+ * @route   GET /api/admin/content/moderation-templates/:templateId
+ * @desc    Ler detalhe de um template de moderacao
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/moderation-templates/:templateId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.moderation_templates.read',
+    resourceType: 'moderation_template',
+    scope: 'admin.content.read',
+    getResourceId: (req) => req.params.templateId,
+  }),
+  requireAdminScope('admin.content.read'),
+  getAdminModerationTemplate
+)
+
+/**
+ * @route   POST /api/admin/content/moderation-templates
+ * @desc    Criar template de moderacao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/moderation-templates',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.moderation_templates.create',
+    resourceType: 'moderation_template',
+    scope: 'admin.content.moderate',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        code: typeof body.code === 'string' ? body.code : undefined,
+        requiresNote: typeof body.requiresNote === 'boolean' ? body.requiresNote : undefined,
+        requiresDoubleConfirm:
+          typeof body.requiresDoubleConfirm === 'boolean' ? body.requiresDoubleConfirm : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.content.moderate'),
+  createAdminModerationTemplate
+)
+
+/**
+ * @route   PATCH /api/admin/content/moderation-templates/:templateId
+ * @desc    Atualizar template de moderacao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.patch(
+  '/content/moderation-templates/:templateId',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.moderation_templates.update',
+    resourceType: 'moderation_template',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.templateId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminModerationTemplate
+)
+
+/**
+ * @route   POST /api/admin/content/moderation-templates/:templateId/activate
+ * @desc    Ativar template de moderacao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/moderation-templates/:templateId/activate',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.moderation_templates.activate',
+    resourceType: 'moderation_template',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.templateId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  activateAdminModerationTemplate
+)
+
+/**
+ * @route   POST /api/admin/content/moderation-templates/:templateId/deactivate
+ * @desc    Desativar template de moderacao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/moderation-templates/:templateId/deactivate',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.moderation_templates.deactivate',
+    resourceType: 'moderation_template',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.templateId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  deactivateAdminModerationTemplate
 )
 
 /**
