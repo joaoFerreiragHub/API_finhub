@@ -24,6 +24,7 @@
     "test:sector-smoke": "node scripts/quick-analysis-sector-smoke.js",
     "test:docs:smoke": "node scripts/docs-auditoria-04-smoke.js",
     "test:docs:release-gate": "node scripts/docs-auditoria-04-smoke.js --strict-release",
+    "checking": "npm run typecheck && npm run test:docs:smoke",
     "build": "tsc",
     "seed": "ts-node src/scripts/seed.ts",
     "test:admin:scopes": "ts-node --transpile-only scripts/test-admin-scope-contract.ts"

@@ -96,6 +96,7 @@ Estado e regra nesta auditoria:
 | Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
 |---|---|---|---|
 | P6 AI/MCP | dcos/P6_MCP_AI_CONTEXTO_AGENTES.md | planeado | Nao |
+| P6 Setup Tecnico | dcos/P6_SETUP_TECNICO_ESCALABILIDADE.md | em_curso | Nao |
 
 ## 9) Smoke de documentacao (obrigatorio no fim do pre-release)
 
@@ -139,3 +140,4 @@ Integracao CI/CD:
 - 2026-03-08: expansao de escopo para incluir todos os ficheiros P4 e P5 como obrigatorios para release final.
 - 2026-03-08: adicao de smoke/release-gate de documentacao para garantir rastreabilidade e fecho completo.
 - 2026-03-08: adicao do trilho P6 AI/MCP como evolucao estrategica nao bloqueante para esta release.
+- 2026-03-08: adicao do trilho P6 setup tecnico para escalabilidade, clean code e DRY (em curso).
