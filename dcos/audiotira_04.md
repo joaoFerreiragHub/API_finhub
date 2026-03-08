@@ -149,3 +149,4 @@ Integracao CI/CD:
 - 2026-03-08: T4 concluido no P6 setup tecnico (novo `npm run test:technical:smoke` integrado no CI para regressao tecnica continua).
 - 2026-03-08: T5 concluido no P6 setup tecnico (baseline de indices criticos + smoke `npm run test:perf:indexes`).
 - 2026-03-08: T6 concluido no P6 setup tecnico (guardas de seguranca em runtime + checklist operacional + smoke `npm run test:security:smoke`).
+- 2026-03-08: P4 evoluido com novos alertas operacionais (`content_jobs_stale_backlog`, `content_jobs_retry_spike`, `false_positive_spike`) e thresholds configuraveis por env.

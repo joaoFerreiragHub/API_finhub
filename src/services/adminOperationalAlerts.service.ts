@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import { AdminAuditLog } from '../models/AdminAuditLog'
+import { AdminContentJob } from '../models/AdminContentJob'
 import {
   AdminOperationalAlertState,
   AdminOperationalAlertStateValue,
@@ -9,6 +10,7 @@ import {
   AutomatedModerationSeverity,
   AutomatedModerationSignal,
 } from '../models/AutomatedModerationSignal'
+import { ContentFalsePositiveFeedback } from '../models/ContentFalsePositiveFeedback'
 import { ContentReport, ContentReportReason } from '../models/ContentReport'
 import { UserModerationEvent } from '../models/UserModerationEvent'
 import { CreatorOperationalAction, User, UserRole } from '../models/User'
@@ -26,6 +28,9 @@ export type AdminOperationalAlertType =
   | 'automated_detection_auto_hide_triggered'
   | 'automated_detection_auto_hide_failed'
   | 'creator_control_applied'
+  | 'content_jobs_stale_backlog'
+  | 'content_jobs_retry_spike'
+  | 'false_positive_spike'
 export type AdminOperationalAlertSeverity = 'critical' | 'high' | 'medium'
 export type AdminOperationalAlertStateStatus = 'open' | 'acknowledged' | 'dismissed'
 
@@ -72,6 +77,11 @@ export interface AdminOperationalAlertsResponse {
     reportMinOpenReports: number
     automatedDetectionSeverityMin: 'high'
     creatorControlRestrictiveActions: CreatorOperationalAction[]
+    staleJobsMinCount: number
+    staleRunningMinutes: number
+    staleQueuedMinutes: number
+    retrySpikeMinJobs: number
+    falsePositiveSpikeMinEvents: number
   }
   summary: {
     critical: number
@@ -188,6 +198,26 @@ const RESTRICTIVE_CREATOR_CONTROL_ACTIONS: CreatorOperationalAction[] = [
   'block_publishing',
   'suspend_creator_ops',
 ]
+const JOB_STALE_ALERT_MIN_COUNT = parseEnvPositiveInt(
+  process.env.ADMIN_ALERT_JOB_STALE_MIN_COUNT,
+  3
+)
+const JOB_STALE_RUNNING_MINUTES = parseEnvPositiveInt(
+  process.env.ADMIN_ALERT_JOB_STALE_RUNNING_MINUTES,
+  15
+)
+const JOB_STALE_QUEUED_MINUTES = parseEnvPositiveInt(
+  process.env.ADMIN_ALERT_JOB_STALE_QUEUED_MINUTES,
+  60
+)
+const JOB_RETRY_SPIKE_MIN_JOBS = parseEnvPositiveInt(
+  process.env.ADMIN_ALERT_JOB_RETRY_SPIKE_MIN_JOBS,
+  5
+)
+const FALSE_POSITIVE_SPIKE_MIN_EVENTS = parseEnvPositiveInt(
+  process.env.ADMIN_ALERT_FALSE_POSITIVE_SPIKE_MIN_EVENTS,
+  8
+)
 
 const toPositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
@@ -343,6 +373,14 @@ const mapCreatorControlTitle = (action: CreatorOperationalAction | null): string
   return 'Cooldown operacional aplicado'
 }
 
+const buildExecutableJobQuery = () => ({
+  $or: [
+    { type: 'bulk_moderate' },
+    { type: 'bulk_rollback', 'approval.required': { $ne: true } },
+    { type: 'bulk_rollback', 'approval.reviewStatus': 'approved' },
+  ],
+})
+
 export class AdminOperationalAlertsService {
   private async loadStateByAlertId(alertIds: string[]): Promise<Map<string, AlertStateRowLike>> {
     const uniqueIds = Array.from(
@@ -464,6 +502,9 @@ export class AdminOperationalAlertsService {
       automatedDetectionAlerts,
       automatedDetectionAutoHideAlerts,
       creatorControlAlerts,
+      staleJobAlerts,
+      retrySpikeAlerts,
+      falsePositiveAlerts,
     ] = await Promise.all([
       this.listBanAlerts(windowStart, limit),
       this.listSurfaceDisabledAlerts(windowStart, limit),
@@ -474,6 +515,9 @@ export class AdminOperationalAlertsService {
       this.listAutomatedDetectionAlerts(windowStart, limit),
       this.listAutomatedDetectionAutoHideAlerts(windowStart, limit),
       this.listCreatorControlAlerts(windowStart, limit),
+      this.listStaleJobAlerts(now),
+      this.listRetrySpikeAlerts(windowStart),
+      this.listFalsePositiveSpikeAlerts(windowStart),
     ])
 
     const baseItems = [
@@ -486,6 +530,9 @@ export class AdminOperationalAlertsService {
       ...automatedDetectionAlerts,
       ...automatedDetectionAutoHideAlerts,
       ...creatorControlAlerts,
+      ...staleJobAlerts,
+      ...retrySpikeAlerts,
+      ...falsePositiveAlerts,
     ]
       .sort((a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime())
       .slice(0, limit)
@@ -510,6 +557,11 @@ export class AdminOperationalAlertsService {
         reportMinOpenReports: REPORT_ALERT_MIN_OPEN_REPORTS,
         automatedDetectionSeverityMin: 'high',
         creatorControlRestrictiveActions: RESTRICTIVE_CREATOR_CONTROL_ACTIONS,
+        staleJobsMinCount: JOB_STALE_ALERT_MIN_COUNT,
+        staleRunningMinutes: JOB_STALE_RUNNING_MINUTES,
+        staleQueuedMinutes: JOB_STALE_QUEUED_MINUTES,
+        retrySpikeMinJobs: JOB_RETRY_SPIKE_MIN_JOBS,
+        falsePositiveSpikeMinEvents: FALSE_POSITIVE_SPIKE_MIN_EVENTS,
       },
       summary: getSeveritySummary(items),
       stateSummary: getStateSummary(enrichedItems),
@@ -1069,6 +1121,263 @@ export class AdminOperationalAlertsService {
     }
 
     return alerts
+  }
+
+  private async listStaleJobAlerts(now: Date): Promise<AdminOperationalAlert[]> {
+    const staleRunningBefore = new Date(now.getTime() - JOB_STALE_RUNNING_MINUTES * 60 * 1000)
+    const staleQueuedBefore = new Date(now.getTime() - JOB_STALE_QUEUED_MINUTES * 60 * 1000)
+
+    const [staleRunningCount, staleQueuedCount, oldestRunningJob] = await Promise.all([
+      AdminContentJob.countDocuments({
+        status: 'running',
+        $or: [
+          { leaseExpiresAt: { $lt: now } },
+          { lastHeartbeatAt: { $lt: staleRunningBefore } },
+          { lastHeartbeatAt: null, startedAt: { $lt: staleRunningBefore } },
+        ],
+      }),
+      AdminContentJob.countDocuments({
+        status: 'queued',
+        createdAt: { $lt: staleQueuedBefore },
+        ...buildExecutableJobQuery(),
+      }),
+      AdminContentJob.findOne({
+        status: 'running',
+        $or: [
+          { leaseExpiresAt: { $lt: now } },
+          { lastHeartbeatAt: { $lt: staleRunningBefore } },
+          { lastHeartbeatAt: null, startedAt: { $lt: staleRunningBefore } },
+        ],
+      })
+        .sort({ startedAt: 1, createdAt: 1 })
+        .select('_id type status attemptCount maxAttempts workerId startedAt lastHeartbeatAt leaseExpiresAt')
+        .lean(),
+    ])
+
+    const totalStale = staleRunningCount + staleQueuedCount
+    if (totalStale < JOB_STALE_ALERT_MIN_COUNT) {
+      return []
+    }
+
+    const bucket = Math.floor(now.getTime() / (15 * 60 * 1000))
+    const severity: AdminOperationalAlertSeverity =
+      totalStale >= JOB_STALE_ALERT_MIN_COUNT * 2 || staleRunningCount >= JOB_STALE_ALERT_MIN_COUNT
+        ? 'critical'
+        : 'high'
+
+    return [
+      {
+        id: `jobs-stale-backlog:${bucket}`,
+        type: 'content_jobs_stale_backlog',
+        severity,
+        title: 'Backlog stale de jobs de moderacao',
+        description: `${totalStale} jobs stale detetados (${staleRunningCount} running + ${staleQueuedCount} queued) acima do baseline operacional.`,
+        action: 'admin.content.jobs.worker_status.read',
+        resourceType: 'content_job',
+        resourceId: 'backlog',
+        detectedAt: now.toISOString(),
+        actor: null,
+        metadata: {
+          totalStale,
+          staleRunningCount,
+          staleQueuedCount,
+          staleRunningMinutes: JOB_STALE_RUNNING_MINUTES,
+          staleQueuedMinutes: JOB_STALE_QUEUED_MINUTES,
+          minCountThreshold: JOB_STALE_ALERT_MIN_COUNT,
+          oldestRunningJob:
+            oldestRunningJob && typeof oldestRunningJob === 'object'
+              ? {
+                  id: resolveAnyId((oldestRunningJob as { _id?: unknown })._id),
+                  type:
+                    (oldestRunningJob as { type?: unknown }).type &&
+                    typeof (oldestRunningJob as { type?: unknown }).type === 'string'
+                      ? ((oldestRunningJob as { type: string }).type as string)
+                      : null,
+                  status:
+                    (oldestRunningJob as { status?: unknown }).status &&
+                    typeof (oldestRunningJob as { status?: unknown }).status === 'string'
+                      ? ((oldestRunningJob as { status: string }).status as string)
+                      : null,
+                  attemptCount:
+                    typeof (oldestRunningJob as { attemptCount?: unknown }).attemptCount === 'number'
+                      ? (oldestRunningJob as { attemptCount: number }).attemptCount
+                      : null,
+                  maxAttempts:
+                    typeof (oldestRunningJob as { maxAttempts?: unknown }).maxAttempts === 'number'
+                      ? (oldestRunningJob as { maxAttempts: number }).maxAttempts
+                      : null,
+                  workerId: toStringSafe((oldestRunningJob as { workerId?: unknown }).workerId),
+                  startedAt: toDate((oldestRunningJob as { startedAt?: unknown }).startedAt)?.toISOString(),
+                  lastHeartbeatAt: toDate(
+                    (oldestRunningJob as { lastHeartbeatAt?: unknown }).lastHeartbeatAt
+                  )?.toISOString(),
+                  leaseExpiresAt: toDate(
+                    (oldestRunningJob as { leaseExpiresAt?: unknown }).leaseExpiresAt
+                  )?.toISOString(),
+                }
+              : null,
+        },
+      },
+    ]
+  }
+
+  private async listRetrySpikeAlerts(windowStart: Date): Promise<AdminOperationalAlert[]> {
+    const rows = (await AdminContentJob.find({
+      attemptCount: { $gte: 2 },
+      lastAttemptAt: { $gte: windowStart },
+      $or: [
+        { status: 'running' },
+        { status: 'failed' },
+        {
+          status: 'queued',
+          ...buildExecutableJobQuery(),
+        },
+      ],
+    })
+      .sort({ lastAttemptAt: -1 })
+      .limit(250)
+      .select('status type attemptCount maxAttempts createdAt lastAttemptAt')
+      .lean()) as Array<{
+      status?: string
+      type?: string
+      attemptCount?: number
+      maxAttempts?: number
+      createdAt?: Date
+      lastAttemptAt?: Date | null
+    }>
+
+    if (rows.length < JOB_RETRY_SPIKE_MIN_JOBS) {
+      return []
+    }
+
+    let queued = 0
+    let running = 0
+    let failed = 0
+    let exhausted = 0
+    let nearExhaustion = 0
+    let maxAttemptObserved = 0
+
+    for (const row of rows) {
+      if (row.status === 'queued') queued += 1
+      if (row.status === 'running') running += 1
+      if (row.status === 'failed') failed += 1
+
+      const attemptCount = typeof row.attemptCount === 'number' ? row.attemptCount : 0
+      const maxAttempts = typeof row.maxAttempts === 'number' ? row.maxAttempts : 0
+      maxAttemptObserved = Math.max(maxAttemptObserved, attemptCount)
+
+      if (maxAttempts > 0 && attemptCount >= maxAttempts) {
+        exhausted += 1
+      } else if (maxAttempts > 1 && attemptCount >= maxAttempts - 1) {
+        nearExhaustion += 1
+      }
+    }
+
+    const detectedAt =
+      rows
+        .map((row) => toDate(row.lastAttemptAt))
+        .filter((value): value is Date => value instanceof Date)
+        .sort((a, b) => b.getTime() - a.getTime())[0] ?? new Date()
+
+    const severity: AdminOperationalAlertSeverity =
+      exhausted > 0 || rows.length >= JOB_RETRY_SPIKE_MIN_JOBS * 2 ? 'critical' : 'high'
+    const bucket = Math.floor(detectedAt.getTime() / (15 * 60 * 1000))
+
+    return [
+      {
+        id: `jobs-retry-spike:${bucket}`,
+        type: 'content_jobs_retry_spike',
+        severity,
+        title: 'Spike de retries em jobs de moderacao',
+        description: `${rows.length} jobs com retries no periodo (${running} running, ${queued} queued, ${failed} failed).`,
+        action: 'admin.content.jobs.worker_status.read',
+        resourceType: 'content_job',
+        resourceId: 'retries',
+        detectedAt: detectedAt.toISOString(),
+        actor: null,
+        metadata: {
+          jobsWithRetries: rows.length,
+          queued,
+          running,
+          failed,
+          exhaustedAttempts: exhausted,
+          nearExhaustion,
+          maxAttemptObserved,
+          minJobsThreshold: JOB_RETRY_SPIKE_MIN_JOBS,
+          windowStart: windowStart.toISOString(),
+        },
+      },
+    ]
+  }
+
+  private async listFalsePositiveSpikeAlerts(windowStart: Date): Promise<AdminOperationalAlert[]> {
+    const [totalEvents, automatedRelatedEvents, byCategoryRows, creatorsRows] = await Promise.all([
+      ContentFalsePositiveFeedback.countDocuments({ createdAt: { $gte: windowStart } }),
+      ContentFalsePositiveFeedback.countDocuments({
+        createdAt: { $gte: windowStart },
+        categories: { $in: ['policy_auto_hide', 'automated_detection'] },
+      }),
+      ContentFalsePositiveFeedback.aggregate<{ _id: string | null; count: number }>([
+        { $match: { createdAt: { $gte: windowStart } } },
+        { $unwind: '$categories' },
+        { $group: { _id: '$categories', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      ContentFalsePositiveFeedback.aggregate<{ _id: mongoose.Types.ObjectId | null; count: number }>([
+        {
+          $match: {
+            createdAt: { $gte: windowStart },
+            creatorId: { $ne: null },
+          },
+        },
+        { $group: { _id: '$creatorId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+      ]),
+    ])
+
+    if (totalEvents < FALSE_POSITIVE_SPIKE_MIN_EVENTS) {
+      return []
+    }
+
+    const now = new Date()
+    const automatedSharePercent = Math.round((automatedRelatedEvents / Math.max(totalEvents, 1)) * 100)
+    const severity: AdminOperationalAlertSeverity =
+      totalEvents >= FALSE_POSITIVE_SPIKE_MIN_EVENTS * 2 || automatedSharePercent >= 60
+        ? 'critical'
+        : 'high'
+    const bucket = Math.floor(now.getTime() / (15 * 60 * 1000))
+
+    return [
+      {
+        id: `false-positive-spike:${bucket}`,
+        type: 'false_positive_spike',
+        severity,
+        title: 'Spike de marcacoes de falso positivo',
+        description: `${totalEvents} marcacoes de falso positivo no periodo; ${automatedSharePercent}% associadas a automacao.`,
+        action: 'admin.content.rollback',
+        resourceType: 'content_false_positive_feedback',
+        resourceId: 'false_positive_feedback',
+        detectedAt: now.toISOString(),
+        actor: null,
+        metadata: {
+          totalEvents,
+          automatedRelatedEvents,
+          automatedSharePercent,
+          minEventsThreshold: FALSE_POSITIVE_SPIKE_MIN_EVENTS,
+          topCategories: byCategoryRows
+            .filter((row) => typeof row._id === 'string')
+            .map((row) => ({ category: row._id as string, count: row.count })),
+          topCreators: creatorsRows
+            .filter((row) => row._id instanceof mongoose.Types.ObjectId)
+            .map((row) => ({
+              creatorId: String(row._id),
+              count: row.count,
+            })),
+          windowStart: windowStart.toISOString(),
+        },
+      },
+    ]
   }
 }
 

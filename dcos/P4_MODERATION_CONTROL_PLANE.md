@@ -944,7 +944,6 @@ Estas sao as proximas camadas que fazem mais sentido:
 2. Afinar trust scoring com sinais automaticos, falso positivo e thresholds por categoria.
 3. Rollback em lote com aprovacao faseada e amostragem de validacao.
 4. Deep-links mais finos entre dashboard, queue, trust profile e jobs.
-5. Alertas especificos para backlog de jobs stale/retries e falsos positivos anormais.
 
 ## Pre-release obrigatorio
 
@@ -1121,6 +1120,43 @@ Variaveis de apoio documentadas em `.env.example`:
 Estado:
 
 - O1-08 continua `em_curso` ate fechar a validacao integrada frontend/admin e o ciclo final de evidencias pre-release.
+
+### 23. Alertas para backlog stale, retries e anomalias de false positives
+
+Foi adicionada uma camada adicional no endpoint `GET /api/admin/alerts/internal` para cobrir os sinais operacionais em falta:
+
+Tipos de alerta novos:
+
+- `content_jobs_stale_backlog`
+- `content_jobs_retry_spike`
+- `false_positive_spike`
+
+Objetivo:
+
+- detetar backlog stale de jobs antes de acumular risco operacional;
+- destacar spikes de retries (incluindo tentativas perto de exaustao);
+- sinalizar aumento anormal de `false positive` para revisao de policy/automacao.
+
+Thresholds adicionados ao payload de `thresholds`:
+
+- `staleJobsMinCount`
+- `staleRunningMinutes`
+- `staleQueuedMinutes`
+- `retrySpikeMinJobs`
+- `falsePositiveSpikeMinEvents`
+
+Novas variaveis opcionais no `.env.example`:
+
+- `ADMIN_ALERT_JOB_STALE_MIN_COUNT`
+- `ADMIN_ALERT_JOB_STALE_RUNNING_MINUTES`
+- `ADMIN_ALERT_JOB_STALE_QUEUED_MINUTES`
+- `ADMIN_ALERT_JOB_RETRY_SPIKE_MIN_JOBS`
+- `ADMIN_ALERT_FALSE_POSITIVE_SPIKE_MIN_EVENTS`
+
+Validacao desta iteracao:
+
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
 
 ### Regra de execucao
 
