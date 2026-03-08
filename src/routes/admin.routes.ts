@@ -58,6 +58,13 @@ import {
   updateAdminModerationTemplate,
 } from '../controllers/adminModerationTemplate.controller'
 import {
+  extendAdminSubscriptionTrial,
+  getAdminSubscriptionByUser,
+  listAdminSubscriptions,
+  reactivateAdminSubscription,
+  revokeAdminSubscriptionEntitlement,
+} from '../controllers/adminSubscription.controller'
+import {
   applyCreatorControls,
   addUserInternalNote,
   banUser,
@@ -658,6 +665,98 @@ router.post(
   }),
   requireAdminScope('admin.content.moderate'),
   deactivateAdminContentAccessPolicy
+)
+
+/**
+ * @route   GET /api/admin/monetization/subscriptions
+ * @desc    Listar subscricoes premium/trial/canceladas
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/monetization/subscriptions',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.monetization.subscriptions.list',
+    resourceType: 'user_subscription',
+    scope: 'admin.users.read',
+  }),
+  requireAdminScope('admin.users.read'),
+  listAdminSubscriptions
+)
+
+/**
+ * @route   GET /api/admin/monetization/subscriptions/users/:userId
+ * @desc    Obter detalhe da subscricao de um utilizador
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/monetization/subscriptions/users/:userId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.monetization.subscriptions.read',
+    resourceType: 'user_subscription',
+    scope: 'admin.users.read',
+    getResourceId: (req) => req.params.userId,
+  }),
+  requireAdminScope('admin.users.read'),
+  getAdminSubscriptionByUser
+)
+
+/**
+ * @route   POST /api/admin/monetization/subscriptions/users/:userId/extend-trial
+ * @desc    Estender trial da subscricao com motivo obrigatorio
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/monetization/subscriptions/users/:userId/extend-trial',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.monetization.subscriptions.extend_trial',
+    resourceType: 'user_subscription',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.userId,
+  }),
+  requireAdminScope('admin.users.write'),
+  extendAdminSubscriptionTrial
+)
+
+/**
+ * @route   POST /api/admin/monetization/subscriptions/users/:userId/revoke-entitlement
+ * @desc    Revogar entitlement premium com motivo obrigatorio
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/monetization/subscriptions/users/:userId/revoke-entitlement',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.monetization.subscriptions.revoke_entitlement',
+    resourceType: 'user_subscription',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.userId,
+  }),
+  requireAdminScope('admin.users.write'),
+  revokeAdminSubscriptionEntitlement
+)
+
+/**
+ * @route   POST /api/admin/monetization/subscriptions/users/:userId/reactivate
+ * @desc    Reativar subscricao premium com motivo obrigatorio
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/monetization/subscriptions/users/:userId/reactivate',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.monetization.subscriptions.reactivate',
+    resourceType: 'user_subscription',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.userId,
+  }),
+  requireAdminScope('admin.users.write'),
+  reactivateAdminSubscription
 )
 
 /**

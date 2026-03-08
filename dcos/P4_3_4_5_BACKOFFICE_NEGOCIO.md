@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 e P4.3-04 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02 e P4.3-04 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -111,6 +111,41 @@ Frontend:
 1. Nova area admin `Monetizacao > Subscricoes`.
 2. Filtros por status (`active`, `trialing`, `past_due`, `canceled`).
 3. Timeline por subscricao com historico de alteracoes.
+
+Estado desta iteracao:
+1. backend MVP entregue com modelo de subscricao admin, timeline e acoes operacionais.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo `UserSubscription` com:
+   - ligacao 1:1 ao user;
+   - plano (`planCode`, `planLabel`, `billingCycle`);
+   - estado (`active`, `trialing`, `past_due`, `canceled`);
+   - entitlement (`entitlementActive`) e datas (`currentPeriodStart`, `currentPeriodEnd`, `trialEndsAt`, `canceledAt`);
+   - `version` + `history` de alteracoes.
+2. endpoints admin:
+   - `GET /api/admin/monetization/subscriptions`
+   - `GET /api/admin/monetization/subscriptions/users/:userId`
+   - `POST /api/admin/monetization/subscriptions/users/:userId/extend-trial`
+   - `POST /api/admin/monetization/subscriptions/users/:userId/revoke-entitlement`
+   - `POST /api/admin/monetization/subscriptions/users/:userId/reactivate`
+3. filtros operacionais de listagem:
+   - `status`, `planCode`, `periodFrom`, `periodTo`, `search`, `page`, `limit`.
+4. acoes controladas com motivo obrigatorio:
+   - extensao de trial;
+   - revogacao de entitlement (com `nextStatus` opcional: `past_due` ou `canceled`);
+   - reativacao com ciclo/plano e duracao configuravel.
+5. sincronizacao com perfil do user:
+   - atualiza `User.role` (`free`/`premium`) e `subscriptionExpiry` conforme a acao.
+6. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura com `admin.users.read`;
+   - escrita com `admin.users.write`.
+7. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
+3. `npm run checking`
 
 ### 5.3 P4.3-03 Workflow de apelacao
 
