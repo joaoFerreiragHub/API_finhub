@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05 e P4.4-03 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01 e P4.4-03 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -308,6 +308,31 @@ Validacao desta iteracao:
 1. Top creators por crescimento e engagement.
 2. Metrica positiva lado a lado com risk/trust para decisoes editoriais.
 3. Export CSV para planeamento de curadoria.
+
+Estado desta iteracao:
+1. backend MVP entregue com leaderboard de creators por crescimento/engagement e export CSV.
+2. frontend admin (visualizacoes/dashboards) ainda pendente para fechar este item.
+
+Entregue no backend:
+1. endpoints admin:
+   - `GET /api/admin/creators/analytics/positive`;
+   - `GET /api/admin/creators/analytics/positive/export.csv`.
+2. metricas positivas por creator:
+   - crescimento de follows e publicacao por janela;
+   - score de crescimento e score de engagement;
+   - breakdown de conteudo por tipo e engagement agregado.
+3. trust lado-a-lado:
+   - `trustScore`, `riskLevel`, `recommendedAction`;
+   - `openReports`, `highPriorityTargets`, `criticalTargets`, `falsePositiveRate30d`.
+4. filtros e ordenacao operacionais:
+   - `search`, `accountStatus`, `riskLevel`;
+   - `sortBy` (`growth`, `engagement`, `followers`, `trust`) e `sortOrder`.
+5. export CSV para curadoria/operacao com limite de linhas configuravel.
+6. auditoria administrativa e `requireAdminScope` aplicados com `admin.metrics.read`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
 
 ### 6.2 P4.4-02 Gestao admin das financial tools
 

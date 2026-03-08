@@ -37,6 +37,10 @@ import {
   getAdminMetricsOverview,
 } from '../controllers/adminMetrics.controller'
 import {
+  exportAdminCreatorPositiveAnalyticsCsv,
+  listAdminCreatorPositiveAnalytics,
+} from '../controllers/adminCreatorAnalytics.controller'
+import {
   listAdminSurfaceControls,
   updateAdminSurfaceControl,
 } from '../controllers/adminSurfaceControl.controller'
@@ -252,6 +256,42 @@ router.get(
   }),
   requireAdminScope('admin.metrics.read'),
   getAdminMetricsDrilldown
+)
+
+/**
+ * @route   GET /api/admin/creators/analytics/positive/export.csv
+ * @desc    Exportar CSV de analytics positivos de creators
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/creators/analytics/positive/export.csv',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.creators.analytics.positive.export_csv',
+    resourceType: 'creator_analytics_positive',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  exportAdminCreatorPositiveAnalyticsCsv
+)
+
+/**
+ * @route   GET /api/admin/creators/analytics/positive
+ * @desc    Top creators por crescimento/engagement com trust side-by-side
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/creators/analytics/positive',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.creators.analytics.positive.list',
+    resourceType: 'creator_analytics_positive',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  listAdminCreatorPositiveAnalytics
 )
 
 /**
