@@ -1,7 +1,7 @@
 # P6 - SETUP TECNICO ESCALABILIDADE (CLEAN CODE + DRY)
 
 Data: 2026-03-08  
-Status: EM CURSO (baseline inicial + T1, T2, T3 e T4 concluidos)
+Status: EM CURSO (baseline inicial + T1, T2, T3, T4 e T5 concluidos)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Objetivo
@@ -129,6 +129,16 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - CI atualizado:
   - `.github/workflows/ci.yml` passa a executar `test:technical:smoke` no job `validate`.
 
+### 3.9 T5 Performance de dados (baseline entregue)
+
+- baseline de indices criticos documentado em:
+  - `dcos/P6_DATA_INDEX_BASELINE.md`
+- novo smoke de indices:
+  - `scripts/perf-index-smoke.js`
+  - `npm run test:perf:indexes`
+- regressao tecnica consolidada:
+  - `test:technical:smoke` passa a incluir `test:perf:indexes`.
+
 ## 4) Backlog tecnico priorizado (proximo ciclo)
 
 ## T1) Logging e observability unificados (Alta)
@@ -154,6 +164,7 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - aceite: smoke tecnico estavel no CI com cobertura dos caminhos de risco.
 
 ## T5) Performance de dados (Media)
+- estado: CONCLUIDO (baseline de indices criticos + smoke automatico)
 - objetivo: rever indices, paginacao e queries com maior custo;
 - aceite: lista de indices obrigatorios por modulo + validacao de planos de query para rotas heavy.
 
