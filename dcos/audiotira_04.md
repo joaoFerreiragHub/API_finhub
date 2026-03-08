@@ -8,6 +8,7 @@ Escopo: API_finhub + FinHub-Vite
 Este ficheiro e a fonte unica de estado, decisao e ordem de execucao.
 A release final so fecha quando todos os blocos P4 e P5 deste guia estiverem implementados.
 O P6 (AI/MCP) faz parte do plano estrategico, mas nao bloqueia esta release.
+O P_REVENUE_E_ADS_ESTRATEGIA reforca a diretriz de monetizacao, mas nao bloqueia esta release.
 
 ## 2) Estado tecnico atual (O1-O3)
 
@@ -115,6 +116,18 @@ Estado e regra nesta auditoria:
 | P6 AI/MCP | dcos/P6_MCP_AI_CONTEXTO_AGENTES.md | planeado | Nao |
 | P6 Setup Tecnico | dcos/P6_SETUP_TECNICO_ESCALABILIDADE.md | concluido | Nao |
 
+## 8.1) Trilha Revenue e Ads (nao bloqueante para esta release)
+
+| Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
+|---|---|---|---|
+| P Revenue/Ads | dcos/P_REVENUE_E_ADS_ESTRATEGIA.md | planeado | Nao |
+
+Guardrails obrigatorios nesta trilha:
+
+1. qualquer formato patrocinado deve manter label explicito (`Patrocinado`, `Dados patrocinados`, `Sugestao patrocinada`), mesmo quando e nativo/contextual.
+2. modelos de revenue baseados em dados (`Data Insights as a Service`) exigem consentimento/opt-out, agregacao forte e cumprimento RGPD antes de ativacao comercial.
+3. white-label/embed deve evitar segredos em URL; preferir token assinado de curta duracao e allowlist de dominios.
+
 ## 9) Smoke de documentacao (obrigatorio no fim do pre-release)
 
 Executar no backend API_finhub:
@@ -173,3 +186,4 @@ Integracao CI/CD:
 - 2026-03-08: P4.3-03 iniciou execucao com backend MVP de workflow de apelacoes (modelo `ModerationAppeal`, endpoints user/admin, SLA e transicoes de estado auditaveis).
 - 2026-03-08: P4.3-05 iniciou execucao com backend MVP de comunicacoes admin por segmento (modelo `AdminBroadcast`, preview de audiencia, aprovacao massiva e envio in-app por lotes).
 - 2026-03-08: formalizada diretriz de monetizacao/ads (premium sem `external_ads`, sem popups para free, anuncios financeiros/contextuais e dashboards dedicados para admin/marcas/criadores).
+- 2026-03-08: integrada trilha estrategica `P_REVENUE_E_ADS_ESTRATEGIA.md` na auditoria como nao bloqueante para release, com guardrails de transparencia/compliance/seguranca.
