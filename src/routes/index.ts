@@ -1,7 +1,7 @@
 // routes/index.ts
 import { Router } from 'express'
 
-// Importa as rotas de cada módulo
+// Importa as rotas de cada modulo
 import authRoutes from './auth.routes'
 import articleRoutes from './article.routes'
 import videoRoutes from './video.routes'
@@ -35,10 +35,14 @@ import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
 import feedRoutes from './feed.routes'
 import appealRoutes from './appeal.routes'
+import {
+  enforceFinancialToolAvailability,
+  trackFinancialToolUsage,
+} from '../middlewares/financialTools'
 
 const router = Router()
 
-// Rota de verificação
+// Rota de verificacao
 router.get('/', (req, res) => {
   res.json({
     message: 'API FinHub está ativa ✅',
@@ -88,14 +92,14 @@ router.get('/', (req, res) => {
       externalContent: '/api/external-content',
       search: '/api/search',
     },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   })
 })
 
-// Rotas de autenticação
+// Rotas de autenticacao
 router.use('/auth', authRoutes)
 
-// Rotas de conteúdos
+// Rotas de conteudos
 router.use('/articles', articleRoutes)
 router.use('/videos', videoRoutes)
 router.use('/courses', courseRoutes)
@@ -124,20 +128,45 @@ router.use('/comments', commentRoutes)
 router.use('/reports', reportRoutes)
 router.use('/appeals', appealRoutes)
 
-// Rotas de ações
-router.use('/stocks', stockRoutes)
+// Rotas de acoes
+router.use(
+  '/stocks',
+  enforceFinancialToolAvailability('stocks'),
+  trackFinancialToolUsage('stocks'),
+  stockRoutes
+)
 
 // Rotas ML
 router.use('/ml', mlRoutes)
 
-// Rotas de Notícias
+// Rotas de noticias
 router.use('/news', newsRoutes)
 
-// Rotas de Mercados
-router.use('/crypto', cryptoRoutes)
-router.use('/etfs', etfYahooRoutes)
-router.use('/etfs', etfRoutes)
-router.use('/reits', reitRoutes)
+// Rotas de mercados
+router.use(
+  '/crypto',
+  enforceFinancialToolAvailability('crypto'),
+  trackFinancialToolUsage('crypto'),
+  cryptoRoutes
+)
+router.use(
+  '/etfs',
+  enforceFinancialToolAvailability('etf'),
+  trackFinancialToolUsage('etf'),
+  etfYahooRoutes
+)
+router.use(
+  '/etfs',
+  enforceFinancialToolAvailability('etf'),
+  trackFinancialToolUsage('etf'),
+  etfRoutes
+)
+router.use(
+  '/reits',
+  enforceFinancialToolAvailability('reit'),
+  trackFinancialToolUsage('reit'),
+  reitRoutes
+)
 
 // Rotas administrativas
 router.use('/admin', adminRoutes)
@@ -145,7 +174,7 @@ router.use('/admin', adminRoutes)
 // Rotas editoriais publicas
 router.use('/editorial', editorialRoutes)
 
-// Rotas de superfícies publicas/operacionais
+// Rotas de superficies publicas/operacionais
 router.use('/platform', platformRoutes)
 router.use('/creators', creatorRoutes)
 router.use('/external-content', externalContentRoutes)

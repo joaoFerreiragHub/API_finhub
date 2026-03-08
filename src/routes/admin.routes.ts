@@ -41,6 +41,11 @@ import {
   listAdminCreatorPositiveAnalytics,
 } from '../controllers/adminCreatorAnalytics.controller'
 import {
+  getAdminFinancialToolsUsage,
+  listAdminFinancialTools,
+  updateAdminFinancialTool,
+} from '../controllers/adminFinancialTools.controller'
+import {
   listAdminSurfaceControls,
   updateAdminSurfaceControl,
 } from '../controllers/adminSurfaceControl.controller'
@@ -292,6 +297,61 @@ router.get(
   }),
   requireAdminScope('admin.metrics.read'),
   listAdminCreatorPositiveAnalytics
+)
+
+/**
+ * @route   GET /api/admin/tools/financial/usage
+ * @desc    Metricas de uso por financial tool e vertical
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/tools/financial/usage',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.tools.financial.usage.read',
+    resourceType: 'financial_tool_usage',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getAdminFinancialToolsUsage
+)
+
+/**
+ * @route   GET /api/admin/tools/financial
+ * @desc    Ler controlos de financial tools com config efetiva por ambiente
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/tools/financial',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.tools.financial.list',
+    resourceType: 'financial_tool_control',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  listAdminFinancialTools
+)
+
+/**
+ * @route   PATCH /api/admin/tools/financial/:toolKey
+ * @desc    Atualizar feature flags e limites de financial tool
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.patch(
+  '/tools/financial/:toolKey',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.tools.financial.update',
+    resourceType: 'financial_tool_control',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.toolKey,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminFinancialTool
 )
 
 /**

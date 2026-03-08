@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01 e P4.4-03 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02 e P4.4-03 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -339,6 +339,40 @@ Validacao desta iteracao:
 1. Feature flags por ferramenta (stocks, REIT, ETF, crypto).
 2. Metricas de uso por tool e por vertical.
 3. Configuracao de limites/experiencias por ambiente.
+
+Estado desta iteracao:
+1. backend MVP entregue com control plane admin para financial tools e tracking de uso por vertical.
+2. frontend admin (UI de operacao/dashboard) ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelos novos:
+   - `FinancialToolControl` (feature flags, limites, experiencia e overrides por ambiente com historico);
+   - `FinancialToolUsageDaily` (contadores diarios por `tool`, `vertical` e `environment`).
+2. endpoints admin:
+   - `GET /api/admin/tools/financial`;
+   - `PATCH /api/admin/tools/financial/:toolKey`;
+   - `GET /api/admin/tools/financial/usage`.
+3. regras de governanca:
+   - motivo obrigatorio para mutacoes;
+   - versionamento + trilho historico por alteracao;
+   - config efetiva calculada por ambiente (`development`, `staging`, `production`).
+4. runtime de ferramentas financeiras:
+   - middleware de feature flag em `/api/stocks`, `/api/etfs`, `/api/reits`, `/api/crypto`;
+   - bloqueio com `503` quando ferramenta desativada;
+   - guardrail de `maxSymbolsPerRequest` aplicado em runtime.
+5. telemetria operacional:
+   - tracking de uso em background por request (sucesso/erro/autenticado/latencia);
+   - agregacao de metricas por ferramenta e por vertical para analise admin.
+6. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura com `admin.metrics.read`;
+   - escrita com `admin.content.moderate`.
+7. rate limit operacional aplicado:
+   - leitura com `rateLimiter.adminMetricsDrilldown`;
+   - mutacao com `rateLimiter.adminModerationAction`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
 
 ### 6.3 P4.4-03 Gestao de anuncios/partnerships
 
