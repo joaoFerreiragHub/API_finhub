@@ -61,6 +61,7 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 3. Executar P4_3_4_5_BACKOFFICE_NEGOCIO.
 4. Executar P5_PRE_BETA_PLATAFORMA.
 5. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
+6. No fim do ciclo, executar smoke de documentacao e release-gate estrito.
 
 ## 6) Regra de encerramento por ficheiro
 
@@ -80,7 +81,29 @@ Go-live final permitido apenas quando:
 2. todos esses ficheiros estiverem movidos para `dcos/done/`;
 3. este ficheiro (`dcos/audiotira_04.md`) mostrar 100% fechado.
 
-## 8) Fontes historicas consolidadas
+## 8) Smoke de documentacao (obrigatorio no fim do pre-release)
+
+Executar no backend API_finhub:
+
+```bash
+npm run test:docs:smoke
+```
+
+Resultado esperado durante implementacao em curso:
+
+- valida coerencia de estados, paths e scripts documentados;
+- pode passar mesmo com itens obrigatorios ainda abertos.
+
+```bash
+npm run test:docs:release-gate
+```
+
+Resultado esperado para fecho final:
+
+- so passa quando todos os itens obrigatorios da secao 4 estiverem concluidos;
+- so passa quando todos esses itens estiverem em `dcos/done/`.
+
+## 9) Fontes historicas consolidadas
 
 - dcos/done/LISTA_IMPLEMENTACOES_A_FAZER.md
 - dcos/done/ROADMAP_BETA_EXECUCAO.md
@@ -89,7 +112,8 @@ Go-live final permitido apenas quando:
 - dcos/done/AUDITORIA_FINAL_O3.md
 - dcos/done/RUNBOOK_RELEASE_E2E_OBRIGATORIO.md
 
-## 9) Historico
+## 10) Historico
 
 - 2026-03-08: criacao da auditoria consolidada.
 - 2026-03-08: expansao de escopo para incluir todos os ficheiros P4 e P5 como obrigatorios para release final.
+- 2026-03-08: adicao de smoke/release-gate de documentacao para garantir rastreabilidade e fecho completo.
