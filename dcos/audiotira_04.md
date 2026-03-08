@@ -145,3 +145,4 @@ Integracao CI/CD:
 - 2026-03-08: T1.2 core entregue no P6 setup tecnico (migracao de controladores/servicos core para eventos de logger por dominio).
 - 2026-03-08: T1 concluido no P6 setup tecnico (catalogo de eventos + endpoint `/api/platform/monitoring/logging` + cobertura legacy por bridge estruturado).
 - 2026-03-08: T2 concluido no P6 setup tecnico (contratos de request em rotas auth/admin + smoke `npm run test:contracts:routes`).
+- 2026-03-08: T3 concluido no P6 setup tecnico (utilitario partilhado de paginacao aplicado em servicos admin/core para reduzir duplicacao).

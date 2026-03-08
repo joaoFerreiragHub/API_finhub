@@ -9,6 +9,7 @@ import { ContentModerationAction, ModeratableContentType } from '../models/Conte
 import { Podcast } from '../models/Podcast'
 import { Rating } from '../models/Rating'
 import { Video } from '../models/Video'
+import { resolvePagination } from '../utils/pagination'
 
 interface ContentModel {
   findById(id: string): any
@@ -118,16 +119,6 @@ export class ContentReportServiceError extends Error {
 const DEFAULT_PAGE = 1
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 100
-
-const normalizePage = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
-  return Math.floor(value)
-}
-
-const normalizeLimit = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_LIMIT
-  return Math.min(Math.floor(value), MAX_LIMIT)
-}
 
 const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId => {
   if (!mongoose.Types.ObjectId.isValid(rawId)) {
@@ -296,9 +287,11 @@ export class ContentReportService {
       throw new ContentReportServiceError(400, 'status invalido.')
     }
 
-    const page = normalizePage(options.page)
-    const limit = normalizeLimit(options.limit)
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
 
     const query: Record<string, unknown> = {
       contentType: filters.contentType,

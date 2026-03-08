@@ -9,6 +9,7 @@ import {
 import { ADMIN_SCOPES, ADMIN_SCOPE_PROFILES, AdminScope } from '../admin/permissions'
 import { UserModerationEvent } from '../models/UserModerationEvent'
 import { creatorTrustService } from './creatorTrust.service'
+import { resolvePagination } from '../utils/pagination'
 
 export type AdminUserSortField =
   | 'createdAt'
@@ -71,16 +72,6 @@ const DEFAULT_PAGE = 1
 const MAX_COOLDOWN_HOURS = 24 * 30
 const VALID_ADMIN_SCOPE_SET = new Set<string>(ADMIN_SCOPES)
 
-const normalizePage = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
-  return Math.floor(value)
-}
-
-const normalizeLimit = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_LIMIT
-  return Math.min(Math.floor(value), MAX_LIMIT)
-}
-
 const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId => {
   if (!mongoose.Types.ObjectId.isValid(rawId)) {
     throw new AdminUserServiceError(400, `${fieldName} invalido.`)
@@ -140,9 +131,11 @@ const areScopesEqual = (left: AdminScope[], right: AdminScope[]): boolean => {
 
 export class AdminUserService {
   async listUsers(filters: AdminUserFilters = {}, options: AdminUserListOptions = {}) {
-    const page = normalizePage(options.page)
-    const limit = normalizeLimit(options.limit)
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
 
     const andClauses: Record<string, unknown>[] = []
 
@@ -564,9 +557,11 @@ export class AdminUserService {
 
   async listHistory(targetUserIdRaw: string, options: { page?: number; limit?: number } = {}) {
     const targetUserId = toObjectId(targetUserIdRaw, 'targetUserId')
-    const page = normalizePage(options.page)
-    const limit = normalizeLimit(options.limit)
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
 
     const [items, total] = await Promise.all([
       UserModerationEvent.find({ user: targetUserId })

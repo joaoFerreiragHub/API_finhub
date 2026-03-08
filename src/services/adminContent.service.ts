@@ -30,6 +30,7 @@ import { automatedModerationService } from './automatedModeration.service'
 import { moderationPolicyService } from './moderationPolicy.service'
 import { userPreferenceService } from './userPreference.service'
 import { logServiceError } from '../utils/domainLogger'
+import { resolvePagination } from '../utils/pagination'
 
 const SERVICE_DOMAIN = 'admin_content_service'
 
@@ -228,16 +229,6 @@ export class AdminContentServiceError extends Error {
     super(message)
     this.statusCode = statusCode
   }
-}
-
-const normalizePage = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
-  return Math.floor(value)
-}
-
-const normalizeLimit = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_LIMIT
-  return Math.min(Math.floor(value), MAX_LIMIT)
 }
 
 const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId => {
@@ -463,9 +454,11 @@ export class AdminContentService {
   }
 
   async listQueue(filters: AdminContentQueueFilters = {}, options: PaginationOptions = {}) {
-    const page = normalizePage(options.page)
-    const limit = normalizeLimit(options.limit)
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
 
     if (filters.contentType && !isValidContentType(filters.contentType)) {
       throw new AdminContentServiceError(400, 'contentType invalido.')
@@ -757,9 +750,11 @@ export class AdminContentService {
     }
 
     toObjectId(filters.contentId, 'contentId')
-    const page = normalizePage(options.page)
-    const limit = normalizeLimit(options.limit)
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
 
     const query = {
       contentType: filters.contentType,

@@ -1,7 +1,7 @@
 # P6 - SETUP TECNICO ESCALABILIDADE (CLEAN CODE + DRY)
 
 Data: 2026-03-08  
-Status: EM CURSO (baseline inicial + T1 e T2 concluidos)
+Status: EM CURSO (baseline inicial + T1, T2 e T3 concluidos)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Objetivo
@@ -103,6 +103,20 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
   - `scripts/test-route-contracts.js`
   - `npm run test:contracts:routes`
 
+### 3.7 T3 Estrutura modular e DRY de servicos (baseline entregue)
+
+- novo utilitario partilhado de paginacao:
+  - `src/utils/pagination.ts`
+  - `resolvePagination(input, { defaultPage, defaultLimit, maxLimit })`
+- duplicacao removida em servicos admin/core:
+  - `adminContent.service`
+  - `adminContentJob.service`
+  - `adminUser.service`
+  - `contentReport.service`
+- resultado:
+  - normalizacao de `page/limit/skip` centralizada;
+  - menos codigo repetido em servicos com maior superficie de manutencao.
+
 ## 4) Backlog tecnico priorizado (proximo ciclo)
 
 ## T1) Logging e observability unificados (Alta)
@@ -118,6 +132,7 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - aceite: rotas criticas com validacao explicita + testes de contrato.
 
 ## T3) Estrutura modular e DRY de servicos (Alta)
+- estado: CONCLUIDO (baseline de paginacao partilhada aplicada em servicos admin/core)
 - objetivo: reduzir duplicacao entre servicos de conteudo e admin (query builders, filtros, mapeamentos);
 - aceite: utilitarios partilhados por dominio + reducao de codigo repetido.
 

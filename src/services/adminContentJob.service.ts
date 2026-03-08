@@ -24,6 +24,7 @@ import {
   normalizeBulkRollbackItems,
   adminContentService,
 } from './adminContent.service'
+import { resolvePagination } from '../utils/pagination'
 
 interface PaginationOptions {
   page?: number
@@ -77,16 +78,6 @@ const WORKER_STOP_POLL_MS = parsePositiveIntEnv(
   DEFAULT_WORKER_STOP_POLL_MS
 )
 const WORKER_STATUS_STALE_MS = Math.max(JOB_LEASE_MS, WORKER_HEARTBEAT_MS * 3)
-
-const normalizePage = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_PAGE
-  return Math.floor(value)
-}
-
-const normalizeLimit = (value?: number): number => {
-  if (!value || !Number.isFinite(value) || value <= 0) return DEFAULT_LIMIT
-  return Math.min(Math.floor(value), MAX_LIMIT)
-}
 
 const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId => {
   if (!mongoose.Types.ObjectId.isValid(rawId)) {
@@ -414,9 +405,11 @@ class AdminContentJobService {
   }
 
   async listJobs(filters: AdminContentJobFilters = {}, options: PaginationOptions = {}) {
-    const page = normalizePage(options.page)
-    const limit = normalizeLimit(options.limit)
-    const skip = (page - 1) * limit
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
 
     const query: Record<string, unknown> = {}
     if (filters.type) query.type = filters.type
