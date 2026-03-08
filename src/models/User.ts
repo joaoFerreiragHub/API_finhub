@@ -312,8 +312,6 @@ const UserSchema = new Schema<IUser>(
 )
 
 // Indexes
-UserSchema.index({ email: 1 })
-UserSchema.index({ username: 1 })
 UserSchema.index({ role: 1 })
 UserSchema.index({ role: 1, adminReadOnly: 1 })
 UserSchema.index({ accountStatus: 1, role: 1 })
@@ -326,7 +324,6 @@ UserSchema.index({ lastLoginAt: -1 })
 UserSchema.index({ accountStatus: 1, lastLoginAt: -1 })
 UserSchema.index({ passwordResetTokenHash: 1 })
 UserSchema.index({ passwordResetTokenExpiresAt: 1 })
-UserSchema.index({ emailVerified: 1 })
 UserSchema.index({ emailVerificationTokenHash: 1 })
 UserSchema.index({ emailVerificationTokenExpiresAt: 1 })
 
