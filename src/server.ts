@@ -6,6 +6,7 @@ import { initializeRateLimiter, shutdownRateLimiter } from './middlewares/rateLi
 import { captureException, flushSentry, initializeSentry } from './observability/sentry'
 import { uploadService } from './services/upload.service'
 import { logError, logInfo, patchConsoleWithStructuredLogger } from './utils/logger'
+import { getRuntimeSecuritySnapshot, validateRuntimeSecurityConfig } from './config/runtimeSecurity'
 
 const PORT = process.env.PORT || 3000
 let server: Server | null = null
@@ -15,6 +16,11 @@ patchConsoleWithStructuredLogger({ service: 'api' })
 
 async function startServer() {
   try {
+    validateRuntimeSecurityConfig()
+    logInfo(
+      'runtime_security_validated',
+      getRuntimeSecuritySnapshot() as unknown as Record<string, unknown>
+    )
     initializeSentry()
     await initializeRateLimiter()
     await connectToDatabase()

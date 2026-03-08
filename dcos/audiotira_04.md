@@ -96,7 +96,7 @@ Estado e regra nesta auditoria:
 | Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
 |---|---|---|---|
 | P6 AI/MCP | dcos/P6_MCP_AI_CONTEXTO_AGENTES.md | planeado | Nao |
-| P6 Setup Tecnico | dcos/P6_SETUP_TECNICO_ESCALABILIDADE.md | em_curso | Nao |
+| P6 Setup Tecnico | dcos/P6_SETUP_TECNICO_ESCALABILIDADE.md | concluido | Nao |
 
 ## 9) Smoke de documentacao (obrigatorio no fim do pre-release)
 
@@ -148,3 +148,4 @@ Integracao CI/CD:
 - 2026-03-08: T3 concluido no P6 setup tecnico (utilitario partilhado de paginacao aplicado em servicos admin/core para reduzir duplicacao).
 - 2026-03-08: T4 concluido no P6 setup tecnico (novo `npm run test:technical:smoke` integrado no CI para regressao tecnica continua).
 - 2026-03-08: T5 concluido no P6 setup tecnico (baseline de indices criticos + smoke `npm run test:perf:indexes`).
+- 2026-03-08: T6 concluido no P6 setup tecnico (guardas de seguranca em runtime + checklist operacional + smoke `npm run test:security:smoke`).

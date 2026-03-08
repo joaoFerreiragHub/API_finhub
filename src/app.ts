@@ -11,8 +11,9 @@ import { captureException } from './observability/sentry'
 import { registerSocialEventHandlers } from './events/registerSocialEventHandlers'
 import { uploadService } from './services/upload.service'
 import { logError } from './utils/logger'
+import { resolveHttpJsonBodyLimit } from './config/runtimeSecurity'
 
-const jsonBodyLimit = process.env.HTTP_JSON_BODY_LIMIT ?? '1mb'
+const jsonBodyLimit = resolveHttpJsonBodyLimit()
 
 const app = express()
 

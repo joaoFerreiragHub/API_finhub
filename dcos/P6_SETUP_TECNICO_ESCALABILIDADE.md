@@ -1,7 +1,7 @@
 # P6 - SETUP TECNICO ESCALABILIDADE (CLEAN CODE + DRY)
 
 Data: 2026-03-08  
-Status: EM CURSO (baseline inicial + T1, T2, T3, T4 e T5 concluidos)
+Status: CONCLUIDO (baseline tecnico T1..T6 entregue)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Objetivo
@@ -139,7 +139,23 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - regressao tecnica consolidada:
   - `test:technical:smoke` passa a incluir `test:perf:indexes`.
 
-## 4) Backlog tecnico priorizado (proximo ciclo)
+### 3.10 T6 Seguranca operacional (baseline entregue)
+
+- guardas de runtime de seguranca:
+  - `src/config/runtimeSecurity.ts`
+  - startup falha cedo em configuracao insegura para `staging/production`.
+- bootstrap atualizado:
+  - `src/server.ts` valida baseline de seguranca e regista snapshot sanitizado.
+- limite de payload centralizado:
+  - `src/app.ts` passa a usar `resolveHttpJsonBodyLimit()`.
+- checklist operacional + evidencia:
+  - `dcos/P6_SECURITY_CHECKLIST.md`
+  - `scripts/security-config-smoke.js`
+  - `npm run test:security:smoke`
+- regressao tecnica consolidada:
+  - `test:technical:smoke` passa a incluir `test:security:smoke`.
+
+## 4) Backlog tecnico priorizado (estado atual)
 
 ## T1) Logging e observability unificados (Alta)
 - estado: CONCLUIDO (T1.1, T1.2 e T1.3 entregues)
@@ -169,6 +185,7 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - aceite: lista de indices obrigatorios por modulo + validacao de planos de query para rotas heavy.
 
 ## T6) Seguranca operacional (Media)
+- estado: CONCLUIDO (guardas de runtime + checklist operacional + smoke automatico)
 - objetivo: fortalecer politicas de CORS, limites de payload e variaveis obrigatorias por ambiente;
 - aceite: checklist de seguranca por ambiente (dev/staging/prod) com evidencia.
 
