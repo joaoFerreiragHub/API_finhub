@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02 e P4.4-03 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03 e P4.5-01 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -443,6 +443,35 @@ Validacao desta iteracao:
 3. Acoes agendadas (ex: unhide automatico apos periodo definido).
 4. Delegacao temporaria de scopes com expiracao automatica.
 5. Dark mode admin.
+
+### 7.1 P4.5-01 Dashboard personalizavel por admin
+
+Estado desta iteracao:
+1. backend MVP entregue com personalizacao de dashboard por admin autenticado.
+2. frontend admin (builder visual completo) ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo novo:
+   - `AdminDashboardPreference` com `preset`, `layout`, `pinnedFilters`, `density`, `refreshSeconds`, `version` e `history`.
+2. endpoints admin:
+   - `GET /api/admin/dashboard/personalization`;
+   - `PATCH /api/admin/dashboard/personalization`;
+   - `POST /api/admin/dashboard/personalization/reset`.
+3. capacidades de personalizacao:
+   - catalogo de widgets com `requiredScopes` e `dataEndpoint` por widget;
+   - presets `operations`, `moderation`, `monetization` e `custom`;
+   - guardrails de layout (deduplicacao, limites de widgets, colunas, dimensoes e ordem);
+   - filtros fixados (`pinnedFilters`) e densidade (`comfortable|compact`).
+4. governanca operacional:
+   - preferencia isolada por admin (1:1 com user);
+   - trilho historico versionado com `action` (`created|updated|reset`) e snapshot completo;
+   - reset controlado para preset base.
+5. auditoria administrativa e `requireAdminScope` aplicados com `admin.metrics.read`.
+6. rate limit operacional aplicado com `rateLimiter.adminMetricsDrilldown`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
 
 ## 8) Definition of Done por bloco
 

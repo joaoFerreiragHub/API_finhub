@@ -41,6 +41,11 @@ import {
   listAdminCreatorPositiveAnalytics,
 } from '../controllers/adminCreatorAnalytics.controller'
 import {
+  getAdminDashboardPersonalization,
+  resetAdminDashboardPersonalization,
+  updateAdminDashboardPersonalization,
+} from '../controllers/adminDashboardPreference.controller'
+import {
   getAdminFinancialToolsUsage,
   listAdminFinancialTools,
   updateAdminFinancialTool,
@@ -297,6 +302,60 @@ router.get(
   }),
   requireAdminScope('admin.metrics.read'),
   listAdminCreatorPositiveAnalytics
+)
+
+/**
+ * @route   GET /api/admin/dashboard/personalization
+ * @desc    Ler configuracao personalizada do dashboard admin
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/dashboard/personalization',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.dashboard.personalization.read',
+    resourceType: 'admin_dashboard_preference',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getAdminDashboardPersonalization
+)
+
+/**
+ * @route   PATCH /api/admin/dashboard/personalization
+ * @desc    Atualizar layout/widgets/filtros do dashboard admin
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.patch(
+  '/dashboard/personalization',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.dashboard.personalization.update',
+    resourceType: 'admin_dashboard_preference',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  updateAdminDashboardPersonalization
+)
+
+/**
+ * @route   POST /api/admin/dashboard/personalization/reset
+ * @desc    Repor dashboard admin para preset base
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.post(
+  '/dashboard/personalization/reset',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.dashboard.personalization.reset',
+    resourceType: 'admin_dashboard_preference',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  resetAdminDashboardPersonalization
 )
 
 /**
