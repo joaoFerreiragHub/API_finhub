@@ -1,6 +1,9 @@
 import { Response } from 'express'
 import { adminAuditService, AdminAuditFilters } from '../services/adminAudit.service'
 import { AuthRequest } from '../types/auth'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_audit_controller'
 
 const parsePositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value !== 'string') return fallback
@@ -116,7 +119,7 @@ export const listAdminAuditLogs = async (req: AuthRequest, res: Response) => {
     const result = await adminAuditService.list(filters, { page, limit })
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin audit logs error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_audit_logs', error, req)
     return res.status(500).json({
       error: 'Erro ao listar logs de auditoria admin.',
       details: error instanceof Error ? error.message : undefined,
@@ -199,7 +202,7 @@ export const exportAdminAuditLogsCsv = async (req: AuthRequest, res: Response) =
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     return res.status(200).send(csvLines.join('\n'))
   } catch (error: unknown) {
-    console.error('Export admin audit logs csv error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'export_admin_audit_logs_csv', error, req)
     return res.status(500).json({
       error: 'Erro ao exportar logs de auditoria admin.',
       details: error instanceof Error ? error.message : undefined,

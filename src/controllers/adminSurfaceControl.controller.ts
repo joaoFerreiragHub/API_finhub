@@ -10,6 +10,9 @@ import {
   readAdminPublicMessage,
   readAdminReason,
 } from '../utils/adminActionPayload'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_surface_control_controller'
 
 const extractBodyRecord = (req: AuthRequest): Record<string, unknown> | undefined => {
   const body = req.body
@@ -67,12 +70,12 @@ const handleSurfaceControlError = (res: Response, error: unknown, fallbackMessag
 /**
  * GET /api/admin/platform/surfaces
  */
-export const listAdminSurfaceControls = async (_req: AuthRequest, res: Response) => {
+export const listAdminSurfaceControls = async (req: AuthRequest, res: Response) => {
   try {
     const result = await surfaceControlService.listControls()
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin surface controls error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_surface_controls', error, req)
     return handleSurfaceControlError(res, error, 'Erro ao listar kill switches de superficie.')
   }
 }
@@ -133,7 +136,7 @@ export const updateAdminSurfaceControl = async (req: AuthRequest, res: Response)
       item: result,
     })
   } catch (error: unknown) {
-    console.error('Update admin surface control error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'update_admin_surface_control', error, req)
     return handleSurfaceControlError(res, error, 'Erro ao atualizar kill switch de superficie.')
   }
 }

@@ -15,6 +15,7 @@ import {
 import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
 import { emailService } from '../services/email.service'
 import { captchaService, CaptchaServiceError } from '../services/captcha.service'
+import { logControllerError } from '../utils/domainLogger'
 
 interface GoogleOAuthStateEntry {
   redirectPath: string
@@ -158,6 +159,7 @@ const GOOGLE_OAUTH_STATE_TTL_MS = GOOGLE_OAUTH_STATE_TTL_SECONDS * 1000
 const GOOGLE_OAUTH_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_OAUTH_USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
+const CONTROLLER_DOMAIN = 'auth_controller'
 
 const googleOAuthStateStore = new Map<string, GoogleOAuthStateEntry>()
 
@@ -442,12 +444,12 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
         verificationToken: verificationTokenRaw,
       })
       .catch((emailError) => {
-        console.error('Verification email error:', emailError)
+        logControllerError(CONTROLLER_DOMAIN, 'send_verification_email_async', emailError, req)
       })
 
     return res.status(201).json(response)
   } catch (error: any) {
-    console.error('Register error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'register', error, req)
     return res.status(500).json({
       error: 'Erro ao criar conta.',
       details: error.message,
@@ -482,7 +484,7 @@ export const googleOAuthStart = async (req: Request, res: Response) => {
 
     return res.redirect(`${GOOGLE_OAUTH_AUTH_URL}?${query.toString()}`)
   } catch (error: any) {
-    console.error('Google OAuth start error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'google_oauth_start', error, req)
     return res.status(500).json({
       error: 'Erro ao iniciar autenticacao Google.',
       details: error.message,
@@ -596,7 +598,7 @@ export const googleOAuthCallback = async (req: Request, res: Response) => {
       })
     )
   } catch (error: any) {
-    console.error('Google OAuth callback error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'google_oauth_callback', error, req)
     return redirectWithError('oauth_callback_failed', error?.message || 'Erro interno no callback Google.')
   }
 }
@@ -637,7 +639,7 @@ export const sendEmailTest = async (req: AuthRequest, res: Response) => {
       result,
     })
   } catch (error: any) {
-    console.error('Email test error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'send_email_test', error, req)
     return res.status(500).json({
       error: 'Erro ao enviar email de teste.',
       details: error.message,
@@ -681,7 +683,7 @@ export const forgotPassword = async (req: Request<{}, {}, ForgotPasswordDTO>, re
 
     return res.status(200).json(buildForgotPasswordResponse())
   } catch (error: any) {
-    console.error('Forgot password error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'forgot_password', error, req)
     return res.status(500).json({
       error: 'Erro ao iniciar reset de password.',
       details: error.message,
@@ -729,14 +731,14 @@ export const verifyEmail = async (req: Request, res: Response) => {
         recipientName: user.name,
       })
       .catch((emailError) => {
-        console.error('Welcome email error:', emailError)
+        logControllerError(CONTROLLER_DOMAIN, 'send_welcome_email_async', emailError, req)
       })
 
     return res.status(200).json({
       message: 'Email verificado com sucesso.',
     })
   } catch (error: any) {
-    console.error('Verify email error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'verify_email', error, req)
     return res.status(500).json({
       error: 'Erro ao verificar email.',
       details: error.message,
@@ -782,7 +784,7 @@ export const resendVerification = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(buildResendVerificationResponse())
   } catch (error: any) {
-    console.error('Resend verification error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'resend_verification', error, req)
     return res.status(500).json({
       error: 'Erro ao reenviar verificacao de email.',
       details: error.message,
@@ -829,7 +831,7 @@ export const updateCookieConsent = async (
       cookieConsent: mapCookieConsent(user.cookieConsent),
     })
   } catch (error: any) {
-    console.error('Update cookie consent error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'update_cookie_consent', error, req)
     return res.status(500).json({
       error: 'Erro ao atualizar consentimento de cookies.',
       details: error.message,
@@ -883,7 +885,7 @@ export const resetPassword = async (req: Request<{}, {}, ResetPasswordDTO>, res:
       message: 'Password atualizada com sucesso.',
     })
   } catch (error: any) {
-    console.error('Reset password error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'reset_password', error, req)
     return res.status(500).json({
       error: 'Erro ao redefinir password.',
       details: error.message,
@@ -968,7 +970,7 @@ export const login = async (req: Request<{}, {}, LoginDTO>, res: Response) => {
 
     return res.status(200).json(response)
   } catch (error: any) {
-    console.error('Login error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'login', error, req)
     return res.status(500).json({
       error: 'Erro ao fazer login.',
       details: error.message,
@@ -1053,7 +1055,7 @@ export const refresh = async (req: Request<{}, {}, RefreshTokenDTO>, res: Respon
       })
     }
 
-    console.error('Refresh error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'refresh', error, req)
     return res.status(401).json({
       error: 'Refresh token invalido ou expirado.',
       details: error.message,
@@ -1099,7 +1101,7 @@ export const me = async (req: AuthRequest, res: Response) => {
       },
     })
   } catch (error: any) {
-    console.error('Me error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'me', error, req)
     return res.status(500).json({
       error: 'Erro ao obter dados do utilizador.',
       details: error.message,

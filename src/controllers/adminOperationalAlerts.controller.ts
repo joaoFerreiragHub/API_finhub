@@ -5,6 +5,9 @@ import {
 } from '../services/adminOperationalAlerts.service'
 import { AuthRequest } from '../types/auth'
 import { readAdminReason } from '../utils/adminActionPayload'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_operational_alerts_controller'
 
 const parsePositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value !== 'string') return fallback
@@ -94,7 +97,7 @@ export const listAdminInternalAlerts = async (req: AuthRequest, res: Response) =
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin operational alerts error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_internal_alerts', error, req)
     return res.status(500).json({
       error: 'Erro ao listar alertas operacionais admin.',
       details: error instanceof Error ? error.message : undefined,
@@ -129,7 +132,7 @@ export const acknowledgeAdminInternalAlert = async (req: AuthRequest, res: Respo
       alert: result,
     })
   } catch (error: unknown) {
-    console.error('Acknowledge admin operational alert error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'acknowledge_admin_internal_alert', error, req)
     return res.status(400).json({
       error: error instanceof Error ? error.message : 'Erro ao atualizar estado do alerta.',
     })
@@ -163,7 +166,7 @@ export const dismissAdminInternalAlert = async (req: AuthRequest, res: Response)
       alert: result,
     })
   } catch (error: unknown) {
-    console.error('Dismiss admin operational alert error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'dismiss_admin_internal_alert', error, req)
     return res.status(400).json({
       error: error instanceof Error ? error.message : 'Erro ao atualizar estado do alerta.',
     })

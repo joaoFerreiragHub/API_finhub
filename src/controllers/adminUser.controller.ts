@@ -12,6 +12,9 @@ import {
   CreatorTrustRecommendedAction,
 } from '../services/creatorTrust.service'
 import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_user_controller'
 
 const VALID_USER_ROLES = new Set<UserRole>(['visitor', 'free', 'premium', 'creator', 'admin'])
 const VALID_ACCOUNT_STATUSES = new Set<UserAccountStatus>(['active', 'suspended', 'banned'])
@@ -237,7 +240,7 @@ export const listAdminUsers = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin users error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_users', error, req)
     return handleAdminUserError(res, error, 'Erro ao listar utilizadores admin.')
   }
 }
@@ -304,7 +307,7 @@ export const suspendUser = async (req: AuthRequest, res: Response) => {
   try {
     return await applyStatusAction(req, res, 'suspended', 'Conta suspensa com sucesso.')
   } catch (error: unknown) {
-    console.error('Suspend user error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'suspend_user', error, req)
     return handleAdminUserError(res, error, 'Erro ao suspender utilizador.')
   }
 }
@@ -316,7 +319,7 @@ export const banUser = async (req: AuthRequest, res: Response) => {
   try {
     return await applyStatusAction(req, res, 'banned', 'Conta banida com sucesso.')
   } catch (error: unknown) {
-    console.error('Ban user error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'ban_user', error, req)
     return handleAdminUserError(res, error, 'Erro ao banir utilizador.')
   }
 }
@@ -329,7 +332,7 @@ export const unbanUser = async (req: AuthRequest, res: Response) => {
   try {
     return await applyStatusAction(req, res, 'active', 'Conta reativada com sucesso.')
   } catch (error: unknown) {
-    console.error('Unban user error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'unban_user', error, req)
     return handleAdminUserError(res, error, 'Erro ao reativar utilizador.')
   }
 }
@@ -384,7 +387,7 @@ export const forceLogoutUser = async (req: AuthRequest, res: Response) => {
       }),
     })
   } catch (error: unknown) {
-    console.error('Force logout user error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'force_logout_user', error, req)
     return handleAdminUserError(res, error, 'Erro ao aplicar force logout.')
   }
 }
@@ -498,7 +501,7 @@ export const updateAdminUserPermissions = async (req: AuthRequest, res: Response
       }),
     })
   } catch (error: unknown) {
-    console.error('Update admin user permissions error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'update_admin_user_permissions', error, req)
     return handleAdminUserError(res, error, 'Erro ao atualizar permissoes administrativas.')
   }
 }
@@ -572,7 +575,7 @@ export const applyCreatorControls = async (req: AuthRequest, res: Response) => {
       }),
     })
   } catch (error: unknown) {
-    console.error('Apply creator controls error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'apply_creator_controls', error, req)
     return handleAdminUserError(
       res,
       error,
@@ -623,7 +626,7 @@ export const addUserInternalNote = async (req: AuthRequest, res: Response) => {
       },
     })
   } catch (error: unknown) {
-    console.error('Add user internal note error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'add_user_internal_note', error, req)
     return handleAdminUserError(res, error, 'Erro ao registar nota interna.')
   }
 }
@@ -640,7 +643,7 @@ export const listUserModerationHistory = async (req: AuthRequest, res: Response)
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List user moderation history error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_user_moderation_history', error, req)
     return handleAdminUserError(res, error, 'Erro ao listar historico de moderacao.')
   }
 }
@@ -657,7 +660,7 @@ export const getAdminUserTrustProfile = async (req: AuthRequest, res: Response) 
       trustSignals: result.trustSignals,
     })
   } catch (error: unknown) {
-    console.error('Get admin user trust profile error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'get_admin_user_trust_profile', error, req)
     return handleAdminUserError(res, error, 'Erro ao carregar trust profile do creator.')
   }
 }

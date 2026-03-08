@@ -1,6 +1,9 @@
 import { Response } from 'express'
 import { AuthRequest } from '../types/auth'
 import { adminMetricsService } from '../services/adminMetrics.service'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_metrics_controller'
 
 const handleError = (res: Response, error: unknown, fallbackMessage: string) => {
   const details = error instanceof Error ? error.message : undefined
@@ -13,12 +16,12 @@ const handleError = (res: Response, error: unknown, fallbackMessage: string) => 
 /**
  * GET /api/admin/metrics/overview
  */
-export const getAdminMetricsOverview = async (_req: AuthRequest, res: Response) => {
+export const getAdminMetricsOverview = async (req: AuthRequest, res: Response) => {
   try {
     const overview = await adminMetricsService.getOverview()
     return res.status(200).json(overview)
   } catch (error: unknown) {
-    console.error('Get admin metrics overview error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'get_admin_metrics_overview', error, req)
     return handleError(res, error, 'Erro ao carregar metricas administrativas.')
   }
 }
@@ -32,7 +35,7 @@ export const getAdminMetricsDrilldown = async (req: AuthRequest, res: Response) 
     const drilldown = await adminMetricsService.getDrilldown(limitRaw)
     return res.status(200).json(drilldown)
   } catch (error: unknown) {
-    console.error('Get admin metrics drilldown error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'get_admin_metrics_drilldown', error, req)
     return handleError(res, error, 'Erro ao carregar drill-down administrativo.')
   }
 }

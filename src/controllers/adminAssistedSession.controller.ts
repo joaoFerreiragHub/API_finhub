@@ -7,6 +7,9 @@ import {
 import { assistedSessionAuditService } from '../services/assistedSessionAudit.service'
 import { AssistedSessionStatus } from '../models/AssistedSession'
 import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_assisted_session_controller'
 
 const VALID_STATUSES = new Set<AssistedSessionStatus>([
   'pending',
@@ -82,7 +85,7 @@ export const listAdminAssistedSessions = async (req: AuthRequest, res: Response)
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin assisted sessions error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_assisted_sessions', error, req)
     return handleError(res, error, 'Erro ao listar sessoes assistidas.')
   }
 }
@@ -128,7 +131,7 @@ export const requestAdminAssistedSession = async (req: AuthRequest, res: Respons
       session,
     })
   } catch (error: unknown) {
-    console.error('Request admin assisted session error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'request_admin_assisted_session', error, req)
     return handleError(res, error, 'Erro ao criar pedido de sessao assistida.')
   }
 }
@@ -152,7 +155,7 @@ export const startAdminAssistedSession = async (req: AuthRequest, res: Response)
       ...result,
     })
   } catch (error: unknown) {
-    console.error('Start admin assisted session error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'start_admin_assisted_session', error, req)
     return handleError(res, error, 'Erro ao iniciar sessao assistida.')
   }
 }
@@ -186,7 +189,7 @@ export const revokeAdminAssistedSession = async (req: AuthRequest, res: Response
       session: result.session,
     })
   } catch (error: unknown) {
-    console.error('Revoke admin assisted session error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'revoke_admin_assisted_session', error, req)
     return handleError(res, error, 'Erro ao revogar sessao assistida.')
   }
 }
@@ -206,7 +209,7 @@ export const listAdminAssistedSessionHistory = async (req: AuthRequest, res: Res
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin assisted session history error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_assisted_session_history', error, req)
     return handleError(res, error, 'Erro ao listar historico de sessao assistida.')
   }
 }

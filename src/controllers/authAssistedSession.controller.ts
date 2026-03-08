@@ -4,6 +4,9 @@ import {
   AssistedSessionServiceError,
   assistedSessionService,
 } from '../services/assistedSession.service'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'auth_assisted_session_controller'
 
 const handleError = (res: Response, error: unknown, fallbackMessage: string) => {
   if (error instanceof AssistedSessionServiceError) {
@@ -36,7 +39,7 @@ export const listMyPendingAssistedSessionRequests = async (req: AuthRequest, res
     const result = await assistedSessionService.listUserPendingSessions(req.user.id)
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List my pending assisted sessions error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_my_pending_assisted_sessions', error, req)
     return handleError(res, error, 'Erro ao listar pedidos de sessao assistida.')
   }
 }
@@ -51,7 +54,7 @@ export const listMyActiveAssistedSessions = async (req: AuthRequest, res: Respon
     const result = await assistedSessionService.listUserActiveSessions(req.user.id)
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List my active assisted sessions error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_my_active_assisted_sessions', error, req)
     return handleError(res, error, 'Erro ao listar sessoes assistidas ativas.')
   }
 }
@@ -87,7 +90,7 @@ export const respondMyAssistedSessionRequest = async (req: AuthRequest, res: Res
       session,
     })
   } catch (error: unknown) {
-    console.error('Respond my assisted session request error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'respond_my_assisted_session_request', error, req)
     return handleError(res, error, 'Erro ao responder pedido de sessao assistida.')
   }
 }
@@ -113,7 +116,7 @@ export const revokeMyAssistedSession = async (req: AuthRequest, res: Response) =
       session: result.session,
     })
   } catch (error: unknown) {
-    console.error('Revoke my assisted session error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'revoke_my_assisted_session', error, req)
     return handleError(res, error, 'Erro ao revogar sessao assistida.')
   }
 }

@@ -10,6 +10,9 @@ import {
   isValidSectionStatus,
 } from '../services/adminEditorialCms.service'
 import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_editorial_cms_controller'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -98,7 +101,7 @@ export const listEditorialSections = async (req: AuthRequest, res: Response) => 
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List editorial sections error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_editorial_sections', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao listar secoes editoriais.')
   }
 }
@@ -128,7 +131,7 @@ export const createEditorialSection = async (req: AuthRequest, res: Response) =>
 
     return res.status(201).json(section)
   } catch (error: unknown) {
-    console.error('Create editorial section error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'create_editorial_section', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao criar secao editorial.')
   }
 }
@@ -164,7 +167,7 @@ export const updateEditorialSection = async (req: AuthRequest, res: Response) =>
 
     return res.status(200).json(section)
   } catch (error: unknown) {
-    console.error('Update editorial section error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'update_editorial_section', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao atualizar secao editorial.')
   }
 }
@@ -203,7 +206,7 @@ export const addEditorialSectionItem = async (req: AuthRequest, res: Response) =
 
     return res.status(201).json(item)
   } catch (error: unknown) {
-    console.error('Add editorial section item error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'add_editorial_section_item', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao adicionar item editorial.')
   }
 }
@@ -224,7 +227,7 @@ export const reorderEditorialSectionItems = async (req: AuthRequest, res: Respon
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Reorder editorial section items error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'reorder_editorial_section_items', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao reordenar itens editoriais.')
   }
 }
@@ -240,7 +243,7 @@ export const removeEditorialSectionItem = async (req: AuthRequest, res: Response
     )
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Remove editorial section item error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'remove_editorial_section_item', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao remover item editorial.')
   }
 }
@@ -282,7 +285,7 @@ export const listAdminDirectories = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin directories error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_directories', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao listar diretorio admin.')
   }
 }
@@ -343,7 +346,7 @@ export const createAdminDirectory = async (req: AuthRequest, res: Response) => {
 
     return res.status(201).json(directory)
   } catch (error: unknown) {
-    console.error('Create admin directory error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'create_admin_directory', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao criar entrada de diretorio.')
   }
 }
@@ -404,7 +407,7 @@ export const updateAdminDirectory = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(directory)
   } catch (error: unknown) {
-    console.error('Update admin directory error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'update_admin_directory', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao atualizar entrada de diretorio.')
   }
 }
@@ -435,7 +438,7 @@ export const publishAdminDirectory = async (req: AuthRequest, res: Response) => 
     )
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Publish admin directory error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'publish_admin_directory', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao publicar entrada de diretorio.')
   }
 }
@@ -471,7 +474,7 @@ export const archiveAdminDirectory = async (req: AuthRequest, res: Response) => 
     )
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Archive admin directory error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'archive_admin_directory', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao arquivar entrada de diretorio.')
   }
 }
@@ -513,7 +516,7 @@ export const listAdminClaims = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin claims error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_claims', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao listar claims.')
   }
 }
@@ -542,7 +545,7 @@ export const listAdminOwnershipTransfers = async (req: AuthRequest, res: Respons
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin ownership transfers error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_admin_ownership_transfers', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao listar historico de ownership.')
   }
 }
@@ -565,7 +568,7 @@ export const approveAdminClaim = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Approve admin claim error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'approve_admin_claim', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao aprovar claim.')
   }
 }
@@ -588,7 +591,7 @@ export const rejectAdminClaim = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Reject admin claim error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'reject_admin_claim', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao rejeitar claim.')
   }
 }
@@ -627,7 +630,7 @@ export const transferAdminOwnership = async (req: AuthRequest, res: Response) =>
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Transfer admin ownership error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'transfer_admin_ownership', error, req)
     return handleAdminEditorialError(res, error, 'Erro ao transferir ownership.')
   }
 }

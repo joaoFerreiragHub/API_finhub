@@ -21,6 +21,9 @@ import {
 import { ContentModerationAction, ModeratableContentType } from '../models/ContentModerationEvent'
 import { ContentModerationStatus, PublishStatus } from '../models/BaseContent'
 import { readAdminNote, readAdminReason } from '../utils/adminActionPayload'
+import { logControllerError } from '../utils/domainLogger'
+
+const CONTROLLER_DOMAIN = 'admin_content_controller'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -308,7 +311,7 @@ export const listAdminContentQueue = async (req: AuthRequest, res: Response) => 
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin content queue error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_queue', error, req)
     return handleAdminContentError(res, error, 'Erro ao listar fila de moderacao de conteudo.')
   }
 }
@@ -338,7 +341,7 @@ export const listContentModerationHistory = async (req: AuthRequest, res: Respon
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List content moderation history error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_moderation_history', error, req)
     return handleAdminContentError(res, error, 'Erro ao listar historico de moderacao de conteudo.')
   }
 }
@@ -370,7 +373,7 @@ export const getContentRollbackReview = async (req: AuthRequest, res: Response) 
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Get content rollback review error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'get_rollback_review', error, req)
     return handleAdminContentError(res, error, 'Erro ao preparar revisao de rollback.')
   }
 }
@@ -408,7 +411,7 @@ export const listContentReports = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List content reports error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_reports', error, req)
     return handleAdminContentError(res, error, 'Erro ao listar reports de conteudo.')
   }
 }
@@ -420,7 +423,7 @@ export const hideContent = async (req: AuthRequest, res: Response) => {
   try {
     return await applyContentAction(req, res, 'hide', 'Conteudo ocultado com sucesso.')
   } catch (error: unknown) {
-    console.error('Hide content error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'hide_content', error, req)
     return handleAdminContentError(res, error, 'Erro ao ocultar conteudo.')
   }
 }
@@ -466,7 +469,7 @@ export const hideContentFast = async (req: AuthRequest, res: Response) => {
       content: result.content,
     })
   } catch (error: unknown) {
-    console.error('Hide fast content error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'hide_content_fast', error, req)
     return handleAdminContentError(res, error, 'Erro ao ocultar conteudo em modo rapido.')
   }
 }
@@ -478,7 +481,7 @@ export const unhideContent = async (req: AuthRequest, res: Response) => {
   try {
     return await applyContentAction(req, res, 'unhide', 'Conteudo reativado com sucesso.')
   } catch (error: unknown) {
-    console.error('Unhide content error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'unhide_content', error, req)
     return handleAdminContentError(res, error, 'Erro ao reativar conteudo.')
   }
 }
@@ -490,7 +493,7 @@ export const restrictContent = async (req: AuthRequest, res: Response) => {
   try {
     return await applyContentAction(req, res, 'restrict', 'Conteudo restrito com sucesso.')
   } catch (error: unknown) {
-    console.error('Restrict content error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'restrict_content', error, req)
     return handleAdminContentError(res, error, 'Erro ao restringir conteudo.')
   }
 }
@@ -551,7 +554,7 @@ export const rollbackContent = async (req: AuthRequest, res: Response) => {
       rollback: result.rollback,
     })
   } catch (error: unknown) {
-    console.error('Rollback content error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'rollback_content', error, req)
     return handleAdminContentError(res, error, 'Erro ao executar rollback assistido.')
   }
 }
@@ -599,7 +602,7 @@ export const bulkRollbackContent = async (req: AuthRequest, res: Response) => {
       ...result,
     })
   } catch (error: unknown) {
-    console.error('Bulk rollback content error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'bulk_rollback_content', error, req)
     return handleAdminContentError(res, error, 'Erro ao executar rollback em lote.')
   }
 }
@@ -655,7 +658,7 @@ export const createBulkModerationJob = async (req: AuthRequest, res: Response) =
       job,
     })
   } catch (error: unknown) {
-    console.error('Create bulk moderation job error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'create_bulk_moderation_job', error, req)
     return handleAdminContentError(res, error, 'Erro ao criar job de moderacao em lote.')
   }
 }
@@ -703,7 +706,7 @@ export const createBulkRollbackJob = async (req: AuthRequest, res: Response) => 
       job,
     })
   } catch (error: unknown) {
-    console.error('Create bulk rollback job error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'create_bulk_rollback_job', error, req)
     return handleAdminContentError(res, error, 'Erro ao criar job de rollback em lote.')
   }
 }
@@ -733,7 +736,7 @@ export const requestBulkRollbackJobReview = async (req: AuthRequest, res: Respon
       job,
     })
   } catch (error: unknown) {
-    console.error('Request bulk rollback job review error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'request_bulk_rollback_job_review', error, req)
     return handleAdminContentError(
       res,
       error,
@@ -770,7 +773,7 @@ export const approveBulkRollbackJob = async (req: AuthRequest, res: Response) =>
       job,
     })
   } catch (error: unknown) {
-    console.error('Approve bulk rollback job error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'approve_bulk_rollback_job', error, req)
     return handleAdminContentError(res, error, 'Erro ao aprovar job de rollback em lote.')
   }
 }
@@ -807,7 +810,7 @@ export const listAdminContentJobs = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('List admin content jobs error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'list_jobs', error, req)
     return handleAdminContentError(res, error, 'Erro ao listar jobs de conteudo.')
   }
 }
@@ -820,7 +823,7 @@ export const getAdminContentJob = async (req: AuthRequest, res: Response) => {
     const result = await adminContentJobService.getJob(req.params.jobId)
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Get admin content job error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'get_job', error, req)
     return handleAdminContentError(res, error, 'Erro ao ler job de conteudo.')
   }
 }
@@ -828,12 +831,12 @@ export const getAdminContentJob = async (req: AuthRequest, res: Response) => {
 /**
  * GET /api/admin/content/jobs/worker-status
  */
-export const getAdminContentJobWorkerStatus = async (_req: AuthRequest, res: Response) => {
+export const getAdminContentJobWorkerStatus = async (req: AuthRequest, res: Response) => {
   try {
     const result = await adminContentJobService.getWorkerStatus()
     return res.status(200).json(result)
   } catch (error: unknown) {
-    console.error('Get admin content job worker status error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'get_job_worker_status', error, req)
     return handleAdminContentError(res, error, 'Erro ao ler estado do worker de jobs.')
   }
 }
@@ -889,7 +892,7 @@ export const bulkModerateContent = async (req: AuthRequest, res: Response) => {
       ...result,
     })
   } catch (error: unknown) {
-    console.error('Bulk moderate content error:', error)
+    logControllerError(CONTROLLER_DOMAIN, 'bulk_moderate_content', error, req)
     return handleAdminContentError(res, error, 'Erro ao executar moderacao em lote.')
   }
 }

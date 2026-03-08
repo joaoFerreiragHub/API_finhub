@@ -29,6 +29,9 @@ import { creatorTrustService } from './creatorTrust.service'
 import { automatedModerationService } from './automatedModeration.service'
 import { moderationPolicyService } from './moderationPolicy.service'
 import { userPreferenceService } from './userPreference.service'
+import { logServiceError } from '../utils/domainLogger'
+
+const SERVICE_DOMAIN = 'admin_content_service'
 
 interface ContentModel {
   find(query: Record<string, unknown>): any
@@ -1242,7 +1245,11 @@ export class AdminContentService {
         this.buildModerationNotificationMessage(input.contentType, input.action, input.content)
       )
     } catch (error) {
-      console.error('Creator moderation notification failed:', error)
+      logServiceError(SERVICE_DOMAIN, 'notify_creator_about_moderation', error, {
+        ownerId,
+        contentType: input.contentType,
+        contentId: input.contentId,
+      })
     }
   }
 

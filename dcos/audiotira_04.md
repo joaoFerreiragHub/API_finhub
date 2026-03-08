@@ -142,3 +142,4 @@ Integracao CI/CD:
 - 2026-03-08: adicao do trilho P6 AI/MCP como evolucao estrategica nao bloqueante para esta release.
 - 2026-03-08: adicao do trilho P6 setup tecnico para escalabilidade, clean code e DRY (em curso).
 - 2026-03-08: T1.1 entregue no P6 setup tecnico (logger estruturado, contexto requestId e bridge de console no runtime).
+- 2026-03-08: T1.2 core entregue no P6 setup tecnico (migracao de controladores/servicos core para eventos de logger por dominio).

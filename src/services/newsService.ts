@@ -8,6 +8,9 @@ import { polygonService } from './external/polygonService'
 import { rssNewsService } from './external/rssNewsService'
 import { SourceConfig } from '../models/NewsSource'
 import { alphaVantageServiceEnhanced } from './external/alphaVantageService'
+import { logServiceError, logServiceInfo } from '../utils/domainLogger'
+
+const SERVICE_DOMAIN = 'news_service'
 
 interface NewsSearchParams {
   query: string
@@ -91,7 +94,7 @@ class NewsService {
         promises.push(
           alphaVantageServiceEnhanced.getNews(params, this.defaultConfig)
             .catch(error => {
-              console.error('Error from Alpha Vantage:', error)
+              logServiceError(SERVICE_DOMAIN, 'provider_alpha_vantage', error)
               return []
             })
         )
@@ -102,7 +105,7 @@ class NewsService {
         promises.push(
           fmpNewsService.getNews(params, this.defaultConfig)
             .catch(error => {
-              console.error('Error from FMP:', error)
+              logServiceError(SERVICE_DOMAIN, 'provider_fmp', error)
               return []
             })
         )
@@ -113,7 +116,7 @@ class NewsService {
         promises.push(
           newsApiService.getNews(params, this.defaultConfig)
             .catch(error => {
-              console.error('Error from NewsAPI:', error)
+              logServiceError(SERVICE_DOMAIN, 'provider_news_api', error)
               return []
             })
         )
@@ -124,7 +127,7 @@ class NewsService {
         promises.push(
           polygonService.getNews(params, this.defaultConfig)
             .catch(error => {
-              console.error('Error from Polygon:', error)
+              logServiceError(SERVICE_DOMAIN, 'provider_polygon', error)
               return []
             })
         )
@@ -134,7 +137,7 @@ class NewsService {
       promises.push(
         rssNewsService.getNews(params, this.defaultConfig)
           .catch(error => {
-            console.error('Error from RSS:', error)
+            logServiceError(SERVICE_DOMAIN, 'provider_rss', error)
             return []
           })
       )
@@ -159,7 +162,7 @@ class NewsService {
       }
 
     } catch (error) {
-      console.error('Error in NewsService.getNews:', error)
+      logServiceError(SERVICE_DOMAIN, 'get_news', error, { query: params })
       throw error
     }
   }
@@ -168,14 +171,14 @@ class NewsService {
   async getNewsById(id: string): Promise<NewsArticle | null> {
     // TODO: Implementar busca por ID específico
     // Por enquanto, retorna null pois os serviços externos não têm este método
-    console.log(`🔍 getNewsById not implemented for ID: ${id}`)
+    logServiceInfo(SERVICE_DOMAIN, 'get_news_by_id_not_implemented', { id })
     return null
   }
 
   // Buscar notícias relacionadas
   async getRelatedNews(articleId: string, limit: number = 5): Promise<NewsArticle[]> {
     // TODO: Implementar busca de notícias relacionadas
-    console.log(`🔍 getRelatedNews not implemented for ID: ${articleId}`)
+    logServiceInfo(SERVICE_DOMAIN, 'get_related_news_not_implemented', { articleId, limit })
     return []
   }
 
@@ -443,7 +446,7 @@ class NewsService {
   // Forçar refresh
   async forceRefresh(): Promise<RefreshResult> {
     // TODO: Implementar refresh real
-    console.log('🔄 Force refresh triggered')
+    logServiceInfo(SERVICE_DOMAIN, 'force_refresh_triggered')
     
     return {
       updated: 25,
