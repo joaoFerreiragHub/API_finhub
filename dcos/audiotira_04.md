@@ -103,6 +103,11 @@ Resultado esperado para fecho final:
 - so passa quando todos os itens obrigatorios da secao 4 estiverem concluidos;
 - so passa quando todos esses itens estiverem em `dcos/done/`.
 
+Integracao CI/CD:
+
+- `test:docs:smoke` corre no workflow de CI em cada push/PR;
+- `test:docs:release-gate` pode ser exigido no deploy definindo `RELEASE_DOCS_GATE=true` em `Repository Variables`.
+
 ## 9) Fontes historicas consolidadas
 
 - dcos/done/LISTA_IMPLEMENTACOES_A_FAZER.md
