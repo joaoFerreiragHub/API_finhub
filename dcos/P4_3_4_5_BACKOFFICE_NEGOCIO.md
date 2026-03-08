@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-04 backend MVP entregue)
+Estado: Em curso (P4.3-01 e P4.3-04 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -61,6 +61,41 @@ Frontend:
 1. Nova area admin `Monetizacao > Paywall`.
 2. Tabela de regras por vertical/tipo e estado (ativo/inativo).
 3. Preview de impacto antes de publicar regra.
+
+Estado desta iteracao:
+1. backend MVP entregue com modelo versionado, historico e preview de impacto.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo `ContentAccessPolicy` com:
+   - `code`, `label`, `description`, `active`, `priority`;
+   - janela temporal (`effectiveFrom`, `effectiveTo`);
+   - `match` por `contentTypes`, `categories`, `tags`, `featuredOnly`;
+   - `access` por `requiredRole`, `teaserAllowed`, `blockedMessage`;
+   - `version` + `history` de alteracoes.
+2. endpoints admin:
+   - `GET /api/admin/content/access-policies`
+   - `GET /api/admin/content/access-policies/:policyId`
+   - `POST /api/admin/content/access-policies/preview`
+   - `POST /api/admin/content/access-policies`
+   - `PATCH /api/admin/content/access-policies/:policyId`
+   - `POST /api/admin/content/access-policies/:policyId/activate`
+   - `POST /api/admin/content/access-policies/:policyId/deactivate`
+3. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura com `admin.content.read`;
+   - preview e escrita com `admin.content.moderate`.
+4. preview calcula impacto por tipo de conteudo:
+   - total de matches;
+   - distribuicao atual `currentlyPremium` vs `currentlyFree`;
+   - amostra dos conteudos afetados.
+5. rate limit operacional aplicado:
+   - preview com `rateLimiter.adminMetricsDrilldown`;
+   - mutacoes com `rateLimiter.adminModerationAction`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
+3. `npm run checking`
 
 ### 5.2 P4.3-02 Gestao de subscricoes/planos
 

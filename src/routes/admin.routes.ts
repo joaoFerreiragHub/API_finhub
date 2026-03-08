@@ -41,6 +41,15 @@ import {
   updateAdminSurfaceControl,
 } from '../controllers/adminSurfaceControl.controller'
 import {
+  activateAdminContentAccessPolicy,
+  createAdminContentAccessPolicy,
+  deactivateAdminContentAccessPolicy,
+  getAdminContentAccessPolicy,
+  listAdminContentAccessPolicies,
+  previewAdminContentAccessPolicy,
+  updateAdminContentAccessPolicy,
+} from '../controllers/adminContentAccessPolicy.controller'
+import {
   activateAdminModerationTemplate,
   createAdminModerationTemplate,
   deactivateAdminModerationTemplate,
@@ -507,6 +516,148 @@ router.get(
   }),
   requireAdminScope('admin.content.read'),
   listContentReports
+)
+
+/**
+ * @route   GET /api/admin/content/access-policies
+ * @desc    Listar policies de acesso premium/paywall
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/access-policies',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.access_policies.list',
+    resourceType: 'content_access_policy',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminContentAccessPolicies
+)
+
+/**
+ * @route   GET /api/admin/content/access-policies/:policyId
+ * @desc    Ler detalhe de policy de acesso premium/paywall
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/access-policies/:policyId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.access_policies.read',
+    resourceType: 'content_access_policy',
+    scope: 'admin.content.read',
+    getResourceId: (req) => req.params.policyId,
+  }),
+  requireAdminScope('admin.content.read'),
+  getAdminContentAccessPolicy
+)
+
+/**
+ * @route   POST /api/admin/content/access-policies/preview
+ * @desc    Simular impacto de policy de acesso premium/paywall
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/access-policies/preview',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.content.access_policies.preview',
+    resourceType: 'content_access_policy',
+    scope: 'admin.content.moderate',
+  }),
+  requireAdminScope('admin.content.moderate'),
+  previewAdminContentAccessPolicy
+)
+
+/**
+ * @route   POST /api/admin/content/access-policies
+ * @desc    Criar policy de acesso premium/paywall
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/access-policies',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.access_policies.create',
+    resourceType: 'content_access_policy',
+    scope: 'admin.content.moderate',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      const access =
+        body.access && typeof body.access === 'object'
+          ? (body.access as Record<string, unknown>)
+          : null
+
+      return {
+        code: typeof body.code === 'string' ? body.code : undefined,
+        requiredRole:
+          access && typeof access.requiredRole === 'string' ? access.requiredRole : undefined,
+        active: typeof body.active === 'boolean' ? body.active : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.content.moderate'),
+  createAdminContentAccessPolicy
+)
+
+/**
+ * @route   PATCH /api/admin/content/access-policies/:policyId
+ * @desc    Atualizar policy de acesso premium/paywall
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.patch(
+  '/content/access-policies/:policyId',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.access_policies.update',
+    resourceType: 'content_access_policy',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.policyId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminContentAccessPolicy
+)
+
+/**
+ * @route   POST /api/admin/content/access-policies/:policyId/activate
+ * @desc    Ativar policy de acesso premium/paywall
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/access-policies/:policyId/activate',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.access_policies.activate',
+    resourceType: 'content_access_policy',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.policyId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  activateAdminContentAccessPolicy
+)
+
+/**
+ * @route   POST /api/admin/content/access-policies/:policyId/deactivate
+ * @desc    Desativar policy de acesso premium/paywall
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/content/access-policies/:policyId/deactivate',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.access_policies.deactivate',
+    resourceType: 'content_access_policy',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.policyId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  deactivateAdminContentAccessPolicy
 )
 
 /**
