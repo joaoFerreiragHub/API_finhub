@@ -19,6 +19,7 @@
     "quick-metrics:coverage": "node scripts/quick-metrics-sector-coverage.js",
     "test:pre-p1": "powershell -ExecutionPolicy Bypass -File scripts/pre-p1-smoke.ps1",
     "test:moderation:pre-release": "powershell -ExecutionPolicy Bypass -File scripts/moderation-pre-release-smoke.ps1",
+    "test:release:e2e": "powershell -ExecutionPolicy Bypass -File scripts/release-e2e-required-flows.ps1",
     "test:sector-smoke": "node scripts/quick-analysis-sector-smoke.js",
     "build": "tsc",
     "seed": "ts-node src/scripts/seed.ts",
