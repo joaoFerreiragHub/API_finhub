@@ -1106,7 +1106,7 @@ Foi adicionada a primeira entrega formal de O1-08 no backend:
    - hide-fast;
    - rollback-review + rollback;
    - worker-status + internal alerts;
-5. runbook dedicado publicado em `dcos/RUNBOOK_MODERATION_PRE_RELEASE.md`.
+5. runbook dedicado publicado em `dcos/done/RUNBOOK_MODERATION_PRE_RELEASE.md`.
 
 Variaveis de apoio documentadas em `.env.example`:
 
@@ -1130,4 +1130,5 @@ Cada bloco deve fechar sempre estas quatro frentes antes de passar ao seguinte:
 2. surface admin/frontend
 3. testes e validacao de CLI
 4. documentacao operacional e pre-release
+
 
