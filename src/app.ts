@@ -1,26 +1,29 @@
 import express, { NextFunction, Request, Response } from 'express'
-import cors from 'cors'
 import helmet from 'helmet'
 import path from 'path'
 import mongoose from 'mongoose'
 import routes from './routes'
 import { withRequestContext } from './middlewares/requestContext'
 import { requestLogger } from './middlewares/requestLogger'
+import { corsMiddleware } from './middlewares/cors'
 import { getMetricsSnapshot, renderPrometheusMetrics } from './observability/metrics'
 import { captureException } from './observability/sentry'
 import { registerSocialEventHandlers } from './events/registerSocialEventHandlers'
 import { uploadService } from './services/upload.service'
 import { logError } from './utils/logger'
 
+const jsonBodyLimit = process.env.HTTP_JSON_BODY_LIMIT ?? '1mb'
+
 const app = express()
 
 registerSocialEventHandlers()
 
-app.use(cors())
+app.use(corsMiddleware)
 app.use(helmet())
 app.use(withRequestContext)
 app.use(requestLogger)
-app.use(express.json())
+app.use(express.json({ limit: jsonBodyLimit }))
+app.use(express.urlencoded({ extended: true, limit: jsonBodyLimit }))
 if (uploadService.getRuntimeState().storageProvider === 'local') {
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')))
 }

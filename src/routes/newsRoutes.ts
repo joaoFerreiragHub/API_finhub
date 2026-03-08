@@ -3,6 +3,8 @@ import { Router } from 'express'
 import { validateQuery, validateParams, validateBody, validateArrayParams } from '../middlewares/validation'
 import { newsController } from '../controllers/newsController'
 import { rateLimiter } from '../middlewares/rateLimiter'
+import { authenticate } from '../middlewares/auth'
+import { requireAdminScope } from '../middlewares/roleGuard'
 
 const router = Router()
 
@@ -51,8 +53,9 @@ router.post('/search',
 
 // POST /api/news/refresh - Forçar refresh das notícias (admin)
 router.post('/refresh',
+  authenticate,
+  requireAdminScope('admin.content.moderate'),
   rateLimiter.admin,
-  // TODO: Adicionar middleware de autenticação admin
   newsController.refreshNews
 )
 

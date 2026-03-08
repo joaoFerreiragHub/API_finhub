@@ -5,7 +5,7 @@ import { Server } from 'http'
 import { initializeRateLimiter, shutdownRateLimiter } from './middlewares/rateLimiter'
 import { captureException, flushSentry, initializeSentry } from './observability/sentry'
 import { uploadService } from './services/upload.service'
-import { logError } from './utils/logger'
+import { logError, logInfo } from './utils/logger'
 
 const PORT = process.env.PORT || 3000
 let server: Server | null = null
@@ -16,9 +16,9 @@ async function startServer() {
     initializeSentry()
     await initializeRateLimiter()
     await connectToDatabase()
-    console.log('Upload storage runtime:', uploadService.getRuntimeState())
+    logInfo('server_upload_storage_runtime', uploadService.getRuntimeState())
     server = app.listen(PORT, () => {
-      console.log(`Servidor a correr em http://localhost:${PORT}`)
+      logInfo('server_started', { port: PORT })
     })
   } catch (error) {
     logError('server_start_failed', error)
@@ -32,7 +32,7 @@ async function shutdown(reason: NodeJS.Signals | 'fatal_error', exitCode = 0) {
   if (shutdownStarted) return
   shutdownStarted = true
 
-  console.log(`Motivo ${reason} recebido. A encerrar servidor...`)
+  logInfo('server_shutdown_requested', { reason })
 
   try {
     if (server) {
