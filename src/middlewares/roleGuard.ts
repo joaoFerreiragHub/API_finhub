@@ -1,7 +1,8 @@
 import { Response, NextFunction } from 'express'
 import { AuthRequest } from '../types/auth'
 import { UserRole } from '../models/User'
-import { AdminScope, canAdminUseScope } from '../admin/permissions'
+import { AdminScope, canAdminUseScope, isAdminWriteScope } from '../admin/permissions'
+import { adminScopeDelegationService } from '../services/adminScopeDelegation.service'
 
 /**
  * Middleware para verificar se o utilizador tem uma das roles permitidas
@@ -35,7 +36,7 @@ export const requireAdmin = requireRole('admin')
  * Middleware especifico para escopos admin granulares.
  */
 export const requireAdminScope = (scope: AdminScope) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Autenticacao necessaria.',
@@ -44,6 +45,30 @@ export const requireAdminScope = (scope: AdminScope) => {
 
     const permissionCheck = canAdminUseScope(req.user, scope)
     if (!permissionCheck.allowed) {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({
+          error: permissionCheck.reason ?? 'Acesso negado. Permissoes insuficientes.',
+          requiredScope: scope,
+        })
+      }
+
+      if (req.user.adminReadOnly && isAdminWriteScope(scope)) {
+        return res.status(403).json({
+          error:
+            permissionCheck.reason ??
+            'Perfil admin em modo read-only nao pode executar acoes de escrita.',
+          requiredScope: scope,
+        })
+      }
+
+      const hasDelegatedScope = await adminScopeDelegationService.hasActiveScopeDelegation(
+        req.user.id,
+        scope
+      )
+      if (hasDelegatedScope) {
+        return next()
+      }
+
       return res.status(403).json({
         error: permissionCheck.reason ?? 'Acesso negado. Permissoes insuficientes.',
         requiredScope: scope,

@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01, P4.5-02 e P4.5-03 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01, P4.5-02, P4.5-03 e P4.5-04 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -551,6 +551,50 @@ Entregue no backend:
    - `POST /api/admin/content/bulk-moderate/jobs` aceita `scheduledFor` (nesta iteracao, apenas para `action=unhide`).
 5. auditoria administrativa e `requireAdminScope` aplicados com `admin.content.moderate`.
 6. rate limit operacional aplicado com `rateLimiter.adminModerationAction` e `rateLimiter.adminModerationBulk`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
+3. `npm run checking`
+
+### 7.4 P4.5-04 Delegacao temporaria de scopes
+
+Objetivo:
+1. Permitir cobertura operacional temporaria entre admins sem alterar o perfil base permanente.
+
+Backend:
+1. Modelo de delegacao temporaria por scope com expiracao automatica.
+2. Endpoints admin para listar/criar/revogar delegacoes.
+3. Integracao direta no `requireAdminScope` para considerar delegacoes ativas em runtime.
+
+Frontend:
+1. Area admin para gerir delegacoes temporarias por utilizador (ainda pendente).
+2. Lista de delegacoes com estado (`active`, `expired`, `revoked`) e expiracao (ainda pendente).
+
+Estado desta iteracao:
+1. backend MVP entregue com delegacao temporaria e enforcement no RBAC.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo novo `AdminScopeDelegation` com:
+   - `delegatedBy`, `delegatedTo`, `scope`, `reason`, `note`;
+   - `startsAt`, `expiresAt`, `revokedAt`, `revokedBy`, `revokeReason`, `revokeNote`;
+   - `purgeAt` com cleanup por TTL para higiene de dados.
+2. servico `adminScopeDelegation.service` com:
+   - validacao de scopes/expiracao e guardrails de duracao maxima;
+   - regras de seguranca (sem auto-delegacao; sem delegar scope fora do perfil base do ator);
+   - revogacao explicita com motivo e listagem paginada por estado.
+3. endpoints admin:
+   - `GET /api/admin/users/:userId/scope-delegations`
+   - `POST /api/admin/users/:userId/scope-delegations`
+   - `POST /api/admin/users/:userId/scope-delegations/:delegationId/revoke`
+4. integracao RBAC:
+   - `requireAdminScope` passa a aceitar scopes delegados ativos para admins;
+   - mantem bloqueio `adminReadOnly` para scopes de escrita, mesmo com delegacao.
+5. auditoria administrativa e `requireAdminScope` aplicados:
+   - listagem com `admin.users.read`;
+   - criacao/revogacao com `admin.users.write`.
+6. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
 
 Validacao desta iteracao:
 1. `npm run typecheck`

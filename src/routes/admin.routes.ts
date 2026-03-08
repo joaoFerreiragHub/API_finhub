@@ -123,6 +123,11 @@ import {
   unbanUser,
 } from '../controllers/adminUser.controller'
 import {
+  createAdminScopeDelegations,
+  listAdminScopeDelegations,
+  revokeAdminScopeDelegation,
+} from '../controllers/adminScopeDelegation.controller'
+import {
   addEditorialSectionItem,
   approveAdminClaim,
   archiveAdminDirectory,
@@ -2114,6 +2119,72 @@ router.post(
   }),
   requireAdminScope('admin.users.write'),
   updateAdminUserPermissions
+)
+
+/**
+ * @route   GET /api/admin/users/:userId/scope-delegations
+ * @desc    Listar delegacoes temporarias de scopes admin para um utilizador
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/users/:userId/scope-delegations',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.users.scope_delegations.list',
+    resourceType: 'admin_scope_delegation',
+    scope: 'admin.users.read',
+    getResourceId: (req) => req.params.userId,
+  }),
+  requireAdminScope('admin.users.read'),
+  listAdminScopeDelegations
+)
+
+/**
+ * @route   POST /api/admin/users/:userId/scope-delegations
+ * @desc    Delegar scopes admin temporarios com expiracao automatica
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/users/:userId/scope-delegations',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.users.scope_delegations.create',
+    resourceType: 'admin_scope_delegation',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.userId,
+    getMetadata: (_req, res) => {
+      const metadata = (res.locals as Record<string, unknown>).adminScopeDelegationChange
+      if (!metadata || typeof metadata !== 'object') return undefined
+      return metadata as Record<string, unknown>
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  createAdminScopeDelegations
+)
+
+/**
+ * @route   POST /api/admin/users/:userId/scope-delegations/:delegationId/revoke
+ * @desc    Revogar delegacao temporaria de scope admin
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/users/:userId/scope-delegations/:delegationId/revoke',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.users.scope_delegations.revoke',
+    resourceType: 'admin_scope_delegation',
+    scope: 'admin.users.write',
+    getResourceId: (req) => req.params.delegationId,
+    getMetadata: (_req, res) => {
+      const metadata = (res.locals as Record<string, unknown>).adminScopeDelegationChange
+      if (!metadata || typeof metadata !== 'object') return undefined
+      return metadata as Record<string, unknown>
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  revokeAdminScopeDelegation
 )
 
 /**

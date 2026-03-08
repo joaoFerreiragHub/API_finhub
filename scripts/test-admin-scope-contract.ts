@@ -102,162 +102,174 @@ const createMockResponse = (): MockResponse => {
   return response
 }
 
-const contracts = parseRouteContracts()
-assert(contracts.length > 0, 'Nenhuma rota admin foi encontrada para validacao.')
+const run = async () => {
+  const contracts = parseRouteContracts()
+  assert(contracts.length > 0, 'Nenhuma rota admin foi encontrada para validacao.')
 
-const routesWithoutScope = contracts.filter((contract) => contract.scope === null)
-assert.strictEqual(
-  routesWithoutScope.length,
-  0,
-  `Rotas admin sem requireAdminScope: ${routesWithoutScope
-    .map((route) => `${route.method.toUpperCase()} ${route.routePath}`)
-    .join(', ')}`
-)
-
-const invalidScopeContracts = contracts.filter(
-  (contract) => contract.scope && !ADMIN_SCOPES.includes(contract.scope)
-)
-assert.strictEqual(
-  invalidScopeContracts.length,
-  0,
-  `Rotas admin com escopo invalido: ${invalidScopeContracts
-    .map((route) => `${route.method.toUpperCase()} ${route.routePath} -> ${route.scope}`)
-    .join(', ')}`
-)
-
-const uniqueScopes = Array.from(
-  new Set(
-    contracts
-      .map((contract) => contract.scope)
-      .filter((scope): scope is AdminScope => scope !== null)
+  const routesWithoutScope = contracts.filter((contract) => contract.scope === null)
+  assert.strictEqual(
+    routesWithoutScope.length,
+    0,
+    `Rotas admin sem requireAdminScope: ${routesWithoutScope
+      .map((route) => `${route.method.toUpperCase()} ${route.routePath}`)
+      .join(', ')}`
   )
-)
-assert(uniqueScopes.length > 0, 'Nao foi encontrado nenhum escopo admin nas rotas.')
 
-const fallbackScope = uniqueScopes[0]
-
-for (const scope of uniqueScopes) {
-  const unrelatedScope =
-    uniqueScopes.find((candidate) => candidate !== scope) ?? fallbackScope
-
-  const allowedCheck = canAdminUseScope(
-    {
-      role: 'admin',
-      adminScopes: [scope],
-      adminReadOnly: false,
-    } as any,
-    scope
+  const invalidScopeContracts = contracts.filter(
+    (contract) => contract.scope && !ADMIN_SCOPES.includes(contract.scope)
   )
   assert.strictEqual(
-    allowedCheck.allowed,
-    true,
-    `Esperava permitir escopo ${scope} com admin configurado para esse escopo.`
+    invalidScopeContracts.length,
+    0,
+    `Rotas admin com escopo invalido: ${invalidScopeContracts
+      .map((route) => `${route.method.toUpperCase()} ${route.routePath} -> ${route.scope}`)
+      .join(', ')}`
   )
 
-  const deniedCheck = canAdminUseScope(
-    {
-      role: 'admin',
-      adminScopes: [unrelatedScope],
-      adminReadOnly: false,
-    } as any,
-    scope
-  )
-  assert.strictEqual(
-    deniedCheck.allowed,
-    false,
-    `Esperava negar escopo ${scope} para admin sem esse escopo.`
-  )
-
-  const deniedNonAdmin = canAdminUseScope(
-    {
-      role: 'creator',
-      adminScopes: [scope],
-      adminReadOnly: false,
-    } as any,
-    scope
-  )
-  assert.strictEqual(
-    deniedNonAdmin.allowed,
-    false,
-    `Esperava negar escopo ${scope} para role nao admin.`
-  )
-
-  const readOnlyCheck = canAdminUseScope(
-    {
-      role: 'admin',
-      adminScopes: [scope],
-      adminReadOnly: true,
-    } as any,
-    scope
-  )
-  assert.strictEqual(
-    readOnlyCheck.allowed,
-    !isAdminWriteScope(scope),
-    `Modo read-only com comportamento inesperado para escopo ${scope}.`
-  )
-
-  const middleware = requireAdminScope(scope)
-
-  {
-    const req = { user: undefined } as any
-    const res = createMockResponse() as any
-    let nextCalled = false
-
-    middleware(req, res, () => {
-      nextCalled = true
-    })
-
-    assert.strictEqual(nextCalled, false, `Middleware deveria negar sem utilizador (${scope}).`)
-    assert.strictEqual(res.statusCode, 401, `Middleware sem user deve responder 401 (${scope}).`)
-  }
-
-  {
-    const req = {
-      user: {
-        role: 'admin',
-        adminScopes: [unrelatedScope],
-        adminReadOnly: false,
-      },
-    } as any
-    const res = createMockResponse() as any
-    let nextCalled = false
-
-    middleware(req, res, () => {
-      nextCalled = true
-    })
-
-    assert.strictEqual(nextCalled, false, `Middleware deveria negar sem escopo (${scope}).`)
-    assert.strictEqual(res.statusCode, 403, `Middleware sem escopo deve responder 403 (${scope}).`)
-    assert.deepStrictEqual(
-      res.payload,
-      {
-        error: `Permissao admin em falta para o escopo '${scope}'.`,
-        requiredScope: scope,
-      },
-      `Payload inesperado para negacao de escopo (${scope}).`
+  const uniqueScopes = Array.from(
+    new Set(
+      contracts
+        .map((contract) => contract.scope)
+        .filter((scope): scope is AdminScope => scope !== null)
     )
-  }
+  )
+  assert(uniqueScopes.length > 0, 'Nao foi encontrado nenhum escopo admin nas rotas.')
 
-  {
-    const req = {
-      user: {
+  const fallbackScope = uniqueScopes[0]
+
+  for (const scope of uniqueScopes) {
+    const unrelatedScope = uniqueScopes.find((candidate) => candidate !== scope) ?? fallbackScope
+
+    const allowedCheck = canAdminUseScope(
+      {
         role: 'admin',
         adminScopes: [scope],
         adminReadOnly: false,
-      },
-    } as any
-    const res = createMockResponse() as any
-    let nextCalled = false
+      } as any,
+      scope
+    )
+    assert.strictEqual(
+      allowedCheck.allowed,
+      true,
+      `Esperava permitir escopo ${scope} com admin configurado para esse escopo.`
+    )
 
-    middleware(req, res, () => {
-      nextCalled = true
-    })
+    const deniedCheck = canAdminUseScope(
+      {
+        role: 'admin',
+        adminScopes: [unrelatedScope],
+        adminReadOnly: false,
+      } as any,
+      scope
+    )
+    assert.strictEqual(
+      deniedCheck.allowed,
+      false,
+      `Esperava negar escopo ${scope} para admin sem esse escopo.`
+    )
 
-    assert.strictEqual(nextCalled, true, `Middleware deveria permitir com escopo valido (${scope}).`)
-    assert.strictEqual(res.statusCode, null, `Middleware permitido nao deve setar status (${scope}).`)
+    const deniedNonAdmin = canAdminUseScope(
+      {
+        role: 'creator',
+        adminScopes: [scope],
+        adminReadOnly: false,
+      } as any,
+      scope
+    )
+    assert.strictEqual(
+      deniedNonAdmin.allowed,
+      false,
+      `Esperava negar escopo ${scope} para role nao admin.`
+    )
+
+    const readOnlyCheck = canAdminUseScope(
+      {
+        role: 'admin',
+        adminScopes: [scope],
+        adminReadOnly: true,
+      } as any,
+      scope
+    )
+    assert.strictEqual(
+      readOnlyCheck.allowed,
+      !isAdminWriteScope(scope),
+      `Modo read-only com comportamento inesperado para escopo ${scope}.`
+    )
+
+    const middleware = requireAdminScope(scope)
+
+    {
+      const req = { user: undefined } as any
+      const res = createMockResponse() as any
+      let nextCalled = false
+
+      await Promise.resolve(
+        middleware(req, res, () => {
+          nextCalled = true
+        })
+      )
+
+      assert.strictEqual(nextCalled, false, `Middleware deveria negar sem utilizador (${scope}).`)
+      assert.strictEqual(res.statusCode, 401, `Middleware sem user deve responder 401 (${scope}).`)
+    }
+
+    {
+      const req = {
+        user: {
+          role: 'admin',
+          adminScopes: [unrelatedScope],
+          adminReadOnly: false,
+        },
+      } as any
+      const res = createMockResponse() as any
+      let nextCalled = false
+
+      await Promise.resolve(
+        middleware(req, res, () => {
+          nextCalled = true
+        })
+      )
+
+      assert.strictEqual(nextCalled, false, `Middleware deveria negar sem escopo (${scope}).`)
+      assert.strictEqual(res.statusCode, 403, `Middleware sem escopo deve responder 403 (${scope}).`)
+      assert.deepStrictEqual(
+        res.payload,
+        {
+          error: `Permissao admin em falta para o escopo '${scope}'.`,
+          requiredScope: scope,
+        },
+        `Payload inesperado para negacao de escopo (${scope}).`
+      )
+    }
+
+    {
+      const req = {
+        user: {
+          role: 'admin',
+          adminScopes: [scope],
+          adminReadOnly: false,
+        },
+      } as any
+      const res = createMockResponse() as any
+      let nextCalled = false
+
+      await Promise.resolve(
+        middleware(req, res, () => {
+          nextCalled = true
+        })
+      )
+
+      assert.strictEqual(nextCalled, true, `Middleware deveria permitir com escopo valido (${scope}).`)
+      assert.strictEqual(res.statusCode, null, `Middleware permitido nao deve setar status (${scope}).`)
+    }
   }
+
+  console.log(
+    `OK: ${contracts.length} rotas admin com escopo e ${uniqueScopes.length} scopes validados (allow/deny).`
+  )
 }
 
-console.log(
-  `OK: ${contracts.length} rotas admin com escopo e ${uniqueScopes.length} scopes validados (allow/deny).`
-)
+run().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})
