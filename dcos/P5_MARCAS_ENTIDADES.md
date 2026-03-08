@@ -344,6 +344,13 @@ createdBy: ObjectId
 | Perfil de criador | Seccao patrocinada | Banner ou recomendacao |
 | Resultado de pesquisa | Topo dos resultados | Sponsored result |
 
+**Regras obrigatorias de experiencia:**
+1. Premium remove apenas `external_ads` (rede externa, ex: Adsense).
+2. Premium pode continuar a ver `sponsored_ads`/`house_ads` em zonas dedicadas e limitadas.
+3. Free nao deve receber popups/interstitials; usar apenas slots nao intrusivos de layout.
+4. Priorizar anuncios financeiros/contextuais; se nao houver relevancia, nao servir anuncio.
+5. Definir limite de densidade por superficie para reduzir fadiga, sobretudo em utilizadores pagantes.
+
 **Implementacao sugerida:**
 ```
 // Endpoint
@@ -365,6 +372,12 @@ POST /api/ads/impression  { token: string }
 POST /api/ads/click       { token: string }
 ```
 
+**Governanca de slots por superficie (admin):**
+1. Manter um `inventory map` com slots permitidos/proibidos por pagina e superficie.
+2. Reservar zonas dedicadas para patrocinio em perfil do user e paginas de recursos/diretorio.
+3. Evitar ruido em ferramentas financeiras criticas e fluxos de foco.
+4. Marcar sempre conteudo patrocinado como `Patrocinado`.
+
 **Prioridade:** P3 — depende das campanhas.
 
 ---
@@ -383,6 +396,8 @@ POST /api/ads/click       { token: string }
 - Metricas (impressoes, cliques, CTR, gasto)
 - Wallet/billing (saldo, faturas, top-up)
 - Conteudo onde a marca e mencionada
+- Mapa de placements/slots ativos por campanha
+- Breakdown por audiencia (`free`, `premium`, `creator`) e por tipo (`external_ads`, `sponsored_ads`, `house_ads`)
 
 **Prioridade:** P4 — so faz sentido quando o volume de marcas justificar self-service. Inicialmente o admin gere tudo.
 

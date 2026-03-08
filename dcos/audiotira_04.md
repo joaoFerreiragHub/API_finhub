@@ -83,6 +83,23 @@ Go-live final permitido apenas quando:
 2. todos esses ficheiros estiverem movidos para `dcos/done/`;
 3. este ficheiro (`dcos/audiotira_04.md`) mostrar 100% fechado.
 
+## 7.1) Diretriz transversal de monetizacao e publicidade
+
+Estas regras passam a ser referencia obrigatoria para P4.4/P5:
+
+1. Separar `role` de `plan/entitlement`:
+   - `role` define permissoes operacionais;
+   - `entitlement` define acesso premium e politica de anuncios.
+2. `creator` e `admin` nao recebem premium/no-ads por defeito.
+3. Premium remove apenas anuncios externos (`external_ads`), nao todos os formatos patrocinados.
+4. Free nao usa popups/interstitials; publicidade apenas em slots nao intrusivos de layout.
+5. Publicidade deve ser financeira/contextual; sem relevancia, nao servir anuncio.
+6. Implementar mapa de slots por superficie com limites de fadiga, sobretudo para pagantes.
+7. Dashboards dedicados:
+   - admin (governanca, aprovacoes, receita, inventory map);
+   - marcas (campanhas e performance);
+   - criadores (patrocinios/campanhas e performance).
+
 ## 8) Trilha P6 - AI/MCP (nao bloqueante para esta release)
 
 Objetivo:
@@ -153,3 +170,4 @@ Integracao CI/CD:
 - 2026-03-08: P4.3-04 iniciou execucao com backend MVP de templates de moderacao (modelo versionado + endpoints admin + RBAC/auditoria).
 - 2026-03-08: P4.3-01 iniciou execucao com backend MVP de paywall/acesso (modelo `ContentAccessPolicy`, preview de impacto e endpoints admin com RBAC/auditoria).
 - 2026-03-08: P4.3-02 iniciou execucao com backend MVP de subscricoes/planos (modelo `UserSubscription`, endpoints admin, timeline/versionamento e acoes controladas com motivo obrigatorio).
+- 2026-03-08: formalizada diretriz de monetizacao/ads (premium sem `external_ads`, sem popups para free, anuncios financeiros/contextuais e dashboards dedicados para admin/marcas/criadores).

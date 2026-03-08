@@ -97,6 +97,12 @@ Validacao desta iteracao:
 2. `npm run test:technical:smoke`
 3. `npm run checking`
 
+Decisoes funcionais (obrigatorias para execucao de P4.4/P5):
+1. Separar sempre `role` (visitor/free/creator/admin) de `plan/entitlements` (free/premium + noExternalAds).
+2. `creator` nao equivale a `premium` por defeito.
+3. `admin` tem escopos de gestao; nao implica entitlement premium de consumo.
+4. A gestao de subscricoes admin aplica-se a utilizadores `free/premium`; `creator/admin` ficam fora deste fluxo, salvo regra explicita futura.
+
 ### 5.2 P4.3-02 Gestao de subscricoes/planos
 
 Objetivo:
@@ -235,6 +241,27 @@ Frontend:
 1. Inventario de placements e parceiros.
 2. Estado contratual e janela de campanha.
 3. Regras de visibilidade e prioridade por superficie.
+4. Tipologia de anuncios obrigatoria:
+   - `external_ads` (rede externa: adsense, etc.);
+   - `sponsored_ads` (campanhas de marcas/criadores dentro da plataforma);
+   - `house_ads` (promocoes internas).
+5. Regra premium:
+   - premium remove `external_ads`;
+   - premium nao remove automaticamente `sponsored_ads`/`house_ads` em slots dedicados e nao intrusivos.
+6. Regra free:
+   - proibidos popups/interstitials;
+   - ads apenas em zonas de bordo/layout (ex: lateral, footer, blocos dedicados no feed), sem bloquear tarefas.
+7. Regra de relevancia:
+   - anuncios devem ser financeiros/contextuais;
+   - se nao houver campanha relevante para o contexto, nao servir anuncio.
+8. Governanca de superficies:
+   - definir mapa de slots permitidos por pagina/superficie;
+   - incluir zonas dedicadas em perfil do user e paginas especificas;
+   - limitar carga publicitaria para experiencia premium (baixa fadiga).
+9. Dashboards obrigatorios:
+   - admin: inventory map, aprovacoes, performance e revenue;
+   - marca: campanhas, gasto, CTR/conversao, placements ativos;
+   - criador: campanhas proprias, patrocinio e performance por placement.
 
 ## 7) P4.5 - Opcional (produtividade/UX)
 

@@ -423,6 +423,8 @@ scheduledAt?: Date
 - Logica de aprovacao (admin revê antes de publicar)
 - Billing: debitar wallet do criador por impressoes/cliques
 - Reporting: metricas de campanha em tempo real
+- Regras de placement por zonas dedicadas (perfil do user, seccoes de recursos, slots editoriais)
+- Politica de relevancia: campanhas financeiras/contextuais, sem serving quando nao houver match
 
 **Prioridade:** P3 — feature de monetizacao avancada.
 
@@ -432,8 +434,13 @@ scheduledAt?: Date
 
 **Estado atual:**
 - BaseContent tem `isPremium: boolean`
-- roleGuard tem `requirePremium` (premium, creator, admin)
+- roleGuard tem `requirePremium` (premium, creator, admin) - precisa revisao de regra de negocio
 - Nao ha logica de compra/acesso individual a conteudo pago
+
+**Decisao funcional obrigatoria:**
+1. `creator` nao equivale a `premium` por defeito.
+2. `admin` nao equivale a `premium` por defeito para consumo da app.
+3. Acesso premium/no-ads deve ser decidido por `plan/entitlements`, nao por role operacional.
 
 **O que falta:**
 - Decidir modelo: (a) subscription da plataforma da acesso a tudo, (b) compra individual por conteudo, (c) hibrido
