@@ -5,11 +5,13 @@ import { Server } from 'http'
 import { initializeRateLimiter, shutdownRateLimiter } from './middlewares/rateLimiter'
 import { captureException, flushSentry, initializeSentry } from './observability/sentry'
 import { uploadService } from './services/upload.service'
-import { logError, logInfo } from './utils/logger'
+import { logError, logInfo, patchConsoleWithStructuredLogger } from './utils/logger'
 
 const PORT = process.env.PORT || 3000
 let server: Server | null = null
 let shutdownStarted = false
+
+patchConsoleWithStructuredLogger({ service: 'api' })
 
 async function startServer() {
   try {

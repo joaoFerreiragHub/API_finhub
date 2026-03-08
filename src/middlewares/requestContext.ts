@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { NextFunction, Request, Response } from 'express'
+import { runWithLogContext } from '../utils/logger'
 
 export const withRequestContext = (req: Request, res: Response, next: NextFunction) => {
   const incomingRequestId = req.headers['x-request-id']
@@ -11,5 +12,6 @@ export const withRequestContext = (req: Request, res: Response, next: NextFuncti
   req.requestId = requestId
   req.requestStartTimeMs = Date.now()
   res.setHeader('x-request-id', requestId)
-  next()
+
+  runWithLogContext({ requestId }, () => next())
 }

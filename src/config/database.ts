@@ -1,19 +1,19 @@
-// src/config/database.ts
 import './env'
 import mongoose from 'mongoose'
+import { logError, logInfo } from '../utils/logger'
 
 export async function connectToDatabase() {
   const uri = process.env.MONGODB_URI
 
   if (!uri) {
-    throw new Error('❌ MONGODB_URI não definido no .env')
+    throw new Error('MONGODB_URI nao definido no .env')
   }
 
   try {
     await mongoose.connect(uri)
-    console.log('✅ Ligado à base de dados MongoDB')
+    logInfo('mongo_connected')
   } catch (error) {
-    console.error('❌ Erro ao ligar à base de dados MongoDB:', error)
+    logError('mongo_connection_failed', error)
     throw error
   }
 }

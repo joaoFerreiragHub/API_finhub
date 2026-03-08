@@ -1,7 +1,7 @@
 # P6 - SETUP TECNICO ESCALABILIDADE (CLEAN CODE + DRY)
 
 Data: 2026-03-08  
-Status: EM CURSO (baseline inicial entregue)
+Status: EM CURSO (baseline inicial + T1.1 entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Objetivo
@@ -45,11 +45,28 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - backend:
   - `package.json`: adicionado script `checking` (`typecheck + test:docs:smoke`).
 
+### 3.3 T1.1 Logging/observability (entregue)
+
+- `src/utils/logger.ts` evoluido para:
+  - niveis `debug|info|warn|error` com controlo por `LOG_LEVEL`;
+  - output JSON em `stdout/stderr` sem dependencia de `console.*`;
+  - contexto assinc (`AsyncLocalStorage`) para propagar `requestId`;
+  - bridge opcional de `console` para logger estruturado (`LOG_PATCH_CONSOLE=true|false`).
+- `src/middlewares/requestContext.ts` passa a executar requests em `runWithLogContext({ requestId })`.
+- `src/server.ts` ativa `patchConsoleWithStructuredLogger({ service: 'api' })`.
+- `src/workers/adminContentJobs.worker.ts` ativa logging estruturado e remove `console.*` direto.
+- `src/config/database.ts` passa a usar `logInfo/logError`.
+- `.env.example` atualizado com `LOG_LEVEL` e `LOG_PATCH_CONSOLE`.
+
 ## 4) Backlog tecnico priorizado (proximo ciclo)
 
 ## T1) Logging e observability unificados (Alta)
+- estado: EM CURSO (T1.1 entregue, falta T1.2 e T1.3)
 - objetivo: eliminar `console.*` em runtime critico e centralizar em logger estruturado;
 - aceite: logs com contexto (requestId/userId/modulo), sem ruido debug em producao.
+- pendente:
+  - T1.2: migrar controladores/servicos core de `console.*` para eventos de logger com nomes estaveis;
+  - T1.3: definir catalogo de eventos por dominio + dashboard operacional minimo.
 
 ## T2) Contratos e validacao de fronteira (Alta)
 - objetivo: validar payloads de entrada/saida de forma consistente (ex: zod/schema mapeado a OpenAPI);
