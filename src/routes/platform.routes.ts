@@ -7,7 +7,10 @@ import {
   getPublicLegalDocument,
   listPublicLegalDocuments,
 } from '../controllers/publicLegal.controller'
-import { getPublicMonitoringStatus } from '../controllers/publicMonitoring.controller'
+import {
+  getPublicLoggingMonitoring,
+  getPublicMonitoringStatus,
+} from '../controllers/publicMonitoring.controller'
 
 const router = Router()
 
@@ -45,5 +48,12 @@ router.get('/legal/:documentKey', getPublicLegalDocument)
  * @access  Public
  */
 router.get('/monitoring/status', getPublicMonitoringStatus)
+
+/**
+ * @route   GET /api/platform/monitoring/logging
+ * @desc    Expor snapshot operacional de logging estruturado
+ * @access  Public
+ */
+router.get('/monitoring/logging', getPublicLoggingMonitoring)
 
 export default router

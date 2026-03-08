@@ -81,6 +81,7 @@ router.get('/', (req, res) => {
       platform: '/api/platform',
       legal: '/api/platform/legal',
       monitoring: '/api/platform/monitoring/status',
+      monitoringLogging: '/api/platform/monitoring/logging',
       creators: '/api/creators',
       externalContent: '/api/external-content',
       search: '/api/search',
@@ -148,4 +149,3 @@ router.use('/external-content', externalContentRoutes)
 router.use('/search', searchRoutes)
 
 export default router
-

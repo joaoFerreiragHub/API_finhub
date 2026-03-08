@@ -5,6 +5,7 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 interface LogPayload {
   level: LogLevel
   message: string
+  event: string
   timestamp: string
   requestId?: string
   [key: string]: unknown
@@ -26,7 +27,28 @@ const originalConsole = {
   debug: console.debug.bind(console),
 }
 
+const levelCounters = new Map<LogLevel, number>([
+  ['debug', 0],
+  ['info', 0],
+  ['warn', 0],
+  ['error', 0],
+])
+const eventCounters = new Map<string, number>()
+const legacyConsoleDomainCounters = new Map<string, number>()
+
 let consolePatched = false
+
+const toEventSegment = (value: string, fallback = 'event'): string => {
+  const normalized = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 72)
+
+  return normalized.length > 0 ? normalized : fallback
+}
 
 const resolveConfiguredLogLevel = (): LogLevel => {
   const raw = (process.env.LOG_LEVEL ?? 'info').toLowerCase()
@@ -69,15 +91,34 @@ const toJsonLine = (payload: LogPayload) => {
     return JSON.stringify({
       level: payload.level,
       message: payload.message,
+      event: payload.event,
       timestamp: payload.timestamp,
       serializationError: true,
     })
   }
 }
 
+const incrementCounter = (map: Map<string, number>, key: string) => {
+  map.set(key, (map.get(key) ?? 0) + 1)
+}
+
+const trackPayload = (payload: LogPayload) => {
+  levelCounters.set(payload.level, (levelCounters.get(payload.level) ?? 0) + 1)
+  incrementCounter(eventCounters, payload.event)
+
+  if (payload.eventSource === 'legacy_console') {
+    const domain =
+      typeof payload.sourceDomain === 'string' && payload.sourceDomain.length > 0
+        ? payload.sourceDomain
+        : 'runtime'
+    incrementCounter(legacyConsoleDomainCounters, domain)
+  }
+}
+
 const writeLog = (payload: LogPayload) => {
   if (!shouldWrite(payload.level)) return
 
+  trackPayload(payload)
   const line = `${toJsonLine(payload)}\n`
   const stream = payload.level === 'warn' || payload.level === 'error' ? process.stderr : process.stdout
   stream.write(line)
@@ -118,12 +159,80 @@ const normalizeConsoleArgs = (args: unknown[]) => {
   return { message, meta }
 }
 
+const extractCallerFilePath = (): string | undefined => {
+  const stack = new Error().stack
+  if (!stack) return undefined
+
+  const lines = stack.split('\n').slice(2)
+  for (const line of lines) {
+    if (line.includes('src\\utils\\logger.ts') || line.includes('src/utils/logger.ts')) continue
+
+    const parenthesesMatch = line.match(/\((.*):\d+:\d+\)$/)
+    if (parenthesesMatch?.[1]) {
+      return parenthesesMatch[1]
+    }
+
+    const barePathMatch = line.match(/at (.*):\d+:\d+$/)
+    if (barePathMatch?.[1]) {
+      return barePathMatch[1]
+    }
+  }
+
+  return undefined
+}
+
+const deriveDomainFromFilePath = (filePath?: string): string => {
+  if (!filePath) return 'runtime'
+
+  const normalizedPath = filePath.replace(/\\/g, '/')
+  const srcMarker = '/src/'
+  const srcIndex = normalizedPath.lastIndexOf(srcMarker)
+  if (srcIndex < 0) return 'runtime'
+
+  const relativePath = normalizedPath.slice(srcIndex + srcMarker.length)
+
+  if (relativePath.startsWith('controllers/')) {
+    const fileName = relativePath.split('/').pop() ?? ''
+    const base = fileName.replace(/\.controller\.[tj]s$/, '')
+    return `controller_${toEventSegment(base, 'unknown')}`
+  }
+
+  if (relativePath.startsWith('services/')) {
+    const fileName = relativePath.split('/').pop() ?? ''
+    const base = fileName.replace(/\.service\.[tj]s$/, '')
+    return `service_${toEventSegment(base, 'unknown')}`
+  }
+
+  return `runtime_${toEventSegment(relativePath.replace(/\.[tj]s$/, '').replace(/\//g, '_'), 'unknown')}`
+}
+
+const buildLegacyConsoleEventName = (
+  channel: string,
+  rawMessage: string,
+  callerPath?: string
+) => {
+  const levelSuffix = channel.replace('console.', '')
+  const domain = deriveDomainFromFilePath(callerPath)
+  const action = toEventSegment(rawMessage, 'call')
+  return `legacy_${domain}_${action}_${toEventSegment(levelSuffix, 'log')}`
+}
+
 const logWithLevel = (level: LogLevel, message: string, meta: Record<string, unknown> = {}) => {
+  const runtimeMeta = withRuntimeContext(meta)
+  const rawEvent = typeof runtimeMeta.event === 'string' && runtimeMeta.event.trim().length > 0
+    ? runtimeMeta.event
+    : message
+
+  const event = toEventSegment(rawEvent, `${level}_event`)
+  const payloadMeta = { ...runtimeMeta }
+  delete payloadMeta.event
+
   writeLog({
     level,
     message,
+    event,
     timestamp: new Date().toISOString(),
-    ...withRuntimeContext(meta),
+    ...payloadMeta,
   })
 }
 
@@ -156,6 +265,30 @@ export const logError = (
   })
 }
 
+const createConsoleBridgeHandler = (
+  level: LogLevel,
+  channel: string,
+  baseMeta: Record<string, unknown>
+) => {
+  return (...args: unknown[]) => {
+    const normalized = normalizeConsoleArgs(args)
+    const callerPath = extractCallerFilePath()
+    const sourceDomain = deriveDomainFromFilePath(callerPath)
+    const legacyEvent = buildLegacyConsoleEventName(channel, normalized.message, callerPath)
+
+    logWithLevel(level, normalized.message, {
+      ...baseMeta,
+      ...normalized.meta,
+      channel,
+      event: legacyEvent,
+      eventSource: 'legacy_console',
+      sourceFile: callerPath,
+      sourceDomain,
+      legacyMessage: normalized.message,
+    })
+  }
+}
+
 export const patchConsoleWithStructuredLogger = (meta: Record<string, unknown> = {}) => {
   if (consolePatched) return
   if (process.env.NODE_ENV === 'test') return
@@ -163,30 +296,11 @@ export const patchConsoleWithStructuredLogger = (meta: Record<string, unknown> =
 
   consolePatched = true
 
-  console.log = (...args: unknown[]) => {
-    const normalized = normalizeConsoleArgs(args)
-    logInfo(normalized.message, { ...meta, channel: 'console.log', ...normalized.meta })
-  }
-
-  console.info = (...args: unknown[]) => {
-    const normalized = normalizeConsoleArgs(args)
-    logInfo(normalized.message, { ...meta, channel: 'console.info', ...normalized.meta })
-  }
-
-  console.warn = (...args: unknown[]) => {
-    const normalized = normalizeConsoleArgs(args)
-    logWarn(normalized.message, { ...meta, channel: 'console.warn', ...normalized.meta })
-  }
-
-  console.error = (...args: unknown[]) => {
-    const normalized = normalizeConsoleArgs(args)
-    logError(normalized.message, undefined, { ...meta, channel: 'console.error', ...normalized.meta })
-  }
-
-  console.debug = (...args: unknown[]) => {
-    const normalized = normalizeConsoleArgs(args)
-    logDebug(normalized.message, { ...meta, channel: 'console.debug', ...normalized.meta })
-  }
+  console.log = createConsoleBridgeHandler('info', 'console.log', meta)
+  console.info = createConsoleBridgeHandler('info', 'console.info', meta)
+  console.warn = createConsoleBridgeHandler('warn', 'console.warn', meta)
+  console.error = createConsoleBridgeHandler('error', 'console.error', meta)
+  console.debug = createConsoleBridgeHandler('debug', 'console.debug', meta)
 }
 
 export const restoreOriginalConsole = () => {
@@ -198,4 +312,30 @@ export const restoreOriginalConsole = () => {
   console.error = originalConsole.error
   console.debug = originalConsole.debug
   consolePatched = false
+}
+
+export const getLoggerRuntimeSnapshot = (topEventsLimit = 25) => {
+  const topEvents = Array.from(eventCounters.entries())
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, Math.max(1, topEventsLimit))
+    .map(([event, count]) => ({ event, count }))
+
+  const legacyDomains = Array.from(legacyConsoleDomainCounters.entries())
+    .sort((left, right) => right[1] - left[1])
+    .map(([domain, count]) => ({ domain, count }))
+
+  return {
+    configuredLevel: configuredLogLevel,
+    consolePatched,
+    totals: {
+      debug: levelCounters.get('debug') ?? 0,
+      info: levelCounters.get('info') ?? 0,
+      warn: levelCounters.get('warn') ?? 0,
+      error: levelCounters.get('error') ?? 0,
+      uniqueEvents: eventCounters.size,
+    },
+    topEvents,
+    legacyConsoleDomains: legacyDomains,
+    generatedAt: new Date().toISOString(),
+  }
 }

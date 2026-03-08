@@ -1,7 +1,7 @@
 # P6 - SETUP TECNICO ESCALABILIDADE (CLEAN CODE + DRY)
 
 Data: 2026-03-08  
-Status: EM CURSO (baseline inicial + T1.1 + T1.2 core entregues)
+Status: EM CURSO (baseline inicial + T1 concluido)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Objetivo
@@ -74,15 +74,31 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
   - eventos com naming estavel por dominio/acao (`*_failed`, `*_info`, `*_warn`);
   - payload com `requestId/method/path` nos controladores migrados.
 
+### 3.5 T1.3 Catalogo + dashboard operacional de logging (entregue)
+
+- `src/utils/logger.ts` passa a expor snapshot operacional:
+  - contadores por nivel (`debug/info/warn/error`);
+  - total de eventos unicos;
+  - top eventos emitidos;
+  - dominios com maior incidencia de `legacy_console`.
+- novo endpoint publico:
+  - `GET /api/platform/monitoring/logging`
+  - implementado em `src/controllers/publicMonitoring.controller.ts`
+  - roteado por `src/routes/platform.routes.ts`
+- bridge de console evoluido:
+  - cada `console.*` legado gera `event` estavel com dominio inferido por callsite;
+  - permite cobertura imediata dos blocos nao-core sem bloquear a evolucao funcional.
+- catalogo inicial registado em:
+  - `dcos/P6_LOG_EVENT_CATALOG.md`
+
 ## 4) Backlog tecnico priorizado (proximo ciclo)
 
 ## T1) Logging e observability unificados (Alta)
-- estado: EM CURSO (T1.1 e T1.2 core entregues, falta T1.3)
+- estado: CONCLUIDO (T1.1, T1.2 e T1.3 entregues)
 - objetivo: eliminar `console.*` em runtime critico e centralizar em logger estruturado;
 - aceite: logs com contexto (requestId/userId/modulo), sem ruido debug em producao.
-- pendente:
-  - T1.3: definir catalogo de eventos por dominio + dashboard operacional minimo.
-  - ampliar T1.2 para controladores/servicos nao-core remanescentes (conteudo publico, feeds externos, ML e utilitarios legados).
+- observacao:
+  - ainda existe `console.*` em blocos nao-core legados, mas passam pelo bridge estruturado com evento/dominio estavel.
 
 ## T2) Contratos e validacao de fronteira (Alta)
 - objetivo: validar payloads de entrada/saida de forma consistente (ex: zod/schema mapeado a OpenAPI);

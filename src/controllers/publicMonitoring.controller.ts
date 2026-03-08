@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { getRateLimiterRuntimeState } from '../middlewares/rateLimiter'
 import { getSentryRuntimeState } from '../observability/sentry'
 import { uploadService } from '../services/upload.service'
+import { getLoggerRuntimeSnapshot } from '../utils/logger'
 
 const resolveMongoReady = (): boolean => mongoose.connection.readyState === 1
 
@@ -30,6 +31,18 @@ export const getPublicMonitoringStatus = (_req: Request, res: Response) => {
       uploadStorage: uploadState,
       sentry: sentryState,
     },
+    timestamp: new Date().toISOString(),
+  })
+}
+
+/**
+ * GET /api/platform/monitoring/logging
+ */
+export const getPublicLoggingMonitoring = (_req: Request, res: Response) => {
+  const snapshot = getLoggerRuntimeSnapshot()
+  return res.status(200).json({
+    status: 'ok',
+    logging: snapshot,
     timestamp: new Date().toISOString(),
   })
 }
