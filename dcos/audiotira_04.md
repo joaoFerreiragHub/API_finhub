@@ -7,6 +7,7 @@ Escopo: API_finhub + FinHub-Vite
 
 Este ficheiro e a fonte unica de estado, decisao e ordem de execucao.
 A release final so fecha quando todos os blocos P4 e P5 deste guia estiverem implementados.
+O P6 (AI/MCP) faz parte do plano estrategico, mas nao bloqueia esta release.
 
 ## 2) Estado tecnico atual (O1-O3)
 
@@ -62,6 +63,7 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 4. Executar P5_PRE_BETA_PLATAFORMA.
 5. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
 6. No fim do ciclo, executar smoke de documentacao e release-gate estrito.
+7. Evoluir P6 em paralelo, sem desviar foco das prioridades funcionais de P4/P5.
 
 ## 6) Regra de encerramento por ficheiro
 
@@ -81,7 +83,21 @@ Go-live final permitido apenas quando:
 2. todos esses ficheiros estiverem movidos para `dcos/done/`;
 3. este ficheiro (`dcos/audiotira_04.md`) mostrar 100% fechado.
 
-## 8) Smoke de documentacao (obrigatorio no fim do pre-release)
+## 8) Trilha P6 - AI/MCP (nao bloqueante para esta release)
+
+Objetivo:
+
+- preparar a plataforma para contexto AI, agentes e automacao assistida;
+- manter foco legal em contexto/explicacao/cenarios hipoteticos;
+- proibir recomendacao financeira personalizada e call-to-action de investimento.
+
+Estado e regra nesta auditoria:
+
+| Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
+|---|---|---|---|
+| P6 AI/MCP | dcos/P6_MCP_AI_CONTEXTO_AGENTES.md | planeado | Nao |
+
+## 9) Smoke de documentacao (obrigatorio no fim do pre-release)
 
 Executar no backend API_finhub:
 
@@ -108,7 +124,7 @@ Integracao CI/CD:
 - `test:docs:smoke` corre no workflow de CI em cada push/PR;
 - `test:docs:release-gate` pode ser exigido no deploy definindo `RELEASE_DOCS_GATE=true` em `Repository Variables`.
 
-## 9) Fontes historicas consolidadas
+## 10) Fontes historicas consolidadas
 
 - dcos/done/LISTA_IMPLEMENTACOES_A_FAZER.md
 - dcos/done/ROADMAP_BETA_EXECUCAO.md
@@ -117,8 +133,9 @@ Integracao CI/CD:
 - dcos/done/AUDITORIA_FINAL_O3.md
 - dcos/done/RUNBOOK_RELEASE_E2E_OBRIGATORIO.md
 
-## 10) Historico
+## 11) Historico
 
 - 2026-03-08: criacao da auditoria consolidada.
 - 2026-03-08: expansao de escopo para incluir todos os ficheiros P4 e P5 como obrigatorios para release final.
 - 2026-03-08: adicao de smoke/release-gate de documentacao para garantir rastreabilidade e fecho completo.
+- 2026-03-08: adicao do trilho P6 AI/MCP como evolucao estrategica nao bloqueante para esta release.
