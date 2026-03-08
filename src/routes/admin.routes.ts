@@ -84,6 +84,12 @@ import {
   revokeAdminSubscriptionEntitlement,
 } from '../controllers/adminSubscription.controller'
 import {
+  createAdminBulkImportJob,
+  getAdminBulkImportJob,
+  listAdminBulkImportJobs,
+  previewAdminBulkImport,
+} from '../controllers/adminBulkImport.controller'
+import {
   approveAdminBroadcast,
   createAdminBroadcast,
   getAdminBroadcast,
@@ -1002,6 +1008,90 @@ router.post(
   }),
   requireAdminScope('admin.users.write'),
   reactivateAdminSubscription
+)
+
+/**
+ * @route   GET /api/admin/operations/bulk-import/jobs
+ * @desc    Listar jobs de bulk import operacional (CSV)
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/operations/bulk-import/jobs',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.operations.bulk_import.jobs.list',
+    resourceType: 'admin_bulk_import_job',
+    scope: 'admin.users.read',
+  }),
+  requireAdminScope('admin.users.read'),
+  listAdminBulkImportJobs
+)
+
+/**
+ * @route   GET /api/admin/operations/bulk-import/jobs/:jobId
+ * @desc    Ler detalhe de job de bulk import operacional
+ * @access  Private (Admin com escopo admin.users.read)
+ */
+router.get(
+  '/operations/bulk-import/jobs/:jobId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.operations.bulk_import.jobs.read',
+    resourceType: 'admin_bulk_import_job',
+    scope: 'admin.users.read',
+    getResourceId: (req) => req.params.jobId,
+  }),
+  requireAdminScope('admin.users.read'),
+  getAdminBulkImportJob
+)
+
+/**
+ * @route   POST /api/admin/operations/bulk-import/preview
+ * @desc    Pre-visualizar bulk import CSV operacional sem persistir alteracoes
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/operations/bulk-import/preview',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.operations.bulk_import.preview',
+    resourceType: 'admin_bulk_import_job',
+    scope: 'admin.users.write',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        importType: typeof body.importType === 'string' ? body.importType : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  previewAdminBulkImport
+)
+
+/**
+ * @route   POST /api/admin/operations/bulk-import/jobs
+ * @desc    Executar bulk import CSV operacional (dry-run ou efetivo)
+ * @access  Private (Admin com escopo admin.users.write)
+ */
+router.post(
+  '/operations/bulk-import/jobs',
+  authenticate,
+  rateLimiter.adminModerationBulk,
+  auditAdminAction({
+    action: 'admin.operations.bulk_import.jobs.create',
+    resourceType: 'admin_bulk_import_job',
+    scope: 'admin.users.write',
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        importType: typeof body.importType === 'string' ? body.importType : undefined,
+        dryRun: body.dryRun === true,
+      }
+    },
+  }),
+  requireAdminScope('admin.users.write'),
+  createAdminBulkImportJob
 )
 
 /**

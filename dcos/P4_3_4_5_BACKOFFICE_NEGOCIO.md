@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03 e P4.5-01 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01 e P4.5-02 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -472,6 +472,54 @@ Entregue no backend:
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
+
+### 7.2 P4.5-02 Bulk import CSV operacional
+
+Objetivo:
+1. Reduzir esforco manual em operacoes repetitivas de monetizacao e ads.
+
+Backend:
+1. Pipeline de preview de CSV com validacao por linha.
+2. Execucao de job com dry-run ou aplicacao efetiva, com trilho de auditoria.
+3. Persistencia do historico de jobs com resumo, warnings, erros e resultados por linha.
+
+Frontend:
+1. Area admin `Operacoes > Bulk Import` (ainda pendente).
+2. Upload/cola de CSV com preview antes de executar.
+3. Consulta de jobs recentes com detalhe de erros por linha.
+
+Estado desta iteracao:
+1. backend MVP entregue com jobs de bulk import, preview e execucao.
+2. frontend admin ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo novo `AdminBulkImportJob` com:
+   - `importType` (`subscription_entitlements` e `ad_campaign_status`);
+   - `status` (`running`, `completed`, `completed_with_errors`, `failed`);
+   - `source`, `summary`, `stats`, `warnings`, `errorRows`, `results`;
+   - `startedAt`, `finishedAt` e `expiresAt` para retencao operacional.
+2. servico `adminBulkImport.service` com:
+   - parser CSV (suporte de delimitador e campos quoted);
+   - preview com planeamento por linha (`valid`, `invalid`, `skipped`);
+   - execucao com contadores, limite de erros/resultados armazenados e mapa de saida para API.
+3. fluxos suportados:
+   - `subscription_entitlements`: cria/atualiza `UserSubscription` e sincroniza `User.role` + `subscriptionExpiry`;
+   - `ad_campaign_status`: atualiza `AdCampaign` (estado, prioridade, janela) com entrada no historico.
+4. endpoints admin:
+   - `GET /api/admin/operations/bulk-import/jobs`
+   - `GET /api/admin/operations/bulk-import/jobs/:jobId`
+   - `POST /api/admin/operations/bulk-import/preview`
+   - `POST /api/admin/operations/bulk-import/jobs`
+5. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura com `admin.users.read`;
+   - preview/escrita com `admin.users.write`.
+6. rate limit operacional aplicado:
+   - preview e execucao com `rateLimiter.adminModerationBulk`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:technical:smoke`
+3. `npm run checking`
 
 ## 8) Definition of Done por bloco
 
