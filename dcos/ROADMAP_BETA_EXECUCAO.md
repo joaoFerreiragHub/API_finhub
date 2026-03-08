@@ -34,6 +34,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O3-03 | concluido | 2026-03-07 | Centro de notificacoes fechado no frontend com NotificationBell integrado no header principal (desktop/mobile), dropdown operacional com mark-as-read em clique, ligacao para /notificacoes e consumo dos endpoints reais de notifications/preferences/subscriptions. |
 | O3-04 | concluido | 2026-03-07 | Feed cronologico "a seguir" fechado em backend+frontend: novo endpoint autenticado GET /api/feed (filtros following, page, limit) com agregacao multi-conteudo por data de publicacao, frontend ligado a /feed com paginacao infinita e pagina /a-seguir sem placeholder. |
 | O3-05 | concluido | 2026-03-08 | CAPTCHA aplicado em auth (login/registo): backend com provider por env (disabled|turnstile|hcaptcha), validacao server-side de token em register/login e frontend com widget CAPTCHA e envio de captchaToken nos formularios. |
+| O3-06 | concluido | 2026-03-08 | Analytics real com PostHog e consentimento: eventos deixam de usar console, tracking ativado apenas com cookieConsent.analytics, identidade sincronizada por utilizador autenticado e page views ligadas nos layouts ativos. |
 
 ## 1) Gate de Beta
 
