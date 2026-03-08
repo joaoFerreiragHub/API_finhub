@@ -22,6 +22,15 @@ import {
 } from '../controllers/authAssistedSession.controller'
 import { authenticate } from '../middlewares/auth'
 import { rateLimiter } from '../middlewares/rateLimiter'
+import {
+  validateAuthCookieConsentContract,
+  validateAuthForgotPasswordContract,
+  validateAuthLoginContract,
+  validateAuthRefreshContract,
+  validateAuthRegisterContract,
+  validateAuthResetPasswordContract,
+  validateAuthVerifyEmailQueryContract,
+} from '../middlewares/requestContracts'
 
 const router = Router()
 
@@ -30,14 +39,14 @@ const router = Router()
  * @desc    Criar nova conta
  * @access  Public
  */
-router.post('/register', register)
+router.post('/register', rateLimiter.general, validateAuthRegisterContract, register)
 
 /**
  * @route   POST /api/auth/login
  * @desc    Fazer login
  * @access  Public
  */
-router.post('/login', login)
+router.post('/login', rateLimiter.general, validateAuthLoginContract, login)
 
 /**
  * @route   GET /api/auth/google/start
@@ -58,21 +67,36 @@ router.get('/google/callback', rateLimiter.general, googleOAuthCallback)
  * @desc    Iniciar fluxo de reset de password
  * @access  Public
  */
-router.post('/forgot-password', rateLimiter.general, forgotPassword)
+router.post(
+  '/forgot-password',
+  rateLimiter.general,
+  validateAuthForgotPasswordContract,
+  forgotPassword
+)
 
 /**
  * @route   POST /api/auth/reset-password
  * @desc    Concluir reset de password com token valido
  * @access  Public
  */
-router.post('/reset-password', rateLimiter.general, resetPassword)
+router.post(
+  '/reset-password',
+  rateLimiter.general,
+  validateAuthResetPasswordContract,
+  resetPassword
+)
 
 /**
  * @route   GET /api/auth/verify-email
  * @desc    Confirmar email por token
  * @access  Public
  */
-router.get('/verify-email', rateLimiter.general, verifyEmail)
+router.get(
+  '/verify-email',
+  rateLimiter.general,
+  validateAuthVerifyEmailQueryContract,
+  verifyEmail
+)
 
 /**
  * @route   POST /api/auth/resend-verification
@@ -86,14 +110,20 @@ router.post('/resend-verification', authenticate, rateLimiter.general, resendVer
  * @desc    Atualizar consentimento de cookies
  * @access  Private
  */
-router.patch('/cookie-consent', authenticate, rateLimiter.general, updateCookieConsent)
+router.patch(
+  '/cookie-consent',
+  authenticate,
+  rateLimiter.general,
+  validateAuthCookieConsentContract,
+  updateCookieConsent
+)
 
 /**
  * @route   POST /api/auth/refresh
  * @desc    Renovar access token
  * @access  Public
  */
-router.post('/refresh', refresh)
+router.post('/refresh', validateAuthRefreshContract, refresh)
 
 /**
  * @route   POST /api/auth/logout

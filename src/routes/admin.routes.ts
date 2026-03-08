@@ -73,6 +73,12 @@ import {
 import { authenticate } from '../middlewares/auth'
 import { auditAdminAction } from '../middlewares/adminAudit'
 import { rateLimiter } from '../middlewares/rateLimiter'
+import {
+  validateAdminAssistedSessionRequestContract,
+  validateAdminSessionIdParamContract,
+  validateAdminSessionRevokeContract,
+  validateAdminSurfaceControlContract,
+} from '../middlewares/requestContracts'
 import { requireAdminScope } from '../middlewares/roleGuard'
 
 const router = Router()
@@ -225,6 +231,7 @@ router.post(
   '/platform/surfaces/:surfaceKey',
   authenticate,
   rateLimiter.adminModerationAction,
+  validateAdminSurfaceControlContract,
   auditAdminAction({
     action: 'admin.platform.surfaces.update',
     resourceType: 'platform_surface_control',
@@ -266,6 +273,7 @@ router.get(
 router.post(
   '/support/sessions/request',
   authenticate,
+  validateAdminAssistedSessionRequestContract,
   auditAdminAction({
     action: 'admin.support.sessions.request',
     resourceType: 'assisted_session',
@@ -283,6 +291,7 @@ router.post(
 router.post(
   '/support/sessions/:sessionId/start',
   authenticate,
+  validateAdminSessionIdParamContract,
   auditAdminAction({
     action: 'admin.support.sessions.start',
     resourceType: 'assisted_session',
@@ -301,6 +310,7 @@ router.post(
 router.post(
   '/support/sessions/:sessionId/revoke',
   authenticate,
+  validateAdminSessionRevokeContract,
   auditAdminAction({
     action: 'admin.support.sessions.revoke',
     resourceType: 'assisted_session',
@@ -319,6 +329,7 @@ router.post(
 router.get(
   '/support/sessions/:sessionId/history',
   authenticate,
+  validateAdminSessionIdParamContract,
   auditAdminAction({
     action: 'admin.support.sessions.history.list',
     resourceType: 'assisted_session_audit_log',

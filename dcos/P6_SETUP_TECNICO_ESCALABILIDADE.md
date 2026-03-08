@@ -1,7 +1,7 @@
 # P6 - SETUP TECNICO ESCALABILIDADE (CLEAN CODE + DRY)
 
 Data: 2026-03-08  
-Status: EM CURSO (baseline inicial + T1 concluido)
+Status: EM CURSO (baseline inicial + T1 e T2 concluidos)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Objetivo
@@ -91,6 +91,18 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
 - catalogo inicial registado em:
   - `dcos/P6_LOG_EVENT_CATALOG.md`
 
+### 3.6 T2 Contratos e validacao de fronteira (baseline entregue)
+
+- novo middleware de contratos de request:
+  - `src/middlewares/requestContracts.ts`
+- contratos aplicados em rotas criticas:
+  - auth: `register`, `login`, `forgot-password`, `reset-password`, `refresh`, `verify-email`, `cookie-consent`;
+  - admin: `platform/surfaces/:surfaceKey`, `support/sessions/request`, `support/sessions/:sessionId/start`,
+    `support/sessions/:sessionId/revoke`, `support/sessions/:sessionId/history`.
+- smoke tecnico para evitar regressao de contratos de rota:
+  - `scripts/test-route-contracts.js`
+  - `npm run test:contracts:routes`
+
 ## 4) Backlog tecnico priorizado (proximo ciclo)
 
 ## T1) Logging e observability unificados (Alta)
@@ -101,6 +113,7 @@ Criar uma base tecnica mais escalavel e previsivel antes de continuar os blocos 
   - ainda existe `console.*` em blocos nao-core legados, mas passam pelo bridge estruturado com evento/dominio estavel.
 
 ## T2) Contratos e validacao de fronteira (Alta)
+- estado: CONCLUIDO (baseline de fronteira em auth/admin + smoke de contratos de rota)
 - objetivo: validar payloads de entrada/saida de forma consistente (ex: zod/schema mapeado a OpenAPI);
 - aceite: rotas criticas com validacao explicita + testes de contrato.
 
