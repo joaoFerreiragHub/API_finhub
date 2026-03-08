@@ -34,6 +34,7 @@ import creatorRoutes from './creator.routes'
 import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
 import feedRoutes from './feed.routes'
+import appealRoutes from './appeal.routes'
 
 const router = Router()
 
@@ -67,6 +68,7 @@ router.get('/', (req, res) => {
         ratings: '/api/ratings',
         comments: '/api/comments',
         reports: '/api/reports',
+        appeals: '/api/appeals',
       },
       stocks: '/api/stocks',
       ml: '/api/ml',
@@ -120,6 +122,7 @@ router.use('/feed', feedRoutes)
 router.use('/ratings', ratingRoutes)
 router.use('/comments', commentRoutes)
 router.use('/reports', reportRoutes)
+router.use('/appeals', appealRoutes)
 
 // Rotas de ações
 router.use('/stocks', stockRoutes)

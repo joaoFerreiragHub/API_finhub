@@ -58,6 +58,11 @@ import {
   updateAdminModerationTemplate,
 } from '../controllers/adminModerationTemplate.controller'
 import {
+  getAdminModerationAppeal,
+  listAdminModerationAppeals,
+  updateAdminModerationAppealStatus,
+} from '../controllers/adminModerationAppeal.controller'
+import {
   extendAdminSubscriptionTrial,
   getAdminSubscriptionByUser,
   listAdminSubscriptions,
@@ -665,6 +670,67 @@ router.post(
   }),
   requireAdminScope('admin.content.moderate'),
   deactivateAdminContentAccessPolicy
+)
+
+/**
+ * @route   GET /api/admin/content/appeals
+ * @desc    Listar inbox de apelacoes de moderacao
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/appeals',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.appeals.list',
+    resourceType: 'moderation_appeal',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminModerationAppeals
+)
+
+/**
+ * @route   GET /api/admin/content/appeals/:appealId
+ * @desc    Ler detalhe de apelacao de moderacao
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/content/appeals/:appealId',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.content.appeals.read',
+    resourceType: 'moderation_appeal',
+    scope: 'admin.content.read',
+    getResourceId: (req) => req.params.appealId,
+  }),
+  requireAdminScope('admin.content.read'),
+  getAdminModerationAppeal
+)
+
+/**
+ * @route   PATCH /api/admin/content/appeals/:appealId/status
+ * @desc    Atualizar estado de apelacao de moderacao com motivo obrigatorio
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.patch(
+  '/content/appeals/:appealId/status',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.content.appeals.status.update',
+    resourceType: 'moderation_appeal',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.appealId,
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        nextStatus: typeof body.status === 'string' ? body.status : undefined,
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminModerationAppealStatus
 )
 
 /**

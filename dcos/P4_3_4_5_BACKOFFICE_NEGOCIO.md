@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02 e P4.3-04 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03 e P4.3-04 backend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -167,6 +167,45 @@ Frontend:
 1. Inbox de apelacoes em `/admin/apelacoes`.
 2. Filtros por estado/severidade/SLA vencido.
 3. Acao de decisao com motivo padronizado e anexos internos.
+
+Estado desta iteracao:
+1. backend MVP entregue com modelo de apelacao, SLA e inbox admin.
+2. frontend admin/public ainda pendente para fechar este item.
+
+Entregue no backend:
+1. modelo `ModerationAppeal` com:
+   - ligacao 1:1 ao `ContentModerationEvent`;
+   - estados `open`, `under_review`, `accepted`, `rejected`, `closed`;
+   - severidade (`low`, `medium`, `high`, `critical`) e categoria de motivo;
+   - `slaHours`, `openedAt`, `firstResponseAt`, `resolvedAt`, `dueAt`;
+   - `version` + `history` de transicoes.
+2. endpoints de utilizador:
+   - `POST /api/appeals/content`;
+   - `GET /api/appeals/me`;
+   - `GET /api/appeals/:appealId`.
+3. endpoints admin:
+   - `GET /api/admin/content/appeals`;
+   - `GET /api/admin/content/appeals/:appealId`;
+   - `PATCH /api/admin/content/appeals/:appealId/status`.
+4. guardrails de negocio:
+   - apenas owner do conteudo moderado pode abrir apelacao;
+   - bloqueio de apelacao para eventos com `toStatus=visible`;
+   - limite 1 apelacao por `moderationEvent`;
+   - transicoes de estado validadas e auditaveis.
+5. operacao admin com inbox filtravel:
+   - filtros por `status`, `severity`, `contentType`, `breachedSla`, `search`;
+   - resumo agregado (`open`, `underReview`, `accepted`, `rejected`, `closed`, `breachedSla`).
+6. auditoria administrativa e `requireAdminScope` aplicados:
+   - leitura com `admin.content.read`;
+   - decisao/atualizacao com `admin.content.moderate`.
+7. rate limit operacional aplicado:
+   - abertura de apelacao com `rateLimiter.userReport`;
+   - mutacao admin com `rateLimiter.adminModerationAction`.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run checking`
+3. `npm run test:technical:smoke`
 
 ### 5.4 P4.3-04 Templates de moderacao
 
