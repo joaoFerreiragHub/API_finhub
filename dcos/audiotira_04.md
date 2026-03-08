@@ -5,12 +5,10 @@ Escopo: API_finhub + FinHub-Vite
 
 ## 1) Objetivo
 
-Este ficheiro passa a ser a fonte unica de estado e decisao operacional.
-A partir daqui, o acompanhamento de progresso deve ser feito aqui.
+Este ficheiro e a fonte unica de estado, decisao e ordem de execucao.
+A release final so fecha quando todos os blocos P4 e P5 deste guia estiverem implementados.
 
-## 2) Estado consolidado
-
-### 2.1 Onda O1-O3 (release atual)
+## 2) Estado tecnico atual (O1-O3)
 
 - O1-01 a O1-07: concluido.
 - O1-08: em_curso (falta validacao final de moderation pre-release com ambiente real).
@@ -18,13 +16,7 @@ A partir daqui, o acompanhamento de progresso deve ser feito aqui.
 - O2-01 a O2-12: concluido.
 - O3-01 a O3-08: concluido.
 
-### 2.2 Gate de release
-
-- Frontend release E2E: verde.
-- Backend release E2E: documentado como concluido.
-- Bloqueio unico para fecho final da fase: O1-08.
-
-## 3) Bloqueio atual (unico)
+## 3) Bloqueio imediato
 
 Executar com sucesso:
 
@@ -42,34 +34,62 @@ Variaveis obrigatorias em ambiente real:
 6. MODERATION_SMOKE_TARGET_ID
 7. opcional: MODERATION_SMOKE_REPORT_REASON
 
-## 4) Plano imediato (ordem de execucao)
+## 4) Escopo obrigatorio pre-release final (P4 + P5)
 
-1. Preencher as variaveis MODERATION_SMOKE_* no backend.
-2. Correr o smoke de moderation pre-release.
-3. Guardar evidencias de execucao (output + timestamp).
-4. Atualizar estado de O1-08 para concluido neste ficheiro.
-5. Iniciar bloco seguinte (P4.3-4.5 e depois P5) com novo checkpoint aqui.
+A lista abaixo passa a ser obrigatoria para release final.
+Enquanto um item estiver aberto, nao existe fecho de release.
 
-## 5) Backlog consolidado apos fecho O1-08
+| Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
+|---|---|---|---|
+| P4.2 | dcos/P4_MODERATION_CONTROL_PLANE.md | em_curso | Sim |
+| P4.3-4.5 | dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md | planeado | Sim |
+| P5 pre-beta | dcos/P5_PRE_BETA_PLATAFORMA.md | em_curso | Sim |
+| P5 marcas | dcos/P5_MARCAS_ENTIDADES.md | proposto | Sim |
+| P5 criadores | dcos/P5_CRIADORES_CONTEUDO.md | proposto | Sim |
+| P5 ferramentas | dcos/P5_FERRAMENTAS_AUDIT_E_NOVAS.md | proposto | Sim |
+| P5 FIRE | dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md | proposto | Sim |
+| P5 hub pessoal | dcos/P5_VISAO_HUB_FINANCEIRO_PESSOAL.md | proposto | Sim |
+| P5 educacao | dcos/P5_EDUCACAO_LITERACIA.md | proposto | Sim |
+| P5 comunidade | dcos/P5_COMUNIDADE_SOCIAL.md | proposto | Sim |
+| P5 contexto | dcos/P5_CONTEXTO_MERCADO.md | proposto | Sim |
+| P5 accountability | dcos/P5_ACCOUNTABILITY_GAMIFICACAO.md | proposto | Sim |
 
-1. P4.3-4.5 BACKOFFICE (planeado).
-2. P5 PRE-BETA / BETA-EXEC (em_curso).
-3. P5 MARCAS, CRIADORES, FERRAMENTAS, FIRE, HUB-PESSOAL, EDUCACAO, COMUNIDADE, CONTEXTO, ACCOUNTABILITY (proposto).
+## 5) Ordem de execucao daqui para a frente
 
-## 6) Regra operacional daqui para a frente
+1. Fechar O1-08 (smoke moderation pre-release real).
+2. Fechar P4_MODERATION_CONTROL_PLANE.
+3. Executar P4_3_4_5_BACKOFFICE_NEGOCIO.
+4. Executar P5_PRE_BETA_PLATAFORMA.
+5. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
 
-1. Este ficheiro e o guia principal de execucao.
-2. Quando um ponto fecha: atualizar este ficheiro + commit.
-3. Ficheiros substituidos por esta consolidacao ficam arquivados em dcos/done.
+## 6) Regra de encerramento por ficheiro
 
-## 7) Fontes consolidadas nesta auditoria
+Cada ficheiro P4/P5 so pode ser marcado como concluido quando tiver:
+
+1. implementacao tecnica backend/frontend relevante;
+2. validacao tecnica minima (typecheck e testes aplicaveis);
+3. atualizacao desta auditoria com estado e evidencias;
+4. commit dedicado;
+5. movimento do ficheiro concluido para `dcos/done/`.
+
+## 7) Criterio de Go/No-Go final
+
+Go-live final permitido apenas quando:
+
+1. todos os ficheiros P4/P5 listados na secao 4 estiverem concluido;
+2. todos esses ficheiros estiverem movidos para `dcos/done/`;
+3. este ficheiro (`dcos/audiotira_04.md`) mostrar 100% fechado.
+
+## 8) Fontes historicas consolidadas
 
 - dcos/done/LISTA_IMPLEMENTACOES_A_FAZER.md
 - dcos/done/ROADMAP_BETA_EXECUCAO.md
 - dcos/done/ROADMAP_BETA.md
 - dcos/done/RUNBOOK_MODERATION_PRE_RELEASE.md
+- dcos/done/AUDITORIA_FINAL_O3.md
+- dcos/done/RUNBOOK_RELEASE_E2E_OBRIGATORIO.md
 
-## 8) Historico
+## 9) Historico
 
-- 2026-03-08: criacao da AUDITORIA_04 e consolidacao de estado.
-
+- 2026-03-08: criacao da auditoria consolidada.
+- 2026-03-08: expansao de escopo para incluir todos os ficheiros P4 e P5 como obrigatorios para release final.
