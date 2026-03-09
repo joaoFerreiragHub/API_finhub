@@ -251,6 +251,18 @@ const ROUTE_CONTRACTS = [
     routePath: '/support/sessions/:sessionId/history',
     requiredMiddleware: 'validateAdminSessionIdParamContract',
   },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/users/:userId/scope-delegations',
+    requiredMiddleware: 'validateAdminScopeDelegationCreateContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/users/:userId/scope-delegations/:delegationId/revoke',
+    requiredMiddleware: 'validateAdminScopeDelegationRevokeContract',
+  },
 ]
 
 const fail = (errors) => {

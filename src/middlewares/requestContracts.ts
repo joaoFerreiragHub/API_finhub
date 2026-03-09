@@ -2373,6 +2373,127 @@ export const validateAdminSubscriptionReactivateContract = (
   next()
 }
 
+export const validateAdminScopeDelegationCreateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const userId = validateRequiredRouteParam(req, res, 'userId')
+  if (!userId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de criacao de delegacao de scopes invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['scope', 'scopes', 'expiresAt', 'reason', 'note'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na delegacao de scopes.`)
+      return
+    }
+  }
+
+  const scope = validateOptionalString(req.body, 'scope')
+  if (!scope.valid) {
+    respondValidationError(res, 'Campo scope invalido.')
+    return
+  }
+
+  const scopes = validateOptionalStringArray(req.body, 'scopes')
+  if (!scopes.valid) {
+    respondValidationError(res, 'Campo scopes invalido.')
+    return
+  }
+
+  const hasScope =
+    (typeof req.body.scope === 'string' && req.body.scope.trim().length > 0) ||
+    (Array.isArray(req.body.scopes) && req.body.scopes.length > 0)
+  if (!hasScope) {
+    respondValidationError(res, 'Campo scope/scopes obrigatorio para delegacao de scopes.')
+    return
+  }
+
+  const expiresAt = validateOptionalDateField(req.body, 'expiresAt')
+  if (!expiresAt.valid || !expiresAt.value) {
+    respondValidationError(res, 'Campo expiresAt obrigatorio e invalido.')
+    return
+  }
+
+  const parsedExpiry = new Date(expiresAt.value)
+  if (Number.isNaN(parsedExpiry.getTime()) || parsedExpiry.getTime() <= Date.now()) {
+    respondValidationError(res, 'Campo expiresAt deve ser uma data futura.')
+    return
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const hasReason = validateAdminReasonFromBodyOrHeader(
+    req,
+    res,
+    'Motivo obrigatorio para delegacao temporaria.'
+  )
+  if (!hasReason) return
+
+  next()
+}
+
+export const validateAdminScopeDelegationRevokeContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const userId = validateRequiredRouteParam(req, res, 'userId')
+  if (!userId) return
+
+  const delegationId = validateRequiredRouteParam(req, res, 'delegationId')
+  if (!delegationId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de revogacao de delegacao de scopes invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['reason', 'note'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na revogacao de delegacao.`)
+      return
+    }
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const hasReason = validateAdminReasonFromBodyOrHeader(
+    req,
+    res,
+    'Motivo obrigatorio para revogar delegacao temporaria.'
+  )
+  if (!hasReason) return
+
+  next()
+}
+
 export const validateAdminModerationTemplateCreateContract = (
   req: Request,
   res: Response,

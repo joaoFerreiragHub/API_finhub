@@ -175,6 +175,8 @@ import {
   validateAdminModerationTemplateUpdateContract,
   validateAdminSessionIdParamContract,
   validateAdminSessionRevokeContract,
+  validateAdminScopeDelegationCreateContract,
+  validateAdminScopeDelegationRevokeContract,
   validateAdminSubscriptionExtendTrialContract,
   validateAdminSubscriptionReactivateContract,
   validateAdminSubscriptionRevokeEntitlementContract,
@@ -2202,6 +2204,7 @@ router.get(
 router.post(
   '/users/:userId/scope-delegations',
   authenticate,
+  validateAdminScopeDelegationCreateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.users.scope_delegations.create',
@@ -2226,6 +2229,7 @@ router.post(
 router.post(
   '/users/:userId/scope-delegations/:delegationId/revoke',
   authenticate,
+  validateAdminScopeDelegationRevokeContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.users.scope_delegations.revoke',
