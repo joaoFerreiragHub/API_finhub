@@ -1,13 +1,21 @@
 import mongoose, { Document, Schema } from 'mongoose'
 
-export type DirectoryVerticalType =
-  | 'broker'
-  | 'exchange'
-  | 'site'
-  | 'app'
-  | 'podcast'
-  | 'event'
-  | 'other'
+export const DIRECTORY_VERTICAL_TYPES = [
+  'broker',
+  'exchange',
+  'site',
+  'app',
+  'podcast',
+  'event',
+  'insurance',
+  'bank',
+  'fund',
+  'fintech',
+  'newsletter',
+  'other',
+] as const
+
+export type DirectoryVerticalType = (typeof DIRECTORY_VERTICAL_TYPES)[number]
 
 export type DirectoryEntryStatus = 'draft' | 'published' | 'archived'
 export type DirectoryVerificationStatus = 'unverified' | 'pending' | 'verified'
@@ -83,7 +91,7 @@ const DirectoryEntrySchema = new Schema<IDirectoryEntry>(
     verticalType: {
       type: String,
       required: true,
-      enum: ['broker', 'exchange', 'site', 'app', 'podcast', 'event', 'other'],
+      enum: DIRECTORY_VERTICAL_TYPES,
       index: true,
     },
     shortDescription: {

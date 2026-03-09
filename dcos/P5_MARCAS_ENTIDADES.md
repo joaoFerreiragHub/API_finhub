@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 entregue).
+Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 + P2.2 entregue).
 
 ---
 
@@ -226,7 +226,9 @@ page, limit
 
 ### 3.4 Vertical types adicionais
 
-**Tipos existentes:** broker, exchange, site, app, podcast, event, other.
+**Estado atual (2026-03-09):** gap parcialmente fechado no backend com novos verticais em `DirectoryVerticalType` e validacoes public/admin.
+
+**Tipos existentes:** broker, exchange, site, app, podcast, event, insurance, bank, fund, fintech, newsletter, other.
 
 **Tipos em falta para o caso de uso descrito:**
 
@@ -236,10 +238,14 @@ page, limit
 | `bank` / banco | Activo Bank, Moey, N26 | Bancos sao core em financas pessoais |
 | `fund` / gestora | BlackRock, Vanguard, iShares | Gestoras de fundos/ETFs |
 | `fintech` | Revolut, Wise, Trade Republic | Fintechs relevantes para investidores |
-| `education` | Coursera, Udemy (financas) | Plataformas de educacao financeira |
 | `newsletter` | Morning Brew, Finimize | Newsletters financeiras |
 
-**Implementacao:** Adicionar ao enum `DirectoryVerticalType` no model e constantes.
+**Implementacao entregue (backend):**
+- enum `DirectoryVerticalType` atualizado no model `DirectoryEntry`;
+- constantes/validadores de vertical sincronizados para APIs publicas e admin;
+- eliminada duplicacao de lista de verticais nos servicos (fonte unica no model).
+
+**Ainda opcional para iteracao futura:** `education` (pode continuar mapeado para `other` no MVP).
 
 **Prioridade:** P2 — os tipos existentes cobrem o MVP, novos podem ser adicionados incrementalmente.
 
@@ -528,7 +534,7 @@ isSponsored: boolean (default false)
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
 | 2.1 | **Unificacao Brand → DirectoryEntry** | Migracao de dados, retirar rotas legacy | Atualizar imports/refs | Medio |
-| 2.2 | **Vertical types adicionais** | insurance, bank, fund, fintech, newsletter | Novos icones/categorias | Baixo |
+| 2.2 | **Vertical types adicionais** | CONCLUIDO (2026-03-09): `insurance`, `bank`, `fund`, `fintech`, `newsletter` no enum + validacoes sincronizadas | Novos icones/categorias | Baixo |
 | 2.3 | **Campos de entidade financeira** | regulatedBy, licenses, pros, cons, keyFeatures, pricing | Seccoes no detalhe | Medio |
 | 2.4 | **Badge de verificacao visual** | Ja existe no model | Componente de badge, tooltip com info | Baixo |
 | 2.5 | **Conteudo relacionado** | Endpoint: artigos/videos que mencionam esta entidade | Seccao na pagina de detalhe | Medio |

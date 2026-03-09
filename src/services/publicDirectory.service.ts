@@ -1,5 +1,6 @@
 import { FilterQuery } from 'mongoose'
 import {
+  DIRECTORY_VERTICAL_TYPES,
   DirectoryEntry,
   DirectoryVerticalType,
   DirectoryVerificationStatus,
@@ -23,16 +24,6 @@ export interface PublicDirectoryListOptions {
   limit?: number
   sort?: DirectorySortBy
 }
-
-export const DIRECTORY_VERTICAL_TYPES: ReadonlyArray<DirectoryVerticalType> = [
-  'broker',
-  'exchange',
-  'site',
-  'app',
-  'podcast',
-  'event',
-  'other',
-]
 
 export const DIRECTORY_VERIFICATION_STATUSES: ReadonlyArray<DirectoryVerificationStatus> = [
   'unverified',

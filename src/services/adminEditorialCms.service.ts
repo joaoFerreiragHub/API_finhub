@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import { ClaimRequest, ClaimRequestStatus, ClaimTargetType } from '../models/ClaimRequest'
 import {
+  DIRECTORY_VERTICAL_TYPES,
   DirectoryEntry,
   DirectoryEntryStatus,
   DirectoryOwnerType,
@@ -50,15 +51,6 @@ export const SECTION_ITEM_TARGET_TYPES: ReadonlyArray<EditorialSectionItemTarget
   'custom',
 ]
 export const SECTION_ITEM_STATUSES: ReadonlyArray<EditorialSectionItemStatus> = ['active', 'inactive']
-export const DIRECTORY_VERTICAL_TYPES: ReadonlyArray<DirectoryVerticalType> = [
-  'broker',
-  'exchange',
-  'site',
-  'app',
-  'podcast',
-  'event',
-  'other',
-]
 export const DIRECTORY_ENTRY_STATUSES: ReadonlyArray<DirectoryEntryStatus> = [
   'draft',
   'published',
