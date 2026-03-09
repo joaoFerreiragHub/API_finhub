@@ -163,6 +163,42 @@ const ROUTE_CONTRACTS = [
   },
   {
     filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/ads/slots',
+    requiredMiddleware: 'validateAdminAdSlotCreateContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'patch',
+    routePath: '/ads/slots/:slotId',
+    requiredMiddleware: 'validateAdminAdSlotUpdateContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/ads/campaigns',
+    requiredMiddleware: 'validateAdminAdCampaignCreateContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'patch',
+    routePath: '/ads/campaigns/:campaignId',
+    requiredMiddleware: 'validateAdminAdCampaignUpdateContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/ads/campaigns/:campaignId/activate',
+    requiredMiddleware: 'validateAdminAdCampaignStatusContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/ads/campaigns/:campaignId/pause',
+    requiredMiddleware: 'validateAdminAdCampaignStatusContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
     method: 'patch',
     routePath: '/dashboard/personalization',
     requiredMiddleware: 'validateAdminDashboardPersonalizationPatchContract',

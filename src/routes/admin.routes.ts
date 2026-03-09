@@ -149,6 +149,11 @@ import { authenticate } from '../middlewares/auth'
 import { auditAdminAction } from '../middlewares/adminAudit'
 import { rateLimiter } from '../middlewares/rateLimiter'
 import {
+  validateAdminAdCampaignCreateContract,
+  validateAdminAdCampaignStatusContract,
+  validateAdminAdCampaignUpdateContract,
+  validateAdminAdSlotCreateContract,
+  validateAdminAdSlotUpdateContract,
   validateAdminAssistedSessionRequestContract,
   validateAdminBroadcastApproveContract,
   validateAdminBroadcastCreateContract,
@@ -1307,6 +1312,7 @@ router.get(
 router.post(
   '/ads/slots',
   authenticate,
+  validateAdminAdSlotCreateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.ads.slots.create',
@@ -1332,6 +1338,7 @@ router.post(
 router.patch(
   '/ads/slots/:slotId',
   authenticate,
+  validateAdminAdSlotUpdateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.ads.slots.update',
@@ -1386,6 +1393,7 @@ router.get(
 router.post(
   '/ads/campaigns',
   authenticate,
+  validateAdminAdCampaignCreateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.ads.campaigns.create',
@@ -1411,6 +1419,7 @@ router.post(
 router.patch(
   '/ads/campaigns/:campaignId',
   authenticate,
+  validateAdminAdCampaignUpdateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.ads.campaigns.update',
@@ -1430,6 +1439,7 @@ router.patch(
 router.post(
   '/ads/campaigns/:campaignId/activate',
   authenticate,
+  validateAdminAdCampaignStatusContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.ads.campaigns.activate',
@@ -1449,6 +1459,7 @@ router.post(
 router.post(
   '/ads/campaigns/:campaignId/pause',
   authenticate,
+  validateAdminAdCampaignStatusContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.ads.campaigns.pause',
