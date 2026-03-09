@@ -218,3 +218,4 @@ Integracao CI/CD:
 - 2026-03-09: hardening de P4.5-04 concluido no backend com contratos de request para mutacoes de delegacao de scopes (`create/revoke`), incluindo validacao de `expiresAt` futuro e motivo obrigatorio, com cobertura de `npm run test:contracts:routes` expandida para 43 contratos.
 - 2026-03-09: P5-MARCAS Fase 2.2 concluida no backend com novos verticais de diretorio (`insurance`, `bank`, `fund`, `fintech`, `newsletter`) e validacao centralizada a partir do model `DirectoryEntry` para APIs admin/public.
 - 2026-03-09: P5-MARCAS Fase 2.3 concluida no backend com campos de entidade financeira em `DirectoryEntry` (`regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures`, `pricing`) expostos nos fluxos admin/public de diretorio.
+- 2026-03-09: P5-MARCAS Fase 2.5 concluida no backend com endpoint publico `GET /api/directories/:vertical/:slug/related-content` (conteudo relacionado agregado de artigos/cursos/videos/lives/books/podcasts publicados).

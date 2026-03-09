@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import {
   getPublicDirectoryByVerticalAndSlug,
+  listRelatedPublicDirectoryContent,
   listFeaturedPublicDirectories,
   listPublicDirectories,
   listPublicDirectoriesByVertical,
@@ -30,6 +31,13 @@ router.get('/featured', rateLimiter.general, listFeaturedPublicDirectories)
  * @access  Public
  */
 router.get('/search', rateLimiter.search, searchPublicDirectories)
+
+/**
+ * @route   GET /api/directories/:vertical/:slug/related-content
+ * @desc    Conteudo publico relacionado com a entidade
+ * @access  Public
+ */
+router.get('/:vertical/:slug/related-content', rateLimiter.general, listRelatedPublicDirectoryContent)
 
 /**
  * @route   GET /api/directories/:vertical/:slug

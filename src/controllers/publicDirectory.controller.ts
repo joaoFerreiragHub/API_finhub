@@ -310,3 +310,42 @@ export const getPublicDirectoryByVerticalAndSlug = async (req: Request, res: Res
     return handleDirectoryError(res, error, 'Erro ao carregar detalhe do recurso.')
   }
 }
+
+/**
+ * GET /api/directories/:vertical/:slug/related-content
+ */
+export const listRelatedPublicDirectoryContent = async (req: Request, res: Response) => {
+  try {
+    const vertical = req.params.vertical
+    if (!isValidDirectoryVerticalType(vertical)) {
+      return res.status(400).json({
+        error: 'Parametro vertical invalido.',
+      })
+    }
+
+    const slug = typeof req.params.slug === 'string' ? req.params.slug : ''
+    if (!slug.trim()) {
+      return res.status(400).json({
+        error: 'Parametro slug invalido.',
+      })
+    }
+
+    const limit = parsePositiveInt(req.query.limit)
+    if (typeof req.query.limit === 'string' && limit === undefined) {
+      return res.status(400).json({
+        error: 'Parametro limit invalido.',
+      })
+    }
+
+    const result = await publicDirectoryService.getRelatedPublicDirectoryContent(
+      vertical,
+      slug,
+      limit
+    )
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List related public directory content error:', error)
+    return handleDirectoryError(res, error, 'Erro ao carregar conteudo relacionado do recurso.')
+  }
+}

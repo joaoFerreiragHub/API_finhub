@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 + P2.2 + P2.3 entregue).
+Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 + P2.2 + P2.3 + P2.5 entregue).
 
 ---
 
@@ -164,9 +164,9 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 - Info: website, redes sociais, pais, fundacao
 - Ratings e reviews (sistema universal ja existe)
 - Comentarios (sistema universal ja existe)
-- Conteudo relacionado (artigos/videos que mencionam esta entidade)
+- Conteudo relacionado (artigos/videos que mencionam esta entidade) — backend pronto via `GET /api/directories/:vertical/:slug/related-content`
 - Badge de verificacao
-- API: `GET /api/brands/:slug` ou futuro endpoint de DirectoryEntry
+- API: `GET /api/directories/:vertical/:slug` + `GET /api/directories/:vertical/:slug/related-content`
 
 **Prioridade:** P1 — sem paginas publicas, o diretorio nao tem utilidade para o utilizador final nem para as marcas.
 
@@ -181,15 +181,17 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 - GET /api/directories/:vertical (listagem por vertical);
 - GET /api/directories/:vertical/:slug (detalhe + incremento de views);
 - GET /api/directories/featured (destaques);
-- GET /api/directories/search (pesquisa cross-vertical).
+- GET /api/directories/search (pesquisa cross-vertical);
+- GET /api/directories/:vertical/:slug/related-content (conteudo relacionado).
 
-**O que falta:**
+**Endpoints publicos disponiveis:**
 ```
 GET  /api/directories                    — lista publica com filtros e paginacao
 GET  /api/directories/:vertical          — lista por vertical
 GET  /api/directories/:vertical/:slug    — detalhe de uma entrada
 GET  /api/directories/featured           — entradas em destaque
 GET  /api/directories/search             — pesquisa cross-vertical
+GET  /api/directories/:vertical/:slug/related-content — conteudo relacionado
 ```
 
 **Filtros sugeridos:**
@@ -539,7 +541,7 @@ isSponsored: boolean (default false)
 | 2.2 | **Vertical types adicionais** | CONCLUIDO (2026-03-09): `insurance`, `bank`, `fund`, `fintech`, `newsletter` no enum + validacoes sincronizadas | Novos icones/categorias | Baixo |
 | 2.3 | **Campos de entidade financeira** | CONCLUIDO (2026-03-09): `regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures`, `pricing` no model + respostas admin/public | Seccoes no detalhe | Medio |
 | 2.4 | **Badge de verificacao visual** | Ja existe no model | Componente de badge, tooltip com info | Baixo |
-| 2.5 | **Conteudo relacionado** | Endpoint: artigos/videos que mencionam esta entidade | Seccao na pagina de detalhe | Medio |
+| 2.5 | **Conteudo relacionado** | CONCLUIDO (2026-03-09): `GET /api/directories/:vertical/:slug/related-content` (agrega artigos/cursos/videos/lives/books/podcasts publicados por relevancia) | Seccao na pagina de detalhe | Medio |
 | 2.6 | **Comparador de entidades** | Endpoint de comparacao lado a lado | UI tabela comparativa (2-3 entidades) | Alto |
 
 ### Fase 3 — Publicidade e campanhas (P3)
