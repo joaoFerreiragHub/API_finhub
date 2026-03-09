@@ -520,6 +520,10 @@ Entregue no backend:
    - preview/escrita com `admin.users.write`.
 6. rate limit operacional aplicado:
    - preview e execucao com `rateLimiter.adminModerationBulk`.
+7. guardrails de ads aplicados tambem no fluxo de bulk import:
+   - bloqueio de ativacao quando campanha viola disclosure/relevancia financeira;
+   - bloqueio quando slots associados estao inativos/incompativeis ou inexistentes;
+   - preview/dry-run passam a sinalizar estas violacoes antes da execucao.
 
 Validacao desta iteracao:
 1. `npm run typecheck`

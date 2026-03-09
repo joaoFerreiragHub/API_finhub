@@ -15,6 +15,17 @@ import {
   UserSubscription,
 } from '../models/UserSubscription'
 import { AdCampaign, AdCampaignStatus } from '../models/AdCampaign'
+import { AdSlotConfig } from '../models/AdSlotConfig'
+import {
+  AdPartnershipType,
+  AdPartnershipVisibility,
+  SlotCompatibilityInput,
+  ensureDisclosureLabel,
+  ensureExternalAdsNoPremium,
+  ensureFinancialRelevance,
+  ensureSlotCompatibility,
+  resolveDisclosureLabel,
+} from './adminAdPartnership.service'
 import { resolvePagination } from '../utils/pagination'
 
 const DEFAULT_PAGE = 1
@@ -1028,7 +1039,9 @@ export class AdminBulkImportService {
 
     const campaigns = codes.length
       ? await AdCampaign.find({ code: { $in: codes } })
-          .select('_id code status priority startAt endAt')
+          .select(
+            '_id code status priority startAt endAt adType visibleTo slotIds disclosureLabel relevanceTags'
+          )
           .lean<
             Array<{
               _id: mongoose.Types.ObjectId
@@ -1037,9 +1050,28 @@ export class AdminBulkImportService {
               priority: number
               startAt?: Date | null
               endAt?: Date | null
+              adType: AdPartnershipType
+              visibleTo: AdPartnershipVisibility[]
+              slotIds: string[]
+              disclosureLabel?: string | null
+              relevanceTags: string[]
             }>
           >()
       : []
+    const referencedSlotIds = Array.from(
+      new Set(
+        campaigns
+          .flatMap((campaign) => campaign.slotIds ?? [])
+          .map((slotId) => slotId.trim().toUpperCase())
+          .filter((slotId) => slotId.length > 0)
+      )
+    )
+    const slots = referencedSlotIds.length
+      ? await AdSlotConfig.find({ slotId: { $in: referencedSlotIds } })
+          .select('slotId allowedTypes visibleTo isActive')
+          .lean<Array<SlotCompatibilityInput>>()
+      : []
+    const slotById = new Map(slots.map((slot) => [slot.slotId, slot]))
     const campaignByCode = new Map(campaigns.map((campaign) => [campaign.code.toUpperCase(), campaign]))
 
     for (const row of parsed.rows) {
@@ -1153,6 +1185,86 @@ export class AdminBulkImportService {
           targetId: String(campaign._id),
         })
         continue
+      }
+
+      if (nextStatus === 'active') {
+        const nowMs = Date.now()
+        if (nextStart && nextStart.getTime() > nowMs) {
+          plans.push({
+            rowNumber: row.rowNumber,
+            status: 'invalid',
+            code: 'campaign_not_started',
+            message: 'Campanha ainda nao atingiu startAt.',
+            targetType: 'campaign',
+            targetId: String(campaign._id),
+          })
+          continue
+        }
+        if (nextEnd && nextEnd.getTime() <= nowMs) {
+          plans.push({
+            rowNumber: row.rowNumber,
+            status: 'invalid',
+            code: 'campaign_expired',
+            message: 'Campanha ja expirou (endAt).',
+            targetType: 'campaign',
+            targetId: String(campaign._id),
+          })
+          continue
+        }
+
+        const visibleTo = campaign.visibleTo as AdPartnershipVisibility[]
+        const disclosureLabel = resolveDisclosureLabel(campaign.adType, campaign.disclosureLabel)
+        try {
+          ensureDisclosureLabel(campaign.adType, disclosureLabel)
+          ensureFinancialRelevance(campaign.adType, campaign.relevanceTags ?? [])
+          ensureExternalAdsNoPremium(campaign.adType, visibleTo)
+        } catch (error: unknown) {
+          plans.push({
+            rowNumber: row.rowNumber,
+            status: 'invalid',
+            code: 'campaign_compliance_violation',
+            message: error instanceof Error ? error.message : 'Campanha viola guardrails de compliance.',
+            targetType: 'campaign',
+            targetId: String(campaign._id),
+          })
+          continue
+        }
+
+        let slotMissing = false
+        for (const slotId of campaign.slotIds ?? []) {
+          const normalizedSlotId = slotId.trim().toUpperCase()
+          const slot = slotById.get(normalizedSlotId)
+          if (!slot) {
+            plans.push({
+              rowNumber: row.rowNumber,
+              status: 'invalid',
+              code: 'campaign_slot_not_found',
+              message: `Slot ${normalizedSlotId} nao encontrado.`,
+              targetType: 'campaign',
+              targetId: String(campaign._id),
+            })
+            slotMissing = true
+            break
+          }
+          try {
+            ensureSlotCompatibility(slot, campaign.adType, visibleTo, { requireActive: true })
+          } catch (error: unknown) {
+            plans.push({
+              rowNumber: row.rowNumber,
+              status: 'invalid',
+              code: 'campaign_slot_incompatible',
+              message:
+                error instanceof Error
+                  ? error.message
+                  : `Slot ${normalizedSlotId} incompativel com a campanha.`,
+              targetType: 'campaign',
+              targetId: String(campaign._id),
+            })
+            slotMissing = true
+            break
+          }
+        }
+        if (slotMissing) continue
       }
 
       if (statusRaw && nextStatus !== campaign.status) {
@@ -1427,6 +1539,78 @@ export class AdminBulkImportService {
     }
 
     if (campaign.status === 'active') {
+      const nowMs = Date.now()
+      if (campaign.startAt && campaign.startAt.getTime() > nowMs) {
+        return {
+          status: 'failed',
+          code: 'campaign_not_started',
+          message: 'Campanha ainda nao atingiu startAt.',
+          targetType: 'campaign',
+          targetId: String(campaign._id),
+        }
+      }
+      if (campaign.endAt && campaign.endAt.getTime() <= nowMs) {
+        return {
+          status: 'failed',
+          code: 'campaign_expired',
+          message: 'Campanha ja expirou (endAt).',
+          targetType: 'campaign',
+          targetId: String(campaign._id),
+        }
+      }
+
+      const campaignAdType = campaign.adType as AdPartnershipType
+      const campaignVisibility = campaign.visibleTo as unknown as AdPartnershipVisibility[]
+      campaign.disclosureLabel = resolveDisclosureLabel(campaignAdType, campaign.disclosureLabel)
+      try {
+        ensureDisclosureLabel(campaignAdType, campaign.disclosureLabel)
+        ensureFinancialRelevance(campaignAdType, campaign.relevanceTags ?? [])
+        ensureExternalAdsNoPremium(campaignAdType, campaignVisibility)
+      } catch (error: unknown) {
+        return {
+          status: 'failed',
+          code: 'campaign_compliance_violation',
+          message: error instanceof Error ? error.message : 'Campanha viola guardrails de compliance.',
+          targetType: 'campaign',
+          targetId: String(campaign._id),
+        }
+      }
+
+      const slots =
+        campaign.slotIds.length > 0
+          ? await AdSlotConfig.find({ slotId: { $in: campaign.slotIds } })
+              .select('slotId allowedTypes visibleTo isActive')
+              .lean<Array<SlotCompatibilityInput>>()
+          : []
+      const slotMap = new Map(slots.map((slot) => [slot.slotId, slot]))
+      for (const slotId of campaign.slotIds) {
+        const normalizedSlotId = slotId.trim().toUpperCase()
+        const slot = slotMap.get(normalizedSlotId)
+        if (!slot) {
+          return {
+            status: 'failed',
+            code: 'campaign_slot_not_found',
+            message: `Slot ${normalizedSlotId} nao encontrado.`,
+            targetType: 'campaign',
+            targetId: String(campaign._id),
+          }
+        }
+        try {
+          ensureSlotCompatibility(slot, campaignAdType, campaignVisibility, { requireActive: true })
+        } catch (error: unknown) {
+          return {
+            status: 'failed',
+            code: 'campaign_slot_incompatible',
+            message:
+              error instanceof Error
+                ? error.message
+                : `Slot ${normalizedSlotId} incompativel com a campanha.`,
+            targetType: 'campaign',
+            targetId: String(campaign._id),
+          }
+        }
+      }
+
       campaign.approvedAt = new Date()
       campaign.approvedBy = actorId
     }

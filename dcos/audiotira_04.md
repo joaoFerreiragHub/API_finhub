@@ -198,3 +198,4 @@ Integracao CI/CD:
 - 2026-03-08: formalizada diretriz de monetizacao/ads (premium sem `external_ads`, sem popups para free, anuncios financeiros/contextuais e dashboards dedicados para admin/marcas/criadores).
 - 2026-03-08: integrada trilha estrategica `P_REVENUE_E_ADS_ESTRATEGIA.md` na auditoria como nao bloqueante para release, com guardrails de transparencia/compliance/seguranca.
 - 2026-03-08: hardening adicional em P4.4-03 (campanhas nao-house exigem disclosure/relevancia financeira; compatibilidade de visibilidade campanha-slot e ativacao com slots ativos validada no backend).
+- 2026-03-09: hardening de P4.5-02 (bulk import de campanhas passou a aplicar os mesmos guardrails de ativacao manual para evitar bypass de compliance em ads).

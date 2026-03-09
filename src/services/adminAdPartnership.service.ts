@@ -90,7 +90,7 @@ export type AdPartnershipPosition = (typeof POSITIONS)[number]
 export type AdPartnershipDevice = (typeof DEVICES)[number]
 export type AdPartnershipCampaignStatus = (typeof CAMPAIGN_STATUSES)[number]
 export type AdPartnershipSponsorType = (typeof SPONSOR_TYPES)[number]
-type SlotCompatibilityInput = {
+export type SlotCompatibilityInput = {
   slotId: string
   allowedTypes: AdPartnershipType[]
   visibleTo: AdPartnershipVisibility[]
@@ -197,7 +197,7 @@ const parseSlotIds = (value: unknown): string[] => {
   )
 }
 
-const normalizeRelevanceTags = (value: unknown): string[] => {
+export const normalizeRelevanceTags = (value: unknown): string[] => {
   if (!Array.isArray(value)) return []
   return uniqueStringArray(
     value
@@ -213,13 +213,19 @@ const normalizeRelevanceTags = (value: unknown): string[] => {
   )
 }
 
-const resolveDisclosureLabel = (adType: AdPartnershipType, value: unknown): string | null => {
+export const resolveDisclosureLabel = (
+  adType: AdPartnershipType,
+  value: unknown
+): string | null => {
   const parsed = toStringOrNull(value)
   if (parsed) return parsed
   return DEFAULT_DISCLOSURE_LABELS[adType]
 }
 
-const ensureDisclosureLabel = (adType: AdPartnershipType, disclosureLabel: string | null) => {
+export const ensureDisclosureLabel = (
+  adType: AdPartnershipType,
+  disclosureLabel: string | null
+) => {
   if (adType === 'house_ads') return
   if (!disclosureLabel) {
     throw new AdminAdPartnershipServiceError(
@@ -229,7 +235,7 @@ const ensureDisclosureLabel = (adType: AdPartnershipType, disclosureLabel: strin
   }
 }
 
-const ensureFinancialRelevance = (adType: AdPartnershipType, relevanceTags: string[]) => {
+export const ensureFinancialRelevance = (adType: AdPartnershipType, relevanceTags: string[]) => {
   if (adType === 'house_ads') return
   if (relevanceTags.length === 0) {
     throw new AdminAdPartnershipServiceError(
@@ -269,7 +275,7 @@ const hasVisibilityOverlap = (
   return false
 }
 
-const ensureSlotCompatibility = (
+export const ensureSlotCompatibility = (
   slot: SlotCompatibilityInput,
   adType: AdPartnershipType,
   campaignVisibility: AdPartnershipVisibility[],
@@ -292,7 +298,7 @@ const ensureSlotCompatibility = (
   }
 }
 
-const ensureExternalAdsNoPremium = (
+export const ensureExternalAdsNoPremium = (
   adType: AdPartnershipType,
   visibleTo: AdPartnershipVisibility[]
 ) => {
