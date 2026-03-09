@@ -11,6 +11,8 @@ export type CommentTargetType =
   | 'book'
   // Perfis
   | 'creator'
+  // Diretorio
+  | 'directory_entry'
   // Brands (Admin)
   | 'brand'
 
@@ -67,7 +69,17 @@ const CommentSchema = new Schema<IComment>(
     targetType: {
       type: String,
       required: true,
-      enum: ['article', 'video', 'course', 'live', 'podcast', 'book', 'creator', 'brand'],
+      enum: [
+        'article',
+        'video',
+        'course',
+        'live',
+        'podcast',
+        'book',
+        'creator',
+        'directory_entry',
+        'brand',
+      ],
       index: true,
     },
     targetId: {

@@ -29,6 +29,7 @@ import etfYahooRoutes from './etfYahoo.routes'
 import reitRoutes from './reit.routes'
 import adminRoutes from './admin.routes'
 import editorialRoutes from './editorial.routes'
+import directoryRoutes from './directory.routes'
 import platformRoutes from './platform.routes'
 import creatorRoutes from './creator.routes'
 import externalContentRoutes from './externalContent.routes'
@@ -84,6 +85,7 @@ router.get('/', (req, res) => {
       },
       admin: '/api/admin',
       editorial: '/api/editorial',
+      directories: '/api/directories',
       platform: '/api/platform',
       legal: '/api/platform/legal',
       monitoring: '/api/platform/monitoring/status',
@@ -173,6 +175,7 @@ router.use('/admin', adminRoutes)
 
 // Rotas editoriais publicas
 router.use('/editorial', editorialRoutes)
+router.use('/directories', directoryRoutes)
 
 // Rotas de superficies publicas/operacionais
 router.use('/platform', platformRoutes)

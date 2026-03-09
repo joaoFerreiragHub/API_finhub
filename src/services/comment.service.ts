@@ -5,6 +5,7 @@ import { Book } from '../models/Book'
 import { Brand } from '../models/Brand'
 import { Comment, CommentTargetType } from '../models/Comment'
 import { Course } from '../models/Course'
+import { DirectoryEntry } from '../models/DirectoryEntry'
 import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
 import { User } from '../models/User'
@@ -73,6 +74,7 @@ const commentTargetModels: Partial<Record<CommentTargetType, CommentTargetModel>
   podcast: Podcast as unknown as CommentTargetModel,
   book: Book as unknown as CommentTargetModel,
   creator: User as unknown as CommentTargetModel,
+  directory_entry: DirectoryEntry as unknown as CommentTargetModel,
   brand: Brand as unknown as CommentTargetModel,
 }
 

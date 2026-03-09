@@ -7,6 +7,7 @@ import { Course } from '../models/Course'
 import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
 import { Rating, RatingReactionType, RatingTargetType } from '../models/Rating'
+import { DirectoryEntry } from '../models/DirectoryEntry'
 import { User } from '../models/User'
 import { Video } from '../models/Video'
 import { automatedModerationService } from './automatedModeration.service'
@@ -75,6 +76,7 @@ const ratingTargetModels: Partial<Record<RatingTargetType, RatingTargetModel>> =
   podcast: Podcast as unknown as RatingTargetModel,
   book: Book as unknown as RatingTargetModel,
   creator: User as unknown as RatingTargetModel,
+  directory_entry: DirectoryEntry as unknown as RatingTargetModel,
   brand: Brand as unknown as RatingTargetModel,
 }
 

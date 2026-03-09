@@ -40,6 +40,10 @@ export interface IDirectoryEntry extends Document {
   verificationStatus: DirectoryVerificationStatus
   isActive: boolean
   isFeatured: boolean
+  averageRating: number
+  ratingsCount: number
+  commentsCount: number
+  views: number
   showInHomeSection: boolean
   showInDirectory: boolean
   landingEnabled: boolean
@@ -166,6 +170,29 @@ const DirectoryEntrySchema = new Schema<IDirectoryEntry>(
       default: false,
       index: true,
     },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+      index: true,
+    },
+    ratingsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    commentsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    views: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
     showInHomeSection: {
       type: Boolean,
       default: false,
@@ -240,6 +267,13 @@ const DirectoryEntrySchema = new Schema<IDirectoryEntry>(
 
 DirectoryEntrySchema.index({ verticalType: 1, status: 1, isActive: 1, updatedAt: -1 })
 DirectoryEntrySchema.index({ verticalType: 1, showInDirectory: 1, isFeatured: -1, updatedAt: -1 })
+DirectoryEntrySchema.index({
+  verticalType: 1,
+  showInDirectory: 1,
+  isFeatured: -1,
+  views: -1,
+  averageRating: -1,
+})
 DirectoryEntrySchema.index({ ownerType: 1, claimable: 1 })
 DirectoryEntrySchema.index({ canonicalUrl: 1 }, { sparse: true })
 

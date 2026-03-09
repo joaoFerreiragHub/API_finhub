@@ -9,6 +9,7 @@ export type RatingTargetType =
   | 'podcast'
   | 'book'
   | 'creator'
+  | 'directory_entry'
   | 'brand'
 
 export type RatingReactionType = 'like' | 'dislike'
@@ -78,7 +79,17 @@ const RatingSchema = new Schema<IRating>(
     targetType: {
       type: String,
       required: true,
-      enum: ['article', 'video', 'course', 'live', 'podcast', 'book', 'creator', 'brand'],
+      enum: [
+        'article',
+        'video',
+        'course',
+        'live',
+        'podcast',
+        'book',
+        'creator',
+        'directory_entry',
+        'brand',
+      ],
       index: true,
     },
     targetId: {

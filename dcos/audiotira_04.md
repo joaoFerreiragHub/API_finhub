@@ -52,7 +52,7 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 | P4.2 | dcos/P4_MODERATION_CONTROL_PLANE.md | em_curso | Sim |
 | P4.3-4.5 | dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md | em_curso | Sim |
 | P5 pre-beta | dcos/P5_PRE_BETA_PLATAFORMA.md | em_curso | Sim |
-| P5 marcas | dcos/P5_MARCAS_ENTIDADES.md | proposto | Sim |
+| P5 marcas | dcos/P5_MARCAS_ENTIDADES.md | em_curso | Sim |
 | P5 criadores | dcos/P5_CRIADORES_CONTEUDO.md | proposto | Sim |
 | P5 ferramentas | dcos/P5_FERRAMENTAS_AUDIT_E_NOVAS.md | proposto | Sim |
 | P5 FIRE | dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md | proposto | Sim |
@@ -210,3 +210,4 @@ Integracao CI/CD:
 - 2026-03-09: P4.5-01 evoluido para backend+frontend MVP completo (contratos de request no backend + UI de personalizacao/reset no dashboard admin com hooks dedicados no frontend).
 - 2026-03-09: P4.5-02 evoluido para backend+frontend MVP completo (`/admin/operacoes` no frontend, tab no dashboard admin, contratos de request de bulk import no backend e smoke de rotas atualizado).
 - 2026-03-09: P4.5-03 evoluido para backend+frontend MVP completo (acao de `unhide` com agendamento no frontend, backlog agendado visivel no painel operacional e contrato de request dedicado no backend para `POST /api/admin/content/:contentType/:contentId/unhide/schedule`).
+- 2026-03-09: P5-MARCAS Fase 1 backend iniciado e entregue para API publica de diretorio (`GET /api/directories`, `GET /api/directories/:vertical`, `GET /api/directories/:vertical/:slug`, `GET /api/directories/featured`, `GET /api/directories/search`), com `views` no `DirectoryEntry` e suporte de `ratings/comments` via `targetType=directory_entry`.

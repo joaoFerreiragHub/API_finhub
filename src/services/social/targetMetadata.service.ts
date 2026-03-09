@@ -3,6 +3,7 @@ import { Book } from '../../models/Book'
 import { Brand } from '../../models/Brand'
 import { Comment } from '../../models/Comment'
 import { Course } from '../../models/Course'
+import { DirectoryEntry } from '../../models/DirectoryEntry'
 import { LiveEvent } from '../../models/LiveEvent'
 import { Podcast } from '../../models/Podcast'
 import { Rating } from '../../models/Rating'
@@ -102,6 +103,14 @@ export const resolveTargetMetadata = async (
       return {
         ownerId: doc ? String(doc.id) : null,
         tags: [],
+        title: doc?.name,
+      }
+    }
+    case 'directory_entry': {
+      const doc = await DirectoryEntry.findById(targetId).select('ownerUser createdBy name tags')
+      return {
+        ownerId: doc?.ownerUser ? String(doc.ownerUser) : doc?.createdBy ? String(doc.createdBy) : null,
+        tags: getArrayTags(doc?.tags),
         title: doc?.name,
       }
     }

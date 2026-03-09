@@ -16,6 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
+Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 entregue).
 
 ---
 
@@ -174,6 +175,13 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 ### 3.2 API publica de DirectoryEntry
 
 **Problema:** O DirectoryEntry so tem endpoints admin. Nao ha endpoints publicos dedicados para listar/detalhar entidades do diretorio (a API editorial publica serve seccoes curadas, nao o diretorio completo).
+
+**Estado atual (2026-03-09):** backend base deste gap foi fechado com API publica dedicada:
+- GET /api/directories (listagem com filtros e paginacao);
+- GET /api/directories/:vertical (listagem por vertical);
+- GET /api/directories/:vertical/:slug (detalhe + incremento de views);
+- GET /api/directories/featured (destaques);
+- GET /api/directories/search (pesquisa cross-vertical).
 
 **O que falta:**
 ```
@@ -508,12 +516,12 @@ isSponsored: boolean (default false)
 
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
-| 1.1 | **API publica de DirectoryEntry** | 5 endpoints (list, byVertical, bySlug, featured, search) | — | Medio |
+| 1.1 | **API publica de DirectoryEntry** | CONCLUIDO (2026-03-09): list, byVertical, bySlug, featured, search | - | Medio |
 | 1.2 | **Pagina index `/recursos`** | — | Grid de categorias, featured, pesquisa | Medio |
 | 1.3 | **Paginas verticais `/recursos/corretoras` etc.** | — | Listagem filtrada, cards com rating/badges | Medio |
 | 1.4 | **Pagina detalhe `/recursos/:slug`** | — | Header, info, ratings, comments, conteudo relacionado | Medio |
-| 1.5 | **Ratings e comments nas entidades** | Verificar/ligar ao DirectoryEntry | Componentes de rating/comment nas paginas | Baixo |
-| 1.6 | **Views counter no DirectoryEntry** | Adicionar campo + incrementViews | — | Baixo |
+| 1.5 | **Ratings e comments nas entidades** | CONCLUIDO (2026-03-09): `targetType=directory_entry` + contadores sincronizados no model | Componentes de rating/comment nas paginas | Baixo |
+| 1.6 | **Views counter no DirectoryEntry** | CONCLUIDO (2026-03-09): campo `views` + incremento no detalhe publico | - | Baixo |
 
 ### Fase 2 — Qualidade e confianca (P2)
 
@@ -622,3 +630,4 @@ Seguir o padrao dos content controllers existentes:
 - **Sem API publica de DirectoryEntry** — as paginas publicas nao tem API para consumir
 - **Campanhas/publicidade** sao o modelo de receita das marcas mas estao a zero de implementacao — priorizar apos diretorio funcional
 - **Vertical types limitados** — faltam tipos relevantes para o mercado portugues (seguradoras, bancos, gestoras)
+
