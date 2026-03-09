@@ -209,3 +209,4 @@ Integracao CI/CD:
 - 2026-03-09: regra operacional atualizada: validacoes `live-only` deixam de bloquear implementacao diaria e passam para execucao obrigatoria em pre-release (janela T-1/T-0 de live beta testing).
 - 2026-03-09: P4.5-01 evoluido para backend+frontend MVP completo (contratos de request no backend + UI de personalizacao/reset no dashboard admin com hooks dedicados no frontend).
 - 2026-03-09: P4.5-02 evoluido para backend+frontend MVP completo (`/admin/operacoes` no frontend, tab no dashboard admin, contratos de request de bulk import no backend e smoke de rotas atualizado).
+- 2026-03-09: P4.5-03 evoluido para backend+frontend MVP completo (acao de `unhide` com agendamento no frontend, backlog agendado visivel no painel operacional e contrato de request dedicado no backend para `POST /api/admin/content/:contentType/:contentId/unhide/schedule`).

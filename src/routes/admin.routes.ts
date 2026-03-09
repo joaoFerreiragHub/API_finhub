@@ -152,6 +152,7 @@ import {
   validateAdminAssistedSessionRequestContract,
   validateAdminBulkImportCreateContract,
   validateAdminBulkImportPreviewContract,
+  validateAdminContentScheduleUnhideContract,
   validateAdminDashboardPersonalizationPatchContract,
   validateAdminDashboardPersonalizationResetContract,
   validateAdminSessionIdParamContract,
@@ -1715,6 +1716,7 @@ router.post(
 router.post(
   '/content/:contentType/:contentId/unhide/schedule',
   authenticate,
+  validateAdminContentScheduleUnhideContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.unhide.schedule',

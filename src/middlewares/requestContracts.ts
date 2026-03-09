@@ -771,3 +771,66 @@ export const validateAdminBulkImportCreateContract = (
 
   next()
 }
+
+export const validateAdminContentScheduleUnhideContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de agendamento de unhide invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['scheduledFor', 'scheduleAt', 'reason', 'note'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no agendamento de unhide.`)
+      return
+    }
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const reasonFromBody = typeof req.body.reason === 'string' ? req.body.reason.trim() : ''
+  const reasonFromHeader = (readHeaderString(req, 'x-admin-reason') || '').trim()
+  if (!reasonFromBody && !reasonFromHeader) {
+    respondValidationError(res, 'Motivo obrigatorio para agendar unhide.')
+    return
+  }
+
+  const scheduledRaw =
+    typeof req.body.scheduledFor === 'string'
+      ? req.body.scheduledFor.trim()
+      : typeof req.body.scheduleAt === 'string'
+        ? req.body.scheduleAt.trim()
+        : ''
+
+  if (!scheduledRaw) {
+    respondValidationError(res, 'Campo scheduledFor obrigatorio para agendar unhide.')
+    return
+  }
+
+  const parsed = new Date(scheduledRaw)
+  if (Number.isNaN(parsed.getTime())) {
+    respondValidationError(res, 'Campo scheduledFor invalido.')
+    return
+  }
+
+  if (parsed.getTime() <= Date.now()) {
+    respondValidationError(res, 'Campo scheduledFor deve ser uma data futura.')
+    return
+  }
+
+  next()
+}

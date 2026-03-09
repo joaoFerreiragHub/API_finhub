@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01 e P4.5-02 backend+frontend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -573,12 +573,12 @@ Backend:
 3. Manter observabilidade do backlog agendado no estado do worker.
 
 Frontend:
-1. Acao admin para definir data/hora de unhide automatico (ainda pendente).
-2. Visualizacao de jobs agendados no painel operacional (ainda pendente).
+1. Acao admin para definir data/hora de unhide automatico (MVP entregue).
+2. Visualizacao de jobs agendados no painel operacional (MVP entregue).
 
 Estado desta iteracao:
-1. backend MVP entregue com agendamento de `unhide` e processamento assíncrono por worker.
-2. frontend admin ainda pendente para fechar este item.
+1. backend+frontend MVP entregues com agendamento de `unhide` e processamento assincrono por worker.
+2. hardening de contrato de request aplicado para o endpoint de agendamento.
 
 Entregue no backend:
 1. modelo `AdminContentJob` evoluido com `scheduledFor` e indice operacional por `status + scheduledFor`.
@@ -592,11 +592,25 @@ Entregue no backend:
    - `POST /api/admin/content/bulk-moderate/jobs` aceita `scheduledFor` (nesta iteracao, apenas para `action=unhide`).
 5. auditoria administrativa e `requireAdminScope` aplicados com `admin.content.moderate`.
 6. rate limit operacional aplicado com `rateLimiter.adminModerationAction` e `rateLimiter.adminModerationBulk`.
+7. contrato de request dedicado no endpoint de agendamento:
+   - `validateAdminContentScheduleUnhideContract`
+   - cobertura em `npm run test:contracts:routes`.
+
+Entregue no frontend:
+1. modal de acao no `ContentModerationPage` com modo `immediate` vs `scheduled` para `unhide`.
+2. validacao de data/hora futura e submissao para `POST /api/admin/content/:contentType/:contentId/unhide/schedule`.
+3. bulk action `unhide` com `scheduledFor` opcional.
+4. dashboards operacionais atualizados com backlog agendado:
+   - contador `scheduled`;
+   - campo `nextScheduledAt`;
+   - badge/label de agendamento por job no historico.
+5. hooks/servico/tipos admin atualizados para suportar contrato e estado agendado.
 
 Validacao desta iteracao:
-1. `npm run typecheck`
-2. `npm run test:technical:smoke`
-3. `npm run checking`
+1. backend: `npm run typecheck`
+2. backend: `npm run test:contracts:routes`
+3. frontend: `npm run typecheck:p1`
+4. frontend: `npx eslint src/features/admin/pages/ContentModerationPage.tsx src/features/admin/services/adminContentService.ts src/features/admin/hooks/useAdminContent.ts src/features/admin/types/adminContent.ts`
 
 ### 7.4 P4.5-04 Delegacao temporaria de scopes
 

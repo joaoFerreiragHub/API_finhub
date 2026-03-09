@@ -86,6 +86,12 @@ const ROUTE_CONTRACTS = [
   {
     filePath: 'src/routes/admin.routes.ts',
     method: 'post',
+    routePath: '/content/:contentType/:contentId/unhide/schedule',
+    requiredMiddleware: 'validateAdminContentScheduleUnhideContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
     routePath: '/support/sessions/:sessionId/start',
     requiredMiddleware: 'validateAdminSessionIdParamContract',
   },
