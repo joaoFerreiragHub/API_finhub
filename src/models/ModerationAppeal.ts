@@ -94,7 +94,6 @@ const ModerationAppealSchema = new Schema<IModerationAppeal>(
       ref: 'ContentModerationEvent',
       required: true,
       unique: true,
-      index: true,
     },
     contentType: {
       type: String,
@@ -198,7 +197,6 @@ const ModerationAppealSchema = new Schema<IModerationAppeal>(
   }
 )
 
-ModerationAppealSchema.index({ moderationEvent: 1 }, { unique: true })
 ModerationAppealSchema.index({ appellant: 1, status: 1, openedAt: -1 })
 ModerationAppealSchema.index({ status: 1, dueAt: 1, openedAt: -1 })
 ModerationAppealSchema.index({ severity: 1, status: 1, openedAt: -1 })

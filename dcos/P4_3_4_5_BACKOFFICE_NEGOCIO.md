@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02 e P4.4-03 concluido)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02 e P4.4-03 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -96,6 +96,24 @@ Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
 3. `npm run checking`
+
+### 7.6 Hardening tecnico transversal (schema indexes)
+
+Objetivo:
+1. remover duplicacao de definicoes de indices em modelos para reduzir ruido de bootstrap/CI.
+
+Entregue no backend:
+1. deduplicacao de indices em schemas com `unique/index` redundante e `Schema.index` repetido.
+2. modelos cobertos nesta iteracao:
+   - `AdCampaign`, `AdSlotConfig`, `AdminDashboardPreference`, `AdminModerationTemplate`;
+   - `BaseContent`, `Brand`, `Comment`, `ContentAccessPolicy`;
+   - `FinancialToolControl`, `ModerationAppeal`, `UserPreferences`, `UserSubscription`.
+3. atualizacao de dependencias de runtime com adicao de `rss-parser` e sincronizacao de lockfiles.
+
+Validacao desta iteracao:
+1. `npm run test:contracts:routes`
+2. `npm run test:docs:smoke`
+3. `npm run test:perf:indexes` falhou no ambiente atual com erro de permissao (`EPERM`) fora do codigo alterado.
 
 Decisoes funcionais (obrigatorias para execucao de P4.4/P5):
 1. Separar sempre `role` (visitor/free/creator/admin) de `plan/entitlements` (free/premium + noExternalAds).

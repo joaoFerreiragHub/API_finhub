@@ -75,7 +75,6 @@ const BrandSchema = new Schema<IBrand>(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
     description: {
       type: String,
@@ -87,7 +86,6 @@ const BrandSchema = new Schema<IBrand>(
       type: String,
       required: true,
       enum: ['broker', 'platform', 'website', 'podcast', 'tool', 'exchange', 'news-source', 'other'],
-      index: true,
     },
 
     // Media
@@ -139,12 +137,10 @@ const BrandSchema = new Schema<IBrand>(
     isActive: {
       type: Boolean,
       default: true,
-      index: true,
     },
     isFeatured: {
       type: Boolean,
       default: false,
-      index: true,
     },
     isVerified: {
       type: Boolean,
@@ -181,7 +177,6 @@ const BrandSchema = new Schema<IBrand>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true,
     },
   },
   {
@@ -190,7 +185,6 @@ const BrandSchema = new Schema<IBrand>(
 )
 
 // Indexes
-BrandSchema.index({ slug: 1 })
 BrandSchema.index({ brandType: 1 })
 BrandSchema.index({ isActive: 1 })
 BrandSchema.index({ isFeatured: 1 })

@@ -153,7 +153,6 @@ const AdminModerationTemplateSchema = new Schema<IAdminModerationTemplate>(
   }
 )
 
-AdminModerationTemplateSchema.index({ code: 1 }, { unique: true })
 AdminModerationTemplateSchema.index({ active: 1, updatedAt: -1 })
 AdminModerationTemplateSchema.index({ tags: 1, updatedAt: -1 })
 

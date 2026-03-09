@@ -225,7 +225,6 @@ const AdminDashboardPreferenceSchema = new Schema<IAdminDashboardPreference>(
       ref: 'User',
       required: true,
       unique: true,
-      index: true,
     },
     preset: {
       type: String,
@@ -286,7 +285,6 @@ const AdminDashboardPreferenceSchema = new Schema<IAdminDashboardPreference>(
   }
 )
 
-AdminDashboardPreferenceSchema.index({ user: 1 }, { unique: true })
 AdminDashboardPreferenceSchema.index({ preset: 1, updatedAt: -1 })
 
 export const AdminDashboardPreference = mongoose.model<IAdminDashboardPreference>(

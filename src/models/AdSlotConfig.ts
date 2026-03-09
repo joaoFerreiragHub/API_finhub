@@ -133,7 +133,6 @@ const AdSlotConfigSchema = new Schema<IAdSlotConfig>(
       uppercase: true,
       maxlength: 40,
       unique: true,
-      index: true,
     },
     label: {
       type: String,

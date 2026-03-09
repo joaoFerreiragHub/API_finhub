@@ -157,7 +157,6 @@ const UserSubscriptionSchema = new Schema<IUserSubscription>(
       ref: 'User',
       required: true,
       unique: true,
-      index: true,
     },
     planCode: {
       type: String,
@@ -260,7 +259,6 @@ const UserSubscriptionSchema = new Schema<IUserSubscription>(
   }
 )
 
-UserSubscriptionSchema.index({ user: 1 }, { unique: true })
 UserSubscriptionSchema.index({ status: 1, updatedAt: -1 })
 UserSubscriptionSchema.index({ planCode: 1, status: 1, updatedAt: -1 })
 UserSubscriptionSchema.index({ entitlementActive: 1, status: 1, updatedAt: -1 })

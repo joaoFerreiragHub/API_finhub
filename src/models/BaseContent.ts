@@ -93,7 +93,6 @@ export const baseContentSchema = {
     unique: true,
     lowercase: true,
     trim: true,
-    index: true,
   },
   description: {
     type: String,
@@ -129,7 +128,6 @@ export const baseContentSchema = {
       'analysis',
       'other',
     ],
-    index: true,
   },
   tags: {
     type: [String],
@@ -156,12 +154,10 @@ export const baseContentSchema = {
   isPremium: {
     type: Boolean,
     default: false,
-    index: true,
   },
   isFeatured: {
     type: Boolean,
     default: false,
-    index: true,
   },
 
   // Status
@@ -169,7 +165,6 @@ export const baseContentSchema = {
     type: String,
     enum: ['draft', 'published', 'archived'],
     default: 'draft',
-    index: true,
   },
   publishedAt: {
     type: Date,
@@ -204,18 +199,15 @@ export const baseContentSchema = {
     type: String,
     enum: ['admin_seeded', 'creator_owned'],
     default: 'creator_owned',
-    index: true,
   },
   sourceType: {
     type: String,
     enum: ['internal', 'external_profile', 'external_content'],
     default: 'internal',
-    index: true,
   },
   claimable: {
     type: Boolean,
     default: false,
-    index: true,
   },
   editorialVisibility: {
     showOnHome: {
@@ -237,7 +229,6 @@ export const baseContentSchema = {
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    index: true,
   },
 
   // Engagement
@@ -280,7 +271,6 @@ export const baseContentSchema = {
  * Indexes comuns para todos os conteúdos
  */
 export const baseContentIndexes = [
-  { slug: 1 },
   { creator: 1 },
   { status: 1 },
   { category: 1 },

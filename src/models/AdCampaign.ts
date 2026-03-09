@@ -131,7 +131,6 @@ const AdCampaignSchema = new Schema<IAdCampaign>(
       uppercase: true,
       trim: true,
       maxlength: 60,
-      index: true,
     },
     title: {
       type: String,

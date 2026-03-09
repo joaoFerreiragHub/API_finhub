@@ -321,7 +321,6 @@ const ContentAccessPolicySchema = new Schema<IContentAccessPolicy>(
   }
 )
 
-ContentAccessPolicySchema.index({ code: 1 }, { unique: true })
 ContentAccessPolicySchema.index({ active: 1, priority: -1, updatedAt: -1 })
 ContentAccessPolicySchema.index({ 'access.requiredRole': 1, active: 1, priority: -1 })
 ContentAccessPolicySchema.index({ 'match.contentTypes': 1, active: 1, priority: -1 })

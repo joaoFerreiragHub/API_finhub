@@ -63,7 +63,6 @@ const CommentSchema = new Schema<IComment>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true,
     },
 
     targetType: {
@@ -101,7 +100,6 @@ const CommentSchema = new Schema<IComment>(
       type: Schema.Types.ObjectId,
       ref: 'Comment',
       default: null,
-      index: true,
     },
     depth: {
       type: Number,

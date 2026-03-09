@@ -214,7 +214,6 @@ const FinancialToolControlSchema = new Schema<IFinancialToolControl>(
       enum: FINANCIAL_TOOL_KEYS,
       required: true,
       unique: true,
-      index: true,
     },
     vertical: {
       type: String,
@@ -284,7 +283,6 @@ const FinancialToolControlSchema = new Schema<IFinancialToolControl>(
   }
 )
 
-FinancialToolControlSchema.index({ tool: 1 }, { unique: true })
 FinancialToolControlSchema.index({ vertical: 1, 'baseConfig.enabled': 1, updatedAt: -1 })
 
 export const FinancialToolControl = mongoose.model<IFinancialToolControl>(

@@ -50,7 +50,6 @@ const UserPreferencesSchema = new Schema<IUserPreferences>(
       ref: 'User',
       required: true,
       unique: true,
-      index: true,
     },
     notificationPreferences: {
       follow: { type: Boolean, default: true },
@@ -90,7 +89,6 @@ const UserPreferencesSchema = new Schema<IUserPreferences>(
   }
 )
 
-UserPreferencesSchema.index({ user: 1 }, { unique: true })
 UserPreferencesSchema.index({ 'tagAffinities.tag': 1 })
 
 export const notificationTypeToPreferenceKey: Record<
