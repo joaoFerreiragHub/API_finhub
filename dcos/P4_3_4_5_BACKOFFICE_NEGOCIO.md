@@ -527,8 +527,9 @@ Entregue no backend:
 
 Validacao desta iteracao:
 1. `npm run typecheck`
-2. `npm run test:technical:smoke`
-3. `npm run checking`
+2. `npm run test:ads:guardrails`
+3. `npm run test:technical:smoke`
+4. `npm run checking`
 
 ### 7.3 P4.5-03 Acoes agendadas (unhide automatico)
 
