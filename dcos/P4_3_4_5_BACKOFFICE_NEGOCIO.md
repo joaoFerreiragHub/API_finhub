@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-01, P4.5-02, P4.5-03, P4.5-04 e P4.5-05 backend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-02, P4.5-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01 backend+frontend MVP entregue)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -452,8 +452,8 @@ Validacao desta iteracao:
 ### 7.1 P4.5-01 Dashboard personalizavel por admin
 
 Estado desta iteracao:
-1. backend MVP entregue com personalizacao de dashboard por admin autenticado.
-2. frontend admin (builder visual completo) ainda pendente para fechar este item.
+1. backend+frontend MVP entregue com personalizacao de dashboard por admin autenticado.
+2. builder visual completo de layout (drag-and-drop) fica para iteracao futura de UX.
 
 Entregue no backend:
 1. modelo novo:
@@ -474,9 +474,24 @@ Entregue no backend:
 5. auditoria administrativa e `requireAdminScope` aplicados com `admin.metrics.read`.
 6. rate limit operacional aplicado com `rateLimiter.adminMetricsDrilldown`.
 
+Entregue no frontend:
+1. novo cliente admin para personalizacao:
+   - `useAdminDashboardPersonalization` (query);
+   - `useUpdateAdminDashboardPersonalization` (patch);
+   - `useResetAdminDashboardPersonalization` (reset).
+2. `AdminDashboardPage` evoluida com:
+   - card de resumo de preferencia ativa (preset, densidade, tema, refresh, widgets, filtros);
+   - dialog de configuracao para `preset`, `density`, `theme`, `refreshSeconds`, `reason` e `note`;
+   - acao de reset para preset base diretamente no dashboard.
+3. guardrails de UX:
+   - escrita bloqueada em modo `adminReadOnly`;
+   - validacao local de `refreshSeconds` (30-3600) para evitar requests invalidos;
+   - envio de patch apenas com campos alterados para evitar conflitos `409` sem alteracoes.
+
 Validacao desta iteracao:
-1. `npm run typecheck`
-2. `npm run test:technical:smoke`
+1. backend: `npm run typecheck`
+2. backend: `npm run test:contracts:routes`
+3. frontend: `npm run typecheck:p1`
 
 ### 7.2 P4.5-02 Bulk import CSV operacional
 

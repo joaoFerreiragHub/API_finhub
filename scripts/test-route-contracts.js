@@ -61,6 +61,18 @@ const ROUTE_CONTRACTS = [
   },
   {
     filePath: 'src/routes/admin.routes.ts',
+    method: 'patch',
+    routePath: '/dashboard/personalization',
+    requiredMiddleware: 'validateAdminDashboardPersonalizationPatchContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/dashboard/personalization/reset',
+    requiredMiddleware: 'validateAdminDashboardPersonalizationResetContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
     method: 'post',
     routePath: '/support/sessions/:sessionId/start',
     requiredMiddleware: 'validateAdminSessionIdParamContract',

@@ -207,3 +207,4 @@ Integracao CI/CD:
 - 2026-03-09: hardening de P4.5-02 (bulk import de campanhas passou a aplicar os mesmos guardrails de ativacao manual para evitar bypass de compliance em ads).
 - 2026-03-09: adicionado smoke dedicado `npm run test:ads:guardrails` e integrado em `npm run test:technical:smoke` para proteger regressao de bypass no bulk import de campanhas.
 - 2026-03-09: regra operacional atualizada: validacoes `live-only` deixam de bloquear implementacao diaria e passam para execucao obrigatoria em pre-release (janela T-1/T-0 de live beta testing).
+- 2026-03-09: P4.5-01 evoluido para backend+frontend MVP completo (contratos de request no backend + UI de personalizacao/reset no dashboard admin com hooks dedicados no frontend).

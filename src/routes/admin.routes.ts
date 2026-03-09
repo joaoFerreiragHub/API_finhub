@@ -150,6 +150,8 @@ import { auditAdminAction } from '../middlewares/adminAudit'
 import { rateLimiter } from '../middlewares/rateLimiter'
 import {
   validateAdminAssistedSessionRequestContract,
+  validateAdminDashboardPersonalizationPatchContract,
+  validateAdminDashboardPersonalizationResetContract,
   validateAdminSessionIdParamContract,
   validateAdminSessionRevokeContract,
   validateAdminSurfaceControlContract,
@@ -342,6 +344,7 @@ router.get(
 router.patch(
   '/dashboard/personalization',
   authenticate,
+  validateAdminDashboardPersonalizationPatchContract,
   rateLimiter.adminMetricsDrilldown,
   auditAdminAction({
     action: 'admin.dashboard.personalization.update',
@@ -360,6 +363,7 @@ router.patch(
 router.post(
   '/dashboard/personalization/reset',
   authenticate,
+  validateAdminDashboardPersonalizationResetContract,
   rateLimiter.adminMetricsDrilldown,
   auditAdminAction({
     action: 'admin.dashboard.personalization.reset',

@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from 'express'
 
 type RecordLike = Record<string, unknown>
+type DashboardPreset = 'operations' | 'moderation' | 'monetization' | 'custom'
+type DashboardDensity = 'comfortable' | 'compact'
+type DashboardTheme = 'system' | 'light' | 'dark'
 
 const isRecord = (value: unknown): value is RecordLike =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -77,6 +80,84 @@ const validateOptionalPositiveInteger = (
   }
 
   return { valid: true, value }
+}
+
+const validateOptionalEnum = <T extends string>(
+  payload: RecordLike,
+  field: string,
+  allowedValues: readonly T[]
+): { valid: boolean; value?: T } => {
+  if (!(field in payload) || payload[field] === undefined || payload[field] === null) {
+    return { valid: true }
+  }
+
+  if (typeof payload[field] !== 'string') {
+    return { valid: false }
+  }
+
+  const normalized = payload[field].trim()
+  if (!normalized || !allowedValues.includes(normalized as T)) {
+    return { valid: false }
+  }
+
+  return { valid: true, value: normalized as T }
+}
+
+const validateAdminDashboardLayoutPayload = (
+  payload: RecordLike
+): { valid: boolean; hasValue: boolean } => {
+  if (!('layout' in payload) || payload.layout === undefined || payload.layout === null) {
+    return { valid: true, hasValue: false }
+  }
+
+  if (!Array.isArray(payload.layout) || payload.layout.length === 0) {
+    return { valid: false, hasValue: true }
+  }
+
+  for (const item of payload.layout) {
+    if (!isRecord(item)) return { valid: false, hasValue: true }
+
+    const widgetKey = validateRequiredNonEmptyString(item, 'widgetKey')
+    if (!widgetKey) return { valid: false, hasValue: true }
+
+    for (const numericField of ['column', 'order', 'width', 'height'] as const) {
+      if (numericField in item && item[numericField] !== undefined && item[numericField] !== null) {
+        if (typeof item[numericField] !== 'number') return { valid: false, hasValue: true }
+        if (!Number.isInteger(item[numericField] as number)) return { valid: false, hasValue: true }
+      }
+    }
+
+    if ('collapsed' in item && item.collapsed !== undefined && item.collapsed !== null) {
+      if (typeof item.collapsed !== 'boolean') return { valid: false, hasValue: true }
+    }
+  }
+
+  return { valid: true, hasValue: true }
+}
+
+const validateAdminDashboardPinnedFiltersPayload = (
+  payload: RecordLike
+): { valid: boolean; hasValue: boolean } => {
+  if (
+    !('pinnedFilters' in payload) ||
+    payload.pinnedFilters === undefined ||
+    payload.pinnedFilters === null
+  ) {
+    return { valid: true, hasValue: false }
+  }
+
+  if (!Array.isArray(payload.pinnedFilters)) {
+    return { valid: false, hasValue: true }
+  }
+
+  for (const item of payload.pinnedFilters) {
+    if (!isRecord(item)) return { valid: false, hasValue: true }
+    const key = validateRequiredNonEmptyString(item, 'key')
+    const value = validateRequiredNonEmptyString(item, 'value')
+    if (!key || !value) return { valid: false, hasValue: true }
+  }
+
+  return { valid: true, hasValue: true }
 }
 
 export const validateAuthRegisterContract = (
@@ -402,6 +483,151 @@ export const validateAdminSessionRevokeContract = (
   const reason = validateRequiredNonEmptyString(req.body, 'reason')
   if (!reason) {
     respondValidationError(res, 'Campo reason obrigatorio.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminDashboardPersonalizationPatchContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de personalizacao do dashboard invalido.')
+    return
+  }
+
+  const allowedKeys = new Set([
+    'preset',
+    'density',
+    'theme',
+    'refreshSeconds',
+    'layout',
+    'pinnedFilters',
+    'reason',
+    'note',
+  ])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na personalizacao do dashboard.`)
+      return
+    }
+  }
+
+  const preset = validateOptionalEnum<DashboardPreset>(req.body, 'preset', [
+    'operations',
+    'moderation',
+    'monetization',
+    'custom',
+  ])
+  if (!preset.valid) {
+    respondValidationError(res, 'Campo preset invalido.')
+    return
+  }
+
+  const density = validateOptionalEnum<DashboardDensity>(req.body, 'density', [
+    'comfortable',
+    'compact',
+  ])
+  if (!density.valid) {
+    respondValidationError(res, 'Campo density invalido.')
+    return
+  }
+
+  const theme = validateOptionalEnum<DashboardTheme>(req.body, 'theme', ['system', 'light', 'dark'])
+  if (!theme.valid) {
+    respondValidationError(res, 'Campo theme invalido.')
+    return
+  }
+
+  const refreshSeconds = validateOptionalPositiveInteger(req.body, 'refreshSeconds')
+  if (!refreshSeconds.valid) {
+    respondValidationError(res, 'Campo refreshSeconds invalido.')
+    return
+  }
+
+  const layout = validateAdminDashboardLayoutPayload(req.body)
+  if (!layout.valid) {
+    respondValidationError(res, 'Campo layout invalido.')
+    return
+  }
+
+  const pinnedFilters = validateAdminDashboardPinnedFiltersPayload(req.body)
+  if (!pinnedFilters.valid) {
+    respondValidationError(res, 'Campo pinnedFilters invalido.')
+    return
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const hasPatchField =
+    'preset' in req.body ||
+    'density' in req.body ||
+    'theme' in req.body ||
+    'refreshSeconds' in req.body ||
+    layout.hasValue ||
+    pinnedFilters.hasValue
+  if (!hasPatchField) {
+    respondValidationError(
+      res,
+      'Payload sem campos de personalizacao. Envia preset, density, theme, refreshSeconds, layout ou pinnedFilters.'
+    )
+    return
+  }
+
+  next()
+}
+
+export const validateAdminDashboardPersonalizationResetContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de reset da personalizacao do dashboard invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['preset', 'reason', 'note'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no reset de personalizacao.`)
+      return
+    }
+  }
+
+  const preset = validateOptionalEnum<DashboardPreset>(req.body, 'preset', [
+    'operations',
+    'moderation',
+    'monetization',
+    'custom',
+  ])
+  if (!preset.valid) {
+    respondValidationError(res, 'Campo preset invalido.')
+    return
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
     return
   }
 
