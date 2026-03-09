@@ -42,6 +42,7 @@ export interface IAdCampaign extends Document {
   startAt?: Date | null
   endAt?: Date | null
   headline: string
+  disclosureLabel?: string | null
   body?: string | null
   ctaText?: string | null
   ctaUrl?: string | null
@@ -214,6 +215,12 @@ const AdCampaignSchema = new Schema<IAdCampaign>(
       required: true,
       trim: true,
       maxlength: 220,
+    },
+    disclosureLabel: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 80,
     },
     body: {
       type: String,

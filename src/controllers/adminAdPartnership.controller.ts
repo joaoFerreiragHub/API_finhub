@@ -264,6 +264,7 @@ export const createAdminAdCampaign = async (req: AuthRequest, res: Response) => 
       startAt: body.startAt,
       endAt: body.endAt,
       headline: body.headline,
+      disclosureLabel: body.disclosureLabel,
       body: body.body,
       ctaText: body.ctaText,
       ctaUrl: body.ctaUrl,

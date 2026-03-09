@@ -36,6 +36,52 @@ const DEFAULT_SLOT_COOLDOWN_SECONDS = (() => {
   if (!Number.isFinite(parsed) || parsed < 0) return 120
   return parsed
 })()
+const DEFAULT_DISCLOSURE_LABELS: Record<(typeof AD_TYPES)[number], string | null> = {
+  external_ads: 'Publicidade',
+  sponsored_ads: 'Patrocinado',
+  house_ads: null,
+  value_ads: 'Sugestao patrocinada',
+}
+const DEFAULT_FINANCIAL_RELEVANCE_TAGS = [
+  'acoes',
+  'stocks',
+  'etf',
+  'etfs',
+  'reit',
+  'reits',
+  'crypto',
+  'criptomoedas',
+  'ppr',
+  'reforma',
+  'retirement',
+  'fire',
+  'portfolio',
+  'dividendos',
+  'dividends',
+  'fiscalidade',
+  'taxes',
+  'irs',
+  'poupanca',
+  'savings',
+  'budget',
+  'orcamento',
+  'mercado',
+  'markets',
+  'bancos',
+  'banking',
+  'seguros',
+  'insurance',
+  'literacia',
+  'educacao_financeira',
+] as const
+const FINANCIAL_RELEVANCE_TAGS = (() => {
+  const configured = (process.env.ADMIN_ADS_FINANCIAL_RELEVANCE_TAGS ?? '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => item.length > 0)
+  if (configured.length > 0) return new Set(configured)
+  return new Set(DEFAULT_FINANCIAL_RELEVANCE_TAGS)
+})()
 
 export type AdPartnershipType = (typeof AD_TYPES)[number]
 export type AdPartnershipVisibility = (typeof VISIBILITY)[number]
@@ -44,6 +90,12 @@ export type AdPartnershipPosition = (typeof POSITIONS)[number]
 export type AdPartnershipDevice = (typeof DEVICES)[number]
 export type AdPartnershipCampaignStatus = (typeof CAMPAIGN_STATUSES)[number]
 export type AdPartnershipSponsorType = (typeof SPONSOR_TYPES)[number]
+type SlotCompatibilityInput = {
+  slotId: string
+  allowedTypes: AdPartnershipType[]
+  visibleTo: AdPartnershipVisibility[]
+  isActive?: boolean | null
+}
 
 export const isValidAdPartnershipType = (value: unknown): value is AdPartnershipType =>
   typeof value === 'string' && AD_TYPES.includes(value as AdPartnershipType)
@@ -143,6 +195,101 @@ const parseSlotIds = (value: unknown): string[] => {
       .map((item) => (typeof item === 'string' ? item.trim().toUpperCase() : ''))
       .filter((item) => item.length > 0)
   )
+}
+
+const normalizeRelevanceTags = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return []
+  return uniqueStringArray(
+    value
+      .map((item) =>
+        typeof item === 'string'
+          ? item
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, '_')
+          : ''
+      )
+      .filter((item) => item.length > 0)
+  )
+}
+
+const resolveDisclosureLabel = (adType: AdPartnershipType, value: unknown): string | null => {
+  const parsed = toStringOrNull(value)
+  if (parsed) return parsed
+  return DEFAULT_DISCLOSURE_LABELS[adType]
+}
+
+const ensureDisclosureLabel = (adType: AdPartnershipType, disclosureLabel: string | null) => {
+  if (adType === 'house_ads') return
+  if (!disclosureLabel) {
+    throw new AdminAdPartnershipServiceError(
+      400,
+      'Campanhas nao-house requerem disclosureLabel explicito (ex: Patrocinado).'
+    )
+  }
+}
+
+const ensureFinancialRelevance = (adType: AdPartnershipType, relevanceTags: string[]) => {
+  if (adType === 'house_ads') return
+  if (relevanceTags.length === 0) {
+    throw new AdminAdPartnershipServiceError(
+      400,
+      'Campanhas nao-house requerem ao menos 1 relevanceTag financeira/contextual.'
+    )
+  }
+  if (!relevanceTags.some((tag) => FINANCIAL_RELEVANCE_TAGS.has(tag))) {
+    throw new AdminAdPartnershipServiceError(
+      400,
+      'Campanha deve incluir pelo menos uma relevanceTag financeira reconhecida.'
+    )
+  }
+}
+
+const expandVisibility = (value: AdPartnershipVisibility[]): Set<'free' | 'premium'> => {
+  const expanded = new Set<'free' | 'premium'>()
+  if (value.includes('all')) {
+    expanded.add('free')
+    expanded.add('premium')
+    return expanded
+  }
+  if (value.includes('free')) expanded.add('free')
+  if (value.includes('premium')) expanded.add('premium')
+  return expanded
+}
+
+const hasVisibilityOverlap = (
+  slotVisibility: AdPartnershipVisibility[],
+  campaignVisibility: AdPartnershipVisibility[]
+) => {
+  const slotExpanded = expandVisibility(slotVisibility)
+  const campaignExpanded = expandVisibility(campaignVisibility)
+  for (const value of slotExpanded) {
+    if (campaignExpanded.has(value)) return true
+  }
+  return false
+}
+
+const ensureSlotCompatibility = (
+  slot: SlotCompatibilityInput,
+  adType: AdPartnershipType,
+  campaignVisibility: AdPartnershipVisibility[],
+  options: { requireActive?: boolean } = {}
+) => {
+  if (!slot.allowedTypes.includes(adType)) {
+    throw new AdminAdPartnershipServiceError(400, `Slot ${slot.slotId} nao permite adType ${adType}.`)
+  }
+  if (!hasVisibilityOverlap(slot.visibleTo, campaignVisibility)) {
+    throw new AdminAdPartnershipServiceError(
+      400,
+      `Slot ${slot.slotId} nao e compativel com visibleTo da campanha.`
+    )
+  }
+  if (options.requireActive && slot.isActive === false) {
+    throw new AdminAdPartnershipServiceError(
+      409,
+      `Slot ${slot.slotId} esta inativo e bloqueia ativacao da campanha.`
+    )
+  }
 }
 
 const ensureExternalAdsNoPremium = (
@@ -456,8 +603,12 @@ export class AdminAdPartnershipService {
     const visibleToRaw = parseVisibility(input.visibleTo)
     const visibleTo: AdPartnershipVisibility[] =
       visibleToRaw.length > 0 ? visibleToRaw : ['all']
+    const relevanceTags = normalizeRelevanceTags(input.relevanceTags)
+    const disclosureLabel = resolveDisclosureLabel(adType, input.disclosureLabel)
 
     ensureExternalAdsNoPremium(adType, visibleTo)
+    ensureDisclosureLabel(adType, disclosureLabel)
+    ensureFinancialRelevance(adType, relevanceTags)
 
     const slotIds = parseSlotIds(input.slotIds)
     const surfacesInput = parseSurfaces(input.surfaces)
@@ -471,12 +622,7 @@ export class AdminAdPartnershipService {
     }
 
     for (const slot of slots) {
-      if (!slot.allowedTypes.includes(adType)) {
-        throw new AdminAdPartnershipServiceError(
-          400,
-          `Slot ${slot.slotId} nao permite adType ${adType}.`
-        )
-      }
+      ensureSlotCompatibility(slot as unknown as SlotCompatibilityInput, adType, visibleTo)
     }
 
     const surfaces = uniqueStringArray([
@@ -524,17 +670,12 @@ export class AdminAdPartnershipService {
       startAt,
       endAt,
       headline,
+      disclosureLabel,
       body: toStringOrNull(input.body),
       ctaText: toStringOrNull(input.ctaText),
       ctaUrl: toStringOrNull(input.ctaUrl),
       imageUrl: toStringOrNull(input.imageUrl),
-      relevanceTags: Array.isArray(input.relevanceTags)
-        ? uniqueStringArray(
-            input.relevanceTags
-              .map((item) => (typeof item === 'string' ? item.trim().toLowerCase() : ''))
-              .filter((item) => item.length > 0)
-          )
-        : [],
+      relevanceTags,
       estimatedMonthlyBudget: toPositiveIntOrNull(input.estimatedMonthlyBudget),
       currency: toStringOrNull(input.currency)?.toUpperCase() ?? 'EUR',
       approvedAt: status === 'active' ? now : null,
@@ -620,17 +761,16 @@ export class AdminAdPartnershipService {
     if (typeof patch.headline === 'string' && patch.headline.trim()) {
       campaign.headline = patch.headline.trim()
     }
+    if ('disclosureLabel' in patch) {
+      campaign.disclosureLabel = patch.disclosureLabel === null ? null : toStringOrNull(patch.disclosureLabel)
+    }
     if ('body' in patch) campaign.body = toStringOrNull(patch.body)
     if ('ctaText' in patch) campaign.ctaText = toStringOrNull(patch.ctaText)
     if ('ctaUrl' in patch) campaign.ctaUrl = toStringOrNull(patch.ctaUrl)
     if ('imageUrl' in patch) campaign.imageUrl = toStringOrNull(patch.imageUrl)
 
     if (Array.isArray(patch.relevanceTags)) {
-      campaign.relevanceTags = uniqueStringArray(
-        patch.relevanceTags
-          .map((item) => (typeof item === 'string' ? item.trim().toLowerCase() : ''))
-          .filter((item) => item.length > 0)
-      )
+      campaign.relevanceTags = normalizeRelevanceTags(patch.relevanceTags)
     }
     if ('estimatedMonthlyBudget' in patch) {
       campaign.estimatedMonthlyBudget = toPositiveIntOrNull(patch.estimatedMonthlyBudget)
@@ -640,7 +780,13 @@ export class AdminAdPartnershipService {
       if (parsed) campaign.currency = parsed.toUpperCase()
     }
 
-    ensureExternalAdsNoPremium(campaign.adType as AdPartnershipType, campaign.visibleTo as any)
+    const campaignAdType = campaign.adType as AdPartnershipType
+    const campaignVisibility = campaign.visibleTo as unknown as AdPartnershipVisibility[]
+
+    campaign.disclosureLabel = resolveDisclosureLabel(campaignAdType, campaign.disclosureLabel)
+    ensureDisclosureLabel(campaignAdType, campaign.disclosureLabel)
+    ensureFinancialRelevance(campaignAdType, campaign.relevanceTags)
+    ensureExternalAdsNoPremium(campaignAdType, campaignVisibility)
     ensureSchedule(campaign.startAt ?? null, campaign.endAt ?? null)
 
     if (campaign.brand && !(await Brand.exists({ _id: campaign.brand }))) {
@@ -661,12 +807,11 @@ export class AdminAdPartnershipService {
       }
     }
     for (const slot of slots) {
-      if (!slot.allowedTypes.includes(campaign.adType as any)) {
-        throw new AdminAdPartnershipServiceError(
-          400,
-          `Slot ${slot.slotId} nao permite adType ${campaign.adType}.`
-        )
-      }
+      ensureSlotCompatibility(
+        slot as unknown as SlotCompatibilityInput,
+        campaignAdType,
+        campaignVisibility
+      )
     }
 
     campaign.surfaces = uniqueStringArray([
@@ -733,6 +878,31 @@ export class AdminAdPartnershipService {
       }
       if (campaign.endAt && campaign.endAt.getTime() <= nowMs) {
         throw new AdminAdPartnershipServiceError(409, 'Campanha ja expirou (endAt).')
+      }
+      const campaignAdType = campaign.adType as AdPartnershipType
+      const campaignVisibility = campaign.visibleTo as unknown as AdPartnershipVisibility[]
+      campaign.disclosureLabel = resolveDisclosureLabel(campaignAdType, campaign.disclosureLabel)
+      ensureDisclosureLabel(campaignAdType, campaign.disclosureLabel)
+      ensureFinancialRelevance(campaignAdType, campaign.relevanceTags)
+      ensureExternalAdsNoPremium(campaignAdType, campaignVisibility)
+
+      const slots =
+        campaign.slotIds.length > 0
+          ? await AdSlotConfig.find({ slotId: { $in: campaign.slotIds } }).lean()
+          : []
+      const slotMap = new Map(slots.map((slot) => [slot.slotId, slot]))
+      for (const slotId of campaign.slotIds) {
+        if (!slotMap.has(slotId)) {
+          throw new AdminAdPartnershipServiceError(404, `Slot ${slotId} nao encontrado.`)
+        }
+      }
+      for (const slot of slots) {
+        ensureSlotCompatibility(
+          slot as unknown as SlotCompatibilityInput,
+          campaignAdType,
+          campaignVisibility,
+          { requireActive: true }
+        )
       }
       campaign.approvedAt = new Date()
       campaign.approvedBy = actorId

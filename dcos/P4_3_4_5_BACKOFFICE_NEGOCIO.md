@@ -431,6 +431,11 @@ Entregue no backend:
    - leitura com `admin.content.read`;
    - mutacoes com `admin.content.moderate`.
 6. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
+7. hardening de compliance/relevancia aplicado:
+   - `disclosureLabel` explicito para campanhas nao-`house_ads`;
+   - campanhas nao-`house_ads` exigem `relevanceTags` financeiras/contextuais;
+   - compatibilidade `visibleTo` entre campanha e slot validada para evitar inventario inviavel;
+   - ativacao valida slots existentes/ativos e guardrails de disclosure/relevancia.
 
 Validacao desta iteracao:
 1. `npm run typecheck`
