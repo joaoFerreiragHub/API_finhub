@@ -150,13 +150,28 @@ import { auditAdminAction } from '../middlewares/adminAudit'
 import { rateLimiter } from '../middlewares/rateLimiter'
 import {
   validateAdminAssistedSessionRequestContract,
+  validateAdminBroadcastApproveContract,
+  validateAdminBroadcastCreateContract,
+  validateAdminBroadcastPreviewContract,
+  validateAdminBroadcastSendContract,
   validateAdminBulkImportCreateContract,
   validateAdminBulkImportPreviewContract,
+  validateAdminContentAccessPolicyCreateContract,
+  validateAdminContentAccessPolicyPreviewContract,
+  validateAdminContentAccessPolicySetActiveContract,
+  validateAdminContentAccessPolicyUpdateContract,
   validateAdminContentScheduleUnhideContract,
   validateAdminDashboardPersonalizationPatchContract,
   validateAdminDashboardPersonalizationResetContract,
+  validateAdminModerationAppealStatusContract,
+  validateAdminModerationTemplateCreateContract,
+  validateAdminModerationTemplateSetActiveContract,
+  validateAdminModerationTemplateUpdateContract,
   validateAdminSessionIdParamContract,
   validateAdminSessionRevokeContract,
+  validateAdminSubscriptionExtendTrialContract,
+  validateAdminSubscriptionReactivateContract,
+  validateAdminSubscriptionRevokeEntitlementContract,
   validateAdminSurfaceControlContract,
 } from '../middlewares/requestContracts'
 import { requireAdminScope } from '../middlewares/roleGuard'
@@ -771,6 +786,7 @@ router.get(
 router.post(
   '/content/access-policies/preview',
   authenticate,
+  validateAdminContentAccessPolicyPreviewContract,
   rateLimiter.adminMetricsDrilldown,
   auditAdminAction({
     action: 'admin.content.access_policies.preview',
@@ -789,6 +805,7 @@ router.post(
 router.post(
   '/content/access-policies',
   authenticate,
+  validateAdminContentAccessPolicyCreateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.access_policies.create',
@@ -821,6 +838,7 @@ router.post(
 router.patch(
   '/content/access-policies/:policyId',
   authenticate,
+  validateAdminContentAccessPolicyUpdateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.access_policies.update',
@@ -840,6 +858,7 @@ router.patch(
 router.post(
   '/content/access-policies/:policyId/activate',
   authenticate,
+  validateAdminContentAccessPolicySetActiveContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.access_policies.activate',
@@ -859,6 +878,7 @@ router.post(
 router.post(
   '/content/access-policies/:policyId/deactivate',
   authenticate,
+  validateAdminContentAccessPolicySetActiveContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.access_policies.deactivate',
@@ -913,6 +933,7 @@ router.get(
 router.patch(
   '/content/appeals/:appealId/status',
   authenticate,
+  validateAdminModerationAppealStatusContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.appeals.status.update',
@@ -974,6 +995,7 @@ router.get(
 router.post(
   '/monetization/subscriptions/users/:userId/extend-trial',
   authenticate,
+  validateAdminSubscriptionExtendTrialContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.monetization.subscriptions.extend_trial',
@@ -993,6 +1015,7 @@ router.post(
 router.post(
   '/monetization/subscriptions/users/:userId/revoke-entitlement',
   authenticate,
+  validateAdminSubscriptionRevokeEntitlementContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.monetization.subscriptions.revoke_entitlement',
@@ -1012,6 +1035,7 @@ router.post(
 router.post(
   '/monetization/subscriptions/users/:userId/reactivate',
   authenticate,
+  validateAdminSubscriptionReactivateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.monetization.subscriptions.reactivate',
@@ -1152,6 +1176,7 @@ router.get(
 router.post(
   '/communications/broadcasts/preview',
   authenticate,
+  validateAdminBroadcastPreviewContract,
   rateLimiter.adminMetricsDrilldown,
   auditAdminAction({
     action: 'admin.communications.broadcasts.preview',
@@ -1170,6 +1195,7 @@ router.post(
 router.post(
   '/communications/broadcasts',
   authenticate,
+  validateAdminBroadcastCreateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.communications.broadcasts.create',
@@ -1195,6 +1221,7 @@ router.post(
 router.post(
   '/communications/broadcasts/:broadcastId/approve',
   authenticate,
+  validateAdminBroadcastApproveContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.communications.broadcasts.approve',
@@ -1220,6 +1247,7 @@ router.post(
 router.post(
   '/communications/broadcasts/:broadcastId/send',
   authenticate,
+  validateAdminBroadcastSendContract,
   rateLimiter.adminModerationBulk,
   auditAdminAction({
     action: 'admin.communications.broadcasts.send',
@@ -1475,6 +1503,7 @@ router.get(
 router.post(
   '/content/moderation-templates',
   authenticate,
+  validateAdminModerationTemplateCreateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.moderation_templates.create',
@@ -1502,6 +1531,7 @@ router.post(
 router.patch(
   '/content/moderation-templates/:templateId',
   authenticate,
+  validateAdminModerationTemplateUpdateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.moderation_templates.update',
@@ -1521,6 +1551,7 @@ router.patch(
 router.post(
   '/content/moderation-templates/:templateId/activate',
   authenticate,
+  validateAdminModerationTemplateSetActiveContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.moderation_templates.activate',
@@ -1540,6 +1571,7 @@ router.post(
 router.post(
   '/content/moderation-templates/:templateId/deactivate',
   authenticate,
+  validateAdminModerationTemplateSetActiveContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.content.moderation_templates.deactivate',

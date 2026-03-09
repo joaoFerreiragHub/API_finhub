@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3 concluido)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -300,6 +300,26 @@ Entregue no backend:
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
+
+### 5.6 Hardening transversal de contratos de request (P4.3)
+
+Objetivo:
+1. Fechar gap de validacao de payload/params nas mutacoes criticas P4.3 antes de evoluir frontend.
+
+Entregue no backend:
+1. novos contratos de request em `src/middlewares/requestContracts.ts` para:
+   - `content/access-policies` (preview/create/update/activate/deactivate);
+   - `content/appeals/:appealId/status`;
+   - `monetization/subscriptions/users/:userId` (extend-trial/revoke-entitlement/reactivate);
+   - `content/moderation-templates` (create/update/activate/deactivate);
+   - `communications/broadcasts` (preview/create/approve/send).
+2. ligacao desses contratos nas rotas correspondentes em `src/routes/admin.routes.ts`.
+3. reforco do gate de regressao em `scripts/test-route-contracts.js`, expandindo cobertura para 34 contratos.
+
+Validacao desta iteracao:
+1. `npm run typecheck`
+2. `npm run test:contracts:routes`
+3. `npm run test:docs:smoke`
 
 ## 6) P4.4 - Expansao operacional
 
