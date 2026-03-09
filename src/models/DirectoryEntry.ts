@@ -34,6 +34,12 @@ export interface IDirectoryEntry extends Document {
   canonicalUrl?: string | null
   country?: string | null
   region?: string | null
+  regulatedBy: string[]
+  licenses: string[]
+  pros: string[]
+  cons: string[]
+  keyFeatures: string[]
+  pricing?: string | null
   categories: string[]
   tags: string[]
   socialLinks?: {
@@ -139,6 +145,32 @@ const DirectoryEntrySchema = new Schema<IDirectoryEntry>(
       trim: true,
       maxlength: 80,
       index: true,
+    },
+    regulatedBy: {
+      type: [String],
+      default: [],
+    },
+    licenses: {
+      type: [String],
+      default: [],
+    },
+    pros: {
+      type: [String],
+      default: [],
+    },
+    cons: {
+      type: [String],
+      default: [],
+    },
+    keyFeatures: {
+      type: [String],
+      default: [],
+    },
+    pricing: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: 2000,
     },
     categories: {
       type: [String],

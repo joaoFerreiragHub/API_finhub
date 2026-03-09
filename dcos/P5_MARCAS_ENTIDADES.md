@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 + P2.2 entregue).
+Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 + P2.2 + P2.3 entregue).
 
 ---
 
@@ -482,6 +482,8 @@ Criadores podem interagir com marcas/entidades de varias formas:
 
 ### 5.1 No DirectoryEntry (se unificar)
 
+**Estado atual (2026-03-09):** backend ja suporta `regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures` e `pricing` no model + APIs admin/public.
+
 ```typescript
 // Engagement (migrar de Brand)
 views: number (default 0)
@@ -535,7 +537,7 @@ isSponsored: boolean (default false)
 |---|------|---------|----------|---------|
 | 2.1 | **Unificacao Brand → DirectoryEntry** | Migracao de dados, retirar rotas legacy | Atualizar imports/refs | Medio |
 | 2.2 | **Vertical types adicionais** | CONCLUIDO (2026-03-09): `insurance`, `bank`, `fund`, `fintech`, `newsletter` no enum + validacoes sincronizadas | Novos icones/categorias | Baixo |
-| 2.3 | **Campos de entidade financeira** | regulatedBy, licenses, pros, cons, keyFeatures, pricing | Seccoes no detalhe | Medio |
+| 2.3 | **Campos de entidade financeira** | CONCLUIDO (2026-03-09): `regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures`, `pricing` no model + respostas admin/public | Seccoes no detalhe | Medio |
 | 2.4 | **Badge de verificacao visual** | Ja existe no model | Componente de badge, tooltip com info | Baixo |
 | 2.5 | **Conteudo relacionado** | Endpoint: artigos/videos que mencionam esta entidade | Seccao na pagina de detalhe | Medio |
 | 2.6 | **Comparador de entidades** | Endpoint de comparacao lado a lado | UI tabela comparativa (2-3 entidades) | Alto |

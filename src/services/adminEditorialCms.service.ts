@@ -212,6 +212,12 @@ const mapDirectory = (entry: any) => ({
   canonicalUrl: entry.canonicalUrl ?? null,
   country: entry.country ?? null,
   region: entry.region ?? null,
+  regulatedBy: Array.isArray(entry.regulatedBy) ? entry.regulatedBy : [],
+  licenses: Array.isArray(entry.licenses) ? entry.licenses : [],
+  pros: Array.isArray(entry.pros) ? entry.pros : [],
+  cons: Array.isArray(entry.cons) ? entry.cons : [],
+  keyFeatures: Array.isArray(entry.keyFeatures) ? entry.keyFeatures : [],
+  pricing: entry.pricing ?? null,
   categories: Array.isArray(entry.categories) ? entry.categories : [],
   tags: Array.isArray(entry.tags) ? entry.tags : [],
   socialLinks: entry.socialLinks ?? null,
@@ -811,7 +817,19 @@ export class AdminEditorialCmsService {
 
     if (filters.search && filters.search.trim().length > 0) {
       const regex = new RegExp(escapeRegExp(filters.search.trim()), 'i')
-      query.$or = [{ name: regex }, { slug: regex }, { shortDescription: regex }, { tags: regex }]
+      query.$or = [
+        { name: regex },
+        { slug: regex },
+        { shortDescription: regex },
+        { description: regex },
+        { regulatedBy: regex },
+        { licenses: regex },
+        { pros: regex },
+        { cons: regex },
+        { keyFeatures: regex },
+        { pricing: regex },
+        { tags: regex },
+      ]
     }
 
     const [items, total] = await Promise.all([
@@ -851,6 +869,12 @@ export class AdminEditorialCmsService {
       canonicalUrl?: string
       country?: string
       region?: string
+      regulatedBy?: string[]
+      licenses?: string[]
+      pros?: string[]
+      cons?: string[]
+      keyFeatures?: string[]
+      pricing?: string
       categories?: string[]
       tags?: string[]
       socialLinks?: Record<string, unknown>
@@ -921,6 +945,12 @@ export class AdminEditorialCmsService {
       canonicalUrl: toNullableTrimmed(input.canonicalUrl),
       country: toNullableTrimmed(input.country),
       region: toNullableTrimmed(input.region),
+      regulatedBy: toTrimmedArray(input.regulatedBy),
+      licenses: toTrimmedArray(input.licenses),
+      pros: toTrimmedArray(input.pros),
+      cons: toTrimmedArray(input.cons),
+      keyFeatures: toTrimmedArray(input.keyFeatures),
+      pricing: toNullableTrimmed(input.pricing),
       categories: toTrimmedArray(input.categories),
       tags: toTrimmedArray(input.tags),
       socialLinks: input.socialLinks ?? null,
@@ -961,6 +991,12 @@ export class AdminEditorialCmsService {
       canonicalUrl?: string
       country?: string
       region?: string
+      regulatedBy?: string[]
+      licenses?: string[]
+      pros?: string[]
+      cons?: string[]
+      keyFeatures?: string[]
+      pricing?: string
       categories?: string[]
       tags?: string[]
       socialLinks?: Record<string, unknown>
@@ -1035,6 +1071,12 @@ export class AdminEditorialCmsService {
     }
     if (typeof input.country !== 'undefined') entry.country = toNullableTrimmed(input.country) ?? undefined
     if (typeof input.region !== 'undefined') entry.region = toNullableTrimmed(input.region) ?? undefined
+    if (Array.isArray(input.regulatedBy)) entry.regulatedBy = toTrimmedArray(input.regulatedBy)
+    if (Array.isArray(input.licenses)) entry.licenses = toTrimmedArray(input.licenses)
+    if (Array.isArray(input.pros)) entry.pros = toTrimmedArray(input.pros)
+    if (Array.isArray(input.cons)) entry.cons = toTrimmedArray(input.cons)
+    if (Array.isArray(input.keyFeatures)) entry.keyFeatures = toTrimmedArray(input.keyFeatures)
+    if (typeof input.pricing !== 'undefined') entry.pricing = toNullableTrimmed(input.pricing) ?? undefined
     if (Array.isArray(input.categories)) entry.categories = toTrimmedArray(input.categories)
     if (Array.isArray(input.tags)) entry.tags = toTrimmedArray(input.tags)
     if (typeof input.socialLinks !== 'undefined') entry.socialLinks = input.socialLinks as any
