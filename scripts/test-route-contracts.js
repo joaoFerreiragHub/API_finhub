@@ -200,6 +200,12 @@ const ROUTE_CONTRACTS = [
   {
     filePath: 'src/routes/admin.routes.ts',
     method: 'patch',
+    routePath: '/tools/financial/:toolKey',
+    requiredMiddleware: 'validateAdminFinancialToolUpdateContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'patch',
     routePath: '/dashboard/personalization',
     requiredMiddleware: 'validateAdminDashboardPersonalizationPatchContract',
   },

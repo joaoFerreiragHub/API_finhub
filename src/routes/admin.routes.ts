@@ -168,6 +168,7 @@ import {
   validateAdminContentScheduleUnhideContract,
   validateAdminDashboardPersonalizationPatchContract,
   validateAdminDashboardPersonalizationResetContract,
+  validateAdminFinancialToolUpdateContract,
   validateAdminModerationAppealStatusContract,
   validateAdminModerationTemplateCreateContract,
   validateAdminModerationTemplateSetActiveContract,
@@ -441,6 +442,7 @@ router.get(
 router.patch(
   '/tools/financial/:toolKey',
   authenticate,
+  validateAdminFinancialToolUpdateContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.tools.financial.update',

@@ -53,6 +53,9 @@ type AdPartnershipCampaignStatus =
   | 'completed'
   | 'archived'
 type AdPartnershipSponsorType = 'brand' | 'creator' | 'platform'
+type FinancialToolKey = 'stocks' | 'etf' | 'reit' | 'crypto'
+type FinancialToolEnvironment = 'development' | 'staging' | 'production'
+type FinancialToolExperienceMode = 'legacy' | 'standard' | 'enhanced'
 
 const CONTENT_ACCESS_POLICY_CONTENT_TYPES: readonly ContentAccessPolicyContentType[] = [
   'article',
@@ -145,6 +148,17 @@ const AD_PARTNERSHIP_SPONSOR_TYPES: readonly AdPartnershipSponsorType[] = [
   'brand',
   'creator',
   'platform',
+]
+const FINANCIAL_TOOL_KEYS: readonly FinancialToolKey[] = ['stocks', 'etf', 'reit', 'crypto']
+const FINANCIAL_TOOL_ENVIRONMENTS: readonly FinancialToolEnvironment[] = [
+  'development',
+  'staging',
+  'production',
+]
+const FINANCIAL_TOOL_EXPERIENCE_MODES: readonly FinancialToolExperienceMode[] = [
+  'legacy',
+  'standard',
+  'enhanced',
 ]
 
 const isRecord = (value: unknown): value is RecordLike =>
@@ -1278,6 +1292,155 @@ const validateAdminAdCampaignPayload = (
   return true
 }
 
+const validateFinancialToolConfigPatchPayload = (
+  payload: RecordLike,
+  res: Response,
+  fieldPathPrefix: string
+): boolean => {
+  const allowedKeys = new Set([
+    'enabled',
+    'maxSymbolsPerRequest',
+    'cacheTtlSeconds',
+    'requestsPerMinute',
+    'experienceMode',
+  ])
+
+  for (const key of Object.keys(payload)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${fieldPathPrefix}.${key} nao suportado.`)
+      return false
+    }
+  }
+
+  const enabled = validateOptionalBoolean(payload, 'enabled')
+  if (!enabled.valid) {
+    respondValidationError(res, `Campo ${fieldPathPrefix}.enabled invalido.`)
+    return false
+  }
+
+  const maxSymbolsPerRequest = validateOptionalPositiveInteger(payload, 'maxSymbolsPerRequest')
+  if (!maxSymbolsPerRequest.valid) {
+    respondValidationError(res, `Campo ${fieldPathPrefix}.maxSymbolsPerRequest invalido.`)
+    return false
+  }
+
+  const cacheTtlSeconds = validateOptionalNonNegativeInteger(payload, 'cacheTtlSeconds')
+  if (!cacheTtlSeconds.valid) {
+    respondValidationError(res, `Campo ${fieldPathPrefix}.cacheTtlSeconds invalido.`)
+    return false
+  }
+
+  const requestsPerMinute = validateOptionalPositiveInteger(payload, 'requestsPerMinute')
+  if (!requestsPerMinute.valid) {
+    respondValidationError(res, `Campo ${fieldPathPrefix}.requestsPerMinute invalido.`)
+    return false
+  }
+
+  const experienceMode = validateOptionalEnum<FinancialToolExperienceMode>(
+    payload,
+    'experienceMode',
+    FINANCIAL_TOOL_EXPERIENCE_MODES
+  )
+  if (!experienceMode.valid) {
+    respondValidationError(res, `Campo ${fieldPathPrefix}.experienceMode invalido.`)
+    return false
+  }
+
+  return true
+}
+
+const validateAdminFinancialToolPatchPayload = (
+  payload: RecordLike,
+  res: Response
+): boolean => {
+  const allowedKeys = new Set(['label', 'notes', 'baseConfig', 'envOverrides', 'reason', 'note'])
+  for (const key of Object.keys(payload)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na financial tool.`)
+      return false
+    }
+  }
+
+  const label = validateOptionalString(payload, 'label')
+  if (!label.valid) {
+    respondValidationError(res, 'Campo label invalido.')
+    return false
+  }
+
+  if ('notes' in payload && payload.notes !== undefined && payload.notes !== null) {
+    if (typeof payload.notes !== 'string') {
+      respondValidationError(res, 'Campo notes invalido.')
+      return false
+    }
+  }
+
+  const reason = validateOptionalString(payload, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return false
+  }
+
+  const note = validateOptionalString(payload, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return false
+  }
+
+  if ('baseConfig' in payload && payload.baseConfig !== undefined) {
+    if (!isRecord(payload.baseConfig)) {
+      respondValidationError(res, 'Campo baseConfig invalido.')
+      return false
+    }
+
+    const baseConfigValid = validateFinancialToolConfigPatchPayload(
+      payload.baseConfig as RecordLike,
+      res,
+      'baseConfig'
+    )
+    if (!baseConfigValid) return false
+  }
+
+  if ('envOverrides' in payload && payload.envOverrides !== undefined) {
+    if (!isRecord(payload.envOverrides)) {
+      respondValidationError(res, 'Campo envOverrides invalido.')
+      return false
+    }
+
+    const envOverridesPayload = payload.envOverrides as RecordLike
+    for (const key of Object.keys(envOverridesPayload)) {
+      if (!FINANCIAL_TOOL_ENVIRONMENTS.includes(key as FinancialToolEnvironment)) {
+        respondValidationError(res, `Campo envOverrides.${key} nao suportado.`)
+        return false
+      }
+
+      const envValue = envOverridesPayload[key]
+      if (envValue === null) continue
+      if (!isRecord(envValue)) {
+        respondValidationError(res, `Campo envOverrides.${key} invalido.`)
+        return false
+      }
+
+      const envConfigValid = validateFinancialToolConfigPatchPayload(
+        envValue as RecordLike,
+        res,
+        `envOverrides.${key}`
+      )
+      if (!envConfigValid) return false
+    }
+  }
+
+  const hasPatchField = ['label', 'notes', 'baseConfig', 'envOverrides'].some((key) => key in payload)
+  if (!hasPatchField) {
+    respondValidationError(
+      res,
+      'Payload sem alteracoes de financial tool. Envia label, notes, baseConfig ou envOverrides.'
+    )
+    return false
+  }
+
+  return true
+}
+
 export const validateAuthRegisterContract = (
   req: Request,
   res: Response,
@@ -1748,6 +1911,36 @@ export const validateAdminDashboardPersonalizationResetContract = (
     respondValidationError(res, 'Campo note invalido.')
     return
   }
+
+  next()
+}
+
+export const validateAdminFinancialToolUpdateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const toolKey = validateRequiredRouteParam(req, res, 'toolKey')
+  if (!toolKey) return
+  if (!FINANCIAL_TOOL_KEYS.includes(toolKey as FinancialToolKey)) {
+    respondValidationError(res, 'Parametro toolKey invalido.')
+    return
+  }
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de atualizacao de financial tool invalido.')
+    return
+  }
+
+  const isValid = validateAdminFinancialToolPatchPayload(req.body, res)
+  if (!isValid) return
+
+  const hasReason = validateAdminReasonFromBodyOrHeader(
+    req,
+    res,
+    'Motivo obrigatorio para atualizar financial tool.'
+  )
+  if (!hasReason) return
 
   next()
 }

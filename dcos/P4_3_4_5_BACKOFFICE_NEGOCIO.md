@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3 e P4.4-03 concluido)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02 e P4.4-03 concluido)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -389,10 +389,15 @@ Entregue no backend:
 7. rate limit operacional aplicado:
    - leitura com `rateLimiter.adminMetricsDrilldown`;
    - mutacao com `rateLimiter.adminModerationAction`.
+8. hardening de contratos de request aplicado na mutacao:
+   - `PATCH /api/admin/tools/financial/:toolKey`;
+   - validacao de `toolKey`, payload de `baseConfig/envOverrides` e motivo obrigatorio;
+   - cobertura de `npm run test:contracts:routes` expandida para 41 contratos.
 
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
+3. `npm run test:contracts:routes`
 
 ### 6.3 P4.4-03 Gestao de anuncios/partnerships
 
