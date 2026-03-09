@@ -74,6 +74,18 @@ const ROUTE_CONTRACTS = [
   {
     filePath: 'src/routes/admin.routes.ts',
     method: 'post',
+    routePath: '/operations/bulk-import/preview',
+    requiredMiddleware: 'validateAdminBulkImportPreviewContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/operations/bulk-import/jobs',
+    requiredMiddleware: 'validateAdminBulkImportCreateContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
     routePath: '/support/sessions/:sessionId/start',
     requiredMiddleware: 'validateAdminSessionIdParamContract',
   },

@@ -4,6 +4,7 @@ type RecordLike = Record<string, unknown>
 type DashboardPreset = 'operations' | 'moderation' | 'monetization' | 'custom'
 type DashboardDensity = 'comfortable' | 'compact'
 type DashboardTheme = 'system' | 'light' | 'dark'
+type BulkImportType = 'subscription_entitlements' | 'ad_campaign_status'
 
 const isRecord = (value: unknown): value is RecordLike =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -158,6 +159,34 @@ const validateAdminDashboardPinnedFiltersPayload = (
   }
 
   return { valid: true, hasValue: true }
+}
+
+const validateOptionalDelimiter = (
+  payload: RecordLike,
+  field: string
+): { valid: boolean; value?: string } => {
+  if (!(field in payload) || payload[field] === undefined || payload[field] === null) {
+    return { valid: true }
+  }
+
+  if (typeof payload[field] !== 'string') {
+    return { valid: false }
+  }
+
+  const value = payload[field].trim()
+  if (!value) return { valid: false }
+  if (![';', ',', '|', '\t', '\\t'].includes(value)) {
+    return { valid: false }
+  }
+
+  return { valid: true, value }
+}
+
+const readHeaderString = (req: Request, headerName: string): string | undefined => {
+  const value = req.headers[headerName]
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.find((entry) => typeof entry === 'string')
+  return undefined
 }
 
 export const validateAuthRegisterContract = (
@@ -628,6 +657,115 @@ export const validateAdminDashboardPersonalizationResetContract = (
   const note = validateOptionalString(req.body, 'note')
   if (!note.valid) {
     respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminBulkImportPreviewContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de preview de bulk import invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['importType', 'csv', 'delimiter'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no preview de bulk import.`)
+      return
+    }
+  }
+
+  const importType = validateOptionalEnum<BulkImportType>(req.body, 'importType', [
+    'subscription_entitlements',
+    'ad_campaign_status',
+  ])
+  if (!importType.valid || !importType.value) {
+    respondValidationError(res, 'Campo importType invalido.')
+    return
+  }
+
+  const csv = validateRequiredNonEmptyString(req.body, 'csv')
+  if (!csv) {
+    respondValidationError(res, 'Campo csv obrigatorio.')
+    return
+  }
+
+  const delimiter = validateOptionalDelimiter(req.body, 'delimiter')
+  if (!delimiter.valid) {
+    respondValidationError(res, 'Campo delimiter invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminBulkImportCreateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de execucao de bulk import invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['importType', 'csv', 'delimiter', 'dryRun', 'reason', 'note'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na execucao de bulk import.`)
+      return
+    }
+  }
+
+  const importType = validateOptionalEnum<BulkImportType>(req.body, 'importType', [
+    'subscription_entitlements',
+    'ad_campaign_status',
+  ])
+  if (!importType.valid || !importType.value) {
+    respondValidationError(res, 'Campo importType invalido.')
+    return
+  }
+
+  const csv = validateRequiredNonEmptyString(req.body, 'csv')
+  if (!csv) {
+    respondValidationError(res, 'Campo csv obrigatorio.')
+    return
+  }
+
+  const delimiter = validateOptionalDelimiter(req.body, 'delimiter')
+  if (!delimiter.valid) {
+    respondValidationError(res, 'Campo delimiter invalido.')
+    return
+  }
+
+  const dryRun = validateOptionalBoolean(req.body, 'dryRun')
+  if (!dryRun.valid) {
+    respondValidationError(res, 'Campo dryRun invalido.')
+    return
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const reasonFromBody = typeof req.body.reason === 'string' ? req.body.reason.trim() : ''
+  const reasonFromHeader = (readHeaderString(req, 'x-admin-reason') || '').trim()
+  if (!reasonFromBody && !reasonFromHeader) {
+    respondValidationError(res, 'Motivo obrigatorio para executar bulk import.')
     return
   }
 

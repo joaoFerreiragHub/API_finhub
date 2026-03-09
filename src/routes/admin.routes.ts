@@ -150,6 +150,8 @@ import { auditAdminAction } from '../middlewares/adminAudit'
 import { rateLimiter } from '../middlewares/rateLimiter'
 import {
   validateAdminAssistedSessionRequestContract,
+  validateAdminBulkImportCreateContract,
+  validateAdminBulkImportPreviewContract,
   validateAdminDashboardPersonalizationPatchContract,
   validateAdminDashboardPersonalizationResetContract,
   validateAdminSessionIdParamContract,
@@ -1063,6 +1065,7 @@ router.get(
 router.post(
   '/operations/bulk-import/preview',
   authenticate,
+  validateAdminBulkImportPreviewContract,
   rateLimiter.adminModerationBulk,
   auditAdminAction({
     action: 'admin.operations.bulk_import.preview',
@@ -1087,6 +1090,7 @@ router.post(
 router.post(
   '/operations/bulk-import/jobs',
   authenticate,
+  validateAdminBulkImportCreateContract,
   rateLimiter.adminModerationBulk,
   auditAdminAction({
     action: 'admin.operations.bulk_import.jobs.create',

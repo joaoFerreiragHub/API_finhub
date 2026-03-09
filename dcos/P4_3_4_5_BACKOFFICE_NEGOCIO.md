@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-02, P4.5-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01 backend+frontend MVP entregue)
+Estado: Em curso (P4.3-01, P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01 e P4.5-02 backend+frontend MVP entregues)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -509,8 +509,8 @@ Frontend:
 3. Consulta de jobs recentes com detalhe de erros por linha.
 
 Estado desta iteracao:
-1. backend MVP entregue com jobs de bulk import, preview e execucao.
-2. frontend admin ainda pendente para fechar este item.
+1. backend+frontend MVP entregue com jobs de bulk import, preview e execucao.
+2. UX de importacao massiva assistida (wizard/drag-drop) fica para iteracao futura.
 
 Entregue no backend:
 1. modelo novo `AdminBulkImportJob` com:
@@ -540,11 +540,27 @@ Entregue no backend:
    - bloqueio quando slots associados estao inativos/incompativeis ou inexistentes;
    - preview/dry-run passam a sinalizar estas violacoes antes da execucao.
 
+Entregue no frontend:
+1. nova area admin `Operacoes` com rota dedicada `/admin/operacoes`.
+2. fluxo operacional completo:
+   - composer CSV com escolha de `importType` e `delimiter`;
+   - templates rapidos para `subscription_entitlements` e `ad_campaign_status`;
+   - preview via API antes de executar;
+   - execucao com `dryRun` e motivo obrigatorio.
+3. observabilidade operacional em UI:
+   - listagem de jobs com filtros (`importType`, `status`, `dryRun`) e paginacao;
+   - detalhe de job com `errors` e `results` por linha;
+   - refresh manual para follow-up de execucoes.
+4. dashboard admin unificado atualizado com tab `Operacoes` e acesso via modulo/permissoes.
+5. hardening adicional no backend para este fluxo:
+   - contratos de request em `preview` e `jobs`;
+   - cobertura em `npm run test:contracts:routes`.
+
 Validacao desta iteracao:
-1. `npm run typecheck`
-2. `npm run test:ads:guardrails`
-3. `npm run test:technical:smoke`
-4. `npm run checking`
+1. backend: `npm run typecheck`
+2. backend: `npm run test:contracts:routes`
+3. backend: `npm run test:ads:guardrails`
+4. frontend: `npm run typecheck:p1`
 
 ### 7.3 P4.5-03 Acoes agendadas (unhide automatico)
 
