@@ -21,6 +21,10 @@ Garantir execucao consistente entre agentes: qualidade tecnica, rastreabilidade 
    - mover imediatamente para `dcos/done/` o que ficou concluido;
    - manter na raiz de `dcos/` apenas o que esta ativo;
    - atualizar `dcos/audiotira_04.md` no mesmo ciclo de fecho.
+7. Tudo o que so pode ser validado em ambiente live deve ser marcado como pre-release:
+   - executar na janela T-1/T-0 do dia de live beta testing;
+   - registar explicitamente como pendente durante desenvolvimento normal;
+   - fechar com evidencia no dia de execucao live.
 
 ## 3) Fluxo padrao por ponto
 
@@ -63,6 +67,7 @@ Garantir execucao consistente entre agentes: qualidade tecnica, rastreabilidade 
 2. Frontend: `npm run typecheck:p1` ou equivalente (quando houver alteracoes frontend).
 3. Build/test/E2E conforme impacto da alteracao.
 4. Se nao for possivel validar algo, registar explicitamente a limitacao.
+5. Se a validacao depender de contas reais/ambiente live, mover para checklist de pre-release (T-1/T-0) e nao bloquear o ciclo de implementacao.
 
 ## 8) Regras operacionais do admin (pre-release)
 

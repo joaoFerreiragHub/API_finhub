@@ -949,6 +949,11 @@ Estas sao as proximas camadas que fazem mais sentido:
 
 Antes de producao, esta parte nao deve ficar como esta sem os pontos abaixo:
 
+Regra desta trilha:
+
+- tudo o que depende de ambiente real (`live-only`) deve ser executado no dia de live beta testing (janela T-1/T-0), com evidencia registada;
+- durante desenvolvimento normal, estes itens ficam explicitamente pendentes de pre-release e nao bloqueiam implementacao de backend/frontend.
+
 1. Validar operacao do rate limiter distribuido em Redis (migrado em 2026-03-05), incluindo fallback controlado e alertas de degradacao.
 2. Medir e alertar picos de `hide-fast`, `bulk-moderate` e falhas por item.
 3. Garantir scopes minimos para admins e perfis read-only.

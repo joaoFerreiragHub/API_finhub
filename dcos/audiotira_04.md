@@ -18,7 +18,7 @@ O P_REVENUE_E_ADS_ESTRATEGIA reforca a diretriz de monetizacao, mas nao bloqueia
 - O2-01 a O2-12: concluido.
 - O3-01 a O3-08: concluido.
 
-## 3) Bloqueio imediato
+## 3) Bloqueio de pre-release (T-1/T-0)
 
 Executar com sucesso:
 
@@ -35,6 +35,12 @@ Variaveis obrigatorias em ambiente real:
 5. MODERATION_SMOKE_TARGET_TYPE
 6. MODERATION_SMOKE_TARGET_ID
 7. opcional: MODERATION_SMOKE_REPORT_REASON
+
+Regra operacional:
+
+- este teste e `live-only` (contas reais + ambiente real) e deve ser executado no dia de live beta testing (janela T-1/T-0);
+- durante implementacao diaria, o item permanece `em_curso` sem bloquear os restantes pontos P4/P5;
+- o fecho final da release continua dependente da evidencia deste smoke.
 
 ## 4) Escopo obrigatorio pre-release final (P4 + P5)
 
@@ -58,12 +64,12 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 
 ## 5) Ordem de execucao daqui para a frente
 
-1. Fechar O1-08 (smoke moderation pre-release real).
-2. Fechar P4_MODERATION_CONTROL_PLANE.
-3. Executar P4_3_4_5_BACKOFFICE_NEGOCIO.
-4. Executar P5_PRE_BETA_PLATAFORMA.
-5. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
-6. No fim do ciclo, executar smoke de documentacao e release-gate estrito.
+1. Fechar P4_MODERATION_CONTROL_PLANE.
+2. Executar P4_3_4_5_BACKOFFICE_NEGOCIO.
+3. Executar P5_PRE_BETA_PLATAFORMA.
+4. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
+5. No fim do ciclo, executar smoke de documentacao e release-gate estrito.
+6. Executar O1-08 (`npm run test:moderation:pre-release`) na janela live-only de pre-release (T-1/T-0).
 7. Evoluir P6 em paralelo, sem desviar foco das prioridades funcionais de P4/P5.
 
 ## 6) Regra de encerramento por ficheiro
@@ -200,3 +206,4 @@ Integracao CI/CD:
 - 2026-03-08: hardening adicional em P4.4-03 (campanhas nao-house exigem disclosure/relevancia financeira; compatibilidade de visibilidade campanha-slot e ativacao com slots ativos validada no backend).
 - 2026-03-09: hardening de P4.5-02 (bulk import de campanhas passou a aplicar os mesmos guardrails de ativacao manual para evitar bypass de compliance em ads).
 - 2026-03-09: adicionado smoke dedicado `npm run test:ads:guardrails` e integrado em `npm run test:technical:smoke` para proteger regressao de bypass no bulk import de campanhas.
+- 2026-03-09: regra operacional atualizada: validacoes `live-only` deixam de bloquear implementacao diaria e passam para execucao obrigatoria em pre-release (janela T-1/T-0 de live beta testing).
