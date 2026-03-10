@@ -6,6 +6,7 @@ import {
   BRAND_INTEGRATION_SCOPES,
 } from '../models/BrandIntegrationApiKey'
 import { BrandIntegrationApiUsage } from '../models/BrandIntegrationApiUsage'
+import { AffiliateLink } from '../models/AffiliateLink'
 import { DirectoryEntry } from '../models/DirectoryEntry'
 import { resolvePagination } from '../utils/pagination'
 import { affiliateTrackingService } from './affiliateTracking.service'
@@ -686,6 +687,53 @@ export class BrandIntegrationApiKeyService {
         directoryEntryId: context.directoryEntryId,
         isActive: input.isActive,
         search: input.search,
+      },
+      {
+        page: input.page,
+        limit: input.limit,
+      }
+    )
+  }
+
+  async listAffiliateLinkClicksFromIntegration(
+    context: BrandIntegrationAuthContext,
+    linkIdRaw: string,
+    input: {
+      converted?: boolean
+      days?: number
+      from?: string
+      to?: string
+      page?: number
+      limit?: number
+    } = {}
+  ) {
+    if (!mongoose.Types.ObjectId.isValid(linkIdRaw)) {
+      throw new BrandIntegrationApiKeyServiceError(400, 'linkId invalido.')
+    }
+
+    const link = await AffiliateLink.findOne({
+      _id: new mongoose.Types.ObjectId(linkIdRaw),
+      ownerUser: new mongoose.Types.ObjectId(context.ownerUserId),
+      directoryEntry: new mongoose.Types.ObjectId(context.directoryEntryId),
+    })
+      .select('_id')
+      .lean<{ _id: mongoose.Types.ObjectId } | null>()
+
+    if (!link) {
+      throw new BrandIntegrationApiKeyServiceError(
+        404,
+        'Link de afiliacao nao encontrado para este contexto de integracao.'
+      )
+    }
+
+    return affiliateTrackingService.listOwnedLinkClicks(
+      context.ownerUserId,
+      String(link._id),
+      {
+        converted: input.converted,
+        days: input.days,
+        from: input.from,
+        to: input.to,
       },
       {
         page: input.page,

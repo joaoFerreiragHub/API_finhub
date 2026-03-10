@@ -100,3 +100,43 @@ export const listBrandIntegrationAffiliateLinks = async (req: Request, res: Resp
     return handleError(res, error, 'Erro ao listar links de afiliacao via integracao.')
   }
 }
+
+/**
+ * GET /api/integrations/brand/affiliate/links/:linkId/clicks
+ */
+export const listBrandIntegrationAffiliateLinkClicks = async (req: Request, res: Response) => {
+  try {
+    const context = requireIntegrationContext(res)
+    if (!context) {
+      return res.status(401).json({ error: 'Contexto de integracao em falta.' })
+    }
+
+    const convertedRaw = req.query.converted
+    if (typeof convertedRaw === 'string' && parseOptionalBoolean(convertedRaw) === undefined) {
+      return res.status(400).json({ error: 'Parametro converted invalido.' })
+    }
+
+    const daysRaw = req.query.days
+    if (typeof daysRaw === 'string' && parseOptionalPositiveInt(daysRaw) === undefined) {
+      return res.status(400).json({ error: 'Parametro days invalido.' })
+    }
+
+    const result = await brandIntegrationApiKeyService.listAffiliateLinkClicksFromIntegration(
+      context,
+      req.params.linkId,
+      {
+        converted: parseOptionalBoolean(convertedRaw),
+        days: parseOptionalPositiveInt(daysRaw),
+        from: toOptionalString(req.query.from),
+        to: toOptionalString(req.query.to),
+        page: parseOptionalPositiveInt(req.query.page),
+        limit: parseOptionalPositiveInt(req.query.limit),
+      }
+    )
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List brand integration affiliate link clicks error:', error)
+    return handleError(res, error, 'Erro ao listar cliques de afiliacao via integracao.')
+  }
+}
