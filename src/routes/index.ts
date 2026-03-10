@@ -35,6 +35,7 @@ import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
 import feedRoutes from './feed.routes'
 import appealRoutes from './appeal.routes'
+import adsRoutes from './ads.routes'
 import {
   enforceFinancialToolAvailability,
   trackFinancialToolUsage,
@@ -91,6 +92,7 @@ router.get('/', (req, res) => {
       creators: '/api/creators',
       externalContent: '/api/external-content',
       search: '/api/search',
+      ads: '/api/ads',
     },
     timestamp: new Date().toISOString(),
   })
@@ -177,5 +179,6 @@ router.use('/platform', platformRoutes)
 router.use('/creators', creatorRoutes)
 router.use('/external-content', externalContentRoutes)
 router.use('/search', searchRoutes)
+router.use('/ads', adsRoutes)
 
 export default router
