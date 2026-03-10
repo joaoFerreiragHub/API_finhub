@@ -60,6 +60,21 @@ type FinancialToolEnvironment = 'development' | 'staging' | 'production'
 type FinancialToolExperienceMode = 'legacy' | 'standard' | 'enhanced'
 type BrandWalletTransactionType = 'top_up' | 'campaign_spend' | 'refund' | 'manual_adjustment'
 type BrandWalletTransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled'
+type PublicDirectoryVerticalType =
+  | 'broker'
+  | 'exchange'
+  | 'site'
+  | 'app'
+  | 'podcast'
+  | 'event'
+  | 'insurance'
+  | 'bank'
+  | 'fund'
+  | 'fintech'
+  | 'newsletter'
+  | 'other'
+type PublicDirectoryVerificationStatus = 'unverified' | 'pending' | 'verified'
+type PublicDirectorySortBy = 'featured' | 'popular' | 'rating' | 'recent' | 'name'
 
 const CONTENT_ACCESS_POLICY_CONTENT_TYPES: readonly ContentAccessPolicyContentType[] = [
   'article',
@@ -177,6 +192,32 @@ const BRAND_WALLET_TRANSACTION_STATUSES: readonly BrandWalletTransactionStatus[]
   'completed',
   'failed',
   'cancelled',
+]
+const PUBLIC_DIRECTORY_VERTICAL_TYPES: readonly PublicDirectoryVerticalType[] = [
+  'broker',
+  'exchange',
+  'site',
+  'app',
+  'podcast',
+  'event',
+  'insurance',
+  'bank',
+  'fund',
+  'fintech',
+  'newsletter',
+  'other',
+]
+const PUBLIC_DIRECTORY_VERIFICATION_STATUSES: readonly PublicDirectoryVerificationStatus[] = [
+  'unverified',
+  'pending',
+  'verified',
+]
+const PUBLIC_DIRECTORY_SORT_OPTIONS: readonly PublicDirectorySortBy[] = [
+  'featured',
+  'popular',
+  'rating',
+  'recent',
+  'name',
 ]
 const BRAND_INTEGRATION_ALLOWED_SCOPES = ['brand.affiliate.read'] as const
 
@@ -4802,6 +4843,431 @@ export const validateAdminBrandWalletTopUpRejectContract = (
   const force = validateOptionalBoolean(req.body, 'force')
   if (!force.valid) {
     respondValidationError(res, 'Campo force invalido.')
+    return
+  }
+
+  next()
+}
+
+const parseOptionalQueryStringList = (
+  value: unknown
+): { present: boolean; valid: boolean; values?: string[] } => {
+  if (value === undefined) {
+    return { present: false, valid: true }
+  }
+
+  const values: string[] = []
+  if (typeof value === 'string') {
+    values.push(...value.split(','))
+  } else if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item !== 'string') {
+        return { present: true, valid: false }
+      }
+      values.push(...item.split(','))
+    }
+  } else {
+    return { present: true, valid: false }
+  }
+
+  const normalized = values.map((item) => item.trim()).filter((item) => item.length > 0)
+  if (normalized.length === 0) {
+    return { present: true, valid: false }
+  }
+
+  return { present: true, valid: true, values: Array.from(new Set(normalized)) }
+}
+
+const validateOptionalPublicDirectoryVerticalQuery = (
+  req: Request,
+  res: Response,
+  key: string
+): boolean => {
+  const value = readSingleQueryValue(req.query[key])
+  if (!value.present) return true
+  if (
+    !value.valid ||
+    !value.value ||
+    !(PUBLIC_DIRECTORY_VERTICAL_TYPES as readonly string[]).includes(value.value)
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query ${key} invalido. Valores: ${PUBLIC_DIRECTORY_VERTICAL_TYPES.join(', ')}.`
+    )
+    return false
+  }
+
+  return true
+}
+
+const validateOptionalPublicDirectoryVerificationStatusQuery = (
+  req: Request,
+  res: Response,
+  key: string
+): boolean => {
+  const value = readSingleQueryValue(req.query[key])
+  if (!value.present) return true
+  if (
+    !value.valid ||
+    !value.value ||
+    !(PUBLIC_DIRECTORY_VERIFICATION_STATUSES as readonly string[]).includes(value.value)
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query ${key} invalido. Valores: ${PUBLIC_DIRECTORY_VERIFICATION_STATUSES.join(', ')}.`
+    )
+    return false
+  }
+
+  return true
+}
+
+const validateOptionalPublicDirectorySortQuery = (
+  req: Request,
+  res: Response,
+  key: string
+): boolean => {
+  const value = readSingleQueryValue(req.query[key])
+  if (!value.present) return true
+  if (
+    !value.valid ||
+    !value.value ||
+    !(PUBLIC_DIRECTORY_SORT_OPTIONS as readonly string[]).includes(value.value)
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query ${key} invalido. Valores: ${PUBLIC_DIRECTORY_SORT_OPTIONS.join(', ')}.`
+    )
+    return false
+  }
+
+  return true
+}
+
+const validateOptionalSingleNonEmptyQuery = (
+  req: Request,
+  res: Response,
+  key: string
+): boolean => {
+  const value = readSingleQueryValue(req.query[key])
+  if (value.present && (!value.valid || !value.value)) {
+    respondValidationError(res, `Parametro query ${key} invalido.`)
+    return false
+  }
+  return true
+}
+
+const validateOptionalPublicDirectoryTagsQuery = (
+  req: Request,
+  res: Response,
+  key: string
+): boolean => {
+  const value = parseOptionalQueryStringList(req.query[key])
+  if (value.present && !value.valid) {
+    respondValidationError(res, `Parametro query ${key} invalido.`)
+    return false
+  }
+  return true
+}
+
+export const validatePublicDirectoryListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set([
+    'verticalType',
+    'country',
+    'verificationStatus',
+    'search',
+    'featured',
+    'tags',
+    'page',
+    'limit',
+    'sort',
+  ])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  if (!validateOptionalPublicDirectoryVerticalQuery(req, res, 'verticalType')) return
+  if (!validateOptionalSingleNonEmptyQuery(req, res, 'country')) return
+  if (!validateOptionalPublicDirectoryVerificationStatusQuery(req, res, 'verificationStatus')) return
+  if (!validateOptionalSingleNonEmptyQuery(req, res, 'search')) return
+  if (!validateOptionalPublicDirectorySortQuery(req, res, 'sort')) return
+  if (!validateOptionalPublicDirectoryTagsQuery(req, res, 'tags')) return
+
+  const featured = parseOptionalBooleanQuery(req.query.featured)
+  if (!featured.valid) {
+    respondValidationError(res, 'Parametro query featured invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validatePublicDirectoryFeaturedContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validatePublicDirectorySearchContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set([
+    'q',
+    'verticalType',
+    'country',
+    'verificationStatus',
+    'featured',
+    'tags',
+    'page',
+    'limit',
+    'sort',
+  ])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const q = readSingleQueryValue(req.query.q)
+  if (!q.present || !q.valid || !q.value || q.value.length < 2) {
+    respondValidationError(res, 'Parametro query q invalido. Usa pelo menos 2 caracteres.')
+    return
+  }
+
+  if (!validateOptionalPublicDirectoryVerticalQuery(req, res, 'verticalType')) return
+  if (!validateOptionalSingleNonEmptyQuery(req, res, 'country')) return
+  if (!validateOptionalPublicDirectoryVerificationStatusQuery(req, res, 'verificationStatus')) return
+  if (!validateOptionalPublicDirectorySortQuery(req, res, 'sort')) return
+  if (!validateOptionalPublicDirectoryTagsQuery(req, res, 'tags')) return
+
+  const featured = parseOptionalBooleanQuery(req.query.featured)
+  if (!featured.valid) {
+    respondValidationError(res, 'Parametro query featured invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validatePublicDirectoryCompareContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['slugs'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const slugs = parseOptionalQueryStringList(req.query.slugs)
+  if (!slugs.present || !slugs.valid || !slugs.values || slugs.values.length < 2 || slugs.values.length > 3) {
+    respondValidationError(
+      res,
+      'Parametro query slugs invalido. Informa 2 a 3 slugs separados por virgula.'
+    )
+    return
+  }
+
+  next()
+}
+
+export const validatePublicDirectoryCategoriesContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['country', 'verificationStatus', 'search', 'featured', 'tags'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  if (!validateOptionalSingleNonEmptyQuery(req, res, 'country')) return
+  if (!validateOptionalPublicDirectoryVerificationStatusQuery(req, res, 'verificationStatus')) return
+  if (!validateOptionalSingleNonEmptyQuery(req, res, 'search')) return
+  if (!validateOptionalPublicDirectoryTagsQuery(req, res, 'tags')) return
+
+  const featured = parseOptionalBooleanQuery(req.query.featured)
+  if (!featured.valid) {
+    respondValidationError(res, 'Parametro query featured invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validatePublicDirectoryByVerticalContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const vertical = validateRequiredRouteParam(req, res, 'vertical')
+  if (!vertical) return
+  if (!(PUBLIC_DIRECTORY_VERTICAL_TYPES as readonly string[]).includes(vertical)) {
+    respondValidationError(
+      res,
+      `Parametro vertical invalido. Valores: ${PUBLIC_DIRECTORY_VERTICAL_TYPES.join(', ')}.`
+    )
+    return
+  }
+
+  const allowedKeys = new Set([
+    'country',
+    'verificationStatus',
+    'search',
+    'featured',
+    'tags',
+    'page',
+    'limit',
+    'sort',
+  ])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  if (!validateOptionalSingleNonEmptyQuery(req, res, 'country')) return
+  if (!validateOptionalPublicDirectoryVerificationStatusQuery(req, res, 'verificationStatus')) return
+  if (!validateOptionalSingleNonEmptyQuery(req, res, 'search')) return
+  if (!validateOptionalPublicDirectorySortQuery(req, res, 'sort')) return
+  if (!validateOptionalPublicDirectoryTagsQuery(req, res, 'tags')) return
+
+  const featured = parseOptionalBooleanQuery(req.query.featured)
+  if (!featured.valid) {
+    respondValidationError(res, 'Parametro query featured invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validatePublicDirectoryDetailContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const vertical = validateRequiredRouteParam(req, res, 'vertical')
+  if (!vertical) return
+  if (!(PUBLIC_DIRECTORY_VERTICAL_TYPES as readonly string[]).includes(vertical)) {
+    respondValidationError(
+      res,
+      `Parametro vertical invalido. Valores: ${PUBLIC_DIRECTORY_VERTICAL_TYPES.join(', ')}.`
+    )
+    return
+  }
+
+  const slug = validateRequiredRouteParam(req, res, 'slug')
+  if (!slug) return
+
+  const allowedKeys = new Set<string>()
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  next()
+}
+
+export const validatePublicDirectoryRelatedContentContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const vertical = validateRequiredRouteParam(req, res, 'vertical')
+  if (!vertical) return
+  if (!(PUBLIC_DIRECTORY_VERTICAL_TYPES as readonly string[]).includes(vertical)) {
+    respondValidationError(
+      res,
+      `Parametro vertical invalido. Valores: ${PUBLIC_DIRECTORY_VERTICAL_TYPES.join(', ')}.`
+    )
+    return
+  }
+
+  const slug = validateRequiredRouteParam(req, res, 'slug')
+  if (!slug) return
+
+  const allowedKeys = new Set(['limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
     return
   }
 

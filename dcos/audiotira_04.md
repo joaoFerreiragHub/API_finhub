@@ -230,4 +230,5 @@ Integracao CI/CD:
 - 2026-03-10: P5-MARCAS Fase 3.2 concluida no backend com fluxo admin de revisao de campanhas (`submit-approval`, `approve`, `reject`) e estados de campanha estendidos para `approved/rejected`.
 - 2026-03-10: P5-MARCAS Fase 3.3/3.4 concluida no backend com serving publico (`GET /api/ads/serve`) e tracking idempotente (`POST /api/ads/impression`, `POST /api/ads/click`) via token assinado e agregacao de metricas em `AdCampaign`.
 - 2026-03-10: P5-MARCAS Fase 3.5 concluida no backend com metricas agregadas por campanha (`GET /api/admin/ads/campaigns/:campaignId/metrics?days=30`), incluindo timeline diaria e breakdown por `slot`, `audience` e `device`.
+- 2026-03-10: P5-MARCAS P1.1 hardening adicional no backend com contratos de request nas rotas publicas de diretorio e novo endpoint `GET /api/directories/categories` para resumo por vertical.
 - 2026-03-10: organizacao documental sincronizada com regras: docs concluidos de P5-MARCAS backend (P4.1 a P4.5) movidos para `dcos/done/` e referencias atualizadas.

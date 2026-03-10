@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida; hardening da API publica de diretorio com contratos de request e endpoint `GET /api/directories/categories`).
 
 ---
 
@@ -179,11 +179,12 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 
 **Problema:** O DirectoryEntry so tem endpoints admin. Nao ha endpoints publicos dedicados para listar/detalhar entidades do diretorio (a API editorial publica serve seccoes curadas, nao o diretorio completo).
 
-**Estado atual (2026-03-09):** backend base deste gap foi fechado com API publica dedicada:
+**Estado atual (2026-03-10):** backend base deste gap foi fechado com API publica dedicada e hardening de contratos:
 - GET /api/directories (listagem com filtros e paginacao);
 - GET /api/directories/:vertical (listagem por vertical);
 - GET /api/directories/:vertical/:slug (detalhe + incremento de views);
 - GET /api/directories/featured (destaques);
+- GET /api/directories/categories (resumo por vertical para grid/index);
 - GET /api/directories/search (pesquisa cross-vertical);
 - GET /api/directories/:vertical/:slug/related-content (conteudo relacionado);
 - GET /api/directories/compare (comparacao lado a lado por slugs).
@@ -194,6 +195,7 @@ GET  /api/directories                    — lista publica com filtros e paginac
 GET  /api/directories/:vertical          — lista por vertical
 GET  /api/directories/:vertical/:slug    — detalhe de uma entrada
 GET  /api/directories/featured           — entradas em destaque
+GET  /api/directories/categories         — resumo de contagens por vertical
 GET  /api/directories/search             — pesquisa cross-vertical
 GET  /api/directories/:vertical/:slug/related-content — conteudo relacionado
 GET  /api/directories/compare            — comparacao de 2 a 3 entidades
@@ -544,7 +546,7 @@ isSponsored: boolean (default false)
 
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
-| 1.1 | **API publica de DirectoryEntry** | CONCLUIDO (2026-03-09): list, byVertical, bySlug, featured, search | - | Medio |
+| 1.1 | **API publica de DirectoryEntry** | CONCLUIDO (2026-03-10): list, byVertical, bySlug, featured, categories, search, compare + contratos de request nas rotas publicas | - | Medio |
 | 1.2 | **Pagina index `/recursos`** | — | Grid de categorias, featured, pesquisa | Medio |
 | 1.3 | **Paginas verticais `/recursos/corretoras` etc.** | — | Listagem filtrada, cards com rating/badges | Medio |
 | 1.4 | **Pagina detalhe `/recursos/:slug`** | — | Header, info, ratings, comments, conteudo relacionado | Medio |

@@ -120,6 +120,48 @@ export const listPublicDirectories = async (req: Request, res: Response) => {
 }
 
 /**
+ * GET /api/directories/categories
+ */
+export const listPublicDirectoryCategories = async (req: Request, res: Response) => {
+  try {
+    const verificationStatusRaw =
+      typeof req.query.verificationStatus === 'string' ? req.query.verificationStatus : undefined
+    if (
+      verificationStatusRaw &&
+      !isValidDirectoryVerificationStatus(verificationStatusRaw)
+    ) {
+      return res.status(400).json({
+        error: 'Parametro verificationStatus invalido.',
+      })
+    }
+    const verificationStatus =
+      verificationStatusRaw && isValidDirectoryVerificationStatus(verificationStatusRaw)
+        ? verificationStatusRaw
+        : undefined
+
+    const featured = parseBoolean(req.query.featured)
+    if (typeof req.query.featured === 'string' && featured === undefined) {
+      return res.status(400).json({
+        error: 'Parametro featured invalido. Usa true ou false.',
+      })
+    }
+
+    const result = await publicDirectoryService.getPublicDirectoryCategories({
+      country: typeof req.query.country === 'string' ? req.query.country : undefined,
+      verificationStatus,
+      search: typeof req.query.search === 'string' ? req.query.search : undefined,
+      isFeatured: featured,
+      tags: parseStringArray(req.query.tags),
+    })
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List public directory categories error:', error)
+    return handleDirectoryError(res, error, 'Erro ao listar categorias do diretorio publico.')
+  }
+}
+
+/**
  * GET /api/directories/featured
  */
 export const listFeaturedPublicDirectories = async (req: Request, res: Response) => {

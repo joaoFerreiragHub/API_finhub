@@ -655,6 +655,87 @@ export class PublicDirectoryService {
     }
   }
 
+  async getPublicDirectoryCategories(
+    filters: Omit<PublicDirectoryFilters, 'verticalType'> = {}
+  ) {
+    const { query, normalized } = buildBaseDirectoryQuery(filters)
+
+    const rows = await DirectoryEntry.aggregate<{
+      _id: DirectoryVerticalType
+      count: number
+      featuredCount: number
+      verifiedCount: number
+    }>([
+      { $match: query as Record<string, unknown> },
+      {
+        $group: {
+          _id: '$verticalType',
+          count: { $sum: 1 },
+          featuredCount: {
+            $sum: {
+              $cond: [{ $eq: ['$isFeatured', true] }, 1, 0],
+            },
+          },
+          verifiedCount: {
+            $sum: {
+              $cond: [{ $eq: ['$verificationStatus', 'verified'] }, 1, 0],
+            },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ])
+
+    const byVertical = new Map(
+      rows.map((row) => [
+        row._id,
+        {
+          count: Number(row.count ?? 0),
+          featuredCount: Number(row.featuredCount ?? 0),
+          verifiedCount: Number(row.verifiedCount ?? 0),
+        },
+      ])
+    )
+
+    const items = DIRECTORY_VERTICAL_TYPES.map((verticalType) => {
+      const row = byVertical.get(verticalType)
+      return {
+        verticalType,
+        count: row?.count ?? 0,
+        featuredCount: row?.featuredCount ?? 0,
+        verifiedCount: row?.verifiedCount ?? 0,
+      }
+    })
+
+    const summary = items.reduce(
+      (acc, item) => {
+        acc.total += item.count
+        acc.totalFeatured += item.featuredCount
+        acc.totalVerified += item.verifiedCount
+        if (item.count > 0) acc.verticalsWithEntries += 1
+        return acc
+      },
+      {
+        total: 0,
+        totalFeatured: 0,
+        totalVerified: 0,
+        verticalsWithEntries: 0,
+      }
+    )
+
+    return {
+      summary,
+      filters: {
+        country: normalized.country,
+        verificationStatus: normalized.verificationStatus,
+        search: normalized.search,
+        featured: normalized.isFeatured,
+        tags: normalized.tags,
+      },
+      items,
+    }
+  }
+
   async searchPublicDirectories(
     queryRaw: string,
     filters: Omit<PublicDirectoryFilters, 'search'> = {},
