@@ -33,8 +33,10 @@ import {
   validateBrandPortalAffiliateLinkListContract,
   validateBrandPortalAffiliateLinkUpdateContract,
   validateBrandPortalCampaignCreateContract,
+  validateBrandPortalDirectoriesContract,
   validateBrandPortalCampaignListContract,
   validateBrandPortalCampaignMetricsContract,
+  validateBrandPortalOverviewContract,
   validateBrandPortalCampaignSubmitApprovalContract,
   validateBrandPortalCampaignUpdateContract,
   validateBrandPortalIntegrationApiKeyCreateContract,
@@ -54,14 +56,26 @@ const router = Router()
  * @desc    Overview do portal de marca para dono de DirectoryEntry
  * @access  Private
  */
-router.get('/overview', authenticate, getBrandPortalOverview)
+router.get(
+  '/overview',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalOverviewContract,
+  getBrandPortalOverview
+)
 
 /**
  * @route   GET /api/brand-portal/directories
  * @desc    Listar diretorios pertencentes ao utilizador autenticado
  * @access  Private
  */
-router.get('/directories', authenticate, listBrandPortalDirectories)
+router.get(
+  '/directories',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalDirectoriesContract,
+  listBrandPortalDirectories
+)
 
 /**
  * @route   GET /api/brand-portal/wallets

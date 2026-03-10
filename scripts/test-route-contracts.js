@@ -284,6 +284,18 @@ const ROUTE_CONTRACTS = [
   {
     filePath: 'src/routes/brandPortal.routes.ts',
     method: 'get',
+    routePath: '/overview',
+    requiredMiddleware: 'validateBrandPortalOverviewContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/directories',
+    requiredMiddleware: 'validateBrandPortalDirectoriesContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
     routePath: '/wallets',
     requiredMiddleware: 'validateBrandPortalWalletListContract',
   },

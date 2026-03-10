@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1 base backend iniciada; P4.2/P4.3/P4.4/P4.5 backend concluida).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida).
 
 ---
 
@@ -578,7 +578,7 @@ isSponsored: boolean (default false)
 
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
-| 4.1 | **Portal de marca** | INICIADO (2026-03-10): `GET /api/brand-portal/overview` + `GET /api/brand-portal/directories` para dono de `DirectoryEntry` (ownership + tracking agregado) | Portal separado ou seccao dedicada | Alto |
+| 4.1 | **Portal de marca** | CONCLUIDO (2026-03-10): `GET /api/brand-portal/overview?days=...` + `GET /api/brand-portal/directories` com ownership por `DirectoryEntry.ownerUser`, tracking agregado de campanhas/delivery no overview, contratos de request dedicados e `rateLimiter.api` aplicado; documentacao tecnica em `dcos/P4_1_PORTAL_MARCA_BACKEND.md` | Portal separado ou seccao dedicada | Alto |
 | 4.2 | **Wallet de marca** | CONCLUIDO (2026-03-10): `BrandWallet` + `BrandWalletTransaction` com portal da marca (`GET /wallets`, `GET /wallets/:directoryEntryId`, `GET /wallets/:directoryEntryId/transactions`, `POST /wallets/:directoryEntryId/top-up-requests`) e settlement admin (`GET /api/admin/monetization/brand-wallets/top-up-requests`, `POST .../:transactionId/approve`, `POST .../:transactionId/reject`), contratos de request e rate-limit aplicados; documentacao tecnica em `dcos/P4_2_WALLET_MARCA_BACKEND.md` | Top-up, historico | Alto |
 | 4.3 | **Self-service de campanhas** | CONCLUIDO (2026-03-10): `GET/POST /api/brand-portal/campaigns`, `GET/PATCH /api/brand-portal/campaigns/:campaignId`, `POST /api/brand-portal/campaigns/:campaignId/submit-approval`, `GET /metrics` com ownership enforcement, contratos de request, rate limit no portal e gate de orcamento por wallet (validacao de `availableCents` vs `estimatedMonthlyBudget`) | Documentacao tecnica em `dcos/P4_3_CAMPANHAS_SELF_SERVICE_BACKEND.md` | Alto |
 | 4.4 | **Sistema de afiliacao** | CONCLUIDO (2026-03-10): `AffiliateLink` + `AffiliateClick`, redirect `GET /api/affiliates/r/:code` com tracking params (`fh_click_id`, `fh_aff_code`), postback `POST /api/affiliates/postback/conversion` com segredo (`AFFILIATE_POSTBACK_SECRET`), endpoints no `brand-portal` para CRUD/listagem de cliques, painel admin em `/api/admin/monetization/affiliates/*`, e contratos de request nas rotas de afiliacao | Documentacao tecnica em `dcos/P4_4_SISTEMA_AFILIACAO_BACKEND.md` | Alto |

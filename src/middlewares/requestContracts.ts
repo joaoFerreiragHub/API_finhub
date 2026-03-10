@@ -4410,6 +4410,44 @@ export const validateBrandPortalCampaignMetricsContract = (
   next()
 }
 
+export const validateBrandPortalOverviewContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['days'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const days = parseOptionalPositiveIntegerQuery(req.query.days)
+  if (!days.valid) {
+    respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandPortalDirectoriesContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set<string>()
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  next()
+}
+
 const isPositiveNumericLike = (value: unknown): boolean => {
   if (typeof value === 'number') {
     return Number.isFinite(value) && value > 0
