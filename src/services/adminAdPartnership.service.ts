@@ -1,7 +1,6 @@
 import mongoose from 'mongoose'
 import { AdSlotConfig } from '../models/AdSlotConfig'
 import { AdCampaign } from '../models/AdCampaign'
-import { Brand } from '../models/Brand'
 import { DirectoryEntry } from '../models/DirectoryEntry'
 import { resolvePagination } from '../utils/pagination'
 
@@ -22,9 +21,11 @@ const DEVICES = ['all', 'desktop', 'mobile'] as const
 const CAMPAIGN_STATUSES = [
   'draft',
   'pending_approval',
+  'approved',
   'active',
   'paused',
   'completed',
+  'rejected',
   'archived',
 ] as const
 const SPONSOR_TYPES = ['brand', 'creator', 'platform'] as const
@@ -97,6 +98,20 @@ export type SlotCompatibilityInput = {
   isActive?: boolean | null
 }
 
+const CAMPAIGN_STATUS_TRANSITIONS: Record<
+  AdPartnershipCampaignStatus,
+  readonly AdPartnershipCampaignStatus[]
+> = {
+  draft: ['pending_approval', 'approved', 'active', 'rejected', 'archived'],
+  pending_approval: ['approved', 'active', 'rejected', 'archived'],
+  approved: ['active', 'paused', 'rejected', 'archived'],
+  active: ['paused', 'completed', 'archived'],
+  paused: ['active', 'completed', 'pending_approval', 'archived'],
+  completed: ['archived'],
+  rejected: ['draft', 'pending_approval', 'approved', 'archived'],
+  archived: [],
+}
+
 export const isValidAdPartnershipType = (value: unknown): value is AdPartnershipType =>
   typeof value === 'string' && AD_TYPES.includes(value as AdPartnershipType)
 
@@ -167,6 +182,57 @@ const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId =
     throw new AdminAdPartnershipServiceError(400, `${fieldName} invalido.`)
   }
   return new mongoose.Types.ObjectId(rawId)
+}
+
+const resolveDirectoryEntryIdFromCampaignTarget = async (input: {
+  sponsorType: AdPartnershipSponsorType
+  directoryEntryIdRaw?: unknown
+  brandIdRaw?: unknown
+  requiredForBrandSponsor?: boolean
+}): Promise<mongoose.Types.ObjectId | null> => {
+  const requiredForBrandSponsor = input.requiredForBrandSponsor ?? true
+
+  const directoryEntryId = input.directoryEntryIdRaw
+    ? toObjectId(String(input.directoryEntryIdRaw), 'directoryEntryId')
+    : null
+  const brandId = input.brandIdRaw ? toObjectId(String(input.brandIdRaw), 'brandId') : null
+
+  if (directoryEntryId && !(await DirectoryEntry.exists({ _id: directoryEntryId }))) {
+    throw new AdminAdPartnershipServiceError(404, 'directoryEntryId nao encontrado.')
+  }
+
+  if (!brandId) {
+    if (input.sponsorType === 'brand' && requiredForBrandSponsor && !directoryEntryId) {
+      throw new AdminAdPartnershipServiceError(
+        400,
+        'Campanhas sponsorType=brand requerem directoryEntryId (ou brandId legacy mapeado).'
+      )
+    }
+    return directoryEntryId
+  }
+
+  const mapped = await DirectoryEntry.findOne({
+    'metadata.legacyBrandId': String(brandId),
+  })
+    .select('_id')
+    .lean()
+
+  if (!mapped) {
+    throw new AdminAdPartnershipServiceError(
+      404,
+      'brandId sem mapeamento para DirectoryEntry. Executa migrate:brands:directory.'
+    )
+  }
+
+  const mappedId = toObjectId(String(mapped._id), 'directoryEntryId')
+  if (directoryEntryId && String(directoryEntryId) !== String(mappedId)) {
+    throw new AdminAdPartnershipServiceError(
+      409,
+      'directoryEntryId conflita com o mapeamento resolvido a partir de brandId.'
+    )
+  }
+
+  return mappedId
 }
 
 const uniqueStringArray = <T extends string>(values: T[]): T[] => [...new Set(values)]
@@ -317,6 +383,19 @@ export const ensureExternalAdsNoPremium = (
 const ensureSchedule = (startAt: Date | null, endAt: Date | null) => {
   if (startAt && endAt && endAt.getTime() <= startAt.getTime()) {
     throw new AdminAdPartnershipServiceError(400, 'endAt deve ser superior a startAt.')
+  }
+}
+
+const ensureCampaignStatusTransition = (
+  currentStatus: AdPartnershipCampaignStatus,
+  nextStatus: AdPartnershipCampaignStatus
+) => {
+  const allowedNextStatuses = CAMPAIGN_STATUS_TRANSITIONS[currentStatus] ?? []
+  if (!allowedNextStatuses.includes(nextStatus)) {
+    throw new AdminAdPartnershipServiceError(
+      409,
+      `Transicao de estado invalida: ${currentStatus} -> ${nextStatus}.`
+    )
   }
 }
 
@@ -551,7 +630,6 @@ export class AdminAdPartnershipService {
         .sort({ status: 1, priority: 1, updatedAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('brand', 'name slug brandType isActive')
         .populate('directoryEntry', 'name slug verticalType status isActive')
         .populate('approvedBy', 'name username email role')
         .populate('createdBy', 'name username email role')
@@ -574,7 +652,6 @@ export class AdminAdPartnershipService {
   async getCampaign(campaignId: string) {
     const campaignObjectId = toObjectId(campaignId, 'campaignId')
     const item = await AdCampaign.findById(campaignObjectId)
-      .populate('brand', 'name slug brandType isActive')
       .populate('directoryEntry', 'name slug verticalType status isActive')
       .populate('approvedBy', 'name username email role')
       .populate('createdBy', 'name username email role')
@@ -643,17 +720,12 @@ export class AdminAdPartnershipService {
     const endAt = toDateOrNull(input.endAt)
     ensureSchedule(startAt, endAt)
 
-    const brandId = input.brandId ? toObjectId(String(input.brandId), 'brandId') : null
-    const directoryEntryId = input.directoryEntryId
-      ? toObjectId(String(input.directoryEntryId), 'directoryEntryId')
-      : null
-
-    if (brandId && !(await Brand.exists({ _id: brandId }))) {
-      throw new AdminAdPartnershipServiceError(404, 'brandId nao encontrado.')
-    }
-    if (directoryEntryId && !(await DirectoryEntry.exists({ _id: directoryEntryId }))) {
-      throw new AdminAdPartnershipServiceError(404, 'directoryEntryId nao encontrado.')
-    }
+    const directoryEntryId = await resolveDirectoryEntryIdFromCampaignTarget({
+      sponsorType,
+      directoryEntryIdRaw: input.directoryEntryId,
+      brandIdRaw: input.brandId,
+      requiredForBrandSponsor: true,
+    })
 
     const finalCode = code ?? `CAMP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
     const existing = await AdCampaign.findOne({ code: finalCode }).lean()
@@ -667,7 +739,6 @@ export class AdminAdPartnershipService {
       adType,
       sponsorType,
       status,
-      brand: brandId,
       directoryEntry: directoryEntryId,
       surfaces,
       slotIds,
@@ -684,8 +755,8 @@ export class AdminAdPartnershipService {
       relevanceTags,
       estimatedMonthlyBudget: toPositiveIntOrNull(input.estimatedMonthlyBudget),
       currency: toStringOrNull(input.currency)?.toUpperCase() ?? 'EUR',
-      approvedAt: status === 'active' ? now : null,
-      approvedBy: status === 'active' ? actorId : null,
+      approvedAt: status === 'active' || status === 'approved' ? now : null,
+      approvedBy: status === 'active' || status === 'approved' ? actorId : null,
       createdBy: actorId,
       updatedBy: actorId,
       metrics: { impressions: 0, clicks: 0, conversions: 0 },
@@ -708,7 +779,6 @@ export class AdminAdPartnershipService {
       ],
     })
 
-    await created.populate('brand', 'name slug brandType isActive')
     await created.populate('directoryEntry', 'name slug verticalType status isActive')
     await created.populate('approvedBy', 'name username email role')
     await created.populate('createdBy', 'name username email role')
@@ -723,7 +793,6 @@ export class AdminAdPartnershipService {
 
     const campaignId = toObjectId(String(input.campaignId ?? ''), 'campaignId')
     const campaign = await AdCampaign.findById(campaignId)
-      .populate('brand', 'name slug brandType isActive')
       .populate('directoryEntry', 'name slug verticalType status isActive')
       .populate('approvedBy', 'name username email role')
       .populate('createdBy', 'name username email role')
@@ -739,13 +808,13 @@ export class AdminAdPartnershipService {
     if (isValidAdPartnershipSponsorType(patch.sponsorType)) campaign.sponsorType = patch.sponsorType
     if (isValidAdPartnershipCampaignStatus(patch.status)) campaign.status = patch.status
 
-    if ('brandId' in patch) {
-      campaign.brand = patch.brandId ? toObjectId(String(patch.brandId), 'brandId') : null
-    }
-    if ('directoryEntryId' in patch) {
-      campaign.directoryEntry = patch.directoryEntryId
-        ? toObjectId(String(patch.directoryEntryId), 'directoryEntryId')
-        : null
+    if ('brandId' in patch || 'directoryEntryId' in patch) {
+      campaign.directoryEntry = await resolveDirectoryEntryIdFromCampaignTarget({
+        sponsorType: campaign.sponsorType as AdPartnershipSponsorType,
+        directoryEntryIdRaw: 'directoryEntryId' in patch ? patch.directoryEntryId : undefined,
+        brandIdRaw: 'brandId' in patch ? patch.brandId : undefined,
+        requiredForBrandSponsor: campaign.sponsorType === 'brand',
+      })
     }
 
     if (Array.isArray(patch.surfaces)) {
@@ -795,11 +864,14 @@ export class AdminAdPartnershipService {
     ensureExternalAdsNoPremium(campaignAdType, campaignVisibility)
     ensureSchedule(campaign.startAt ?? null, campaign.endAt ?? null)
 
-    if (campaign.brand && !(await Brand.exists({ _id: campaign.brand }))) {
-      throw new AdminAdPartnershipServiceError(404, 'brandId nao encontrado.')
-    }
     if (campaign.directoryEntry && !(await DirectoryEntry.exists({ _id: campaign.directoryEntry }))) {
       throw new AdminAdPartnershipServiceError(404, 'directoryEntryId nao encontrado.')
+    }
+    if (campaign.sponsorType === 'brand' && !campaign.directoryEntry) {
+      throw new AdminAdPartnershipServiceError(
+        400,
+        'Campanhas sponsorType=brand requerem directoryEntryId.'
+      )
     }
 
     const slots =
@@ -843,7 +915,6 @@ export class AdminAdPartnershipService {
     })
 
     await campaign.save()
-    await campaign.populate('brand', 'name slug brandType isActive')
     await campaign.populate('directoryEntry', 'name slug verticalType status isActive')
     await campaign.populate('approvedBy', 'name username email role')
     await campaign.populate('createdBy', 'name username email role')
@@ -861,7 +932,6 @@ export class AdminAdPartnershipService {
 
     const campaignId = toObjectId(String(input.campaignId ?? ''), 'campaignId')
     const campaign = await AdCampaign.findById(campaignId)
-      .populate('brand', 'name slug brandType isActive')
       .populate('directoryEntry', 'name slug verticalType status isActive')
       .populate('approvedBy', 'name username email role')
       .populate('createdBy', 'name username email role')
@@ -872,18 +942,29 @@ export class AdminAdPartnershipService {
       throw new AdminAdPartnershipServiceError(409, 'Campanha arquivada nao pode mudar de estado.')
     }
 
-    const nextStatus = input.status
+    const nextStatus = input.status as AdPartnershipCampaignStatus
     if (campaign.status === nextStatus) {
       throw new AdminAdPartnershipServiceError(409, 'Campanha ja esta nesse estado.')
     }
 
-    if (nextStatus === 'active') {
+    ensureCampaignStatusTransition(campaign.status as AdPartnershipCampaignStatus, nextStatus)
+
+    if (nextStatus === 'approved' || nextStatus === 'active') {
       const nowMs = Date.now()
-      if (campaign.startAt && campaign.startAt.getTime() > nowMs) {
+      if (nextStatus === 'active' && campaign.startAt && campaign.startAt.getTime() > nowMs) {
         throw new AdminAdPartnershipServiceError(409, 'Campanha ainda nao atingiu startAt.')
       }
       if (campaign.endAt && campaign.endAt.getTime() <= nowMs) {
         throw new AdminAdPartnershipServiceError(409, 'Campanha ja expirou (endAt).')
+      }
+      if (campaign.sponsorType === 'brand' && !campaign.directoryEntry) {
+        throw new AdminAdPartnershipServiceError(
+          409,
+          'Campanhas sponsorType=brand exigem directoryEntryId antes da aprovacao/ativacao.'
+        )
+      }
+      if (campaign.directoryEntry && !(await DirectoryEntry.exists({ _id: campaign.directoryEntry }))) {
+        throw new AdminAdPartnershipServiceError(404, 'directoryEntryId nao encontrado.')
       }
       const campaignAdType = campaign.adType as AdPartnershipType
       const campaignVisibility = campaign.visibleTo as unknown as AdPartnershipVisibility[]
@@ -910,8 +991,13 @@ export class AdminAdPartnershipService {
           { requireActive: true }
         )
       }
-      campaign.approvedAt = new Date()
+      campaign.approvedAt = campaign.approvedAt ?? new Date()
       campaign.approvedBy = actorId
+    }
+
+    if (nextStatus === 'pending_approval' || nextStatus === 'draft' || nextStatus === 'rejected') {
+      campaign.approvedAt = null
+      campaign.approvedBy = null
     }
 
     campaign.status = nextStatus
@@ -933,7 +1019,6 @@ export class AdminAdPartnershipService {
     })
 
     await campaign.save()
-    await campaign.populate('brand', 'name slug brandType isActive')
     await campaign.populate('directoryEntry', 'name slug verticalType status isActive')
     await campaign.populate('approvedBy', 'name username email role')
     await campaign.populate('createdBy', 'name username email role')

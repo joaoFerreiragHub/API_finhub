@@ -100,6 +100,7 @@ import {
 } from '../controllers/adminBroadcast.controller'
 import {
   activateAdminAdCampaign,
+  approveAdminAdCampaign,
   createAdminAdCampaign,
   createAdminAdSlot,
   getAdminAdCampaign,
@@ -107,6 +108,8 @@ import {
   listAdminAdCampaigns,
   listAdminAdSlots,
   pauseAdminAdCampaign,
+  rejectAdminAdCampaign,
+  submitAdminAdCampaignForApproval,
   updateAdminAdCampaign,
   updateAdminAdSlot,
 } from '../controllers/adminAdPartnership.controller'
@@ -1433,6 +1436,66 @@ router.patch(
   }),
   requireAdminScope('admin.content.moderate'),
   updateAdminAdCampaign
+)
+
+/**
+ * @route   POST /api/admin/ads/campaigns/:campaignId/submit-approval
+ * @desc    Submeter campanha para revisao/aprovacao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/ads/campaigns/:campaignId/submit-approval',
+  authenticate,
+  validateAdminAdCampaignStatusContract,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.submit_approval',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  submitAdminAdCampaignForApproval
+)
+
+/**
+ * @route   POST /api/admin/ads/campaigns/:campaignId/approve
+ * @desc    Aprovar campanha apos revisao de compliance
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/ads/campaigns/:campaignId/approve',
+  authenticate,
+  validateAdminAdCampaignStatusContract,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.approve',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  approveAdminAdCampaign
+)
+
+/**
+ * @route   POST /api/admin/ads/campaigns/:campaignId/reject
+ * @desc    Rejeitar campanha em revisao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/ads/campaigns/:campaignId/reject',
+  authenticate,
+  validateAdminAdCampaignStatusContract,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.reject',
+    resourceType: 'ad_campaign',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  rejectAdminAdCampaign
 )
 
 /**

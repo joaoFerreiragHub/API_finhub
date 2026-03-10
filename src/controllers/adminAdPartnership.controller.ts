@@ -320,6 +320,98 @@ export const updateAdminAdCampaign = async (req: AuthRequest, res: Response) => 
   }
 }
 
+export const submitAdminAdCampaignForApproval = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autenticacao necessaria.' })
+    }
+
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+    if (!reason) {
+      return res.status(400).json({ error: 'Motivo obrigatorio para submeter campanha a aprovacao.' })
+    }
+    const note = resolveNote(req, res)
+    if (note === null) return
+
+    const result = await adminAdPartnershipService.setCampaignStatus({
+      actorId: req.user.id,
+      campaignId: req.params.campaignId,
+      status: 'pending_approval',
+      reason,
+      note,
+    })
+
+    return res.status(200).json({
+      message: 'Campanha submetida para aprovacao com sucesso.',
+      item: result,
+    })
+  } catch (error: unknown) {
+    logControllerError(CONTROLLER_DOMAIN, 'submit_admin_ad_campaign_for_approval', error, req)
+    return handleError(res, error, 'Erro ao submeter campanha para aprovacao.')
+  }
+}
+
+export const approveAdminAdCampaign = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autenticacao necessaria.' })
+    }
+
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+    if (!reason) return res.status(400).json({ error: 'Motivo obrigatorio para aprovar campanha.' })
+    const note = resolveNote(req, res)
+    if (note === null) return
+
+    const result = await adminAdPartnershipService.setCampaignStatus({
+      actorId: req.user.id,
+      campaignId: req.params.campaignId,
+      status: 'approved',
+      reason,
+      note,
+    })
+
+    return res.status(200).json({
+      message: 'Campanha aprovada com sucesso.',
+      item: result,
+    })
+  } catch (error: unknown) {
+    logControllerError(CONTROLLER_DOMAIN, 'approve_admin_ad_campaign', error, req)
+    return handleError(res, error, 'Erro ao aprovar campanha.')
+  }
+}
+
+export const rejectAdminAdCampaign = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autenticacao necessaria.' })
+    }
+
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+    if (!reason) return res.status(400).json({ error: 'Motivo obrigatorio para rejeitar campanha.' })
+    const note = resolveNote(req, res)
+    if (note === null) return
+
+    const result = await adminAdPartnershipService.setCampaignStatus({
+      actorId: req.user.id,
+      campaignId: req.params.campaignId,
+      status: 'rejected',
+      reason,
+      note,
+    })
+
+    return res.status(200).json({
+      message: 'Campanha rejeitada com sucesso.',
+      item: result,
+    })
+  } catch (error: unknown) {
+    logControllerError(CONTROLLER_DOMAIN, 'reject_admin_ad_campaign', error, req)
+    return handleError(res, error, 'Erro ao rejeitar campanha.')
+  }
+}
+
 export const activateAdminAdCampaign = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {

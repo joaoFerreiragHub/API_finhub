@@ -48,9 +48,11 @@ type AdPartnershipDevice = 'all' | 'desktop' | 'mobile'
 type AdPartnershipCampaignStatus =
   | 'draft'
   | 'pending_approval'
+  | 'approved'
   | 'active'
   | 'paused'
   | 'completed'
+  | 'rejected'
   | 'archived'
 type AdPartnershipSponsorType = 'brand' | 'creator' | 'platform'
 type FinancialToolKey = 'stocks' | 'etf' | 'reit' | 'crypto'
@@ -139,9 +141,11 @@ const AD_PARTNERSHIP_DEVICES: readonly AdPartnershipDevice[] = ['all', 'desktop'
 const AD_PARTNERSHIP_CAMPAIGN_STATUSES: readonly AdPartnershipCampaignStatus[] = [
   'draft',
   'pending_approval',
+  'approved',
   'active',
   'paused',
   'completed',
+  'rejected',
   'archived',
 ]
 const AD_PARTNERSHIP_SPONSOR_TYPES: readonly AdPartnershipSponsorType[] = [
@@ -1148,6 +1152,17 @@ const validateAdminAdCampaignPayload = (
   if (!directoryEntryId.valid) {
     respondValidationError(res, 'Campo directoryEntryId invalido.')
     return false
+  }
+
+  if (options.requireCreateFields) {
+    const resolvedSponsorType = sponsorType.value ?? 'brand'
+    if (resolvedSponsorType === 'brand' && !brandId.value && !directoryEntryId.value) {
+      respondValidationError(
+        res,
+        'Campanhas sponsorType=brand exigem directoryEntryId (ou brandId legacy mapeado).'
+      )
+      return false
+    }
   }
 
   const surfaces = validateOptionalEnumArray<AdPartnershipSurface>(

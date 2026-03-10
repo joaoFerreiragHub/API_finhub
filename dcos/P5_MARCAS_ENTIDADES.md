@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 entregue).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 entregue).
 
 ---
 
@@ -266,7 +266,7 @@ page, limit
 
 ### 3.5 Sistema de publicidade / campanhas para marcas
 
-**Estado atual:** Nao existe. O sistema de campanhas no frontend (`marketing/campanhas/`) e para criadores, nao para marcas/entidades.
+**Estado atual (2026-03-10):** backend base existe com `AdCampaign` + `AdSlotConfig` no admin. Nesta iteracao foi concluido o desacoplamento operacional de `Brand` para `DirectoryEntry` (campanhas de marca passam por `directoryEntryId`, com suporte de migracao legacy) e o fluxo admin de revisao (`submit-approval`, `approve`, `reject`).
 
 **O que precisa de ser construido:**
 
@@ -286,11 +286,11 @@ Conceito: uma marca paga para ter visibilidade adicional na plataforma.
 
 **Campos sugeridos:**
 ```
-brand: ObjectId (ref DirectoryEntry ou Brand)
+brand: ObjectId (ref DirectoryEntry)
 campaignType: enum dos tipos acima
 title: string
 description?: string
-status: 'draft' | 'pending_review' | 'approved' | 'active' | 'paused' | 'completed' | 'rejected'
+status: 'draft' | 'pending_approval' | 'approved' | 'active' | 'paused' | 'completed' | 'rejected'
 
 // Targeting
 targetVerticals?: string[] (em que verticais aparece)
@@ -335,7 +335,7 @@ createdBy: ObjectId
 
 ```
 1. Marca/admin cria campanha (status: draft)
-2. Submete para revisao (status: pending_review)
+2. Submete para revisao (status: pending_approval)
 3. Admin revê e aprova/rejeita
    - Se aprovada: status → approved
    - Se rejeitada: status → rejected (com motivo)
@@ -559,8 +559,8 @@ isSponsored: boolean (default false)
 
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
-| 3.1 | **Model BrandCampaign** | Model, controller, service, routes | — | Medio |
-| 3.2 | **Admin: gestao de campanhas** | CRUD + review/approve flow | Pagina admin de campanhas | Medio |
+| 3.1 | **Model BrandCampaign** | CONCLUIDO (2026-03-10): `AdCampaign`/`AdSlotConfig` ativos no admin + alvo de marca desacoplado para `directoryEntryId` (com scripts de migracao legacy) | — | Medio |
+| 3.2 | **Admin: gestao de campanhas** | CONCLUIDO (2026-03-10): CRUD + fluxo de revisao (`POST /api/admin/ads/campaigns/:campaignId/submit-approval`, `.../approve`, `.../reject`) | Pagina admin de campanhas | Medio |
 | 3.3 | **Ad serving** | Endpoint /api/ads/serve com targeting | Componentes de ad slot nas paginas | Medio |
 | 3.4 | **Tracking impressoes/cliques** | Endpoints de tracking, agregacao | Pixel de tracking, click handler | Medio |
 | 3.5 | **Dashboard de metricas de campanha** | Agregacao MongoDB, stats por campanha | Graficos, KPIs, export | Alto |

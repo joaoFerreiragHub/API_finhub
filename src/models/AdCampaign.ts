@@ -4,9 +4,11 @@ import { AdType, AdVisibility, AdSlotSurface } from './AdSlotConfig'
 export type AdCampaignStatus =
   | 'draft'
   | 'pending_approval'
+  | 'approved'
   | 'active'
   | 'paused'
   | 'completed'
+  | 'rejected'
   | 'archived'
 
 export type AdCampaignSponsorType = 'brand' | 'creator' | 'platform'
@@ -33,7 +35,6 @@ export interface IAdCampaign extends Document {
   adType: AdType
   sponsorType: AdCampaignSponsorType
   status: AdCampaignStatus
-  brand?: mongoose.Types.ObjectId | null
   directoryEntry?: mongoose.Types.ObjectId | null
   surfaces: AdSlotSurface[]
   slotIds: string[]
@@ -91,7 +92,16 @@ const AdCampaignHistoryEntrySchema = new Schema<AdCampaignHistoryEntry>(
     snapshot: {
       status: {
         type: String,
-        enum: ['draft', 'pending_approval', 'active', 'paused', 'completed', 'archived'],
+        enum: [
+          'draft',
+          'pending_approval',
+          'approved',
+          'active',
+          'paused',
+          'completed',
+          'rejected',
+          'archived',
+        ],
         required: true,
       },
       startAt: {
@@ -159,15 +169,18 @@ const AdCampaignSchema = new Schema<IAdCampaign>(
     },
     status: {
       type: String,
-      enum: ['draft', 'pending_approval', 'active', 'paused', 'completed', 'archived'],
+      enum: [
+        'draft',
+        'pending_approval',
+        'approved',
+        'active',
+        'paused',
+        'completed',
+        'rejected',
+        'archived',
+      ],
       required: true,
       default: 'draft',
-      index: true,
-    },
-    brand: {
-      type: Schema.Types.ObjectId,
-      ref: 'Brand',
-      default: null,
       index: true,
     },
     directoryEntry: {
@@ -317,7 +330,7 @@ const AdCampaignSchema = new Schema<IAdCampaign>(
 
 AdCampaignSchema.index({ status: 1, adType: 1, priority: 1, updatedAt: -1 })
 AdCampaignSchema.index({ status: 1, startAt: 1, endAt: 1 })
-AdCampaignSchema.index({ sponsorType: 1, brand: 1, directoryEntry: 1 })
+AdCampaignSchema.index({ sponsorType: 1, directoryEntry: 1 })
 AdCampaignSchema.index({ surfaces: 1, slotIds: 1, status: 1 })
 
 export const AdCampaign = mongoose.model<IAdCampaign>('AdCampaign', AdCampaignSchema)

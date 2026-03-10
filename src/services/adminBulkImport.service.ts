@@ -72,9 +72,11 @@ const SUBSCRIPTION_BILLING_CYCLES = new Set<SubscriptionBillingCycle>([
 const AD_CAMPAIGN_STATUS = new Set<AdCampaignStatus>([
   'draft',
   'pending_approval',
+  'approved',
   'active',
   'paused',
   'completed',
+  'rejected',
   'archived',
 ])
 const ELIGIBLE_USER_ROLES = new Set<UserRole>(['free', 'premium'])

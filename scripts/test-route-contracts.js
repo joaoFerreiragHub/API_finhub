@@ -188,6 +188,24 @@ const ROUTE_CONTRACTS = [
   {
     filePath: 'src/routes/admin.routes.ts',
     method: 'post',
+    routePath: '/ads/campaigns/:campaignId/submit-approval',
+    requiredMiddleware: 'validateAdminAdCampaignStatusContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/ads/campaigns/:campaignId/approve',
+    requiredMiddleware: 'validateAdminAdCampaignStatusContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/ads/campaigns/:campaignId/reject',
+    requiredMiddleware: 'validateAdminAdCampaignStatusContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
     routePath: '/ads/campaigns/:campaignId/activate',
     requiredMiddleware: 'validateAdminAdCampaignStatusContract',
   },
