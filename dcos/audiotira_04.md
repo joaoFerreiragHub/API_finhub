@@ -224,3 +224,4 @@ Integracao CI/CD:
 - 2026-03-10: P5-MARCAS Fase 3.1 concluida no backend com campanhas de marca desacopladas de `Brand` (alvo resolvido via `directoryEntryId`, fallback legacy por `brandId` mapeado e scripts `migrate:ads:brand-targets`/`migrate:brands:directory` para transicao de dados).
 - 2026-03-10: P5-MARCAS Fase 3.2 concluida no backend com fluxo admin de revisao de campanhas (`submit-approval`, `approve`, `reject`) e estados de campanha estendidos para `approved/rejected`.
 - 2026-03-10: P5-MARCAS Fase 3.3/3.4 concluida no backend com serving publico (`GET /api/ads/serve`) e tracking idempotente (`POST /api/ads/impression`, `POST /api/ads/click`) via token assinado e agregacao de metricas em `AdCampaign`.
+- 2026-03-10: P5-MARCAS Fase 3.5 concluida no backend com metricas agregadas por campanha (`GET /api/admin/ads/campaigns/:campaignId/metrics?days=30`), incluindo timeline diaria e breakdown por `slot`, `audience` e `device`.

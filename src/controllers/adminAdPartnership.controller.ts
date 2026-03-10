@@ -233,6 +233,25 @@ export const getAdminAdCampaign = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const getAdminAdCampaignMetrics = async (req: AuthRequest, res: Response) => {
+  try {
+    const days = toOptionalNumber(req.query.days)
+    if (typeof req.query.days === 'string' && (!days || days <= 0)) {
+      return res.status(400).json({ error: 'Parametro days invalido.' })
+    }
+
+    const result = await adminAdPartnershipService.getCampaignMetrics({
+      campaignId: req.params.campaignId,
+      days,
+    })
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    logControllerError(CONTROLLER_DOMAIN, 'get_admin_ad_campaign_metrics', error, req)
+    return handleError(res, error, 'Erro ao obter metricas da campanha.')
+  }
+}
+
 export const createAdminAdCampaign = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {

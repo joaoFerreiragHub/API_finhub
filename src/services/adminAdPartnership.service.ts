@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import { AdSlotConfig } from '../models/AdSlotConfig'
 import { AdCampaign } from '../models/AdCampaign'
+import { AdDeliveryEvent } from '../models/AdDeliveryEvent'
 import { DirectoryEntry } from '../models/DirectoryEntry'
 import { resolvePagination } from '../utils/pagination'
 
@@ -32,6 +33,8 @@ const SPONSOR_TYPES = ['brand', 'creator', 'platform'] as const
 const DEFAULT_PAGE = 1
 const DEFAULT_LIMIT = 25
 const MAX_LIMIT = 100
+const DEFAULT_METRICS_WINDOW_DAYS = 30
+const MAX_METRICS_WINDOW_DAYS = 90
 const DEFAULT_SLOT_COOLDOWN_SECONDS = (() => {
   const parsed = Number.parseInt(process.env.ADMIN_ADS_DEFAULT_MIN_SECONDS_BETWEEN_IMPRESSIONS ?? '', 10)
   if (!Number.isFinite(parsed) || parsed < 0) return 120
@@ -384,6 +387,11 @@ const ensureSchedule = (startAt: Date | null, endAt: Date | null) => {
   if (startAt && endAt && endAt.getTime() <= startAt.getTime()) {
     throw new AdminAdPartnershipServiceError(400, 'endAt deve ser superior a startAt.')
   }
+}
+
+const toCtrPercent = (clicks: number, impressions: number): number => {
+  if (impressions <= 0) return 0
+  return Number(((clicks / impressions) * 100).toFixed(2))
 }
 
 const ensureCampaignStatusTransition = (
@@ -1024,6 +1032,232 @@ export class AdminAdPartnershipService {
     await campaign.populate('createdBy', 'name username email role')
     await campaign.populate('updatedBy', 'name username email role')
     return campaign.toObject()
+  }
+
+  async getCampaignMetrics(input: Record<string, unknown>) {
+    const campaignId = toObjectId(String(input.campaignId ?? ''), 'campaignId')
+    const windowDaysRaw = toPositiveIntOrNull(input.days)
+    const windowDays = Math.min(
+      Math.max(windowDaysRaw ?? DEFAULT_METRICS_WINDOW_DAYS, 1),
+      MAX_METRICS_WINDOW_DAYS
+    )
+    const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000)
+
+    const campaign = await AdCampaign.findById(campaignId)
+      .populate('directoryEntry', 'name slug verticalType status isActive')
+      .populate('approvedBy', 'name username email role')
+      .populate('createdBy', 'name username email role')
+      .populate('updatedBy', 'name username email role')
+      .lean<any>()
+    if (!campaign) throw new AdminAdPartnershipServiceError(404, 'Campanha nao encontrada.')
+
+    const [timelineRows, bySlotRows, byAudienceRows, byDeviceRows] = await Promise.all([
+      AdDeliveryEvent.aggregate<{
+        _id: string
+        served: number
+        impressions: number
+        clicks: number
+      }>([
+        {
+          $match: {
+            campaign: campaignId,
+            servedAt: { $gte: since },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$servedAt',
+              },
+            },
+            served: { $sum: 1 },
+            impressions: {
+              $sum: {
+                $cond: [{ $ne: ['$impressionAt', null] }, 1, 0],
+              },
+            },
+            clicks: {
+              $sum: {
+                $cond: [{ $ne: ['$clickAt', null] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      AdDeliveryEvent.aggregate<{
+        _id: string
+        served: number
+        impressions: number
+        clicks: number
+      }>([
+        {
+          $match: {
+            campaign: campaignId,
+            servedAt: { $gte: since },
+          },
+        },
+        {
+          $group: {
+            _id: '$slotId',
+            served: { $sum: 1 },
+            impressions: {
+              $sum: {
+                $cond: [{ $ne: ['$impressionAt', null] }, 1, 0],
+              },
+            },
+            clicks: {
+              $sum: {
+                $cond: [{ $ne: ['$clickAt', null] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $sort: { impressions: -1, clicks: -1, _id: 1 } },
+      ]),
+      AdDeliveryEvent.aggregate<{
+        _id: string
+        served: number
+        impressions: number
+        clicks: number
+      }>([
+        {
+          $match: {
+            campaign: campaignId,
+            servedAt: { $gte: since },
+          },
+        },
+        {
+          $group: {
+            _id: '$audience',
+            served: { $sum: 1 },
+            impressions: {
+              $sum: {
+                $cond: [{ $ne: ['$impressionAt', null] }, 1, 0],
+              },
+            },
+            clicks: {
+              $sum: {
+                $cond: [{ $ne: ['$clickAt', null] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $sort: { impressions: -1, clicks: -1, _id: 1 } },
+      ]),
+      AdDeliveryEvent.aggregate<{
+        _id: string
+        served: number
+        impressions: number
+        clicks: number
+      }>([
+        {
+          $match: {
+            campaign: campaignId,
+            servedAt: { $gte: since },
+          },
+        },
+        {
+          $group: {
+            _id: '$device',
+            served: { $sum: 1 },
+            impressions: {
+              $sum: {
+                $cond: [{ $ne: ['$impressionAt', null] }, 1, 0],
+              },
+            },
+            clicks: {
+              $sum: {
+                $cond: [{ $ne: ['$clickAt', null] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $sort: { impressions: -1, clicks: -1, _id: 1 } },
+      ]),
+    ])
+
+    const windowTotals = timelineRows.reduce(
+      (acc, row) => {
+        acc.served += Number(row.served ?? 0)
+        acc.impressions += Number(row.impressions ?? 0)
+        acc.clicks += Number(row.clicks ?? 0)
+        return acc
+      },
+      { served: 0, impressions: 0, clicks: 0 }
+    )
+
+    const mapBreakdownRows = (
+      rows: Array<{ _id: string; served: number; impressions: number; clicks: number }>
+    ) =>
+      rows.map((row) => {
+        const served = Number(row.served ?? 0)
+        const impressions = Number(row.impressions ?? 0)
+        const clicks = Number(row.clicks ?? 0)
+        return {
+          key: row._id,
+          served,
+          impressions,
+          clicks,
+          ctrPercent: toCtrPercent(clicks, impressions),
+          fillRatePercent: toCtrPercent(impressions, served),
+        }
+      })
+
+    const lifetimeImpressions = Number(campaign.metrics?.impressions ?? 0)
+    const lifetimeClicks = Number(campaign.metrics?.clicks ?? 0)
+    const lifetimeConversions = Number(campaign.metrics?.conversions ?? 0)
+
+    return {
+      campaign: {
+        id: String(campaign._id),
+        code: campaign.code,
+        title: campaign.title,
+        status: campaign.status,
+        adType: campaign.adType,
+        sponsorType: campaign.sponsorType,
+        directoryEntry: campaign.directoryEntry ?? null,
+        createdAt: campaign.createdAt ?? null,
+        updatedAt: campaign.updatedAt ?? null,
+      },
+      lifetime: {
+        impressions: lifetimeImpressions,
+        clicks: lifetimeClicks,
+        conversions: lifetimeConversions,
+        ctrPercent: toCtrPercent(lifetimeClicks, lifetimeImpressions),
+      },
+      window: {
+        days: windowDays,
+        from: since.toISOString(),
+        to: new Date().toISOString(),
+        served: windowTotals.served,
+        impressions: windowTotals.impressions,
+        clicks: windowTotals.clicks,
+        ctrPercent: toCtrPercent(windowTotals.clicks, windowTotals.impressions),
+        fillRatePercent: toCtrPercent(windowTotals.impressions, windowTotals.served),
+      },
+      timeline: timelineRows.map((row) => {
+        const served = Number(row.served ?? 0)
+        const impressions = Number(row.impressions ?? 0)
+        const clicks = Number(row.clicks ?? 0)
+        return {
+          date: row._id,
+          served,
+          impressions,
+          clicks,
+          ctrPercent: toCtrPercent(clicks, impressions),
+          fillRatePercent: toCtrPercent(impressions, served),
+        }
+      }),
+      breakdown: {
+        bySlot: mapBreakdownRows(bySlotRows),
+        byAudience: mapBreakdownRows(byAudienceRows),
+        byDevice: mapBreakdownRows(byDeviceRows),
+      },
+      generatedAt: new Date().toISOString(),
+    }
   }
 
   async getInventoryOverview() {

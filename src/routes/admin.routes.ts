@@ -104,6 +104,7 @@ import {
   createAdminAdCampaign,
   createAdminAdSlot,
   getAdminAdCampaign,
+  getAdminAdCampaignMetrics,
   getAdminAdsInventoryOverview,
   listAdminAdCampaigns,
   listAdminAdSlots,
@@ -1390,6 +1391,25 @@ router.get(
   }),
   requireAdminScope('admin.content.read'),
   getAdminAdCampaign
+)
+
+/**
+ * @route   GET /api/admin/ads/campaigns/:campaignId/metrics
+ * @desc    Ler metricas agregadas da campanha (janela: ?days=1..90)
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/ads/campaigns/:campaignId/metrics',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.ads.campaigns.metrics.read',
+    resourceType: 'ad_campaign',
+    scope: 'admin.metrics.read',
+    getResourceId: (req) => req.params.campaignId,
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getAdminAdCampaignMetrics
 )
 
 /**
