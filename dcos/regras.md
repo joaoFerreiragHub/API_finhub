@@ -3,6 +3,23 @@
 Data: 2026-03-06
 Escopo: backend `API_finhub` + frontend `FinHub-Vite` quando aplicavel.
 
+## MUST READ (OBRIGATORIO PARA TODOS OS AGENTES)
+
+Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
+
+1. Nao fechar ponto sem os 3 artefactos: implementacao + docs + commit.
+2. Nao deixar alteracoes pendentes ao terminar um ponto (working tree limpo).
+3. Quando um ponto fica concluido, mover o ficheiro respetivo para `dcos/done/` no mesmo ciclo.
+4. Manter na raiz de `dcos/` apenas ficheiros ativos.
+5. Atualizar `dcos/audiotira_04.md` no mesmo ciclo de fecho.
+6. Validar sempre o minimo tecnico:
+   - backend: `npm run typecheck`;
+   - frontend: `npm run typecheck:p1` (quando houver alteracoes frontend).
+7. Registar em docs qualquer limitacao de validacao que nao possa ser executada.
+8. Tudo o que depender de ambiente real/live fica marcado como pre-release (T-1/T-0), com evidencia.
+9. Nao reverter nem apagar alteracoes do utilizador sem confirmacao explicita.
+10. Em handoff, reportar obrigatoriamente: entregue, ficheiros, validacoes, commit e proximo passo.
+
 ## 1) Objetivo
 
 Garantir execucao consistente entre agentes: qualidade tecnica, rastreabilidade por docs e commits, e handoff claro.
