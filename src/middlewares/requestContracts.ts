@@ -58,6 +58,8 @@ type AdPartnershipSponsorType = 'brand' | 'creator' | 'platform'
 type FinancialToolKey = 'stocks' | 'etf' | 'reit' | 'crypto'
 type FinancialToolEnvironment = 'development' | 'staging' | 'production'
 type FinancialToolExperienceMode = 'legacy' | 'standard' | 'enhanced'
+type BrandWalletTransactionType = 'top_up' | 'campaign_spend' | 'refund' | 'manual_adjustment'
+type BrandWalletTransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled'
 
 const CONTENT_ACCESS_POLICY_CONTENT_TYPES: readonly ContentAccessPolicyContentType[] = [
   'article',
@@ -163,6 +165,18 @@ const FINANCIAL_TOOL_EXPERIENCE_MODES: readonly FinancialToolExperienceMode[] = 
   'legacy',
   'standard',
   'enhanced',
+]
+const BRAND_WALLET_TRANSACTION_TYPES: readonly BrandWalletTransactionType[] = [
+  'top_up',
+  'campaign_spend',
+  'refund',
+  'manual_adjustment',
+]
+const BRAND_WALLET_TRANSACTION_STATUSES: readonly BrandWalletTransactionStatus[] = [
+  'pending',
+  'completed',
+  'failed',
+  'cancelled',
 ]
 const BRAND_INTEGRATION_ALLOWED_SCOPES = ['brand.affiliate.read'] as const
 
@@ -4390,6 +4404,366 @@ export const validateBrandPortalCampaignMetricsContract = (
   const days = parseOptionalPositiveIntegerQuery(req.query.days)
   if (!days.valid) {
     respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  next()
+}
+
+const isPositiveNumericLike = (value: unknown): boolean => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return false
+    const parsed = Number.parseFloat(trimmed)
+    return Number.isFinite(parsed) && parsed > 0
+  }
+
+  return false
+}
+
+const isPositiveIntegerLike = (value: unknown): boolean => {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value > 0
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed || !/^\d+$/.test(trimmed)) return false
+    const parsed = Number.parseInt(trimmed, 10)
+    return Number.isFinite(parsed) && parsed > 0
+  }
+
+  return false
+}
+
+export const validateBrandPortalWalletListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set<string>()
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  next()
+}
+
+export const validateBrandPortalWalletDetailContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const directoryEntryId = validateRequiredRouteParam(req, res, 'directoryEntryId')
+  if (!directoryEntryId) return
+
+  const allowedKeys = new Set<string>()
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  next()
+}
+
+export const validateBrandPortalWalletTransactionsContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const directoryEntryId = validateRequiredRouteParam(req, res, 'directoryEntryId')
+  if (!directoryEntryId) return
+
+  const allowedKeys = new Set(['type', 'status', 'search', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const type = readSingleQueryValue(req.query.type)
+  if (
+    type.present &&
+    (!type.valid ||
+      !type.value ||
+      !(BRAND_WALLET_TRANSACTION_TYPES as readonly string[]).includes(type.value))
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query type invalido. Valores: ${BRAND_WALLET_TRANSACTION_TYPES.join(', ')}.`
+    )
+    return
+  }
+
+  const status = readSingleQueryValue(req.query.status)
+  if (
+    status.present &&
+    (!status.valid ||
+      !status.value ||
+      !(BRAND_WALLET_TRANSACTION_STATUSES as readonly string[]).includes(status.value))
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query status invalido. Valores: ${BRAND_WALLET_TRANSACTION_STATUSES.join(', ')}.`
+    )
+    return
+  }
+
+  const search = readSingleQueryValue(req.query.search)
+  if (search.present && (!search.valid || !search.value)) {
+    respondValidationError(res, 'Parametro query search invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandPortalWalletTopUpRequestContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const directoryEntryId = validateRequiredRouteParam(req, res, 'directoryEntryId')
+  if (!directoryEntryId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de pedido de top-up invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['amountCents', 'amount', 'description', 'reference', 'metadata'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no pedido de top-up.`)
+      return
+    }
+  }
+
+  const hasAmountCents = 'amountCents' in req.body && req.body.amountCents !== undefined
+  const hasAmount = 'amount' in req.body && req.body.amount !== undefined
+  if (!hasAmountCents && !hasAmount) {
+    respondValidationError(res, 'Campo amount ou amountCents obrigatorio.')
+    return
+  }
+
+  if (hasAmountCents && !isPositiveIntegerLike(req.body.amountCents)) {
+    respondValidationError(res, 'Campo amountCents invalido. Usa inteiro > 0.')
+    return
+  }
+
+  if (hasAmount && !isPositiveNumericLike(req.body.amount)) {
+    respondValidationError(res, 'Campo amount invalido. Usa numero > 0.')
+    return
+  }
+
+  const description = validateOptionalString(req.body, 'description')
+  if (!description.valid) {
+    respondValidationError(res, 'Campo description invalido.')
+    return
+  }
+
+  const reference = validateOptionalString(req.body, 'reference')
+  if (!reference.valid) {
+    respondValidationError(res, 'Campo reference invalido.')
+    return
+  }
+
+  const metadata = validateOptionalObjectField(req.body, 'metadata')
+  if (!metadata.valid) {
+    respondValidationError(res, 'Campo metadata invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminBrandWalletTopUpListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['status', 'ownerUserId', 'directoryEntryId', 'search', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const status = readSingleQueryValue(req.query.status)
+  if (
+    status.present &&
+    (!status.valid ||
+      !status.value ||
+      !(BRAND_WALLET_TRANSACTION_STATUSES as readonly string[]).includes(status.value))
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query status invalido. Valores: ${BRAND_WALLET_TRANSACTION_STATUSES.join(', ')}.`
+    )
+    return
+  }
+
+  for (const key of ['ownerUserId', 'directoryEntryId', 'search'] as const) {
+    const parsedValue = readSingleQueryValue(req.query[key])
+    if (parsedValue.present && (!parsedValue.valid || !parsedValue.value)) {
+      respondValidationError(res, `Parametro query ${key} invalido.`)
+      return
+    }
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminBrandWalletTopUpApproveContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const transactionId = validateRequiredRouteParam(req, res, 'transactionId')
+  if (!transactionId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de aprovacao de top-up invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['reason', 'note', 'reference', 'metadata', 'force'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na aprovacao de top-up.`)
+      return
+    }
+  }
+
+  const reason = validateRequiredNonEmptyString(req.body, 'reason')
+  if (!reason) {
+    respondValidationError(res, 'Campo reason obrigatorio.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const reference = validateOptionalString(req.body, 'reference')
+  if (!reference.valid) {
+    respondValidationError(res, 'Campo reference invalido.')
+    return
+  }
+
+  const metadata = validateOptionalObjectField(req.body, 'metadata')
+  if (!metadata.valid) {
+    respondValidationError(res, 'Campo metadata invalido.')
+    return
+  }
+
+  const force = validateOptionalBoolean(req.body, 'force')
+  if (!force.valid) {
+    respondValidationError(res, 'Campo force invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminBrandWalletTopUpRejectContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const transactionId = validateRequiredRouteParam(req, res, 'transactionId')
+  if (!transactionId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de rejeicao/cancelamento de top-up invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['reason', 'note', 'status', 'reference', 'metadata', 'force'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(
+        res,
+        `Campo ${key} nao suportado na rejeicao/cancelamento de top-up.`
+      )
+      return
+    }
+  }
+
+  const reason = validateRequiredNonEmptyString(req.body, 'reason')
+  if (!reason) {
+    respondValidationError(res, 'Campo reason obrigatorio.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const status = validateOptionalEnum<BrandWalletTransactionStatus>(
+    req.body,
+    'status',
+    ['failed', 'cancelled']
+  )
+  if (!status.valid) {
+    respondValidationError(res, 'Campo status invalido. Valores: failed, cancelled.')
+    return
+  }
+
+  const reference = validateOptionalString(req.body, 'reference')
+  if (!reference.valid) {
+    respondValidationError(res, 'Campo reference invalido.')
+    return
+  }
+
+  const metadata = validateOptionalObjectField(req.body, 'metadata')
+  if (!metadata.valid) {
+    respondValidationError(res, 'Campo metadata invalido.')
+    return
+  }
+
+  const force = validateOptionalBoolean(req.body, 'force')
+  if (!force.valid) {
+    respondValidationError(res, 'Campo force invalido.')
     return
   }
 

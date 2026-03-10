@@ -284,6 +284,30 @@ const ROUTE_CONTRACTS = [
   {
     filePath: 'src/routes/brandPortal.routes.ts',
     method: 'get',
+    routePath: '/wallets',
+    requiredMiddleware: 'validateBrandPortalWalletListContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/wallets/:directoryEntryId',
+    requiredMiddleware: 'validateBrandPortalWalletDetailContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/wallets/:directoryEntryId/transactions',
+    requiredMiddleware: 'validateBrandPortalWalletTransactionsContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'post',
+    routePath: '/wallets/:directoryEntryId/top-up-requests',
+    requiredMiddleware: 'validateBrandPortalWalletTopUpRequestContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
     routePath: '/campaigns',
     requiredMiddleware: 'validateBrandPortalCampaignListContract',
   },
@@ -394,6 +418,24 @@ const ROUTE_CONTRACTS = [
     method: 'post',
     routePath: '/monetization/affiliates/clicks/:clickId/convert',
     requiredMiddleware: 'validateAdminAffiliateConvertContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'get',
+    routePath: '/monetization/brand-wallets/top-up-requests',
+    requiredMiddleware: 'validateAdminBrandWalletTopUpListContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/monetization/brand-wallets/top-up-requests/:transactionId/approve',
+    requiredMiddleware: 'validateAdminBrandWalletTopUpApproveContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/monetization/brand-wallets/top-up-requests/:transactionId/reject',
+    requiredMiddleware: 'validateAdminBrandWalletTopUpRejectContract',
   },
   {
     filePath: 'src/routes/affiliate.routes.ts',

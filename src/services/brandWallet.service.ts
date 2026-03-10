@@ -27,6 +27,8 @@ const VALID_TRANSACTION_STATUSES: ReadonlyArray<BrandWalletTransactionStatus> = 
   'cancelled',
 ]
 
+type AdminTopUpRequestStatus = Extract<BrandWalletTransactionStatus, 'pending' | 'completed' | 'failed' | 'cancelled'>
+
 const toSafeAmountEuros = (amountCents: number): number =>
   Number((Math.max(0, amountCents) / 100).toFixed(2))
 
@@ -106,6 +108,32 @@ const mapTransaction = (item: any) => ({
   createdAt: item.createdAt ?? null,
   updatedAt: item.updatedAt ?? null,
 })
+
+const mapWalletSummary = (wallet: any) => ({
+  id: String(wallet._id),
+  currency: wallet.currency ?? DEFAULT_CURRENCY,
+  balanceCents: toSafeNumber(wallet.balanceCents),
+  reservedCents: toSafeNumber(wallet.reservedCents),
+  availableCents: Math.max(0, toSafeNumber(wallet.balanceCents) - toSafeNumber(wallet.reservedCents)),
+  updatedAt: wallet.updatedAt ?? null,
+})
+
+const mapAdminTopUpRequestItem = (
+  item: any,
+  directoryMap: Map<string, any>,
+  walletMap: Map<string, any>
+) => {
+  const directoryEntryId = String(item.directoryEntry)
+  const walletId = String(item.wallet)
+  const directory = directoryMap.get(directoryEntryId) ?? null
+  const wallet = walletMap.get(walletId) ?? null
+
+  return {
+    ...mapTransaction(item),
+    directoryEntry: directory,
+    wallet,
+  }
+}
 
 export class BrandWalletServiceError extends Error {
   statusCode: number
@@ -315,6 +343,344 @@ export class BrandWalletService {
         status: filters.status ?? null,
         search: search ?? null,
       },
+    }
+  }
+
+  async listAdminTopUpRequests(
+    filters: {
+      status?: AdminTopUpRequestStatus
+      ownerUserId?: string
+      directoryEntryId?: string
+      search?: string
+    } = {},
+    options: {
+      page?: number
+      limit?: number
+    } = {}
+  ) {
+    const query: Record<string, unknown> = {
+      type: 'top_up',
+    }
+
+    if (filters.status && VALID_TRANSACTION_STATUSES.includes(filters.status)) {
+      query.status = filters.status
+    }
+
+    if (filters.ownerUserId) {
+      query.ownerUser = this.toObjectId(filters.ownerUserId, 'ownerUserId')
+    }
+
+    if (filters.directoryEntryId) {
+      query.directoryEntry = this.toObjectId(filters.directoryEntryId, 'directoryEntryId')
+    }
+
+    const search = toOptionalString(filters.search)
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(escaped, 'i')
+      query.$or = [{ reference: regex }, { description: regex }]
+    }
+
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
+
+    const [items, total, summaryRows] = await Promise.all([
+      BrandWalletTransaction.find(query)
+        .sort({ createdAt: -1, updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('requestedBy', 'name username email role')
+        .lean(),
+      BrandWalletTransaction.countDocuments(query),
+      BrandWalletTransaction.aggregate<{
+        _id: BrandWalletTransactionStatus
+        count: number
+        amountCents: number
+      }>([
+        { $match: query },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            amountCents: { $sum: '$amountCents' },
+          },
+        },
+      ]),
+    ])
+
+    const directoryIds = Array.from(new Set(items.map((item) => String(item.directoryEntry)))).map((id) =>
+      new mongoose.Types.ObjectId(id)
+    )
+    const walletIds = Array.from(new Set(items.map((item) => String(item.wallet)))).map(
+      (id) => new mongoose.Types.ObjectId(id)
+    )
+
+    const [directories, wallets] = await Promise.all([
+      directoryIds.length > 0
+        ? DirectoryEntry.find({ _id: { $in: directoryIds } })
+            .select('name slug verticalType status verificationStatus')
+            .lean()
+        : Promise.resolve([]),
+      walletIds.length > 0
+        ? BrandWallet.find({ _id: { $in: walletIds } })
+            .select('currency balanceCents reservedCents updatedAt')
+            .lean()
+        : Promise.resolve([]),
+    ])
+
+    const directoryMap = new Map(
+      directories.map((entry: any) => [String(entry._id), mapDirectorySummary(entry)])
+    )
+    const walletMap = new Map(
+      wallets.map((wallet: any) => [String(wallet._id), mapWalletSummary(wallet)])
+    )
+
+    const summary = summaryRows.reduce(
+      (acc, row) => {
+        const status = row._id
+        if (status in acc.byStatus) {
+          acc.byStatus[status] = row.count
+        }
+        acc.totalAmountCents += toSafeNumber(row.amountCents)
+        return acc
+      },
+      {
+        byStatus: {
+          pending: 0,
+          completed: 0,
+          failed: 0,
+          cancelled: 0,
+        } as Record<BrandWalletTransactionStatus, number>,
+        totalAmountCents: 0,
+      }
+    )
+
+    return {
+      items: items.map((item) => mapAdminTopUpRequestItem(item, directoryMap, walletMap)),
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.max(1, Math.ceil(total / limit)),
+      },
+      filters: {
+        status: filters.status ?? null,
+        ownerUserId: filters.ownerUserId ?? null,
+        directoryEntryId: filters.directoryEntryId ?? null,
+        search: search ?? null,
+      },
+      summary: {
+        byStatus: summary.byStatus,
+        totalAmountCents: summary.totalAmountCents,
+        totalAmount: toSafeAmountEuros(summary.totalAmountCents),
+      },
+    }
+  }
+
+  async approveTopUpRequest(
+    actorUserId: string,
+    transactionId: string,
+    input: {
+      reason?: unknown
+      note?: unknown
+      reference?: unknown
+      metadata?: unknown
+      force?: unknown
+    } = {}
+  ) {
+    const actorObjectId = this.toObjectId(actorUserId, 'actorUserId')
+    const transactionObjectId = this.toObjectId(transactionId, 'transactionId')
+    const reason = toOptionalString(input.reason)
+    if (!reason) {
+      throw new BrandWalletServiceError(400, 'reason obrigatorio para aprovar top-up.')
+    }
+
+    const note = toOptionalString(input.note)
+    const nextReference = toOptionalString(input.reference)
+    const force = input.force === true
+    const metadata =
+      input.metadata && typeof input.metadata === 'object' && !Array.isArray(input.metadata)
+        ? (input.metadata as Record<string, unknown>)
+        : null
+
+    const now = new Date()
+
+    await mongoose.connection.transaction(async (session) => {
+      const tx = await BrandWalletTransaction.findById(transactionObjectId).session(session)
+      if (!tx || tx.type !== 'top_up') {
+        throw new BrandWalletServiceError(404, 'Pedido de top-up nao encontrado.')
+      }
+
+      if (tx.status === 'completed') {
+        if (force) {
+          tx.metadata = {
+            ...(tx.metadata && typeof tx.metadata === 'object' ? (tx.metadata as Record<string, unknown>) : {}),
+            adminDecision: {
+              action: 'approve',
+              reason,
+              note: note ?? null,
+              actorUserId: String(actorObjectId),
+              processedAt: now.toISOString(),
+              forced: true,
+            },
+          }
+          if (nextReference) tx.reference = nextReference
+          await tx.save({ session })
+          return
+        }
+
+        throw new BrandWalletServiceError(409, 'Pedido de top-up ja se encontra concluido.')
+      }
+
+      if (tx.status !== 'pending' && !force) {
+        throw new BrandWalletServiceError(
+          409,
+          'Pedido de top-up so pode ser aprovado a partir de estado pending.'
+        )
+      }
+
+      const wallet = await BrandWallet.findById(tx.wallet).session(session)
+      if (!wallet) {
+        throw new BrandWalletServiceError(404, 'Wallet associada ao pedido nao encontrada.')
+      }
+
+      wallet.balanceCents += tx.amountCents
+      wallet.lifetimeCreditsCents += tx.amountCents
+      wallet.lastTransactionAt = now
+      wallet.updatedBy = actorObjectId
+      await wallet.save({ session })
+
+      tx.status = 'completed'
+      tx.settledAt = now
+      if (nextReference) tx.reference = nextReference
+      tx.metadata = {
+        ...(tx.metadata && typeof tx.metadata === 'object' ? (tx.metadata as Record<string, unknown>) : {}),
+        ...(metadata ?? {}),
+        adminDecision: {
+          action: 'approve',
+          reason,
+          note: note ?? null,
+          actorUserId: String(actorObjectId),
+          processedAt: now.toISOString(),
+          force,
+        },
+      }
+      await tx.save({ session })
+    })
+
+    const transactionRow = await BrandWalletTransaction.findById(transactionObjectId)
+      .populate('requestedBy', 'name username email role')
+      .lean()
+
+    if (!transactionRow) {
+      throw new BrandWalletServiceError(500, 'Falha ao carregar top-up aprovado.')
+    }
+
+    const [wallet, directoryEntry] = await Promise.all([
+      mongoose.Types.ObjectId.isValid(String(transactionRow.wallet))
+        ? BrandWallet.findById(transactionRow.wallet)
+            .select('currency balanceCents reservedCents updatedAt')
+            .lean()
+        : Promise.resolve(null),
+      mongoose.Types.ObjectId.isValid(String(transactionRow.directoryEntry))
+        ? DirectoryEntry.findById(transactionRow.directoryEntry)
+            .select('name slug verticalType status verificationStatus')
+            .lean()
+        : Promise.resolve(null),
+    ])
+
+    return {
+      updated: true,
+      item: mapTransaction(transactionRow),
+      wallet: wallet ? mapWalletSummary(wallet) : null,
+      directoryEntry: directoryEntry ? mapDirectorySummary(directoryEntry) : null,
+    }
+  }
+
+  async rejectTopUpRequest(
+    actorUserId: string,
+    transactionId: string,
+    input: {
+      reason?: unknown
+      note?: unknown
+      status?: unknown
+      reference?: unknown
+      metadata?: unknown
+      force?: unknown
+    } = {}
+  ) {
+    const actorObjectId = this.toObjectId(actorUserId, 'actorUserId')
+    const transactionObjectId = this.toObjectId(transactionId, 'transactionId')
+    const reason = toOptionalString(input.reason)
+    if (!reason) {
+      throw new BrandWalletServiceError(400, 'reason obrigatorio para rejeitar top-up.')
+    }
+
+    const nextStatusRaw = toOptionalString(input.status)
+    const nextStatus: BrandWalletTransactionStatus =
+      nextStatusRaw === 'cancelled' ? 'cancelled' : 'failed'
+
+    const note = toOptionalString(input.note)
+    const nextReference = toOptionalString(input.reference)
+    const force = input.force === true
+    const metadata =
+      input.metadata && typeof input.metadata === 'object' && !Array.isArray(input.metadata)
+        ? (input.metadata as Record<string, unknown>)
+        : null
+
+    const now = new Date()
+
+    await mongoose.connection.transaction(async (session) => {
+      const tx = await BrandWalletTransaction.findById(transactionObjectId).session(session)
+      if (!tx || tx.type !== 'top_up') {
+        throw new BrandWalletServiceError(404, 'Pedido de top-up nao encontrado.')
+      }
+
+      if (tx.status === 'completed') {
+        throw new BrandWalletServiceError(
+          409,
+          'Pedido de top-up concluido nao pode ser rejeitado/cancelado.'
+        )
+      }
+
+      if (tx.status !== 'pending' && tx.status !== nextStatus && !force) {
+        throw new BrandWalletServiceError(
+          409,
+          'Pedido de top-up so pode ser rejeitado/cancelado a partir de pending.'
+        )
+      }
+
+      tx.status = nextStatus
+      tx.settledAt = now
+      if (nextReference) tx.reference = nextReference
+      tx.metadata = {
+        ...(tx.metadata && typeof tx.metadata === 'object' ? (tx.metadata as Record<string, unknown>) : {}),
+        ...(metadata ?? {}),
+        adminDecision: {
+          action: nextStatus === 'cancelled' ? 'cancel' : 'reject',
+          reason,
+          note: note ?? null,
+          actorUserId: String(actorObjectId),
+          processedAt: now.toISOString(),
+          force,
+        },
+      }
+      await tx.save({ session })
+    })
+
+    const transactionRow = await BrandWalletTransaction.findById(transactionObjectId)
+      .populate('requestedBy', 'name username email role')
+      .lean()
+    if (!transactionRow) {
+      throw new BrandWalletServiceError(500, 'Falha ao carregar top-up rejeitado/cancelado.')
+    }
+
+    return {
+      updated: true,
+      item: mapTransaction(transactionRow),
     }
   }
 

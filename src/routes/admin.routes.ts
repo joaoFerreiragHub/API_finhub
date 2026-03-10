@@ -90,6 +90,11 @@ import {
   markAdminAffiliateClickConversion,
 } from '../controllers/adminAffiliate.controller'
 import {
+  approveAdminBrandWalletTopUpRequest,
+  listAdminBrandWalletTopUpRequests,
+  rejectAdminBrandWalletTopUpRequest,
+} from '../controllers/adminBrandWallet.controller'
+import {
   createAdminBulkImportJob,
   getAdminBulkImportJob,
   listAdminBulkImportJobs,
@@ -164,6 +169,9 @@ import {
   validateAdminAffiliateConvertContract,
   validateAdminAffiliateLinksContract,
   validateAdminAffiliateOverviewContract,
+  validateAdminBrandWalletTopUpApproveContract,
+  validateAdminBrandWalletTopUpListContract,
+  validateAdminBrandWalletTopUpRejectContract,
   validateAdminAdSlotCreateContract,
   validateAdminAdSlotUpdateContract,
   validateAdminAssistedSessionRequestContract,
@@ -1124,6 +1132,78 @@ router.post(
   }),
   requireAdminScope('admin.brands.write'),
   markAdminAffiliateClickConversion
+)
+
+/**
+ * @route   GET /api/admin/monetization/brand-wallets/top-up-requests
+ * @desc    Listar pedidos de top-up das wallets de marca
+ * @access  Private (Admin com escopo admin.brands.read)
+ */
+router.get(
+  '/monetization/brand-wallets/top-up-requests',
+  authenticate,
+  validateAdminBrandWalletTopUpListContract,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.monetization.brand_wallets.top_up_requests.list',
+    resourceType: 'brand_wallet_transaction',
+    scope: 'admin.brands.read',
+  }),
+  requireAdminScope('admin.brands.read'),
+  listAdminBrandWalletTopUpRequests
+)
+
+/**
+ * @route   POST /api/admin/monetization/brand-wallets/top-up-requests/:transactionId/approve
+ * @desc    Aprovar pedido de top-up de wallet de marca
+ * @access  Private (Admin com escopo admin.brands.write)
+ */
+router.post(
+  '/monetization/brand-wallets/top-up-requests/:transactionId/approve',
+  authenticate,
+  validateAdminBrandWalletTopUpApproveContract,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.monetization.brand_wallets.top_up_requests.approve',
+    resourceType: 'brand_wallet_transaction',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => req.params.transactionId,
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.brands.write'),
+  approveAdminBrandWalletTopUpRequest
+)
+
+/**
+ * @route   POST /api/admin/monetization/brand-wallets/top-up-requests/:transactionId/reject
+ * @desc    Rejeitar/cancelar pedido de top-up de wallet de marca
+ * @access  Private (Admin com escopo admin.brands.write)
+ */
+router.post(
+  '/monetization/brand-wallets/top-up-requests/:transactionId/reject',
+  authenticate,
+  validateAdminBrandWalletTopUpRejectContract,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.monetization.brand_wallets.top_up_requests.reject',
+    resourceType: 'brand_wallet_transaction',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => req.params.transactionId,
+    getMetadata: (req) => {
+      const body = req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {}
+      return {
+        reason: typeof body.reason === 'string' ? body.reason : undefined,
+        status: typeof body.status === 'string' ? body.status : undefined,
+      }
+    },
+  }),
+  requireAdminScope('admin.brands.write'),
+  rejectAdminBrandWalletTopUpRequest
 )
 
 /**

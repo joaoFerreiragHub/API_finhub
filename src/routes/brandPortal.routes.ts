@@ -41,6 +41,10 @@ import {
   validateBrandPortalIntegrationApiKeyListContract,
   validateBrandPortalIntegrationApiKeyRevokeContract,
   validateBrandPortalIntegrationApiKeyUsageContract,
+  validateBrandPortalWalletDetailContract,
+  validateBrandPortalWalletListContract,
+  validateBrandPortalWalletTopUpRequestContract,
+  validateBrandPortalWalletTransactionsContract,
 } from '../middlewares/requestContracts'
 
 const router = Router()
@@ -64,14 +68,26 @@ router.get('/directories', authenticate, listBrandPortalDirectories)
  * @desc    Listar wallets da marca por DirectoryEntry
  * @access  Private
  */
-router.get('/wallets', authenticate, listBrandPortalWallets)
+router.get(
+  '/wallets',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalWalletListContract,
+  listBrandPortalWallets
+)
 
 /**
  * @route   GET /api/brand-portal/wallets/:directoryEntryId
  * @desc    Obter wallet da marca para um DirectoryEntry
  * @access  Private
  */
-router.get('/wallets/:directoryEntryId', authenticate, getBrandPortalWallet)
+router.get(
+  '/wallets/:directoryEntryId',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalWalletDetailContract,
+  getBrandPortalWallet
+)
 
 /**
  * @route   GET /api/brand-portal/wallets/:directoryEntryId/transactions
@@ -81,6 +97,8 @@ router.get('/wallets/:directoryEntryId', authenticate, getBrandPortalWallet)
 router.get(
   '/wallets/:directoryEntryId/transactions',
   authenticate,
+  rateLimiter.api,
+  validateBrandPortalWalletTransactionsContract,
   listBrandPortalWalletTransactions
 )
 
@@ -92,6 +110,8 @@ router.get(
 router.post(
   '/wallets/:directoryEntryId/top-up-requests',
   authenticate,
+  rateLimiter.api,
+  validateBrandPortalWalletTopUpRequestContract,
   requestBrandPortalWalletTopUp
 )
 
