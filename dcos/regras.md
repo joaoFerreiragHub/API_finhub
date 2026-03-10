@@ -19,6 +19,21 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 8. Tudo o que depender de ambiente real/live fica marcado como pre-release (T-1/T-0), com evidencia.
 9. Nao reverter nem apagar alteracoes do utilizador sem confirmacao explicita.
 10. Em handoff, reportar obrigatoriamente: entregue, ficheiros, validacoes, commit e proximo passo.
+11. Atualizar sempre o bloco `Checkpoint de Retoma` deste ficheiro no fim de cada ciclo com commit/push.
+
+## Checkpoint de Retoma (ATUALIZAR EM TODO O FECHO)
+
+Ultima atualizacao: 2026-03-10
+
+- Estado git: `main` sincronizado com `origin/main` (working tree limpo).
+- Ultimo commit: `0267bba` (`fix(stocks): harden watchlist batch snapshot resilience (O1-10)`).
+- Onde ficamos: hardening do endpoint `GET /api/stocks/batch-snapshot` concluido e documentado.
+- Proximo passo recomendado: P5-MARCAS Fase 1.2 no frontend (`/recursos` index em `FinHub-Vite`).
+
+Regra operacional obrigatoria deste bloco:
+1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
+2. Preencher sempre: data, estado git, ultimo commit, onde ficamos e proximo passo.
+3. Nao fechar o ciclo se este bloco ficar desatualizado.
 
 ## 1) Objetivo
 
