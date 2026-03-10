@@ -625,6 +625,17 @@ export class AdminAdPartnershipService {
     if (isValidAdPartnershipType(filters.adType)) query.adType = filters.adType
     if (isValidAdPartnershipSponsorType(filters.sponsorType)) query.sponsorType = filters.sponsorType
     if (isValidAdPartnershipSurface(filters.surface)) query.surfaces = filters.surface
+    if (filters.directoryEntryId !== undefined && filters.directoryEntryId !== null) {
+      query.directoryEntry = toObjectId(String(filters.directoryEntryId), 'directoryEntryId')
+    }
+    if (Array.isArray(filters.directoryEntryIds)) {
+      const parsedDirectoryEntryIds = filters.directoryEntryIds.map((item) =>
+        toObjectId(String(item), 'directoryEntryIds[]')
+      )
+      if (parsedDirectoryEntryIds.length > 0) {
+        query.directoryEntry = { $in: parsedDirectoryEntryIds }
+      }
+    }
 
     const search = toStringOrNull(filters.search)
     if (search) {
