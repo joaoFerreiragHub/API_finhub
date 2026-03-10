@@ -4,6 +4,7 @@ import {
   brandIntegrationApiKeyService,
 } from '../services/brandIntegrationApiKey.service'
 import { BrandIntegrationScope } from '../models/BrandIntegrationApiKey'
+import { logWarn } from '../utils/logger'
 
 const extractApiKeyFromRequest = (req: Request): string | null => {
   const headerKeyRaw = req.headers['x-finhub-api-key']
@@ -40,6 +41,30 @@ export const requireBrandIntegrationScope = (scope: BrandIntegrationScope) => {
       }
 
       const context = await brandIntegrationApiKeyService.authenticateApiKey(apiKey, scope)
+      const startedAtMs = Date.now()
+      res.once('finish', () => {
+        void brandIntegrationApiKeyService
+          .recordUsage({
+            context,
+            scope,
+            method: req.method,
+            path: req.originalUrl || req.url,
+            statusCode: res.statusCode,
+            durationMs: Date.now() - startedAtMs,
+            requestId: req.requestId ?? null,
+            ip: req.ip ?? null,
+            userAgent: req.get('user-agent') ?? null,
+          })
+          .catch((error) => {
+            logWarn('brand_integration_api_usage_record_failed', {
+              requestId: req.requestId,
+              path: req.originalUrl || req.url,
+              statusCode: res.statusCode,
+              errorMessage: error instanceof Error ? error.message : String(error),
+            })
+          })
+      })
+
       ;(res.locals as Record<string, unknown>).brandIntegration = context
       next()
     } catch (error: unknown) {

@@ -30,6 +30,15 @@ const parseOptionalPositiveInt = (value: unknown): number | undefined => {
   return undefined
 }
 
+const parseOptionalInt = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.floor(value)
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return undefined
+}
+
 const extractBodyRecord = (req: AuthRequest): Record<string, unknown> => {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return {}
   return req.body as Record<string, unknown>
@@ -135,5 +144,49 @@ export const revokeBrandPortalIntegrationApiKey = async (req: AuthRequest, res: 
   } catch (error: unknown) {
     console.error('Revoke brand portal integration api key error:', error)
     return handleError(res, error, 'Erro ao revogar API key de integracao.')
+  }
+}
+
+/**
+ * GET /api/brand-portal/integrations/api-keys/:keyId/usage
+ */
+export const listBrandPortalIntegrationApiKeyUsage = async (req: AuthRequest, res: Response) => {
+  try {
+    const ownerUserId = requireUserId(req, res)
+    if (!ownerUserId) return
+
+    const daysRaw = req.query.days
+    if (typeof daysRaw === 'string' && parseOptionalPositiveInt(daysRaw) === undefined) {
+      return res.status(400).json({ error: 'Parametro days invalido.' })
+    }
+
+    const statusCodeFrom = parseOptionalInt(req.query.statusCodeFrom)
+    const statusCodeTo = parseOptionalInt(req.query.statusCodeTo)
+    if (typeof req.query.statusCodeFrom === 'string' && statusCodeFrom === undefined) {
+      return res.status(400).json({ error: 'Parametro statusCodeFrom invalido.' })
+    }
+    if (typeof req.query.statusCodeTo === 'string' && statusCodeTo === undefined) {
+      return res.status(400).json({ error: 'Parametro statusCodeTo invalido.' })
+    }
+
+    const result = await brandIntegrationApiKeyService.listOwnedApiKeyUsage(
+      ownerUserId,
+      req.params.keyId,
+      {
+        days: parseOptionalPositiveInt(req.query.days),
+        method: toOptionalString(req.query.method),
+        statusCodeFrom,
+        statusCodeTo,
+      },
+      {
+        page: parseOptionalPositiveInt(req.query.page),
+        limit: parseOptionalPositiveInt(req.query.limit),
+      }
+    )
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List brand portal integration api key usage error:', error)
+    return handleError(res, error, 'Erro ao listar usage da API key de integracao.')
   }
 }

@@ -5,6 +5,7 @@ import {
   BrandIntegrationScope,
   BRAND_INTEGRATION_SCOPES,
 } from '../models/BrandIntegrationApiKey'
+import { BrandIntegrationApiUsage } from '../models/BrandIntegrationApiUsage'
 import { DirectoryEntry } from '../models/DirectoryEntry'
 import { resolvePagination } from '../utils/pagination'
 import { affiliateTrackingService } from './affiliateTracking.service'
@@ -17,6 +18,11 @@ const KEY_PREFIX_ID_LENGTH = 14
 const KEY_SECRET_LENGTH = 32
 const KEY_PREFIX_REGEX = /^fhub_bi_[a-zA-Z0-9]{10,24}$/
 const ALLOWED_SCOPE_SET = new Set<BrandIntegrationScope>(BRAND_INTEGRATION_SCOPES)
+const API_USAGE_RETENTION_DAYS = (() => {
+  const parsed = Number.parseInt(process.env.BRAND_INTEGRATION_API_USAGE_RETENTION_DAYS ?? '', 10)
+  if (!Number.isFinite(parsed) || parsed < 7) return 120
+  return Math.min(parsed, 365)
+})()
 
 export interface BrandIntegrationAuthContext {
   keyId: string
@@ -38,6 +44,18 @@ export interface BrandIntegrationKeyListOptions {
   limit?: number
 }
 
+export interface BrandIntegrationUsageListFilters {
+  days?: number
+  method?: string
+  statusCodeFrom?: number
+  statusCodeTo?: number
+}
+
+export interface BrandIntegrationUsageListOptions {
+  page?: number
+  limit?: number
+}
+
 type ApiKeyLeanRow = {
   _id: mongoose.Types.ObjectId
   keyPrefix: string
@@ -51,6 +69,25 @@ type ApiKeyLeanRow = {
   expiresAt?: Date | null
   revokedAt?: Date | null
   revokedBy?: mongoose.Types.ObjectId | null
+  metadata?: Record<string, unknown> | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+type ApiUsageLeanRow = {
+  _id: mongoose.Types.ObjectId
+  apiKey: mongoose.Types.ObjectId
+  keyPrefix: string
+  ownerUser: mongoose.Types.ObjectId
+  directoryEntry: mongoose.Types.ObjectId
+  scope: BrandIntegrationScope
+  method: string
+  path: string
+  statusCode: number
+  durationMs: number
+  requestId?: string | null
+  ipHash?: string | null
+  userAgent?: string | null
   metadata?: Record<string, unknown> | null
   createdAt: Date
   updatedAt: Date
@@ -89,6 +126,30 @@ const normalizeApiKey = (value: unknown): string | null => {
 
 const hashApiKey = (rawKey: string): string =>
   crypto.createHash('sha256').update(rawKey).digest('hex')
+
+const toIpHash = (ipValue: unknown): string | null => {
+  const normalized = normalizeOptionalString(ipValue, 200)
+  if (!normalized) return null
+  return crypto.createHash('sha256').update(normalized).digest('hex')
+}
+
+const normalizeMethod = (value: unknown): string => {
+  if (typeof value !== 'string') return 'GET'
+  const normalized = value.trim().toUpperCase()
+  if (!normalized) return 'GET'
+  return normalized.slice(0, 10)
+}
+
+const clampToNumberRange = (value: unknown, min: number, max: number, fallback: number): number => {
+  const asNumber =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number.parseInt(value, 10)
+        : Number.NaN
+  if (!Number.isFinite(asNumber)) return fallback
+  return Math.min(max, Math.max(min, Math.floor(asNumber)))
+}
 
 const randomAlphanumeric = (bytes: number, length: number): string =>
   crypto
@@ -155,6 +216,21 @@ export class BrandIntegrationApiKeyService {
     return directoryEntryId
   }
 
+  private async findOwnedApiKey(
+    ownerObjectId: mongoose.Types.ObjectId,
+    keyIdRaw: string
+  ): Promise<ApiKeyLeanRow> {
+    const keyId = this.toObjectId(keyIdRaw, 'keyId')
+    const key = await BrandIntegrationApiKey.findById(keyId).lean<ApiKeyLeanRow | null>()
+    if (!key) {
+      throw new BrandIntegrationApiKeyServiceError(404, 'API key de integracao nao encontrada.')
+    }
+    if (String(key.ownerUser) !== String(ownerObjectId)) {
+      throw new BrandIntegrationApiKeyServiceError(403, 'Sem permissao para esta API key.')
+    }
+    return key
+  }
+
   private mapKeyItem(row: ApiKeyLeanRow) {
     return {
       id: String(row._id),
@@ -170,6 +246,24 @@ export class BrandIntegrationApiKeyService {
       metadata: row.metadata ?? null,
       createdAt: toIsoOrNull(row.createdAt),
       updatedAt: toIsoOrNull(row.updatedAt),
+    }
+  }
+
+  private mapUsageItem(row: ApiUsageLeanRow) {
+    return {
+      id: String(row._id),
+      apiKeyId: String(row.apiKey),
+      keyPrefix: row.keyPrefix,
+      directoryEntryId: String(row.directoryEntry),
+      scope: row.scope,
+      method: row.method,
+      path: row.path,
+      statusCode: row.statusCode,
+      durationMs: row.durationMs,
+      requestId: row.requestId ?? null,
+      userAgent: row.userAgent ?? null,
+      metadata: row.metadata ?? null,
+      createdAt: toIsoOrNull(row.createdAt),
     }
   }
 
@@ -369,6 +463,193 @@ export class BrandIntegrationApiKeyService {
       scopes: key.scopes,
       label: key.label ?? null,
       expiresAt: toIsoOrNull(key.expiresAt ?? null),
+    }
+  }
+
+  async recordUsage(input: {
+    context: BrandIntegrationAuthContext
+    scope: BrandIntegrationScope
+    method: string
+    path: string
+    statusCode: number
+    durationMs: number
+    requestId?: string | null
+    ip?: string | null
+    userAgent?: string | null
+    metadata?: Record<string, unknown> | null
+  }) {
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + API_USAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+
+    await BrandIntegrationApiUsage.create({
+      apiKey: new mongoose.Types.ObjectId(input.context.keyId),
+      keyPrefix: input.context.keyPrefix,
+      ownerUser: new mongoose.Types.ObjectId(input.context.ownerUserId),
+      directoryEntry: new mongoose.Types.ObjectId(input.context.directoryEntryId),
+      scope: input.scope,
+      method: normalizeMethod(input.method),
+      path: normalizeOptionalString(input.path, 500) ?? '/unknown',
+      statusCode: clampToNumberRange(input.statusCode, 100, 599, 500),
+      durationMs: clampToNumberRange(input.durationMs, 0, 600000, 0),
+      requestId: normalizeOptionalString(input.requestId, 120),
+      ipHash: toIpHash(input.ip),
+      userAgent: normalizeOptionalString(input.userAgent, 800),
+      metadata: normalizeMetadata(input.metadata),
+      expiresAt,
+    })
+  }
+
+  async listOwnedApiKeyUsage(
+    ownerUserId: string,
+    keyIdRaw: string,
+    filters: BrandIntegrationUsageListFilters = {},
+    options: BrandIntegrationUsageListOptions = {}
+  ) {
+    const ownerObjectId = this.toOwnerObjectId(ownerUserId)
+    const key = await this.findOwnedApiKey(ownerObjectId, keyIdRaw)
+
+    const query: Record<string, unknown> = {
+      apiKey: key._id,
+      ownerUser: ownerObjectId,
+    }
+
+    if (typeof filters.days === 'number' && Number.isFinite(filters.days) && filters.days > 0) {
+      const from = new Date(Date.now() - Math.floor(filters.days) * 24 * 60 * 60 * 1000)
+      query.createdAt = { $gte: from }
+    }
+
+    const method = normalizeOptionalString(filters.method, 10)
+    if (method) {
+      query.method = normalizeMethod(method)
+    }
+
+    const statusFrom =
+      typeof filters.statusCodeFrom === 'number' && Number.isFinite(filters.statusCodeFrom)
+        ? Math.max(100, Math.min(599, Math.floor(filters.statusCodeFrom)))
+        : null
+    const statusTo =
+      typeof filters.statusCodeTo === 'number' && Number.isFinite(filters.statusCodeTo)
+        ? Math.max(100, Math.min(599, Math.floor(filters.statusCodeTo)))
+        : null
+    if (statusFrom !== null || statusTo !== null) {
+      query.statusCode = {}
+      if (statusFrom !== null) {
+        ;(query.statusCode as Record<string, unknown>).$gte = statusFrom
+      }
+      if (statusTo !== null) {
+        ;(query.statusCode as Record<string, unknown>).$lte = statusTo
+      }
+    }
+
+    const { page, limit, skip } = resolvePagination(options, {
+      defaultPage: DEFAULT_PAGE,
+      defaultLimit: DEFAULT_LIMIT,
+      maxLimit: MAX_LIMIT,
+    })
+
+    const [rows, total, summaryRows, topEndpoints] = await Promise.all([
+      BrandIntegrationApiUsage.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean<ApiUsageLeanRow[]>(),
+      BrandIntegrationApiUsage.countDocuments(query),
+      BrandIntegrationApiUsage.aggregate<{
+        _id: null
+        totalCalls: number
+        avgDurationMs: number
+        status2xx: number
+        status4xx: number
+        status5xx: number
+      }>([
+        { $match: query },
+        {
+          $group: {
+            _id: null,
+            totalCalls: { $sum: 1 },
+            avgDurationMs: { $avg: '$durationMs' },
+            status2xx: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [{ $gte: ['$statusCode', 200] }, { $lt: ['$statusCode', 300] }],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            status4xx: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [{ $gte: ['$statusCode', 400] }, { $lt: ['$statusCode', 500] }],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            status5xx: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [{ $gte: ['$statusCode', 500] }, { $lt: ['$statusCode', 600] }],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+      BrandIntegrationApiUsage.aggregate<{
+        _id: { method: string; path: string }
+        calls: number
+      }>([
+        { $match: query },
+        {
+          $group: {
+            _id: { method: '$method', path: '$path' },
+            calls: { $sum: 1 },
+          },
+        },
+        { $sort: { calls: -1 } },
+        { $limit: 10 },
+      ]),
+    ])
+
+    const summary = summaryRows[0] ?? {
+      _id: null,
+      totalCalls: 0,
+      avgDurationMs: 0,
+      status2xx: 0,
+      status4xx: 0,
+      status5xx: 0,
+    }
+
+    return {
+      apiKey: this.mapKeyItem(key),
+      items: rows.map((row) => this.mapUsageItem(row)),
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.max(1, Math.ceil(total / limit)),
+      },
+      summary: {
+        totalCalls: summary.totalCalls,
+        avgDurationMs: Math.round(summary.avgDurationMs || 0),
+        status2xx: summary.status2xx,
+        status4xx: summary.status4xx,
+        status5xx: summary.status5xx,
+      },
+      topEndpoints: topEndpoints.map((item) => ({
+        method: item._id.method,
+        path: item._id.path,
+        calls: item.calls,
+      })),
     }
   }
 

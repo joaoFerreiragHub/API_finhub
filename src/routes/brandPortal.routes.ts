@@ -21,6 +21,7 @@ import {
 } from '../controllers/brandPortalAffiliate.controller'
 import {
   createBrandPortalIntegrationApiKey,
+  listBrandPortalIntegrationApiKeyUsage,
   listBrandPortalIntegrationApiKeys,
   revokeBrandPortalIntegrationApiKey,
 } from '../controllers/brandPortalIntegration.controller'
@@ -175,6 +176,17 @@ router.post(
   '/integrations/api-keys/:keyId/revoke',
   authenticate,
   revokeBrandPortalIntegrationApiKey
+)
+
+/**
+ * @route   GET /api/brand-portal/integrations/api-keys/:keyId/usage
+ * @desc    Ler uso operacional de uma API key de integracao
+ * @access  Private
+ */
+router.get(
+  '/integrations/api-keys/:keyId/usage',
+  authenticate,
+  listBrandPortalIntegrationApiKeyUsage
 )
 
 export default router

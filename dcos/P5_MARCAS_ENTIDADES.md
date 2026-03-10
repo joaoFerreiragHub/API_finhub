@@ -581,7 +581,7 @@ isSponsored: boolean (default false)
 | 4.2 | **Wallet de marca** | INICIADO (2026-03-10): `BrandWallet` + `BrandWalletTransaction` com `GET /api/brand-portal/wallets`, detalhe por `DirectoryEntry`, historico e `POST /top-up-requests` (pending) | Top-up, historico | Alto |
 | 4.3 | **Self-service de campanhas** | INICIADO (2026-03-10): `GET/POST /api/brand-portal/campaigns`, `GET/PATCH /api/brand-portal/campaigns/:campaignId`, `POST /api/brand-portal/campaigns/:campaignId/submit-approval`, `GET /metrics` com ownership enforcement | Wizard de campanha, metricas | Alto |
 | 4.4 | **Sistema de afiliacao** | INICIADO (2026-03-10): `AffiliateLink` + `AffiliateClick`, redirect `GET /api/affiliates/r/:code`, endpoints no `brand-portal` para CRUD/listagem de cliques, e painel admin em `/api/admin/monetization/affiliates/*` | Links rastreados, dashboard | Alto |
-| 4.5 | **API de integracao** | INICIADO (2026-03-10): `BrandIntegrationApiKey` (hash + scopes), gestao no `brand-portal` (`GET/POST /integrations/api-keys`, `POST /integrations/api-keys/:keyId/revoke`) e consumo externo em `/api/integrations/brand/affiliate/*` com `x-finhub-api-key` + rate limit | Documentacao, rate limiting | Medio |
+| 4.5 | **API de integracao** | INICIADO (2026-03-10): `BrandIntegrationApiKey` (hash + scopes), gestao no `brand-portal` (`GET/POST /integrations/api-keys`, `POST /integrations/api-keys/:keyId/revoke`, `GET /integrations/api-keys/:keyId/usage`), consumo externo em `/api/integrations/brand/affiliate/*` com `x-finhub-api-key` + rate limit, e logging de uso por request (`BrandIntegrationApiUsage`) | Documentacao, rate limiting | Medio |
 
 ---
 
