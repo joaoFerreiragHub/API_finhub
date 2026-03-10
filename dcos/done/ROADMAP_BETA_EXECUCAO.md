@@ -17,6 +17,7 @@ Base: `dcos/ROADMAP_BETA.md` + `dcos/P5_PRE_BETA_PLATAFORMA.md`.
 | O1-07 | concluido | 2026-03-07 | Dockerizacao backend (`Dockerfile`, `.dockerignore`, `docker-compose.yml`) + CI com smoke build da imagem e pipeline de publish para GHCR em `.github/workflows/deploy.yml`. |
 | O1-08 | em_curso (fase backend) | 2026-03-07 | Hardening de moderacao pre-release com smoke JWT real (`scripts/moderation-pre-release-smoke.ps1` + `npm run test:moderation:pre-release`), carregamento automatico de `.env/.env.local`, variaveis de execucao em `.env.example` e runbook operacional `dcos/RUNBOOK_MODERATION_PRE_RELEASE.md`. |
 | O1-09 | concluido | 2026-03-07 | Quick fixes tecnicos no backend concluidos: crypto market cap com CoinGecko, overlap ETF com disclaimer explicito de estimativa e endpoint batch watchlist `GET /api/stocks/batch-snapshot` (validado com `typecheck + build + contract:openapi`). |
+| O1-10 | concluido | 2026-03-10 | Hardening do endpoint de watchlist batch (`GET /api/stocks/batch-snapshot`) com parsing resiliente de simbolos (`symbols`/`symbol`, CSV e query repetida), timeout no provider externo e fallback degradado sem erro para manter a pagina operacional. |
 | O2-01 | concluido | 2026-03-07 | Frontend da area `/explorar/*` ligado a API publica com feed agregado em `/explorar/tudo` (search + sort + secoes por vertical) e paginas de vertical (`artigos`, `videos`, `cursos`, `eventos`, `podcasts`, `livros`) sem placeholder. |
 | O2-02 | concluido | 2026-03-07 | Paginas publicas de detalhe para `artigos`, `videos` e `cursos` ligadas a API por slug, com loading/error state, incremento de views e fallback para `/explorar/*` por vertical. |
 | O2-03 | concluido | 2026-03-07 | Listagem e perfil publico de creators fechados em frontend+backend: `GET /api/creators` e `GET /api/creators/:username` consumidos pelas paginas publicas com fallback controlado no perfil. |
@@ -66,6 +67,7 @@ Go-live de beta fechado so e permitido quando os dois gates abaixo estiverem ver
 7. O1-07: Docker + CI deploy basico.
 8. O1-08: hardening moderacao pre-release (JWT real, runbooks, E2E criticos).
 9. O1-09: quick fixes ferramentas (crypto market cap, ETF overlap disclaimer, watchlist batch).
+10. O1-10: hardening de resiliencia da watchlist batch (parsing + fallback degradado).
 
 ### Semana 3-4 - Conteudo Publico (Onda 2 parcial)
 
@@ -109,6 +111,7 @@ A partir de agora executar estritamente na ordem abaixo:
 7. O1-07 Docker + CI.
 8. O1-08 Moderation hardening.
 9. O1-09 Fixes ferramentas.
+10. O1-10 Hardening watchlist batch.
 
 Nota: so avancar para o item seguinte quando o anterior estiver com commit e validacao minima concluida.
 
