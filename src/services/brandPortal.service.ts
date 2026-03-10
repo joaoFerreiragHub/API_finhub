@@ -7,6 +7,7 @@ import {
   AdPartnershipType,
   adminAdPartnershipService,
 } from './adminAdPartnership.service'
+import { brandWalletService } from './brandWallet.service'
 import { resolvePagination } from '../utils/pagination'
 
 const DEFAULT_WINDOW_DAYS = 30
@@ -69,6 +70,18 @@ const toSafeNumber = (value: unknown): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 0
   return value
 }
+
+const toOptionalFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
+const toBudgetCents = (value: number): number => Math.max(0, Math.round(value * 100))
 
 const clampWindowDays = (value?: number): number => {
   if (!value || !Number.isFinite(value)) return DEFAULT_WINDOW_DAYS
@@ -183,6 +196,39 @@ export class BrandPortalService {
     return campaign
   }
 
+  private async assertCampaignBudgetCoverage(
+    ownerUserId: string,
+    directoryEntryId: string,
+    estimatedMonthlyBudget: unknown
+  ) {
+    const budget = toOptionalFiniteNumber(estimatedMonthlyBudget)
+    if (budget === null) {
+      throw new BrandPortalServiceError(400, 'estimatedMonthlyBudget invalido.')
+    }
+
+    if (budget < 0) {
+      throw new BrandPortalServiceError(400, 'estimatedMonthlyBudget nao pode ser negativo.')
+    }
+
+    if (budget === 0) {
+      return
+    }
+
+    const wallet = await brandWalletService.getWallet(ownerUserId, directoryEntryId)
+    const availableCents =
+      typeof wallet.availableCents === 'number' && Number.isFinite(wallet.availableCents)
+        ? Math.max(0, Math.floor(wallet.availableCents))
+        : 0
+    const requiredCents = toBudgetCents(budget)
+
+    if (availableCents < requiredCents) {
+      throw new BrandPortalServiceError(
+        409,
+        `Saldo insuficiente na wallet para este orcamento mensal. Necessario ${requiredCents} cents; disponivel ${availableCents} cents.`
+      )
+    }
+  }
+
   async listOwnedDirectories(ownerUserId: string) {
     const ownerObjectId = this.toOwnerObjectId(ownerUserId)
     const entries = await DirectoryEntry.find({ ownerUser: ownerObjectId })
@@ -267,6 +313,13 @@ export class BrandPortalService {
       throw new BrandPortalServiceError(400, 'directoryEntryId obrigatorio.')
     }
     await this.assertOwnedDirectoryEntry(ownerObjectId, directoryEntryIdRaw)
+    if ('estimatedMonthlyBudget' in input) {
+      await this.assertCampaignBudgetCoverage(
+        ownerUserId,
+        directoryEntryIdRaw,
+        input.estimatedMonthlyBudget
+      )
+    }
 
     const reason = toOptionalString(input.reason) ?? DEFAULT_REASON_CREATE_CAMPAIGN
     const note = toOptionalString(input.note) ?? undefined
@@ -302,7 +355,7 @@ export class BrandPortalService {
 
   async updateOwnedCampaign(ownerUserId: string, campaignId: string, input: Record<string, unknown>) {
     const ownerObjectId = this.toOwnerObjectId(ownerUserId)
-    await this.assertOwnedCampaign(ownerObjectId, campaignId)
+    const campaign = await this.assertOwnedCampaign(ownerObjectId, campaignId)
 
     const patch = isRecord(input.patch) ? input.patch : {}
     const disallowedFields = ['status', 'sponsorType', 'brandId', 'approvedAt', 'approvedBy']
@@ -356,6 +409,23 @@ export class BrandPortalService {
       throw new BrandPortalServiceError(400, 'Patch sem campos atualizaveis.')
     }
 
+    if ('estimatedMonthlyBudget' in sanitizedPatch || 'directoryEntryId' in sanitizedPatch) {
+      const currentDirectoryEntryId = extractDirectoryEntryIdFromCampaign(campaign)
+      const targetDirectoryEntryId =
+        toOptionalString(sanitizedPatch.directoryEntryId) ?? currentDirectoryEntryId
+
+      if (!targetDirectoryEntryId) {
+        throw new BrandPortalServiceError(400, 'directoryEntryId invalido para validacao de orcamento.')
+      }
+
+      const targetBudget =
+        'estimatedMonthlyBudget' in sanitizedPatch
+          ? sanitizedPatch.estimatedMonthlyBudget
+          : campaign.estimatedMonthlyBudget
+
+      await this.assertCampaignBudgetCoverage(ownerUserId, targetDirectoryEntryId, targetBudget)
+    }
+
     const reason = toOptionalString(input.reason) ?? DEFAULT_REASON_UPDATE_CAMPAIGN
     const note = toOptionalString(input.note) ?? undefined
 
@@ -374,7 +444,22 @@ export class BrandPortalService {
     input: Record<string, unknown> = {}
   ) {
     const ownerObjectId = this.toOwnerObjectId(ownerUserId)
-    await this.assertOwnedCampaign(ownerObjectId, campaignId)
+    const campaign = await this.assertOwnedCampaign(ownerObjectId, campaignId)
+
+    const directoryEntryId = extractDirectoryEntryIdFromCampaign(campaign)
+    if (!directoryEntryId) {
+      throw new BrandPortalServiceError(400, 'Campanha sem directoryEntry para validacao de orcamento.')
+    }
+
+    const budget = toOptionalFiniteNumber(campaign.estimatedMonthlyBudget)
+    if (budget === null || budget <= 0) {
+      throw new BrandPortalServiceError(
+        400,
+        'estimatedMonthlyBudget obrigatorio e > 0 para submeter campanha a aprovacao.'
+      )
+    }
+
+    await this.assertCampaignBudgetCoverage(ownerUserId, directoryEntryId, budget)
 
     const reason = toOptionalString(input.reason) ?? DEFAULT_REASON_SUBMIT_APPROVAL
     const note = toOptionalString(input.note) ?? undefined

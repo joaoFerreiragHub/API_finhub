@@ -32,6 +32,11 @@ import {
   validateBrandPortalAffiliateLinkCreateContract,
   validateBrandPortalAffiliateLinkListContract,
   validateBrandPortalAffiliateLinkUpdateContract,
+  validateBrandPortalCampaignCreateContract,
+  validateBrandPortalCampaignListContract,
+  validateBrandPortalCampaignMetricsContract,
+  validateBrandPortalCampaignSubmitApprovalContract,
+  validateBrandPortalCampaignUpdateContract,
   validateBrandPortalIntegrationApiKeyCreateContract,
   validateBrandPortalIntegrationApiKeyListContract,
   validateBrandPortalIntegrationApiKeyRevokeContract,
@@ -95,14 +100,26 @@ router.post(
  * @desc    Listar campanhas da marca autenticada
  * @access  Private
  */
-router.get('/campaigns', authenticate, listBrandPortalCampaigns)
+router.get(
+  '/campaigns',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalCampaignListContract,
+  listBrandPortalCampaigns
+)
 
 /**
  * @route   POST /api/brand-portal/campaigns
  * @desc    Criar campanha self-service da marca
  * @access  Private
  */
-router.post('/campaigns', authenticate, createBrandPortalCampaign)
+router.post(
+  '/campaigns',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalCampaignCreateContract,
+  createBrandPortalCampaign
+)
 
 /**
  * @route   GET /api/brand-portal/campaigns/:campaignId
@@ -116,7 +133,13 @@ router.get('/campaigns/:campaignId', authenticate, getBrandPortalCampaign)
  * @desc    Atualizar campanha self-service da marca
  * @access  Private
  */
-router.patch('/campaigns/:campaignId', authenticate, updateBrandPortalCampaign)
+router.patch(
+  '/campaigns/:campaignId',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalCampaignUpdateContract,
+  updateBrandPortalCampaign
+)
 
 /**
  * @route   POST /api/brand-portal/campaigns/:campaignId/submit-approval
@@ -126,6 +149,8 @@ router.patch('/campaigns/:campaignId', authenticate, updateBrandPortalCampaign)
 router.post(
   '/campaigns/:campaignId/submit-approval',
   authenticate,
+  rateLimiter.api,
+  validateBrandPortalCampaignSubmitApprovalContract,
   submitBrandPortalCampaignForApproval
 )
 
@@ -134,7 +159,13 @@ router.post(
  * @desc    Obter metricas de campanha da marca
  * @access  Private
  */
-router.get('/campaigns/:campaignId/metrics', authenticate, getBrandPortalCampaignMetrics)
+router.get(
+  '/campaigns/:campaignId/metrics',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalCampaignMetricsContract,
+  getBrandPortalCampaignMetrics
+)
 
 /**
  * @route   GET /api/brand-portal/affiliate-links

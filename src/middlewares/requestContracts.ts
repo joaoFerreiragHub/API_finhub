@@ -3946,3 +3946,452 @@ export const validateAffiliatePostbackConversionContract = (
 
   next()
 }
+
+const validateBrandPortalCampaignPatchPayload = (
+  payload: RecordLike,
+  res: Response,
+  options: { requireCreateFields?: boolean; requireAtLeastOneField?: boolean } = {}
+): boolean => {
+  const allowedKeys = new Set([
+    'title',
+    'description',
+    'adType',
+    'directoryEntryId',
+    'surfaces',
+    'slotIds',
+    'visibleTo',
+    'priority',
+    'startAt',
+    'endAt',
+    'headline',
+    'disclosureLabel',
+    'body',
+    'ctaText',
+    'ctaUrl',
+    'imageUrl',
+    'relevanceTags',
+    'estimatedMonthlyBudget',
+    'currency',
+  ])
+
+  for (const key of Object.keys(payload)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no payload de campanha.`)
+      return false
+    }
+  }
+
+  const title = options.requireCreateFields
+    ? validateRequiredNonEmptyString(payload, 'title')
+    : validateOptionalString(payload, 'title').value
+  if (options.requireCreateFields && !title) {
+    respondValidationError(res, 'Campo title obrigatorio.')
+    return false
+  }
+  if (!options.requireCreateFields) {
+    const titleOptional = validateOptionalString(payload, 'title')
+    if (!titleOptional.valid) {
+      respondValidationError(res, 'Campo title invalido.')
+      return false
+    }
+  }
+
+  const description = validateOptionalString(payload, 'description')
+  if (!description.valid) {
+    respondValidationError(res, 'Campo description invalido.')
+    return false
+  }
+
+  const headline = options.requireCreateFields
+    ? validateRequiredNonEmptyString(payload, 'headline')
+    : validateOptionalString(payload, 'headline').value
+  if (options.requireCreateFields && !headline) {
+    respondValidationError(res, 'Campo headline obrigatorio.')
+    return false
+  }
+  if (!options.requireCreateFields) {
+    const headlineOptional = validateOptionalString(payload, 'headline')
+    if (!headlineOptional.valid) {
+      respondValidationError(res, 'Campo headline invalido.')
+      return false
+    }
+  }
+
+  const adType = options.requireCreateFields
+    ? validateRequiredNonEmptyString(payload, 'adType')
+    : validateOptionalString(payload, 'adType').value
+  if (options.requireCreateFields && (!adType || !AD_PARTNERSHIP_TYPES.includes(adType as any))) {
+    respondValidationError(
+      res,
+      `Campo adType obrigatorio e invalido. Valores: ${AD_PARTNERSHIP_TYPES.join(', ')}.`
+    )
+    return false
+  }
+  if (!options.requireCreateFields && 'adType' in payload) {
+    if (!adType || !AD_PARTNERSHIP_TYPES.includes(adType as any)) {
+      respondValidationError(
+        res,
+        `Campo adType invalido. Valores: ${AD_PARTNERSHIP_TYPES.join(', ')}.`
+      )
+      return false
+    }
+  }
+
+  const directoryEntryId = options.requireCreateFields
+    ? validateRequiredNonEmptyString(payload, 'directoryEntryId')
+    : validateOptionalString(payload, 'directoryEntryId').value
+  if (options.requireCreateFields && !directoryEntryId) {
+    respondValidationError(res, 'Campo directoryEntryId obrigatorio.')
+    return false
+  }
+  if (!options.requireCreateFields) {
+    const directoryEntryOptional = validateOptionalString(payload, 'directoryEntryId')
+    if (!directoryEntryOptional.valid) {
+      respondValidationError(res, 'Campo directoryEntryId invalido.')
+      return false
+    }
+  }
+
+  const surfaces = validateOptionalEnumArray<AdPartnershipSurface>(
+    payload,
+    'surfaces',
+    AD_PARTNERSHIP_SURFACES
+  )
+  if (!surfaces.valid) {
+    respondValidationError(res, 'Campo surfaces invalido.')
+    return false
+  }
+  if (options.requireCreateFields && (!surfaces.value || surfaces.value.length === 0)) {
+    respondValidationError(res, 'Campo surfaces obrigatorio.')
+    return false
+  }
+
+  const slotIds = validateOptionalStringArray(payload, 'slotIds')
+  if (!slotIds.valid) {
+    respondValidationError(res, 'Campo slotIds invalido.')
+    return false
+  }
+  if (options.requireCreateFields && (!slotIds.value || slotIds.value.length === 0)) {
+    respondValidationError(res, 'Campo slotIds obrigatorio.')
+    return false
+  }
+
+  const visibleTo = validateOptionalEnumArray<AdPartnershipVisibility>(
+    payload,
+    'visibleTo',
+    AD_PARTNERSHIP_VISIBILITY
+  )
+  if (!visibleTo.valid) {
+    respondValidationError(res, 'Campo visibleTo invalido.')
+    return false
+  }
+  if (options.requireCreateFields && (!visibleTo.value || visibleTo.value.length === 0)) {
+    respondValidationError(res, 'Campo visibleTo obrigatorio.')
+    return false
+  }
+
+  const priority = validateOptionalNonNegativeInteger(payload, 'priority')
+  if (!priority.valid) {
+    respondValidationError(res, 'Campo priority invalido.')
+    return false
+  }
+
+  const startAt = validateOptionalDateField(payload, 'startAt', { allowNull: true })
+  if (!startAt.valid) {
+    respondValidationError(res, 'Campo startAt invalido.')
+    return false
+  }
+
+  const endAt = validateOptionalDateField(payload, 'endAt', { allowNull: true })
+  if (!endAt.valid) {
+    respondValidationError(res, 'Campo endAt invalido.')
+    return false
+  }
+
+  if (startAt.value && endAt.value && startAt.value !== null && endAt.value !== null) {
+    const startDate = new Date(startAt.value)
+    const endDate = new Date(endAt.value)
+    if (!Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime())) {
+      if (endDate.getTime() <= startDate.getTime()) {
+        respondValidationError(res, 'Campo endAt deve ser posterior a startAt.')
+        return false
+      }
+    }
+  }
+
+  for (const key of ['disclosureLabel', 'body', 'ctaText', 'ctaUrl', 'imageUrl', 'currency'] as const) {
+    const result = validateOptionalString(payload, key)
+    if (!result.valid) {
+      respondValidationError(res, `Campo ${key} invalido.`)
+      return false
+    }
+  }
+
+  const relevanceTags = validateOptionalStringArray(payload, 'relevanceTags')
+  if (!relevanceTags.valid) {
+    respondValidationError(res, 'Campo relevanceTags invalido.')
+    return false
+  }
+
+  if ('estimatedMonthlyBudget' in payload && payload.estimatedMonthlyBudget !== undefined) {
+    const budget = payload.estimatedMonthlyBudget
+    if (budget !== null) {
+      if (typeof budget !== 'number' || !Number.isFinite(budget) || budget < 0) {
+        respondValidationError(res, 'Campo estimatedMonthlyBudget invalido. Usa numero >= 0.')
+        return false
+      }
+    }
+  }
+
+  if (options.requireAtLeastOneField && Object.keys(payload).length === 0) {
+    respondValidationError(res, 'Patch sem campos atualizaveis.')
+    return false
+  }
+
+  return true
+}
+
+export const validateBrandPortalCampaignListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['status', 'adType', 'surface', 'search', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const status = readSingleQueryValue(req.query.status)
+  if (status.present) {
+    if (
+      !status.valid ||
+      !status.value ||
+      !(AD_PARTNERSHIP_CAMPAIGN_STATUSES as readonly string[]).includes(status.value)
+    ) {
+      respondValidationError(
+        res,
+        `Parametro query status invalido. Valores: ${AD_PARTNERSHIP_CAMPAIGN_STATUSES.join(', ')}.`
+      )
+      return
+    }
+  }
+
+  const adType = readSingleQueryValue(req.query.adType)
+  if (adType.present) {
+    if (!adType.valid || !adType.value || !(AD_PARTNERSHIP_TYPES as readonly string[]).includes(adType.value)) {
+      respondValidationError(
+        res,
+        `Parametro query adType invalido. Valores: ${AD_PARTNERSHIP_TYPES.join(', ')}.`
+      )
+      return
+    }
+  }
+
+  const surface = readSingleQueryValue(req.query.surface)
+  if (surface.present) {
+    if (
+      !surface.valid ||
+      !surface.value ||
+      !(AD_PARTNERSHIP_SURFACES as readonly string[]).includes(surface.value)
+    ) {
+      respondValidationError(
+        res,
+        `Parametro query surface invalido. Valores: ${AD_PARTNERSHIP_SURFACES.join(', ')}.`
+      )
+      return
+    }
+  }
+
+  const search = readSingleQueryValue(req.query.search)
+  if (search.present && (!search.valid || !search.value)) {
+    respondValidationError(res, 'Parametro query search invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandPortalCampaignCreateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de criacao de campanha invalido.')
+    return
+  }
+
+  const allowedKeys = new Set([
+    'code',
+    'title',
+    'description',
+    'adType',
+    'directoryEntryId',
+    'surfaces',
+    'slotIds',
+    'visibleTo',
+    'priority',
+    'startAt',
+    'endAt',
+    'headline',
+    'disclosureLabel',
+    'body',
+    'ctaText',
+    'ctaUrl',
+    'imageUrl',
+    'relevanceTags',
+    'estimatedMonthlyBudget',
+    'currency',
+    'reason',
+    'note',
+  ])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na criacao de campanha.`)
+      return
+    }
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const isValid = validateBrandPortalCampaignPatchPayload(req.body, res, {
+    requireCreateFields: true,
+  })
+  if (!isValid) return
+
+  next()
+}
+
+export const validateBrandPortalCampaignUpdateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const campaignId = validateRequiredRouteParam(req, res, 'campaignId')
+  if (!campaignId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de atualizacao de campanha invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['patch', 'reason', 'note'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na atualizacao de campanha.`)
+      return
+    }
+  }
+
+  if (!isRecord(req.body.patch)) {
+    respondValidationError(res, 'Campo patch obrigatorio e invalido.')
+    return
+  }
+
+  const reason = validateOptionalString(req.body, 'reason')
+  if (!reason.valid) {
+    respondValidationError(res, 'Campo reason invalido.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const isValid = validateBrandPortalCampaignPatchPayload(req.body.patch as RecordLike, res, {
+    requireAtLeastOneField: true,
+  })
+  if (!isValid) return
+
+  next()
+}
+
+export const validateBrandPortalCampaignSubmitApprovalContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const campaignId = validateRequiredRouteParam(req, res, 'campaignId')
+  if (!campaignId) return
+
+  if (req.body !== undefined && req.body !== null) {
+    if (!isRecord(req.body)) {
+      respondValidationError(res, 'Payload de submit para aprovacao invalido.')
+      return
+    }
+
+    const allowedKeys = new Set(['reason', 'note'])
+    for (const key of Object.keys(req.body)) {
+      if (!allowedKeys.has(key)) {
+        respondValidationError(res, `Campo ${key} nao suportado no submit para aprovacao.`)
+        return
+      }
+    }
+
+    const reason = validateOptionalString(req.body, 'reason')
+    if (!reason.valid) {
+      respondValidationError(res, 'Campo reason invalido.')
+      return
+    }
+
+    const note = validateOptionalString(req.body, 'note')
+    if (!note.valid) {
+      respondValidationError(res, 'Campo note invalido.')
+      return
+    }
+  }
+
+  next()
+}
+
+export const validateBrandPortalCampaignMetricsContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const campaignId = validateRequiredRouteParam(req, res, 'campaignId')
+  if (!campaignId) return
+
+  const allowedKeys = new Set(['days'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const days = parseOptionalPositiveIntegerQuery(req.query.days)
+  if (!days.valid) {
+    respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  next()
+}

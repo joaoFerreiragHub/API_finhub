@@ -284,6 +284,36 @@ const ROUTE_CONTRACTS = [
   {
     filePath: 'src/routes/brandPortal.routes.ts',
     method: 'get',
+    routePath: '/campaigns',
+    requiredMiddleware: 'validateBrandPortalCampaignListContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'post',
+    routePath: '/campaigns',
+    requiredMiddleware: 'validateBrandPortalCampaignCreateContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'patch',
+    routePath: '/campaigns/:campaignId',
+    requiredMiddleware: 'validateBrandPortalCampaignUpdateContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'post',
+    routePath: '/campaigns/:campaignId/submit-approval',
+    requiredMiddleware: 'validateBrandPortalCampaignSubmitApprovalContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/campaigns/:campaignId/metrics',
+    requiredMiddleware: 'validateBrandPortalCampaignMetricsContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
     routePath: '/integrations/api-keys',
     requiredMiddleware: 'validateBrandPortalIntegrationApiKeyListContract',
   },
