@@ -6,6 +6,11 @@ import {
 } from '../controllers/brandIntegration.controller'
 import { requireBrandIntegrationScope } from '../middlewares/brandIntegrationAuth'
 import { rateLimiter } from '../middlewares/rateLimiter'
+import {
+  validateBrandIntegrationAffiliateLinkClicksQueryContract,
+  validateBrandIntegrationAffiliateLinksQueryContract,
+  validateBrandIntegrationAffiliateOverviewQueryContract,
+} from '../middlewares/requestContracts'
 
 const router = Router()
 
@@ -16,8 +21,9 @@ const router = Router()
  */
 router.get(
   '/affiliate/overview',
-  rateLimiter.stats,
+  rateLimiter.brandIntegration,
   requireBrandIntegrationScope('brand.affiliate.read'),
+  validateBrandIntegrationAffiliateOverviewQueryContract,
   getBrandIntegrationAffiliateOverview
 )
 
@@ -28,8 +34,9 @@ router.get(
  */
 router.get(
   '/affiliate/links',
-  rateLimiter.stats,
+  rateLimiter.brandIntegration,
   requireBrandIntegrationScope('brand.affiliate.read'),
+  validateBrandIntegrationAffiliateLinksQueryContract,
   listBrandIntegrationAffiliateLinks
 )
 
@@ -40,8 +47,9 @@ router.get(
  */
 router.get(
   '/affiliate/links/:linkId/clicks',
-  rateLimiter.stats,
+  rateLimiter.brandIntegration,
   requireBrandIntegrationScope('brand.affiliate.read'),
+  validateBrandIntegrationAffiliateLinkClicksQueryContract,
   listBrandIntegrationAffiliateLinkClicks
 )
 

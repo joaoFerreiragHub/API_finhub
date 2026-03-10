@@ -26,6 +26,13 @@ import {
   revokeBrandPortalIntegrationApiKey,
 } from '../controllers/brandPortalIntegration.controller'
 import { authenticate } from '../middlewares/auth'
+import { rateLimiter } from '../middlewares/rateLimiter'
+import {
+  validateBrandPortalIntegrationApiKeyCreateContract,
+  validateBrandPortalIntegrationApiKeyListContract,
+  validateBrandPortalIntegrationApiKeyRevokeContract,
+  validateBrandPortalIntegrationApiKeyUsageContract,
+} from '../middlewares/requestContracts'
 
 const router = Router()
 
@@ -158,14 +165,26 @@ router.get('/affiliate-links/:linkId/clicks', authenticate, listBrandPortalAffil
  * @desc    Listar API keys de integracao da marca autenticada
  * @access  Private
  */
-router.get('/integrations/api-keys', authenticate, listBrandPortalIntegrationApiKeys)
+router.get(
+  '/integrations/api-keys',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalIntegrationApiKeyListContract,
+  listBrandPortalIntegrationApiKeys
+)
 
 /**
  * @route   POST /api/brand-portal/integrations/api-keys
  * @desc    Criar API key de integracao para um DirectoryEntry owned
  * @access  Private
  */
-router.post('/integrations/api-keys', authenticate, createBrandPortalIntegrationApiKey)
+router.post(
+  '/integrations/api-keys',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalIntegrationApiKeyCreateContract,
+  createBrandPortalIntegrationApiKey
+)
 
 /**
  * @route   POST /api/brand-portal/integrations/api-keys/:keyId/revoke
@@ -175,6 +194,8 @@ router.post('/integrations/api-keys', authenticate, createBrandPortalIntegration
 router.post(
   '/integrations/api-keys/:keyId/revoke',
   authenticate,
+  rateLimiter.api,
+  validateBrandPortalIntegrationApiKeyRevokeContract,
   revokeBrandPortalIntegrationApiKey
 )
 
@@ -186,6 +207,8 @@ router.post(
 router.get(
   '/integrations/api-keys/:keyId/usage',
   authenticate,
+  rateLimiter.api,
+  validateBrandPortalIntegrationApiKeyUsageContract,
   listBrandPortalIntegrationApiKeyUsage
 )
 

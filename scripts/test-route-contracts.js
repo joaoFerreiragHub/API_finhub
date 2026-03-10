@@ -281,6 +281,48 @@ const ROUTE_CONTRACTS = [
     routePath: '/users/:userId/scope-delegations/:delegationId/revoke',
     requiredMiddleware: 'validateAdminScopeDelegationRevokeContract',
   },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/integrations/api-keys',
+    requiredMiddleware: 'validateBrandPortalIntegrationApiKeyListContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'post',
+    routePath: '/integrations/api-keys',
+    requiredMiddleware: 'validateBrandPortalIntegrationApiKeyCreateContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'post',
+    routePath: '/integrations/api-keys/:keyId/revoke',
+    requiredMiddleware: 'validateBrandPortalIntegrationApiKeyRevokeContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/integrations/api-keys/:keyId/usage',
+    requiredMiddleware: 'validateBrandPortalIntegrationApiKeyUsageContract',
+  },
+  {
+    filePath: 'src/routes/brandIntegration.routes.ts',
+    method: 'get',
+    routePath: '/affiliate/overview',
+    requiredMiddleware: 'validateBrandIntegrationAffiliateOverviewQueryContract',
+  },
+  {
+    filePath: 'src/routes/brandIntegration.routes.ts',
+    method: 'get',
+    routePath: '/affiliate/links',
+    requiredMiddleware: 'validateBrandIntegrationAffiliateLinksQueryContract',
+  },
+  {
+    filePath: 'src/routes/brandIntegration.routes.ts',
+    method: 'get',
+    routePath: '/affiliate/links/:linkId/clicks',
+    requiredMiddleware: 'validateBrandIntegrationAffiliateLinkClicksQueryContract',
+  },
 ]
 
 const fail = (errors) => {

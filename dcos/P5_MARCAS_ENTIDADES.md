@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 base backend iniciada).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4 base backend iniciada; P4.5 backend concluida).
 
 ---
 
@@ -581,7 +581,7 @@ isSponsored: boolean (default false)
 | 4.2 | **Wallet de marca** | INICIADO (2026-03-10): `BrandWallet` + `BrandWalletTransaction` com `GET /api/brand-portal/wallets`, detalhe por `DirectoryEntry`, historico e `POST /top-up-requests` (pending) | Top-up, historico | Alto |
 | 4.3 | **Self-service de campanhas** | INICIADO (2026-03-10): `GET/POST /api/brand-portal/campaigns`, `GET/PATCH /api/brand-portal/campaigns/:campaignId`, `POST /api/brand-portal/campaigns/:campaignId/submit-approval`, `GET /metrics` com ownership enforcement | Wizard de campanha, metricas | Alto |
 | 4.4 | **Sistema de afiliacao** | INICIADO (2026-03-10): `AffiliateLink` + `AffiliateClick`, redirect `GET /api/affiliates/r/:code`, endpoints no `brand-portal` para CRUD/listagem de cliques, e painel admin em `/api/admin/monetization/affiliates/*` | Links rastreados, dashboard | Alto |
-| 4.5 | **API de integracao** | INICIADO (2026-03-10): `BrandIntegrationApiKey` (hash + scopes), gestao no `brand-portal` (`GET/POST /integrations/api-keys`, `POST /integrations/api-keys/:keyId/revoke`, `GET /integrations/api-keys/:keyId/usage`), consumo externo em `/api/integrations/brand/affiliate/*` com `x-finhub-api-key` + rate limit, e logging de uso por request (`BrandIntegrationApiUsage`) | Documentacao, rate limiting | Medio |
+| 4.5 | **API de integracao** | CONCLUIDO (2026-03-10): `BrandIntegrationApiKey` (hash + scopes), gestao no `brand-portal` (`GET/POST /integrations/api-keys`, `POST /integrations/api-keys/:keyId/revoke`, `GET /integrations/api-keys/:keyId/usage`), consumo externo em `/api/integrations/brand/affiliate/*` com `x-finhub-api-key`, limiter dedicado por API key (`rateLimiter.brandIntegration`) e logging por request (`BrandIntegrationApiUsage`) | Contratos de request + documentacao tecnica em `dcos/P4_5_API_INTEGRACAO_BRAND.md` | Medio |
 
 ---
 

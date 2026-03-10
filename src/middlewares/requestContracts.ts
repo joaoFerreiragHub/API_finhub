@@ -164,6 +164,7 @@ const FINANCIAL_TOOL_EXPERIENCE_MODES: readonly FinancialToolExperienceMode[] = 
   'standard',
   'enhanced',
 ]
+const BRAND_INTEGRATION_ALLOWED_SCOPES = ['brand.affiliate.read'] as const
 
 const isRecord = (value: unknown): value is RecordLike =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -474,6 +475,96 @@ const readHeaderString = (req: Request, headerName: string): string | undefined 
   if (typeof value === 'string') return value
   if (Array.isArray(value)) return value.find((entry) => typeof entry === 'string')
   return undefined
+}
+
+const readSingleQueryValue = (
+  value: unknown
+): { present: boolean; valid: boolean; value?: string } => {
+  if (value === undefined) {
+    return { present: false, valid: true }
+  }
+
+  if (Array.isArray(value)) {
+    return { present: true, valid: false }
+  }
+
+  if (typeof value !== 'string') {
+    return { present: true, valid: false }
+  }
+
+  return { present: true, valid: true, value: value.trim() }
+}
+
+const parseOptionalBooleanQuery = (value: unknown): { present: boolean; valid: boolean } => {
+  const result = readSingleQueryValue(value)
+  if (!result.present) {
+    return { present: false, valid: true }
+  }
+
+  if (!result.valid || !result.value) {
+    return { present: true, valid: false }
+  }
+
+  const normalized = result.value.toLowerCase()
+  if (normalized === 'true' || normalized === 'false' || normalized === '1' || normalized === '0') {
+    return { present: true, valid: true }
+  }
+
+  return { present: true, valid: false }
+}
+
+const parseOptionalPositiveIntegerQuery = (
+  value: unknown
+): { present: boolean; valid: boolean; value?: number } => {
+  const result = readSingleQueryValue(value)
+  if (!result.present) {
+    return { present: false, valid: true }
+  }
+
+  if (!result.valid || !result.value) {
+    return { present: true, valid: false }
+  }
+
+  const parsed = Number.parseInt(result.value, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+    return { present: true, valid: false }
+  }
+
+  return { present: true, valid: true, value: parsed }
+}
+
+const parseOptionalIntegerQuery = (
+  value: unknown
+): { present: boolean; valid: boolean; value?: number } => {
+  const result = readSingleQueryValue(value)
+  if (!result.present) {
+    return { present: false, valid: true }
+  }
+
+  if (!result.valid || !result.value) {
+    return { present: true, valid: false }
+  }
+
+  const parsed = Number.parseInt(result.value, 10)
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+    return { present: true, valid: false }
+  }
+
+  return { present: true, valid: true, value: parsed }
+}
+
+const parseOptionalDateQuery = (value: unknown): { present: boolean; valid: boolean } => {
+  const result = readSingleQueryValue(value)
+  if (!result.present) {
+    return { present: false, valid: true }
+  }
+
+  if (!result.valid || !result.value) {
+    return { present: true, valid: false }
+  }
+
+  const parsedDate = new Date(result.value)
+  return { present: true, valid: !Number.isNaN(parsedDate.getTime()) }
 }
 
 const validateAdminReasonFromBodyOrHeader = (
@@ -2949,6 +3040,380 @@ export const validateAdminContentScheduleUnhideContract = (
 
   if (parsed.getTime() <= Date.now()) {
     respondValidationError(res, 'Campo scheduledFor deve ser uma data futura.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandPortalIntegrationApiKeyListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['directoryEntryId', 'isActive', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const directoryEntryId = readSingleQueryValue(req.query.directoryEntryId)
+  if (directoryEntryId.present && (!directoryEntryId.valid || !directoryEntryId.value)) {
+    respondValidationError(res, 'Parametro query directoryEntryId invalido.')
+    return
+  }
+
+  const isActive = parseOptionalBooleanQuery(req.query.isActive)
+  if (!isActive.valid) {
+    respondValidationError(res, 'Parametro query isActive invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandPortalIntegrationApiKeyCreateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de criacao de API key de integracao invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['directoryEntryId', 'label', 'scopes', 'expiresAt', 'metadata'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na criacao da API key.`)
+      return
+    }
+  }
+
+  const directoryEntryId = validateRequiredNonEmptyString(req.body, 'directoryEntryId')
+  if (!directoryEntryId) {
+    respondValidationError(res, 'Campo directoryEntryId obrigatorio.')
+    return
+  }
+
+  const label = validateOptionalString(req.body, 'label')
+  if (!label.valid) {
+    respondValidationError(res, 'Campo label invalido.')
+    return
+  }
+
+  if ('scopes' in req.body && req.body.scopes !== undefined && req.body.scopes !== null) {
+    if (!Array.isArray(req.body.scopes)) {
+      respondValidationError(res, 'Campo scopes invalido.')
+      return
+    }
+
+    for (const scope of req.body.scopes as unknown[]) {
+      if (typeof scope !== 'string') {
+        respondValidationError(res, 'Campo scopes invalido.')
+        return
+      }
+
+      const normalizedScope = scope.trim()
+      if (
+        !normalizedScope ||
+        !(BRAND_INTEGRATION_ALLOWED_SCOPES as readonly string[]).includes(normalizedScope)
+      ) {
+        respondValidationError(
+          res,
+          `Scope invalido. Valores permitidos: ${BRAND_INTEGRATION_ALLOWED_SCOPES.join(', ')}.`
+        )
+        return
+      }
+    }
+  }
+
+  const expiresAt = validateOptionalDateField(req.body, 'expiresAt')
+  if (!expiresAt.valid) {
+    respondValidationError(res, 'Campo expiresAt invalido.')
+    return
+  }
+
+  if (expiresAt.value) {
+    const parsedExpiry = new Date(expiresAt.value)
+    if (Number.isNaN(parsedExpiry.getTime()) || parsedExpiry.getTime() <= Date.now()) {
+      respondValidationError(res, 'Campo expiresAt deve ser uma data futura.')
+      return
+    }
+  }
+
+  const metadata = validateOptionalObjectField(req.body, 'metadata')
+  if (!metadata.valid) {
+    respondValidationError(res, 'Campo metadata invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandPortalIntegrationApiKeyRevokeContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const keyId = validateRequiredRouteParam(req, res, 'keyId')
+  if (!keyId) return
+
+  if (req.body !== undefined && req.body !== null) {
+    if (!isRecord(req.body)) {
+      respondValidationError(res, 'Payload de revogacao de API key invalido.')
+      return
+    }
+
+    const allowedKeys = new Set(['reason', 'note'])
+    for (const key of Object.keys(req.body)) {
+      if (!allowedKeys.has(key)) {
+        respondValidationError(res, `Campo ${key} nao suportado na revogacao da API key.`)
+        return
+      }
+    }
+
+    const reason = validateOptionalString(req.body, 'reason')
+    if (!reason.valid) {
+      respondValidationError(res, 'Campo reason invalido.')
+      return
+    }
+
+    const note = validateOptionalString(req.body, 'note')
+    if (!note.valid) {
+      respondValidationError(res, 'Campo note invalido.')
+      return
+    }
+  }
+
+  next()
+}
+
+export const validateBrandPortalIntegrationApiKeyUsageContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const keyId = validateRequiredRouteParam(req, res, 'keyId')
+  if (!keyId) return
+
+  const allowedKeys = new Set([
+    'days',
+    'method',
+    'statusCodeFrom',
+    'statusCodeTo',
+    'page',
+    'limit',
+  ])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const days = parseOptionalPositiveIntegerQuery(req.query.days)
+  if (!days.valid) {
+    respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  const method = readSingleQueryValue(req.query.method)
+  if (method.present && (!method.valid || !method.value)) {
+    respondValidationError(res, 'Parametro query method invalido.')
+    return
+  }
+
+  const statusCodeFrom = parseOptionalIntegerQuery(req.query.statusCodeFrom)
+  if (!statusCodeFrom.valid) {
+    respondValidationError(res, 'Parametro query statusCodeFrom invalido.')
+    return
+  }
+
+  const statusCodeTo = parseOptionalIntegerQuery(req.query.statusCodeTo)
+  if (!statusCodeTo.valid) {
+    respondValidationError(res, 'Parametro query statusCodeTo invalido.')
+    return
+  }
+
+  if (
+    statusCodeFrom.value !== undefined &&
+    (statusCodeFrom.value < 100 || statusCodeFrom.value > 599)
+  ) {
+    respondValidationError(res, 'Parametro query statusCodeFrom fora do intervalo 100..599.')
+    return
+  }
+
+  if (statusCodeTo.value !== undefined && (statusCodeTo.value < 100 || statusCodeTo.value > 599)) {
+    respondValidationError(res, 'Parametro query statusCodeTo fora do intervalo 100..599.')
+    return
+  }
+
+  if (
+    statusCodeFrom.value !== undefined &&
+    statusCodeTo.value !== undefined &&
+    statusCodeFrom.value > statusCodeTo.value
+  ) {
+    respondValidationError(
+      res,
+      'Parametro query statusCodeFrom nao pode ser maior que statusCodeTo.'
+    )
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandIntegrationAffiliateOverviewQueryContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['days'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const days = parseOptionalPositiveIntegerQuery(req.query.days)
+  if (!days.valid) {
+    respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandIntegrationAffiliateLinksQueryContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['isActive', 'search', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const isActive = parseOptionalBooleanQuery(req.query.isActive)
+  if (!isActive.valid) {
+    respondValidationError(res, 'Parametro query isActive invalido.')
+    return
+  }
+
+  const search = readSingleQueryValue(req.query.search)
+  if (search.present && (!search.valid || !search.value)) {
+    respondValidationError(res, 'Parametro query search invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandIntegrationAffiliateLinkClicksQueryContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const linkId = validateRequiredRouteParam(req, res, 'linkId')
+  if (!linkId) return
+
+  const allowedKeys = new Set(['converted', 'days', 'from', 'to', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const converted = parseOptionalBooleanQuery(req.query.converted)
+  if (!converted.valid) {
+    respondValidationError(res, 'Parametro query converted invalido.')
+    return
+  }
+
+  const days = parseOptionalPositiveIntegerQuery(req.query.days)
+  if (!days.valid) {
+    respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  const from = parseOptionalDateQuery(req.query.from)
+  if (!from.valid) {
+    respondValidationError(res, 'Parametro query from invalido.')
+    return
+  }
+
+  const to = parseOptionalDateQuery(req.query.to)
+  if (!to.valid) {
+    respondValidationError(res, 'Parametro query to invalido.')
+    return
+  }
+
+  const fromValue = readSingleQueryValue(req.query.from)
+  const toValue = readSingleQueryValue(req.query.to)
+  if (
+    fromValue.value &&
+    toValue.value &&
+    !Number.isNaN(new Date(fromValue.value).getTime()) &&
+    !Number.isNaN(new Date(toValue.value).getTime()) &&
+    new Date(fromValue.value).getTime() > new Date(toValue.value).getTime()
+  ) {
+    respondValidationError(res, 'Parametro query from nao pode ser maior que to.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
     return
   }
 

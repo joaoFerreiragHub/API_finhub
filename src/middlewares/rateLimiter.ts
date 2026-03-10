@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { Request } from 'express'
 import rateLimit, {
   MemoryStore,
@@ -26,7 +27,10 @@ type RateLimiterName =
   | 'adminModerationBulk'
   | 'adminMetricsDrilldown'
   | 'userReport'
+  | 'brandIntegration'
   | 'general'
+
+type LimiterKeyStrategy = 'requester' | 'integrationApiKey'
 
 type StoreMode = 'auto' | 'memory' | 'redis'
 
@@ -34,6 +38,7 @@ interface LimiterDefinition {
   name: RateLimiterName
   envKey: string
   keyPrefix: string
+  keyStrategy: LimiterKeyStrategy
   defaultWindowMs: number
   defaultLimit: number
   message: string
@@ -42,6 +47,7 @@ interface LimiterDefinition {
 interface LimiterRuntimeConfig {
   name: RateLimiterName
   keyPrefix: string
+  keyStrategy: LimiterKeyStrategy
   windowMs: number
   limit: number
   message: string
@@ -112,6 +118,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'api',
     envKey: 'API',
     keyPrefix: 'api',
+    keyStrategy: 'requester',
     defaultWindowMs: 15 * 60 * 1000,
     defaultLimit: 1000,
     message: 'Muitas requisicoes. Tente novamente em 15 minutos.',
@@ -120,6 +127,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'news',
     envKey: 'NEWS',
     keyPrefix: 'news',
+    keyStrategy: 'requester',
     defaultWindowMs: 1 * 60 * 1000,
     defaultLimit: 60,
     message: 'Muitas requisicoes de noticias. Tente novamente em 1 minuto.',
@@ -128,6 +136,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'search',
     envKey: 'SEARCH',
     keyPrefix: 'search',
+    keyStrategy: 'requester',
     defaultWindowMs: 1 * 60 * 1000,
     defaultLimit: 30,
     message: 'Muitas pesquisas. Tente novamente em 1 minuto.',
@@ -136,6 +145,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'stats',
     envKey: 'STATS',
     keyPrefix: 'stats',
+    keyStrategy: 'requester',
     defaultWindowMs: 5 * 60 * 1000,
     defaultLimit: 50,
     message: 'Muitas requisicoes de estatisticas. Tente novamente em 5 minutos.',
@@ -144,6 +154,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'admin',
     envKey: 'ADMIN',
     keyPrefix: 'admin',
+    keyStrategy: 'requester',
     defaultWindowMs: 60 * 60 * 1000,
     defaultLimit: 10,
     message: 'Muitas operacoes administrativas. Tente novamente em 1 hora.',
@@ -152,6 +163,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'adminModerationAction',
     envKey: 'ADMIN_MODERATION_ACTION',
     keyPrefix: 'admin-moderation-action',
+    keyStrategy: 'requester',
     defaultWindowMs: 1 * 60 * 1000,
     defaultLimit: 30,
     message: 'Muitas acoes de moderacao. Tente novamente em 1 minuto.',
@@ -160,6 +172,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'adminModerationBulk',
     envKey: 'ADMIN_MODERATION_BULK',
     keyPrefix: 'admin-moderation-bulk',
+    keyStrategy: 'requester',
     defaultWindowMs: 10 * 60 * 1000,
     defaultLimit: 10,
     message: 'Muitos lotes de moderacao. Tente novamente em 10 minutos.',
@@ -168,6 +181,7 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'adminMetricsDrilldown',
     envKey: 'ADMIN_METRICS_DRILLDOWN',
     keyPrefix: 'admin-metrics-drilldown',
+    keyStrategy: 'requester',
     defaultWindowMs: 1 * 60 * 1000,
     defaultLimit: 5,
     message: 'Muitos pedidos de drill-down. Tente novamente em 1 minuto.',
@@ -176,14 +190,25 @@ const limiterDefinitions: LimiterDefinition[] = [
     name: 'userReport',
     envKey: 'USER_REPORT',
     keyPrefix: 'user-report',
+    keyStrategy: 'requester',
     defaultWindowMs: 10 * 60 * 1000,
     defaultLimit: 20,
     message: 'Muitos reports enviados. Tente novamente em 10 minutos.',
   },
   {
+    name: 'brandIntegration',
+    envKey: 'BRAND_INTEGRATION',
+    keyPrefix: 'brand-integration',
+    keyStrategy: 'integrationApiKey',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 120,
+    message: 'Muitas requisicoes de integracao. Tente novamente em 1 minuto.',
+  },
+  {
     name: 'general',
     envKey: 'GENERAL',
     keyPrefix: 'general',
+    keyStrategy: 'requester',
     defaultWindowMs: 5 * 60 * 1000,
     defaultLimit: 100,
     message: 'Muitas requisicoes. Tente novamente em 5 minutos.',
@@ -216,11 +241,59 @@ const getRequesterKey = (req: Request): string => {
   return `ip:${requestIp}`
 }
 
+const extractBrandIntegrationApiKey = (req: Request): string | null => {
+  const headerValue = req.headers['x-finhub-api-key']
+  if (typeof headerValue === 'string' && headerValue.trim().length > 0) {
+    return headerValue.trim()
+  }
+
+  const authHeader = req.headers.authorization
+  if (typeof authHeader !== 'string' || authHeader.trim().length === 0) {
+    return null
+  }
+
+  const normalized = authHeader.trim()
+  const lowerCaseNormalized = normalized.toLowerCase()
+
+  if (lowerCaseNormalized.startsWith('apikey ')) {
+    const rawToken = normalized.slice(7).trim()
+    return rawToken || null
+  }
+
+  if (lowerCaseNormalized.startsWith('bearer ')) {
+    const rawToken = normalized.slice(7).trim()
+    return rawToken || null
+  }
+
+  return null
+}
+
+const getBrandIntegrationKey = (req: Request): string => {
+  const rawApiKey = extractBrandIntegrationApiKey(req)
+  if (!rawApiKey) {
+    return getRequesterKey(req)
+  }
+
+  const prefix = rawApiKey.split('.', 1)[0]?.trim()
+  const candidate = prefix && prefix.length >= 6 ? prefix : rawApiKey
+  const digest = crypto.createHash('sha256').update(candidate).digest('hex').slice(0, 24)
+  return `integration:${digest}`
+}
+
+const getLimiterRequesterKey = (req: Request, config: LimiterRuntimeConfig): string => {
+  if (config.keyStrategy === 'integrationApiKey') {
+    return getBrandIntegrationKey(req)
+  }
+
+  return getRequesterKey(req)
+}
+
 const buildRuntimeConfig = (
   definition: LimiterDefinition
 ): LimiterRuntimeConfig => ({
   name: definition.name,
   keyPrefix: definition.keyPrefix,
+  keyStrategy: definition.keyStrategy,
   windowMs: parsePositiveIntegerEnv(
     `RATE_LIMIT_${definition.envKey}_WINDOW_MS`,
     definition.defaultWindowMs
@@ -350,7 +423,13 @@ class AdaptiveRateLimitStore implements Store {
       throw error
     }
 
-    const keyType = key.startsWith('user:') ? 'user' : key.startsWith('ip:') ? 'ip' : 'unknown'
+    const keyType = key.startsWith('user:')
+      ? 'user'
+      : key.startsWith('ip:')
+        ? 'ip'
+        : key.startsWith('integration:')
+          ? 'integration'
+          : 'unknown'
     const errorMessage = error instanceof Error ? error.message : String(error)
 
     logWarn('rate_limiter_redis_runtime_error', {
@@ -386,14 +465,14 @@ const createLimiter = (
     message: ResponseBuilder.error(ErrorCodes.RATE_LIMIT_EXCEEDED, config.message),
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => getRequesterKey(req),
+    keyGenerator: (req) => getLimiterRequesterKey(req, config),
     store,
     skip: () => false,
     skipFailedRequests: false,
     skipSuccessfulRequests: false,
     passOnStoreError: false,
     handler: (_req, res, _next, optionsUsed) => {
-      const requesterKey = getRequesterKey(_req)
+      const requesterKey = getLimiterRequesterKey(_req, config)
       recordRateLimitExceededMetric(config.name, requesterKey)
       res.status(optionsUsed.statusCode).send(optionsUsed.message)
     },
@@ -415,6 +494,7 @@ export const rateLimiter: Record<RateLimiterName, RateLimitRequestHandler> = {
   adminModerationBulk: buildLimiter('adminModerationBulk'),
   adminMetricsDrilldown: buildLimiter('adminMetricsDrilldown'),
   userReport: buildLimiter('userReport'),
+  brandIntegration: buildLimiter('brandIntegration'),
   general: buildLimiter('general'),
 }
 
