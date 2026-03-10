@@ -169,6 +169,11 @@ Integracao CI/CD:
 - dcos/done/RUNBOOK_MODERATION_PRE_RELEASE.md
 - dcos/done/AUDITORIA_FINAL_O3.md
 - dcos/done/RUNBOOK_RELEASE_E2E_OBRIGATORIO.md
+- dcos/done/P4_1_PORTAL_MARCA_BACKEND.md
+- dcos/done/P4_2_WALLET_MARCA_BACKEND.md
+- dcos/done/P4_3_CAMPANHAS_SELF_SERVICE_BACKEND.md
+- dcos/done/P4_4_SISTEMA_AFILIACAO_BACKEND.md
+- dcos/done/P4_5_API_INTEGRACAO_BRAND.md
 
 ## 11) Historico
 
@@ -225,3 +230,4 @@ Integracao CI/CD:
 - 2026-03-10: P5-MARCAS Fase 3.2 concluida no backend com fluxo admin de revisao de campanhas (`submit-approval`, `approve`, `reject`) e estados de campanha estendidos para `approved/rejected`.
 - 2026-03-10: P5-MARCAS Fase 3.3/3.4 concluida no backend com serving publico (`GET /api/ads/serve`) e tracking idempotente (`POST /api/ads/impression`, `POST /api/ads/click`) via token assinado e agregacao de metricas em `AdCampaign`.
 - 2026-03-10: P5-MARCAS Fase 3.5 concluida no backend com metricas agregadas por campanha (`GET /api/admin/ads/campaigns/:campaignId/metrics?days=30`), incluindo timeline diaria e breakdown por `slot`, `audience` e `device`.
+- 2026-03-10: organizacao documental sincronizada com regras: docs concluidos de P5-MARCAS backend (P4.1 a P4.5) movidos para `dcos/done/` e referencias atualizadas.
