@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-09 (backend P1.1 + P1.5 + P1.6 + P2.2 + P2.3 + P2.5 entregue).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 entregue).
 
 ---
 
@@ -31,7 +31,7 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 | **Model** | `src/models/Brand.ts` — schema simples com name, slug, brandType, logo, website, socialLinks, ratings, views |
 | **Controller** | `src/controllers/brand.controller.ts` — CRUD completo + toggles (active, featured, verified) |
 | **Service** | `src/services/brand.service.ts` — list, getBySlug, create, update, delete, toggles, stats, getFeatured, getByType |
-| **Routes** | `src/routes/brand.routes.ts` — 11 endpoints (4 publicos, 7 admin) |
+| **Routes** | `src/routes/brand.routes.ts` — legacy; desmontadas do router principal em 2026-03-10 |
 | **Scopes** | `admin.brands.write`, `admin.metrics.read` |
 | **Frontend** | Nenhuma pagina funcional — components/ e hooks/ vazios |
 
@@ -52,9 +52,9 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 | **Frontend admin** | `BrandsManagementPage.tsx` (1060 linhas) — **totalmente funcional** |
 | **Frontend publico** | 9 paginas placeholder em `/recursos/*` |
 
-**Vertical types existentes:** broker, exchange, site, app, podcast, event, other.
+**Vertical types existentes:** broker, exchange, site, app, podcast, event, insurance, bank, fund, fintech, newsletter, other.
 
-### 1.3 Decisao necessaria
+### 1.3 Decisao
 
 | Opcao | Descricao | Recomendacao |
 |-------|-----------|-------------|
@@ -62,7 +62,10 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 | (b) Manter os dois | Brand para entidades simples, DirectoryEntry para entidades ricas. Mais complexidade sem beneficio claro. | Nao recomendado |
 | (c) Fundir num so model novo | Criar novo model unificado. Trabalho extra sem ganho real vs opcao (a). | Nao recomendado |
 
-**Se opcao (a):** migrar dados existentes de Brand para DirectoryEntry, adicionar vertical types em falta (platform, tool, news-source → podem mapear para site, app, other), e retirar rotas `/api/brands`.
+**Execucao da opcao (a) no backend (2026-03-10):**
+- script de migracao `npm run migrate:brands:directory` (dry-run por default; `--apply` para persistir);
+- remocao da exposicao de `/api/brands` no router principal;
+- pesquisa global (`/api/search` tipo `brand`) migrada para `DirectoryEntry`.
 
 ---
 
@@ -109,7 +112,7 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 |-----------|--------|---------|
 | **Comentarios** | ✅ | Comment.targetType inclui `'brand'` — comentarios em entidades |
 | **Ratings** | ✅ | Rating.targetType inclui `'brand'` — avaliacoes de entidades |
-| **Views** | ✅ | Brand tem `views`, DirectoryEntry nao tem (gap) |
+| **Views** | ✅ | `views` no `DirectoryEntry` com incremento no detalhe publico |
 
 ### 2.5 Frontend admin — Gestao de diretorios
 
@@ -216,11 +219,17 @@ page, limit
 
 **Problema:** Dois models paralelos para a mesma funcionalidade. O Brand tem engagement (views, ratings, comments) ligado ao sistema universal. O DirectoryEntry tem ownership, claims, editorial, verificacao — mas nao tem views counter nem esta ligado ao sistema de ratings/comments da mesma forma.
 
-**O que falta:**
-- Decisao: migrar para DirectoryEntry (recomendado)
-- Se migrar: adicionar `views` ao DirectoryEntry, garantir que ratings/comments apontam para DirectoryEntry
-- Script de migracao de dados
-- Retirar rotas `/api/brands` ou redirecionar
+**Estado atual (2026-03-10):** base de unificacao backend entregue.
+
+**Entregue no backend:**
+- script `npm run migrate:brands:directory` para migrar Brand -> DirectoryEntry;
+- rotas `/api/brands` retiradas do router principal (legacy descontinuado na API publica);
+- pesquisa global de recursos (`type=brand`) passou a consultar `DirectoryEntry`.
+
+**Ainda em aberto para fecho total:**
+- executar migracao com `--apply` em cada ambiente alvo e validar contagens;
+- limpar referencias residuais ao model `Brand` em modulos internos (ads, social metadata legacy, seeds);
+- fechar adaptacao frontend para remover qualquer dependencia de `/api/brands`.
 
 **Prioridade:** P2 — nao bloqueia mas a duplicacao causa confusao a longo prazo.
 
@@ -537,7 +546,7 @@ isSponsored: boolean (default false)
 
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
-| 2.1 | **Unificacao Brand → DirectoryEntry** | Migracao de dados, retirar rotas legacy | Atualizar imports/refs | Medio |
+| 2.1 | **Unificacao Brand → DirectoryEntry** | CONCLUIDO (2026-03-10): script `migrate:brands:directory` + `/api/brands` desmontado do router principal + search de `brand` migrado para `DirectoryEntry` | Atualizar imports/refs | Medio |
 | 2.2 | **Vertical types adicionais** | CONCLUIDO (2026-03-09): `insurance`, `bank`, `fund`, `fintech`, `newsletter` no enum + validacoes sincronizadas | Novos icones/categorias | Baixo |
 | 2.3 | **Campos de entidade financeira** | CONCLUIDO (2026-03-09): `regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures`, `pricing` no model + respostas admin/public | Seccoes no detalhe | Medio |
 | 2.4 | **Badge de verificacao visual** | Ja existe no model | Componente de badge, tooltip com info | Baixo |

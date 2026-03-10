@@ -12,7 +12,6 @@ import bookRoutes from './book.routes'
 import playlistRoutes from './playlist.routes'
 import announcementRoutes from './announcement.routes'
 import reelRoutes from './reel.routes'
-import brandRoutes from './brand.routes'
 import uploadRoutes from './upload.routes'
 import followRoutes from './follow.routes'
 import favoriteRoutes from './favorite.routes'
@@ -61,7 +60,6 @@ router.get('/', (req, res) => {
         playlists: '/api/playlists',
         announcements: '/api/announcements',
       },
-      brands: '/api/brands',
       upload: '/api/upload',
       social: {
         follow: '/api/follow',
@@ -111,9 +109,6 @@ router.use('/books', bookRoutes)
 router.use('/reels', reelRoutes)
 router.use('/playlists', playlistRoutes)
 router.use('/announcements', announcementRoutes)
-
-// Rotas de brands (admin)
-router.use('/brands', brandRoutes)
 
 // Rotas de upload
 router.use('/upload', uploadRoutes)

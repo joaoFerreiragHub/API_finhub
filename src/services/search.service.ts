@@ -1,6 +1,6 @@
 ﻿import { Article } from '../models/Article'
 import { Book } from '../models/Book'
-import { Brand } from '../models/Brand'
+import { DirectoryEntry } from '../models/DirectoryEntry'
 import { Course } from '../models/Course'
 import { LiveEvent } from '../models/LiveEvent'
 import { Podcast } from '../models/Podcast'
@@ -66,15 +66,17 @@ interface CreatorProjection {
   createdAt?: Date | null
 }
 
-interface BrandProjection {
+interface DirectoryProjection {
   _id: unknown
   name?: string
   slug?: string
+  shortDescription?: string
   description?: string
   logo?: string | null
   coverImage?: string | null
   views?: number
   averageRating?: number
+  updatedAt?: Date | null
   createdAt?: Date | null
 }
 
@@ -342,26 +344,31 @@ class SearchService {
     normalizedQuery: string,
     limit: number,
   ): Promise<RankedSearchResult[]> {
-    const brands = await Brand.find({
+    const directories = await DirectoryEntry.find({
+      status: 'published',
       isActive: true,
-      $or: [{ name: regex }, { description: regex }, { category: regex }],
+      showInDirectory: true,
+      $or: [{ name: regex }, { shortDescription: regex }, { description: regex }, { tags: regex }],
     })
-      .select('name slug description logo coverImage views averageRating createdAt')
-      .sort({ isFeatured: -1, views: -1, averageRating: -1 })
+      .select('name slug shortDescription description logo coverImage views averageRating updatedAt createdAt')
+      .sort({ isFeatured: -1, views: -1, averageRating: -1, updatedAt: -1 })
       .limit(limit)
-      .lean<BrandProjection[]>()
+      .lean<DirectoryProjection[]>()
 
-    return brands.map((brand) => {
-      const id = String(brand._id)
-      const slugOrId = brand.slug?.trim() || id
-      const title = brand.name?.trim() || 'Recurso'
-      const description = brand.description?.trim() || 'Recurso financeiro'
+    return directories.map((directory) => {
+      const id = String(directory._id)
+      const slugOrId = directory.slug?.trim() || id
+      const title = directory.name?.trim() || 'Recurso'
+      const description =
+        directory.shortDescription?.trim() ||
+        directory.description?.trim() ||
+        'Recurso financeiro'
       const score = this.computeScore({
         normalizedQuery,
         primaryText: title,
         secondaryText: description,
-        popularity: Number(brand.views ?? 0),
-        quality: Number(brand.averageRating ?? 0),
+        popularity: Number(directory.views ?? 0),
+        quality: Number(directory.averageRating ?? 0),
       })
 
       return {
@@ -369,10 +376,10 @@ class SearchService {
         type: 'brand',
         title,
         description,
-        coverImage: brand.logo ?? brand.coverImage ?? null,
+        coverImage: directory.logo ?? directory.coverImage ?? null,
         url: `/recursos/${slugOrId}`,
         score,
-        sortTimestamp: toTimestamp(brand.createdAt),
+        sortTimestamp: toTimestamp(directory.updatedAt) || toTimestamp(directory.createdAt),
       }
     })
   }
