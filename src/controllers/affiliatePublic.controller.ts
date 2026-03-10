@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { Response } from 'express'
 import { AuthRequest } from '../types/auth'
 import {
@@ -16,6 +17,45 @@ const handleError = (res: Response, error: unknown, fallbackMessage: string) => 
     error: fallbackMessage,
     details: error instanceof Error ? error.message : undefined,
   })
+}
+
+const extractBodyRecord = (req: AuthRequest): Record<string, unknown> => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return {}
+  return req.body as Record<string, unknown>
+}
+
+const extractPostbackSecretFromRequest = (req: AuthRequest): string | null => {
+  const customHeader = req.get('x-affiliate-postback-secret')
+  if (typeof customHeader === 'string' && customHeader.trim()) {
+    return customHeader.trim()
+  }
+
+  const authHeader = req.get('authorization')
+  if (typeof authHeader !== 'string' || !authHeader.trim()) {
+    return null
+  }
+
+  const normalized = authHeader.trim()
+  const normalizedLower = normalized.toLowerCase()
+
+  if (normalizedLower.startsWith('bearer ')) {
+    const token = normalized.slice(7).trim()
+    return token || null
+  }
+
+  if (normalizedLower.startsWith('apikey ')) {
+    const token = normalized.slice(7).trim()
+    return token || null
+  }
+
+  return null
+}
+
+const isSecretMatch = (provided: string, expected: string): boolean => {
+  const providedBuffer = Buffer.from(provided)
+  const expectedBuffer = Buffer.from(expected)
+  if (providedBuffer.length !== expectedBuffer.length) return false
+  return crypto.timingSafeEqual(providedBuffer, expectedBuffer)
 }
 
 /**
@@ -40,5 +80,46 @@ export const redirectAffiliateLink = async (req: AuthRequest, res: Response) => 
   } catch (error: unknown) {
     console.error('Redirect affiliate link error:', error)
     return handleError(res, error, 'Erro ao processar redirect de afiliacao.')
+  }
+}
+
+/**
+ * POST /api/affiliates/postback/conversion
+ */
+export const registerAffiliatePostbackConversion = async (req: AuthRequest, res: Response) => {
+  try {
+    const expectedSecret = (process.env.AFFILIATE_POSTBACK_SECRET ?? '').trim()
+    if (!expectedSecret) {
+      return res.status(503).json({
+        error: 'Postback de afiliacao desativado. Configura AFFILIATE_POSTBACK_SECRET.',
+      })
+    }
+
+    const providedSecret = extractPostbackSecretFromRequest(req)
+    if (!providedSecret || !isSecretMatch(providedSecret, expectedSecret)) {
+      return res.status(401).json({ error: 'Credenciais de postback invalidas.' })
+    }
+
+    const body = extractBodyRecord(req)
+    const result = await affiliateTrackingService.markClickConversionFromPostback({
+      clickId: body.clickId,
+      valueCents: body.valueCents,
+      value: body.value,
+      currency: body.currency,
+      reference: body.reference,
+      provider: body.provider,
+      metadata: body.metadata,
+      force: body.force,
+    })
+
+    return res.status(200).json({
+      message: result.updated
+        ? 'Conversao de afiliacao registada via postback.'
+        : 'Clique ja estava convertido. Sem alteracoes.',
+      ...result,
+    })
+  } catch (error: unknown) {
+    console.error('Register affiliate postback conversion error:', error)
+    return handleError(res, error, 'Erro ao registar conversao de afiliacao via postback.')
   }
 }

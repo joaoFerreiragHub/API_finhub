@@ -323,6 +323,60 @@ const ROUTE_CONTRACTS = [
     routePath: '/affiliate/links/:linkId/clicks',
     requiredMiddleware: 'validateBrandIntegrationAffiliateLinkClicksQueryContract',
   },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/affiliate-links',
+    requiredMiddleware: 'validateBrandPortalAffiliateLinkListContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'post',
+    routePath: '/affiliate-links',
+    requiredMiddleware: 'validateBrandPortalAffiliateLinkCreateContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'patch',
+    routePath: '/affiliate-links/:linkId',
+    requiredMiddleware: 'validateBrandPortalAffiliateLinkUpdateContract',
+  },
+  {
+    filePath: 'src/routes/brandPortal.routes.ts',
+    method: 'get',
+    routePath: '/affiliate-links/:linkId/clicks',
+    requiredMiddleware: 'validateBrandPortalAffiliateLinkClicksContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'get',
+    routePath: '/monetization/affiliates/overview',
+    requiredMiddleware: 'validateAdminAffiliateOverviewContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'get',
+    routePath: '/monetization/affiliates/links',
+    requiredMiddleware: 'validateAdminAffiliateLinksContract',
+  },
+  {
+    filePath: 'src/routes/admin.routes.ts',
+    method: 'post',
+    routePath: '/monetization/affiliates/clicks/:clickId/convert',
+    requiredMiddleware: 'validateAdminAffiliateConvertContract',
+  },
+  {
+    filePath: 'src/routes/affiliate.routes.ts',
+    method: 'get',
+    routePath: '/r/:code',
+    requiredMiddleware: 'validateAffiliateRedirectContract',
+  },
+  {
+    filePath: 'src/routes/affiliate.routes.ts',
+    method: 'post',
+    routePath: '/postback/conversion',
+    requiredMiddleware: 'validateAffiliatePostbackConversionContract',
+  },
 ]
 
 const fail = (errors) => {

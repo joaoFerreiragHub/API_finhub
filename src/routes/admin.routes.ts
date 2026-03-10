@@ -161,6 +161,9 @@ import {
   validateAdminAdCampaignCreateContract,
   validateAdminAdCampaignStatusContract,
   validateAdminAdCampaignUpdateContract,
+  validateAdminAffiliateConvertContract,
+  validateAdminAffiliateLinksContract,
+  validateAdminAffiliateOverviewContract,
   validateAdminAdSlotCreateContract,
   validateAdminAdSlotUpdateContract,
   validateAdminAssistedSessionRequestContract,
@@ -1073,6 +1076,7 @@ router.post(
 router.get(
   '/monetization/affiliates/overview',
   authenticate,
+  validateAdminAffiliateOverviewContract,
   rateLimiter.adminMetricsDrilldown,
   auditAdminAction({
     action: 'admin.monetization.affiliates.overview.read',
@@ -1091,6 +1095,8 @@ router.get(
 router.get(
   '/monetization/affiliates/links',
   authenticate,
+  validateAdminAffiliateLinksContract,
+  rateLimiter.adminMetricsDrilldown,
   auditAdminAction({
     action: 'admin.monetization.affiliates.links.list',
     resourceType: 'affiliate_link',
@@ -1108,6 +1114,7 @@ router.get(
 router.post(
   '/monetization/affiliates/clicks/:clickId/convert',
   authenticate,
+  validateAdminAffiliateConvertContract,
   rateLimiter.adminModerationAction,
   auditAdminAction({
     action: 'admin.monetization.affiliates.clicks.convert',

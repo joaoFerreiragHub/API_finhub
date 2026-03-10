@@ -3419,3 +3419,530 @@ export const validateBrandIntegrationAffiliateLinkClicksQueryContract = (
 
   next()
 }
+
+const isHttpUrlString = (value: string): boolean => {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const getAffiliateLinkPatchPayload = (
+  payload: RecordLike
+): { valid: boolean; patch: RecordLike | null } => {
+  if ('patch' in payload && payload.patch !== undefined && payload.patch !== null) {
+    if (!isRecord(payload.patch)) {
+      return { valid: false, patch: null }
+    }
+    return { valid: true, patch: payload.patch as RecordLike }
+  }
+
+  return { valid: true, patch: payload }
+}
+
+const validateAffiliateLinkPayload = (
+  payload: RecordLike,
+  res: Response,
+  options: { requireCreateFields?: boolean; requireMutableField?: boolean } = {}
+): boolean => {
+  const allowedKeys = new Set([
+    'directoryEntryId',
+    'destinationUrl',
+    'label',
+    'isActive',
+    'commissionRateBps',
+    'code',
+    'metadata',
+    'patch',
+  ])
+  for (const key of Object.keys(payload)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no payload de afiliacao.`)
+      return false
+    }
+  }
+
+  const patchResult = getAffiliateLinkPatchPayload(payload)
+  if (!patchResult.valid || !patchResult.patch) {
+    respondValidationError(res, 'Campo patch invalido.')
+    return false
+  }
+
+  const targetPayload = patchResult.patch
+  if (targetPayload !== payload) {
+    const patchAllowedKeys = new Set([
+      'directoryEntryId',
+      'destinationUrl',
+      'label',
+      'isActive',
+      'commissionRateBps',
+      'code',
+      'metadata',
+    ])
+    for (const key of Object.keys(targetPayload)) {
+      if (!patchAllowedKeys.has(key)) {
+        respondValidationError(res, `Campo patch.${key} nao suportado no payload de afiliacao.`)
+        return false
+      }
+    }
+  }
+
+  if (options.requireCreateFields) {
+    const directoryEntryId = validateRequiredNonEmptyString(targetPayload, 'directoryEntryId')
+    const destinationUrl = validateRequiredNonEmptyString(targetPayload, 'destinationUrl')
+    if (!directoryEntryId || !destinationUrl) {
+      respondValidationError(res, 'Campos obrigatorios em falta: directoryEntryId, destinationUrl.')
+      return false
+    }
+
+    if (!isHttpUrlString(destinationUrl)) {
+      respondValidationError(res, 'Campo destinationUrl invalido. Usa URL http/https.')
+      return false
+    }
+  } else {
+    const directoryEntryId = validateOptionalString(targetPayload, 'directoryEntryId')
+    if (!directoryEntryId.valid) {
+      respondValidationError(res, 'Campo directoryEntryId invalido.')
+      return false
+    }
+
+    const destinationUrl = validateOptionalString(targetPayload, 'destinationUrl')
+    if (!destinationUrl.valid) {
+      respondValidationError(res, 'Campo destinationUrl invalido.')
+      return false
+    }
+    if (destinationUrl.value && !isHttpUrlString(destinationUrl.value)) {
+      respondValidationError(res, 'Campo destinationUrl invalido. Usa URL http/https.')
+      return false
+    }
+  }
+
+  const label = validateOptionalString(targetPayload, 'label')
+  if (!label.valid) {
+    respondValidationError(res, 'Campo label invalido.')
+    return false
+  }
+
+  const isActive = validateOptionalBoolean(targetPayload, 'isActive')
+  if (!isActive.valid) {
+    respondValidationError(res, 'Campo isActive invalido.')
+    return false
+  }
+
+  const code = validateOptionalString(targetPayload, 'code')
+  if (!code.valid) {
+    respondValidationError(res, 'Campo code invalido.')
+    return false
+  }
+
+  if ('commissionRateBps' in targetPayload && targetPayload.commissionRateBps !== undefined) {
+    const value = targetPayload.commissionRateBps
+    if (value !== null) {
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 10000) {
+        respondValidationError(
+          res,
+          'Campo commissionRateBps invalido. Usa inteiro entre 0 e 10000.'
+        )
+        return false
+      }
+    }
+  }
+
+  const metadata = validateOptionalObjectField(targetPayload, 'metadata')
+  if (!metadata.valid) {
+    respondValidationError(res, 'Campo metadata invalido.')
+    return false
+  }
+
+  if (options.requireMutableField) {
+    const hasMutableField = [
+      'directoryEntryId',
+      'destinationUrl',
+      'label',
+      'isActive',
+      'commissionRateBps',
+      'code',
+      'metadata',
+    ].some((key) => key in targetPayload)
+
+    if (!hasMutableField) {
+      respondValidationError(
+        res,
+        'Payload sem alteracoes de afiliacao. Envia pelo menos um campo mutavel.'
+      )
+      return false
+    }
+  }
+
+  return true
+}
+
+export const validateBrandPortalAffiliateLinkListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['directoryEntryId', 'isActive', 'search', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const directoryEntryId = readSingleQueryValue(req.query.directoryEntryId)
+  if (directoryEntryId.present && (!directoryEntryId.valid || !directoryEntryId.value)) {
+    respondValidationError(res, 'Parametro query directoryEntryId invalido.')
+    return
+  }
+
+  const isActive = parseOptionalBooleanQuery(req.query.isActive)
+  if (!isActive.valid) {
+    respondValidationError(res, 'Parametro query isActive invalido.')
+    return
+  }
+
+  const search = readSingleQueryValue(req.query.search)
+  if (search.present && (!search.valid || !search.value)) {
+    respondValidationError(res, 'Parametro query search invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateBrandPortalAffiliateLinkCreateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de criacao de link de afiliacao invalido.')
+    return
+  }
+
+  const isValid = validateAffiliateLinkPayload(req.body, res, { requireCreateFields: true })
+  if (!isValid) return
+
+  next()
+}
+
+export const validateBrandPortalAffiliateLinkUpdateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const linkId = validateRequiredRouteParam(req, res, 'linkId')
+  if (!linkId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de atualizacao de link de afiliacao invalido.')
+    return
+  }
+
+  const isValid = validateAffiliateLinkPayload(req.body, res, { requireMutableField: true })
+  if (!isValid) return
+
+  next()
+}
+
+export const validateBrandPortalAffiliateLinkClicksContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const linkId = validateRequiredRouteParam(req, res, 'linkId')
+  if (!linkId) return
+
+  const allowedKeys = new Set(['converted', 'days', 'from', 'to', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const converted = parseOptionalBooleanQuery(req.query.converted)
+  if (!converted.valid) {
+    respondValidationError(res, 'Parametro query converted invalido.')
+    return
+  }
+
+  const days = parseOptionalPositiveIntegerQuery(req.query.days)
+  if (!days.valid) {
+    respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  const from = parseOptionalDateQuery(req.query.from)
+  if (!from.valid) {
+    respondValidationError(res, 'Parametro query from invalido.')
+    return
+  }
+
+  const to = parseOptionalDateQuery(req.query.to)
+  if (!to.valid) {
+    respondValidationError(res, 'Parametro query to invalido.')
+    return
+  }
+
+  const fromValue = readSingleQueryValue(req.query.from)
+  const toValue = readSingleQueryValue(req.query.to)
+  if (
+    fromValue.value &&
+    toValue.value &&
+    !Number.isNaN(new Date(fromValue.value).getTime()) &&
+    !Number.isNaN(new Date(toValue.value).getTime()) &&
+    new Date(fromValue.value).getTime() > new Date(toValue.value).getTime()
+  ) {
+    respondValidationError(res, 'Parametro query from nao pode ser maior que to.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminAffiliateOverviewContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['days', 'ownerUserId', 'directoryEntryId', 'code'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const days = parseOptionalPositiveIntegerQuery(req.query.days)
+  if (!days.valid) {
+    respondValidationError(res, 'Parametro query days invalido.')
+    return
+  }
+
+  for (const key of ['ownerUserId', 'directoryEntryId', 'code'] as const) {
+    const parsedValue = readSingleQueryValue(req.query[key])
+    if (parsedValue.present && (!parsedValue.valid || !parsedValue.value)) {
+      respondValidationError(res, `Parametro query ${key} invalido.`)
+      return
+    }
+  }
+
+  next()
+}
+
+export const validateAdminAffiliateLinksContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['ownerUserId', 'directoryEntryId', 'isActive', 'search', 'page', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  for (const key of ['ownerUserId', 'directoryEntryId', 'search'] as const) {
+    const parsedValue = readSingleQueryValue(req.query[key])
+    if (parsedValue.present && (!parsedValue.valid || !parsedValue.value)) {
+      respondValidationError(res, `Parametro query ${key} invalido.`)
+      return
+    }
+  }
+
+  const isActive = parseOptionalBooleanQuery(req.query.isActive)
+  if (!isActive.valid) {
+    respondValidationError(res, 'Parametro query isActive invalido.')
+    return
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(res, 'Parametro query limit invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAdminAffiliateConvertContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const clickId = validateRequiredRouteParam(req, res, 'clickId')
+  if (!clickId) return
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de conversao de afiliacao invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['valueCents', 'value', 'currency', 'reference', 'metadata', 'force'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na conversao de afiliacao.`)
+      return
+    }
+  }
+
+  if ('valueCents' in req.body && req.body.valueCents !== undefined) {
+    const valueCents = req.body.valueCents
+    if (typeof valueCents !== 'number' || !Number.isInteger(valueCents) || valueCents < 0) {
+      respondValidationError(res, 'Campo valueCents invalido. Usa inteiro >= 0.')
+      return
+    }
+  }
+
+  if ('value' in req.body && req.body.value !== undefined) {
+    const value = req.body.value
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      respondValidationError(res, 'Campo value invalido. Usa numero >= 0.')
+      return
+    }
+  }
+
+  const currency = validateOptionalString(req.body, 'currency')
+  if (!currency.valid) {
+    respondValidationError(res, 'Campo currency invalido.')
+    return
+  }
+
+  const reference = validateOptionalString(req.body, 'reference')
+  if (!reference.valid) {
+    respondValidationError(res, 'Campo reference invalido.')
+    return
+  }
+
+  const force = validateOptionalBoolean(req.body, 'force')
+  if (!force.valid) {
+    respondValidationError(res, 'Campo force invalido.')
+    return
+  }
+
+  const metadata = validateOptionalObjectField(req.body, 'metadata')
+  if (!metadata.valid) {
+    respondValidationError(res, 'Campo metadata invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateAffiliateRedirectContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const code = validateRequiredRouteParam(req, res, 'code')
+  if (!code) return
+
+  next()
+}
+
+export const validateAffiliatePostbackConversionContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de postback de conversao invalido.')
+    return
+  }
+
+  const allowedKeys = new Set([
+    'clickId',
+    'valueCents',
+    'value',
+    'currency',
+    'reference',
+    'provider',
+    'metadata',
+    'force',
+  ])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no postback de conversao.`)
+      return
+    }
+  }
+
+  const clickId = validateRequiredNonEmptyString(req.body, 'clickId')
+  if (!clickId) {
+    respondValidationError(res, 'Campo clickId obrigatorio.')
+    return
+  }
+
+  if ('valueCents' in req.body && req.body.valueCents !== undefined) {
+    const valueCents = req.body.valueCents
+    if (typeof valueCents !== 'number' || !Number.isInteger(valueCents) || valueCents < 0) {
+      respondValidationError(res, 'Campo valueCents invalido. Usa inteiro >= 0.')
+      return
+    }
+  }
+
+  if ('value' in req.body && req.body.value !== undefined) {
+    const value = req.body.value
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      respondValidationError(res, 'Campo value invalido. Usa numero >= 0.')
+      return
+    }
+  }
+
+  for (const key of ['currency', 'reference', 'provider'] as const) {
+    const value = validateOptionalString(req.body, key)
+    if (!value.valid) {
+      respondValidationError(res, `Campo ${key} invalido.`)
+      return
+    }
+  }
+
+  const metadata = validateOptionalObjectField(req.body, 'metadata')
+  if (!metadata.valid) {
+    respondValidationError(res, 'Campo metadata invalido.')
+    return
+  }
+
+  const force = validateOptionalBoolean(req.body, 'force')
+  if (!force.valid) {
+    respondValidationError(res, 'Campo force invalido.')
+    return
+  }
+
+  next()
+}

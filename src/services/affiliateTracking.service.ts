@@ -12,6 +12,8 @@ const DEFAULT_WINDOW_DAYS = 30
 const MIN_WINDOW_DAYS = 1
 const MAX_WINDOW_DAYS = 365
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]{3,39}$/
+const AFFILIATE_TRACKING_CLICK_ID_PARAM = 'fh_click_id'
+const AFFILIATE_TRACKING_CODE_PARAM = 'fh_aff_code'
 
 export interface AffiliateLinkListFilters {
   directoryEntryId?: string
@@ -288,6 +290,21 @@ const toIpHash = (ipValue: unknown): string | null => {
   return crypto.createHash('sha256').update(normalized).digest('hex')
 }
 
+const appendAffiliateTrackingParams = (destinationUrl: string, clickId: string, code: string): string => {
+  try {
+    const parsed = new URL(destinationUrl)
+    if (!parsed.searchParams.has(AFFILIATE_TRACKING_CLICK_ID_PARAM)) {
+      parsed.searchParams.set(AFFILIATE_TRACKING_CLICK_ID_PARAM, clickId)
+    }
+    if (!parsed.searchParams.has(AFFILIATE_TRACKING_CODE_PARAM)) {
+      parsed.searchParams.set(AFFILIATE_TRACKING_CODE_PARAM, code)
+    }
+    return parsed.toString()
+  } catch {
+    return destinationUrl
+  }
+}
+
 export class AffiliateTrackingServiceError extends Error {
   statusCode: number
 
@@ -458,6 +475,24 @@ export class AffiliateTrackingService {
       },
       createdAt: toIsoOrNull(row.createdAt),
       updatedAt: toIsoOrNull(row.updatedAt),
+    }
+  }
+
+  private mapConversionItem(row: {
+    _id: unknown
+    converted: boolean
+    convertedAt?: Date | null
+    conversionValueCents?: number | null
+    conversionCurrency?: string | null
+    conversionReference?: string | null
+  }) {
+    return {
+      id: String(row._id),
+      converted: row.converted,
+      convertedAt: toIsoOrNull(row.convertedAt ?? null),
+      conversionValueCents: row.conversionValueCents ?? null,
+      conversionCurrency: row.conversionCurrency ?? null,
+      conversionReference: row.conversionReference ?? null,
     }
   }
 
@@ -868,7 +903,7 @@ export class AffiliateTrackingService {
     })
 
     return {
-      redirectUrl: link.destinationUrl,
+      redirectUrl: appendAffiliateTrackingParams(link.destinationUrl, String(click._id), link.code),
       click: {
         id: String(click._id),
         code: link.code,
@@ -904,14 +939,7 @@ export class AffiliateTrackingService {
     if (click.converted && !force) {
       return {
         updated: false,
-        item: {
-          id: String(click._id),
-          converted: click.converted,
-          convertedAt: toIsoOrNull(click.convertedAt ?? null),
-          conversionValueCents: click.conversionValueCents ?? null,
-          conversionCurrency: click.conversionCurrency ?? null,
-          conversionReference: click.conversionReference ?? null,
-        },
+        item: this.mapConversionItem(click),
       }
     }
 
@@ -928,25 +956,123 @@ export class AffiliateTrackingService {
       throw new AffiliateTrackingServiceError(400, 'currency invalido.')
     }
 
+    const reference = normalizeOptionalString(input.reference, 160)
+    if (reference) {
+      const existingWithSameReference = await AffiliateClick.findOne({
+        conversionReference: reference,
+        _id: { $ne: click._id },
+      })
+        .select('_id')
+        .lean<{ _id: mongoose.Types.ObjectId } | null>()
+
+      if (existingWithSameReference && !force) {
+        throw new AffiliateTrackingServiceError(
+          409,
+          'conversionReference ja associado a outro clique.'
+        )
+      }
+    }
+
     click.converted = true
     click.convertedAt = new Date()
     click.convertedBy = actorObjectId
     click.conversionValueCents = conversionValueCents
     click.conversionCurrency = currency
-    click.conversionReference = normalizeOptionalString(input.reference, 160)
+    click.conversionReference = reference
     click.metadata = normalizeMetadata(input.metadata)
     await click.save()
 
     return {
       updated: true,
-      item: {
-        id: String(click._id),
-        converted: click.converted,
-        convertedAt: toIsoOrNull(click.convertedAt ?? null),
-        conversionValueCents: click.conversionValueCents ?? null,
-        conversionCurrency: click.conversionCurrency ?? null,
-        conversionReference: click.conversionReference ?? null,
-      },
+      item: this.mapConversionItem(click),
+    }
+  }
+
+  async markClickConversionFromPostback(
+    input: {
+      clickId?: unknown
+      valueCents?: unknown
+      value?: unknown
+      currency?: unknown
+      reference?: unknown
+      provider?: unknown
+      metadata?: unknown
+      force?: unknown
+    } = {}
+  ) {
+    const clickIdRaw = normalizeOptionalString(input.clickId, 60)
+    if (!clickIdRaw) {
+      throw new AffiliateTrackingServiceError(400, 'clickId obrigatorio para postback de conversao.')
+    }
+
+    const clickId = this.toObjectId(clickIdRaw, 'clickId')
+    const click = await AffiliateClick.findById(clickId)
+    if (!click) {
+      throw new AffiliateTrackingServiceError(404, 'Clique de afiliacao nao encontrado.')
+    }
+
+    const force = input.force === true
+    if (click.converted && !force) {
+      return {
+        updated: false,
+        source: 'postback',
+        item: this.mapConversionItem(click),
+      }
+    }
+
+    const conversionValueCents = normalizeConversionValueCents(input.valueCents, input.value)
+    if ((input.valueCents !== undefined || input.value !== undefined) && conversionValueCents === null) {
+      throw new AffiliateTrackingServiceError(
+        400,
+        'Valor de conversao invalido. Usa valueCents inteiro >= 0 ou value numerico >= 0.'
+      )
+    }
+
+    const currency = normalizeCurrency(input.currency)
+    if (input.currency !== undefined && !currency) {
+      throw new AffiliateTrackingServiceError(400, 'currency invalido.')
+    }
+
+    const reference = normalizeOptionalString(input.reference, 160)
+    if (reference) {
+      const existingWithSameReference = await AffiliateClick.findOne({
+        conversionReference: reference,
+        _id: { $ne: click._id },
+      })
+        .select('_id')
+        .lean<{ _id: mongoose.Types.ObjectId } | null>()
+
+      if (existingWithSameReference && !force) {
+        throw new AffiliateTrackingServiceError(
+          409,
+          'conversionReference ja associado a outro clique.'
+        )
+      }
+    }
+
+    const provider = normalizeOptionalString(input.provider, 80)
+    const metadata = normalizeMetadata(input.metadata) ?? {}
+    const metadataWithSource: Record<string, unknown> = {
+      ...metadata,
+      conversionSource: 'postback',
+    }
+    if (provider) {
+      metadataWithSource.provider = provider
+    }
+
+    click.converted = true
+    click.convertedAt = new Date()
+    click.convertedBy = null
+    click.conversionValueCents = conversionValueCents
+    click.conversionCurrency = currency
+    click.conversionReference = reference
+    click.metadata = metadataWithSource
+    await click.save()
+
+    return {
+      updated: true,
+      source: 'postback',
+      item: this.mapConversionItem(click),
     }
   }
 

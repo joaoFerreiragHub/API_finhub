@@ -28,6 +28,10 @@ import {
 import { authenticate } from '../middlewares/auth'
 import { rateLimiter } from '../middlewares/rateLimiter'
 import {
+  validateBrandPortalAffiliateLinkClicksContract,
+  validateBrandPortalAffiliateLinkCreateContract,
+  validateBrandPortalAffiliateLinkListContract,
+  validateBrandPortalAffiliateLinkUpdateContract,
   validateBrandPortalIntegrationApiKeyCreateContract,
   validateBrandPortalIntegrationApiKeyListContract,
   validateBrandPortalIntegrationApiKeyRevokeContract,
@@ -137,28 +141,52 @@ router.get('/campaigns/:campaignId/metrics', authenticate, getBrandPortalCampaig
  * @desc    Listar links de afiliacao da marca autenticada
  * @access  Private
  */
-router.get('/affiliate-links', authenticate, listBrandPortalAffiliateLinks)
+router.get(
+  '/affiliate-links',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalAffiliateLinkListContract,
+  listBrandPortalAffiliateLinks
+)
 
 /**
  * @route   POST /api/brand-portal/affiliate-links
  * @desc    Criar link de afiliacao para um DirectoryEntry owned
  * @access  Private
  */
-router.post('/affiliate-links', authenticate, createBrandPortalAffiliateLink)
+router.post(
+  '/affiliate-links',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalAffiliateLinkCreateContract,
+  createBrandPortalAffiliateLink
+)
 
 /**
  * @route   PATCH /api/brand-portal/affiliate-links/:linkId
  * @desc    Atualizar link de afiliacao da marca autenticada
  * @access  Private
  */
-router.patch('/affiliate-links/:linkId', authenticate, updateBrandPortalAffiliateLink)
+router.patch(
+  '/affiliate-links/:linkId',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalAffiliateLinkUpdateContract,
+  updateBrandPortalAffiliateLink
+)
 
 /**
  * @route   GET /api/brand-portal/affiliate-links/:linkId/clicks
  * @desc    Listar cliques/conversoes de um link de afiliacao owned
  * @access  Private
  */
-router.get('/affiliate-links/:linkId/clicks', authenticate, listBrandPortalAffiliateLinkClicks)
+router.get(
+  '/affiliate-links/:linkId/clicks',
+  authenticate,
+  rateLimiter.api,
+  validateBrandPortalAffiliateLinkClicksContract,
+  listBrandPortalAffiliateLinkClicks
+)
 
 /**
  * @route   GET /api/brand-portal/integrations/api-keys
