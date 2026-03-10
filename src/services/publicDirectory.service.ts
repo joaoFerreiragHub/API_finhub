@@ -48,6 +48,13 @@ interface RelatedContentItem {
   score: number
 }
 
+interface ComparisonMetricSummary {
+  min: number
+  max: number
+  spread: number
+  leaderIds: string[]
+}
+
 export interface PublicDirectoryFilters {
   verticalType?: DirectoryVerticalType
   country?: string
@@ -256,6 +263,39 @@ const mapPublicDirectory = (entry: any) => ({
   publishedAt: entry.publishedAt ?? null,
   updatedAt: entry.updatedAt ?? null,
 })
+
+const summarizeMetric = (
+  items: Array<ReturnType<typeof mapPublicDirectory>>,
+  key: 'views' | 'averageRating' | 'ratingsCount' | 'commentsCount'
+): ComparisonMetricSummary => {
+  const values = items.map((item) => Number(item[key] ?? 0))
+  const min = values.length > 0 ? Math.min(...values) : 0
+  const max = values.length > 0 ? Math.max(...values) : 0
+  const leaderIds = items
+    .filter((item) => Number(item[key] ?? 0) === max)
+    .map((item) => item.id)
+
+  return {
+    min,
+    max,
+    spread: Number((max - min).toFixed(2)),
+    leaderIds,
+  }
+}
+
+const intersectArrays = (arrays: string[][]): string[] => {
+  if (arrays.length === 0) return []
+  const [head, ...tail] = arrays
+  return head.filter((value) => tail.every((collection) => collection.includes(value)))
+}
+
+const normalizeStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+}
 
 const buildBaseDirectoryQuery = (
   filters: PublicDirectoryFilters
@@ -542,6 +582,73 @@ export class PublicDirectoryService {
     return {
       query,
       ...result,
+    }
+  }
+
+  async comparePublicDirectories(slugsRaw: string[]) {
+    const slugs = Array.from(
+      new Set(
+        slugsRaw
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim().toLowerCase())
+          .filter((item) => item.length > 0)
+      )
+    )
+
+    if (slugs.length < 2 || slugs.length > 3) {
+      throw new PublicDirectoryServiceError(
+        400,
+        'Parametro slugs invalido. Informa 2 a 3 slugs separados por virgula.'
+      )
+    }
+
+    const entries = await DirectoryEntry.find({
+      slug: { $in: slugs },
+      status: 'published',
+      isActive: true,
+      showInDirectory: true,
+    }).lean()
+
+    const bySlug = new Map(entries.map((entry) => [entry.slug, entry]))
+    const missingSlugs = slugs.filter((slug) => !bySlug.has(slug))
+    if (missingSlugs.length > 0) {
+      throw new PublicDirectoryServiceError(
+        404,
+        `Recursos nao encontrados para comparacao: ${missingSlugs.join(', ')}.`
+      )
+    }
+
+    const orderedItems = slugs
+      .map((slug) => bySlug.get(slug))
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+      .map(mapPublicDirectory)
+
+    const sharedTags = intersectArrays(orderedItems.map((item) => normalizeStringList(item.tags)))
+    const sharedCategories = intersectArrays(
+      orderedItems.map((item) => normalizeStringList(item.categories))
+    )
+    const sharedRegulators = intersectArrays(
+      orderedItems.map((item) => normalizeStringList(item.regulatedBy))
+    )
+
+    return {
+      items: orderedItems,
+      comparison: {
+        count: orderedItems.length,
+        requestedSlugs: slugs,
+        verticalTypes: Array.from(new Set(orderedItems.map((item) => item.verticalType))),
+        metrics: {
+          views: summarizeMetric(orderedItems, 'views'),
+          averageRating: summarizeMetric(orderedItems, 'averageRating'),
+          ratingsCount: summarizeMetric(orderedItems, 'ratingsCount'),
+          commentsCount: summarizeMetric(orderedItems, 'commentsCount'),
+        },
+        shared: {
+          tags: sharedTags,
+          categories: sharedCategories,
+          regulatedBy: sharedRegulators,
+        },
+      },
     }
   }
 

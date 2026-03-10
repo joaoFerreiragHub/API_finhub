@@ -216,6 +216,26 @@ export const searchPublicDirectories = async (req: Request, res: Response) => {
 }
 
 /**
+ * GET /api/directories/compare
+ */
+export const comparePublicDirectories = async (req: Request, res: Response) => {
+  try {
+    const slugs = parseStringArray(req.query.slugs)
+    if (!slugs || slugs.length < 2 || slugs.length > 3) {
+      return res.status(400).json({
+        error: 'Parametro slugs invalido. Informa 2 a 3 slugs separados por virgula.',
+      })
+    }
+
+    const result = await publicDirectoryService.comparePublicDirectories(slugs)
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('Compare public directories error:', error)
+    return handleDirectoryError(res, error, 'Erro ao comparar recursos do diretorio.')
+  }
+}
+
+/**
  * GET /api/directories/:vertical
  */
 export const listPublicDirectoriesByVertical = async (req: Request, res: Response) => {

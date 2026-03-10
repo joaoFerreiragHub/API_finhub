@@ -220,3 +220,4 @@ Integracao CI/CD:
 - 2026-03-09: P5-MARCAS Fase 2.3 concluida no backend com campos de entidade financeira em `DirectoryEntry` (`regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures`, `pricing`) expostos nos fluxos admin/public de diretorio.
 - 2026-03-09: P5-MARCAS Fase 2.5 concluida no backend com endpoint publico `GET /api/directories/:vertical/:slug/related-content` (conteudo relacionado agregado de artigos/cursos/videos/lives/books/podcasts publicados).
 - 2026-03-10: P5-MARCAS Fase 2.1 concluida no backend com unificacao operacional para `DirectoryEntry` (script `migrate:brands:directory`, desativacao de `/api/brands` no router principal e pesquisa global `type=brand` migrada para `DirectoryEntry`).
+- 2026-03-10: P5-MARCAS Fase 2.6 concluida no backend com comparador publico de entidades (`GET /api/directories/compare?slugs=a,b[,c]`) e resumo de metricas comparadas por recurso.

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import {
+  comparePublicDirectories,
   getPublicDirectoryByVerticalAndSlug,
   listRelatedPublicDirectoryContent,
   listFeaturedPublicDirectories,
@@ -31,6 +32,13 @@ router.get('/featured', rateLimiter.general, listFeaturedPublicDirectories)
  * @access  Public
  */
 router.get('/search', rateLimiter.search, searchPublicDirectories)
+
+/**
+ * @route   GET /api/directories/compare
+ * @desc    Comparacao lado a lado de 2 a 3 entidades (query: slugs=a,b[,c])
+ * @access  Public
+ */
+router.get('/compare', rateLimiter.general, comparePublicDirectories)
 
 /**
  * @route   GET /api/directories/:vertical/:slug/related-content

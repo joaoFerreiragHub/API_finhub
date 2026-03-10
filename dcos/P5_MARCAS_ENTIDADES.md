@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 entregue).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 entregue).
 
 ---
 
@@ -185,7 +185,8 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 - GET /api/directories/:vertical/:slug (detalhe + incremento de views);
 - GET /api/directories/featured (destaques);
 - GET /api/directories/search (pesquisa cross-vertical);
-- GET /api/directories/:vertical/:slug/related-content (conteudo relacionado).
+- GET /api/directories/:vertical/:slug/related-content (conteudo relacionado);
+- GET /api/directories/compare (comparacao lado a lado por slugs).
 
 **Endpoints publicos disponiveis:**
 ```
@@ -195,6 +196,7 @@ GET  /api/directories/:vertical/:slug    — detalhe de uma entrada
 GET  /api/directories/featured           — entradas em destaque
 GET  /api/directories/search             — pesquisa cross-vertical
 GET  /api/directories/:vertical/:slug/related-content — conteudo relacionado
+GET  /api/directories/compare            — comparacao de 2 a 3 entidades
 ```
 
 **Filtros sugeridos:**
@@ -551,7 +553,7 @@ isSponsored: boolean (default false)
 | 2.3 | **Campos de entidade financeira** | CONCLUIDO (2026-03-09): `regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures`, `pricing` no model + respostas admin/public | Seccoes no detalhe | Medio |
 | 2.4 | **Badge de verificacao visual** | Ja existe no model | Componente de badge, tooltip com info | Baixo |
 | 2.5 | **Conteudo relacionado** | CONCLUIDO (2026-03-09): `GET /api/directories/:vertical/:slug/related-content` (agrega artigos/cursos/videos/lives/books/podcasts publicados por relevancia) | Seccao na pagina de detalhe | Medio |
-| 2.6 | **Comparador de entidades** | Endpoint de comparacao lado a lado | UI tabela comparativa (2-3 entidades) | Alto |
+| 2.6 | **Comparador de entidades** | CONCLUIDO (2026-03-10): `GET /api/directories/compare?slugs=a,b[,c]` com metricas comparadas (`views`, `averageRating`, `ratingsCount`, `commentsCount`) | UI tabela comparativa (2-3 entidades) | Alto |
 
 ### Fase 3 — Publicidade e campanhas (P3)
 
