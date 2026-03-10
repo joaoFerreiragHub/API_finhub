@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.3 base backend iniciada).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3 base backend iniciada).
 
 ---
 
@@ -572,7 +572,7 @@ isSponsored: boolean (default false)
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
 | 4.1 | **Portal de marca** | INICIADO (2026-03-10): `GET /api/brand-portal/overview` + `GET /api/brand-portal/directories` para dono de `DirectoryEntry` (ownership + tracking agregado) | Portal separado ou seccao dedicada | Alto |
-| 4.2 | **Wallet de marca** | Saldo, faturas, pagamentos | Top-up, historico | Alto |
+| 4.2 | **Wallet de marca** | INICIADO (2026-03-10): `BrandWallet` + `BrandWalletTransaction` com `GET /api/brand-portal/wallets`, detalhe por `DirectoryEntry`, historico e `POST /top-up-requests` (pending) | Top-up, historico | Alto |
 | 4.3 | **Self-service de campanhas** | INICIADO (2026-03-10): `GET/POST /api/brand-portal/campaigns`, `GET/PATCH /api/brand-portal/campaigns/:campaignId`, `POST /api/brand-portal/campaigns/:campaignId/submit-approval`, `GET /metrics` com ownership enforcement | Wizard de campanha, metricas | Alto |
 | 4.4 | **Sistema de afiliacao** | AffiliateClick model, tracking, revenue | Links rastreados, dashboard | Alto |
 | 4.5 | **API de integracao** | API keys para marcas consultarem metricas | Documentacao, rate limiting | Medio |

@@ -8,6 +8,16 @@ import {
   isValidAdPartnershipSurface,
 } from '../services/adminAdPartnership.service'
 import { BrandPortalServiceError, brandPortalService } from '../services/brandPortal.service'
+import {
+  BrandWalletServiceError,
+  brandWalletService,
+  isValidBrandWalletTransactionStatus,
+  isValidBrandWalletTransactionType,
+} from '../services/brandWallet.service'
+import {
+  BrandWalletTransactionStatus,
+  BrandWalletTransactionType,
+} from '../models/BrandWalletTransaction'
 
 const parseOptionalPositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -26,6 +36,11 @@ const extractBodyRecord = (req: AuthRequest): Record<string, unknown> => {
 
 const handleError = (res: Response, error: unknown, fallbackMessage: string) => {
   if (error instanceof BrandPortalServiceError) {
+    return res.status(error.statusCode).json({
+      error: error.message,
+    })
+  }
+  if (error instanceof BrandWalletServiceError) {
     return res.status(error.statusCode).json({
       error: error.message,
     })
@@ -240,5 +255,107 @@ export const getBrandPortalCampaignMetrics = async (req: AuthRequest, res: Respo
   } catch (error: unknown) {
     console.error('Get brand portal campaign metrics error:', error)
     return handleError(res, error, 'Erro ao obter metricas da campanha da marca.')
+  }
+}
+
+/**
+ * GET /api/brand-portal/wallets
+ */
+export const listBrandPortalWallets = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autenticacao necessaria.' })
+    }
+
+    const result = await brandWalletService.listWallets(req.user.id)
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List brand portal wallets error:', error)
+    return handleError(res, error, 'Erro ao listar wallets da marca.')
+  }
+}
+
+/**
+ * GET /api/brand-portal/wallets/:directoryEntryId
+ */
+export const getBrandPortalWallet = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autenticacao necessaria.' })
+    }
+
+    const result = await brandWalletService.getWallet(req.user.id, req.params.directoryEntryId)
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('Get brand portal wallet error:', error)
+    return handleError(res, error, 'Erro ao obter wallet da marca.')
+  }
+}
+
+/**
+ * GET /api/brand-portal/wallets/:directoryEntryId/transactions
+ */
+export const listBrandPortalWalletTransactions = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autenticacao necessaria.' })
+    }
+
+    const typeRaw = toOptionalString(req.query.type)
+    if (typeRaw && !isValidBrandWalletTransactionType(typeRaw)) {
+      return res.status(400).json({ error: 'Parametro type invalido.' })
+    }
+
+    const statusRaw = toOptionalString(req.query.status)
+    if (statusRaw && !isValidBrandWalletTransactionStatus(statusRaw)) {
+      return res.status(400).json({ error: 'Parametro status invalido.' })
+    }
+
+    const result = await brandWalletService.listTransactions(
+      req.user.id,
+      req.params.directoryEntryId,
+      {
+        type: typeRaw as BrandWalletTransactionType | undefined,
+        status: statusRaw as BrandWalletTransactionStatus | undefined,
+        search: toOptionalString(req.query.search),
+      },
+      {
+        page: parseOptionalPositiveInt(toOptionalString(req.query.page)),
+        limit: parseOptionalPositiveInt(toOptionalString(req.query.limit)),
+      }
+    )
+
+    return res.status(200).json(result)
+  } catch (error: unknown) {
+    console.error('List brand portal wallet transactions error:', error)
+    return handleError(res, error, 'Erro ao listar transacoes da wallet.')
+  }
+}
+
+/**
+ * POST /api/brand-portal/wallets/:directoryEntryId/top-up-requests
+ */
+export const requestBrandPortalWalletTopUp = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Autenticacao necessaria.' })
+    }
+
+    const body = extractBodyRecord(req)
+    const result = await brandWalletService.requestTopUp(req.user.id, req.params.directoryEntryId, {
+      amountCents: body.amountCents,
+      amount: body.amount,
+      description: body.description,
+      reference: body.reference,
+      metadata: body.metadata,
+    })
+
+    return res.status(201).json({
+      message: 'Pedido de top-up criado com sucesso.',
+      ...result,
+    })
+  } catch (error: unknown) {
+    console.error('Request brand portal wallet top-up error:', error)
+    return handleError(res, error, 'Erro ao criar pedido de top-up.')
   }
 }

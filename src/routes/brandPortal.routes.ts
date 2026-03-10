@@ -4,8 +4,12 @@ import {
   getBrandPortalCampaign,
   getBrandPortalCampaignMetrics,
   getBrandPortalOverview,
+  getBrandPortalWallet,
   listBrandPortalCampaigns,
   listBrandPortalDirectories,
+  listBrandPortalWallets,
+  listBrandPortalWalletTransactions,
+  requestBrandPortalWalletTopUp,
   submitBrandPortalCampaignForApproval,
   updateBrandPortalCampaign,
 } from '../controllers/brandPortal.controller'
@@ -26,6 +30,42 @@ router.get('/overview', authenticate, getBrandPortalOverview)
  * @access  Private
  */
 router.get('/directories', authenticate, listBrandPortalDirectories)
+
+/**
+ * @route   GET /api/brand-portal/wallets
+ * @desc    Listar wallets da marca por DirectoryEntry
+ * @access  Private
+ */
+router.get('/wallets', authenticate, listBrandPortalWallets)
+
+/**
+ * @route   GET /api/brand-portal/wallets/:directoryEntryId
+ * @desc    Obter wallet da marca para um DirectoryEntry
+ * @access  Private
+ */
+router.get('/wallets/:directoryEntryId', authenticate, getBrandPortalWallet)
+
+/**
+ * @route   GET /api/brand-portal/wallets/:directoryEntryId/transactions
+ * @desc    Listar transacoes da wallet da marca
+ * @access  Private
+ */
+router.get(
+  '/wallets/:directoryEntryId/transactions',
+  authenticate,
+  listBrandPortalWalletTransactions
+)
+
+/**
+ * @route   POST /api/brand-portal/wallets/:directoryEntryId/top-up-requests
+ * @desc    Criar pedido de top-up da wallet da marca
+ * @access  Private
+ */
+router.post(
+  '/wallets/:directoryEntryId/top-up-requests',
+  authenticate,
+  requestBrandPortalWalletTopUp
+)
 
 /**
  * @route   GET /api/brand-portal/campaigns
