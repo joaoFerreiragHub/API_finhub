@@ -85,6 +85,11 @@ import {
   revokeAdminSubscriptionEntitlement,
 } from '../controllers/adminSubscription.controller'
 import {
+  getAdminAffiliateOverview,
+  listAdminAffiliateLinks,
+  markAdminAffiliateClickConversion,
+} from '../controllers/adminAffiliate.controller'
+import {
   createAdminBulkImportJob,
   getAdminBulkImportJob,
   listAdminBulkImportJobs,
@@ -1058,6 +1063,60 @@ router.post(
   }),
   requireAdminScope('admin.users.write'),
   reactivateAdminSubscription
+)
+
+/**
+ * @route   GET /api/admin/monetization/affiliates/overview
+ * @desc    Ler overview de cliques/conversoes/revenue de afiliacao
+ * @access  Private (Admin com escopo admin.metrics.read)
+ */
+router.get(
+  '/monetization/affiliates/overview',
+  authenticate,
+  rateLimiter.adminMetricsDrilldown,
+  auditAdminAction({
+    action: 'admin.monetization.affiliates.overview.read',
+    resourceType: 'affiliate_click',
+    scope: 'admin.metrics.read',
+  }),
+  requireAdminScope('admin.metrics.read'),
+  getAdminAffiliateOverview
+)
+
+/**
+ * @route   GET /api/admin/monetization/affiliates/links
+ * @desc    Listar links de afiliacao no painel admin
+ * @access  Private (Admin com escopo admin.brands.read)
+ */
+router.get(
+  '/monetization/affiliates/links',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.monetization.affiliates.links.list',
+    resourceType: 'affiliate_link',
+    scope: 'admin.brands.read',
+  }),
+  requireAdminScope('admin.brands.read'),
+  listAdminAffiliateLinks
+)
+
+/**
+ * @route   POST /api/admin/monetization/affiliates/clicks/:clickId/convert
+ * @desc    Marcar clique de afiliacao como convertido
+ * @access  Private (Admin com escopo admin.brands.write)
+ */
+router.post(
+  '/monetization/affiliates/clicks/:clickId/convert',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  auditAdminAction({
+    action: 'admin.monetization.affiliates.clicks.convert',
+    resourceType: 'affiliate_click',
+    scope: 'admin.brands.write',
+    getResourceId: (req) => req.params.clickId,
+  }),
+  requireAdminScope('admin.brands.write'),
+  markAdminAffiliateClickConversion
 )
 
 /**

@@ -13,6 +13,17 @@ import {
   submitBrandPortalCampaignForApproval,
   updateBrandPortalCampaign,
 } from '../controllers/brandPortal.controller'
+import {
+  createBrandPortalAffiliateLink,
+  listBrandPortalAffiliateLinkClicks,
+  listBrandPortalAffiliateLinks,
+  updateBrandPortalAffiliateLink,
+} from '../controllers/brandPortalAffiliate.controller'
+import {
+  createBrandPortalIntegrationApiKey,
+  listBrandPortalIntegrationApiKeys,
+  revokeBrandPortalIntegrationApiKey,
+} from '../controllers/brandPortalIntegration.controller'
 import { authenticate } from '../middlewares/auth'
 
 const router = Router()
@@ -112,5 +123,58 @@ router.post(
  * @access  Private
  */
 router.get('/campaigns/:campaignId/metrics', authenticate, getBrandPortalCampaignMetrics)
+
+/**
+ * @route   GET /api/brand-portal/affiliate-links
+ * @desc    Listar links de afiliacao da marca autenticada
+ * @access  Private
+ */
+router.get('/affiliate-links', authenticate, listBrandPortalAffiliateLinks)
+
+/**
+ * @route   POST /api/brand-portal/affiliate-links
+ * @desc    Criar link de afiliacao para um DirectoryEntry owned
+ * @access  Private
+ */
+router.post('/affiliate-links', authenticate, createBrandPortalAffiliateLink)
+
+/**
+ * @route   PATCH /api/brand-portal/affiliate-links/:linkId
+ * @desc    Atualizar link de afiliacao da marca autenticada
+ * @access  Private
+ */
+router.patch('/affiliate-links/:linkId', authenticate, updateBrandPortalAffiliateLink)
+
+/**
+ * @route   GET /api/brand-portal/affiliate-links/:linkId/clicks
+ * @desc    Listar cliques/conversoes de um link de afiliacao owned
+ * @access  Private
+ */
+router.get('/affiliate-links/:linkId/clicks', authenticate, listBrandPortalAffiliateLinkClicks)
+
+/**
+ * @route   GET /api/brand-portal/integrations/api-keys
+ * @desc    Listar API keys de integracao da marca autenticada
+ * @access  Private
+ */
+router.get('/integrations/api-keys', authenticate, listBrandPortalIntegrationApiKeys)
+
+/**
+ * @route   POST /api/brand-portal/integrations/api-keys
+ * @desc    Criar API key de integracao para um DirectoryEntry owned
+ * @access  Private
+ */
+router.post('/integrations/api-keys', authenticate, createBrandPortalIntegrationApiKey)
+
+/**
+ * @route   POST /api/brand-portal/integrations/api-keys/:keyId/revoke
+ * @desc    Revogar API key de integracao da marca autenticada
+ * @access  Private
+ */
+router.post(
+  '/integrations/api-keys/:keyId/revoke',
+  authenticate,
+  revokeBrandPortalIntegrationApiKey
+)
 
 export default router
