@@ -31,6 +31,7 @@ import editorialRoutes from './editorial.routes'
 import directoryRoutes from './directory.routes'
 import platformRoutes from './platform.routes'
 import creatorRoutes from './creator.routes'
+import brandPortalRoutes from './brandPortal.routes'
 import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
 import feedRoutes from './feed.routes'
@@ -90,6 +91,7 @@ router.get('/', (req, res) => {
       monitoring: '/api/platform/monitoring/status',
       monitoringLogging: '/api/platform/monitoring/logging',
       creators: '/api/creators',
+      brandPortal: '/api/brand-portal',
       externalContent: '/api/external-content',
       search: '/api/search',
       ads: '/api/ads',
@@ -177,6 +179,7 @@ router.use('/directories', directoryRoutes)
 // Rotas de superficies publicas/operacionais
 router.use('/platform', platformRoutes)
 router.use('/creators', creatorRoutes)
+router.use('/brand-portal', brandPortalRoutes)
 router.use('/external-content', externalContentRoutes)
 router.use('/search', searchRoutes)
 router.use('/ads', adsRoutes)
