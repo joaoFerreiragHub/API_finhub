@@ -1271,7 +1271,7 @@ export class AdminContentService {
       model
         .find(query)
         .select(
-          'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType'
+          'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType isSponsored sponsoredBy'
         )
         .sort({ updatedAt: -1 })
         .populate('creator', 'name username email role')
@@ -1334,7 +1334,7 @@ export class AdminContentService {
       const item = await model
         .findById(contentId)
         .select(
-          'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType'
+          'title slug description category status moderationStatus moderationReason moderationNote moderatedBy moderatedAt creator createdAt updatedAt contentType isSponsored sponsoredBy'
         )
         .populate('creator', 'name username email role')
         .populate('moderatedBy', 'name username email role')
@@ -1600,6 +1600,8 @@ export class AdminContentService {
       description: String(item.description ?? ''),
       category: String(item.category ?? ''),
       status: toPublishStatus(item.status),
+      isSponsored: Boolean(item.isSponsored),
+      sponsoredBy: item.sponsoredBy ? String(item.sponsoredBy) : null,
       moderationStatus: toModerationStatus(item.moderationStatus),
       moderationReason: item.moderationReason ?? null,
       moderationNote: item.moderationNote ?? null,

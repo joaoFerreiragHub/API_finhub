@@ -2,6 +2,7 @@ import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { LiveEvent } from '../models/LiveEvent'
 import { automatedModerationService } from './automatedModeration.service'
+import { resolveContentSponsorshipPatch } from './contentSponsorship.service'
 
 /**
  * DTOs para LiveEvent
@@ -14,6 +15,8 @@ export interface CreateLiveEventDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -25,6 +28,8 @@ export interface UpdateLiveEventDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -32,6 +37,7 @@ export interface LiveEventFilters {
   category?: string
   isPremium?: boolean
   isFeatured?: boolean
+  isSponsored?: boolean
   status?: PublishStatus
   creator?: string
   tags?: string[]
@@ -72,6 +78,9 @@ export class LiveEventService {
 
     if (filters.isFeatured !== undefined) {
       query.isFeatured = filters.isFeatured
+    }
+    if (filters.isSponsored !== undefined) {
+      query.isSponsored = filters.isSponsored
     }
 
     if (filters.creator) {
@@ -152,8 +161,12 @@ export class LiveEventService {
    * Criar live
    */
   async create(creatorId: string, data: CreateLiveEventDTO) {
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const liveevent = await LiveEvent.create({
-      ...data,
+      ...baseData,
+      ...sponsorshipPatch,
       creator: creatorId,
       contentType: 'live',
     })
@@ -188,8 +201,11 @@ export class LiveEventService {
       throw new Error('Nao tens permissao para editar esta live')
     }
 
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const wasPublished = liveevent.status === 'published'
-    Object.assign(liveevent, data)
+    Object.assign(liveevent, baseData, sponsorshipPatch)
     await liveevent.save()
 
     const moderationResult = await automatedModerationService.evaluateAndApplyTarget({

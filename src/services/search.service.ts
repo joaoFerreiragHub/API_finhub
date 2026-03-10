@@ -27,6 +27,7 @@ interface SearchResult {
   coverImage: string | null
   url: string
   score: number
+  isSponsored?: boolean
 }
 
 interface RankedSearchResult extends SearchResult {
@@ -52,6 +53,7 @@ interface ContentProjection {
   coverImage?: string | null
   views?: number
   averageRating?: number
+  isSponsored?: boolean
   publishedAt?: Date | null
   createdAt?: Date | null
 }
@@ -236,37 +238,37 @@ class SearchService {
 
     if (type === 'article') {
       items = await Article.find(query)
-        .select('title slug description coverImage views averageRating publishedAt createdAt')
+        .select('title slug description coverImage views averageRating isSponsored publishedAt createdAt')
         .sort({ publishedAt: -1, views: -1 })
         .limit(limit)
         .lean<ContentProjection[]>()
     } else if (type === 'course') {
       items = await Course.find(query)
-        .select('title slug description coverImage views averageRating publishedAt createdAt')
+        .select('title slug description coverImage views averageRating isSponsored publishedAt createdAt')
         .sort({ publishedAt: -1, views: -1 })
         .limit(limit)
         .lean<ContentProjection[]>()
     } else if (type === 'video') {
       items = await Video.find(query)
-        .select('title slug description coverImage views averageRating publishedAt createdAt')
+        .select('title slug description coverImage views averageRating isSponsored publishedAt createdAt')
         .sort({ publishedAt: -1, views: -1 })
         .limit(limit)
         .lean<ContentProjection[]>()
     } else if (type === 'event') {
       items = await LiveEvent.find(query)
-        .select('title slug description coverImage views averageRating publishedAt createdAt')
+        .select('title slug description coverImage views averageRating isSponsored publishedAt createdAt')
         .sort({ publishedAt: -1, views: -1 })
         .limit(limit)
         .lean<ContentProjection[]>()
     } else if (type === 'book') {
       items = await Book.find(query)
-        .select('title slug description coverImage views averageRating publishedAt createdAt')
+        .select('title slug description coverImage views averageRating isSponsored publishedAt createdAt')
         .sort({ publishedAt: -1, views: -1 })
         .limit(limit)
         .lean<ContentProjection[]>()
     } else {
       items = await Podcast.find(query)
-        .select('title slug description coverImage views averageRating publishedAt createdAt')
+        .select('title slug description coverImage views averageRating isSponsored publishedAt createdAt')
         .sort({ publishedAt: -1, views: -1 })
         .limit(limit)
         .lean<ContentProjection[]>()
@@ -293,6 +295,7 @@ class SearchService {
         coverImage: item.coverImage ?? null,
         url: `/hub/${CONTENT_PATHS[type]}/${slugOrId}`,
         score,
+        isSponsored: Boolean(item.isSponsored),
         sortTimestamp: toTimestamp(item.publishedAt) || toTimestamp(item.createdAt),
       }
     })

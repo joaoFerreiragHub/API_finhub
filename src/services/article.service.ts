@@ -2,6 +2,7 @@ import { socialEventBus } from '../events/socialEvents'
 import { Article } from '../models/Article'
 import { PublishStatus } from '../models/BaseContent'
 import { automatedModerationService } from './automatedModeration.service'
+import { resolveContentSponsorshipPatch } from './contentSponsorship.service'
 
 /**
  * DTOs para Article
@@ -14,6 +15,8 @@ export interface CreateArticleDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -25,6 +28,8 @@ export interface UpdateArticleDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -32,6 +37,7 @@ export interface ArticleFilters {
   category?: string
   isPremium?: boolean
   isFeatured?: boolean
+  isSponsored?: boolean
   status?: PublishStatus
   creator?: string
   tags?: string[]
@@ -73,6 +79,9 @@ export class ArticleService {
 
     if (filters.isFeatured !== undefined) {
       query.isFeatured = filters.isFeatured
+    }
+    if (filters.isSponsored !== undefined) {
+      query.isSponsored = filters.isSponsored
     }
 
     if (filters.creator) {
@@ -153,8 +162,12 @@ export class ArticleService {
    * Criar artigo
    */
   async create(creatorId: string, data: CreateArticleDTO) {
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const article = await Article.create({
-      ...data,
+      ...baseData,
+      ...sponsorshipPatch,
       creator: creatorId,
       contentType: 'article',
     })
@@ -189,8 +202,11 @@ export class ArticleService {
       throw new Error('Nao tens permissao para editar este artigo')
     }
 
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const wasPublished = article.status === 'published'
-    Object.assign(article, data)
+    Object.assign(article, baseData, sponsorshipPatch)
     await article.save()
 
     const moderationResult = await automatedModerationService.evaluateAndApplyTarget({

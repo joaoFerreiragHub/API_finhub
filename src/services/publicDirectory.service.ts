@@ -1,4 +1,4 @@
-import { FilterQuery } from 'mongoose'
+import { FilterQuery, PipelineStage } from 'mongoose'
 import { Article } from '../models/Article'
 import { Book } from '../models/Book'
 import { Course } from '../models/Course'
@@ -26,6 +26,7 @@ interface RelatedContentProjection {
   views?: number
   averageRating?: number
   isFeatured?: boolean
+  isSponsored?: boolean
   category?: string
   tags?: string[]
   publishedAt?: Date | null
@@ -40,12 +41,21 @@ interface RelatedContentItem {
   description: string
   coverImage: string | null
   url: string
+  isSponsored: boolean
   category: string | null
   tags: string[]
   views: number
   averageRating: number
   publishedAt: Date | null
   score: number
+}
+
+interface SponsoredPlacementProjection {
+  _id: unknown
+  priority?: number
+  code?: string
+  headline?: string
+  disclosureLabel?: string | null
 }
 
 interface ComparisonMetricSummary {
@@ -89,6 +99,7 @@ const MAX_LIMIT = 50
 const DEFAULT_FEATURED_LIMIT = 10
 const DEFAULT_RELATED_CONTENT_LIMIT = 12
 const MAX_RELATED_CONTENT_LIMIT = 30
+const SPONSORED_PLACEMENT_FALLBACK_PRIORITY = 999_999
 const RELATED_CONTENT_TYPES: ReadonlyArray<RelatedContentType> = [
   'article',
   'course',
@@ -212,57 +223,125 @@ const normalizeSort = (sort?: DirectorySortBy): DirectorySortBy => {
   return 'featured'
 }
 
-const resolveSort = (sort: DirectorySortBy): Record<string, 1 | -1> => {
+const resolveSort = (
+  sort: DirectorySortBy,
+  includeSponsoredBoost = true
+): Record<string, 1 | -1> => {
+  let baseSort: Record<string, 1 | -1>
   if (sort === 'popular') {
-    return { views: -1, isFeatured: -1, averageRating: -1, updatedAt: -1 }
+    baseSort = { views: -1, isFeatured: -1, averageRating: -1, updatedAt: -1 }
+  } else if (sort === 'rating') {
+    baseSort = { averageRating: -1, ratingsCount: -1, views: -1, updatedAt: -1 }
+  } else if (sort === 'recent') {
+    baseSort = { publishedAt: -1, updatedAt: -1 }
+  } else if (sort === 'name') {
+    baseSort = { name: 1 }
+  } else {
+    baseSort = { isFeatured: -1, averageRating: -1, views: -1, updatedAt: -1 }
   }
 
-  if (sort === 'rating') {
-    return { averageRating: -1, ratingsCount: -1, views: -1, updatedAt: -1 }
+  if (!includeSponsoredBoost || sort === 'name') {
+    return baseSort
   }
 
-  if (sort === 'recent') {
-    return { publishedAt: -1, updatedAt: -1 }
+  return {
+    hasSponsoredPlacement: -1,
+    sponsoredPlacementPriority: 1,
+    ...baseSort,
   }
-
-  if (sort === 'name') {
-    return { name: 1 }
-  }
-
-  return { isFeatured: -1, averageRating: -1, views: -1, updatedAt: -1 }
 }
 
-const mapPublicDirectory = (entry: any) => ({
-  id: String(entry._id),
-  name: entry.name,
-  slug: entry.slug,
-  verticalType: entry.verticalType,
-  shortDescription: entry.shortDescription,
-  description: entry.description ?? null,
-  logo: entry.logo ?? null,
-  coverImage: entry.coverImage ?? null,
-  website: entry.website ?? null,
-  canonicalUrl: entry.canonicalUrl ?? null,
-  country: entry.country ?? null,
-  region: entry.region ?? null,
-  regulatedBy: Array.isArray(entry.regulatedBy) ? entry.regulatedBy : [],
-  licenses: Array.isArray(entry.licenses) ? entry.licenses : [],
-  pros: Array.isArray(entry.pros) ? entry.pros : [],
-  cons: Array.isArray(entry.cons) ? entry.cons : [],
-  keyFeatures: Array.isArray(entry.keyFeatures) ? entry.keyFeatures : [],
-  pricing: entry.pricing ?? null,
-  categories: Array.isArray(entry.categories) ? entry.categories : [],
-  tags: Array.isArray(entry.tags) ? entry.tags : [],
-  socialLinks: entry.socialLinks ?? null,
-  verificationStatus: entry.verificationStatus,
-  isFeatured: Boolean(entry.isFeatured),
-  views: Number(entry.views ?? 0),
-  averageRating: Number(entry.averageRating ?? 0),
-  ratingsCount: Number(entry.ratingsCount ?? 0),
-  commentsCount: Number(entry.commentsCount ?? 0),
-  publishedAt: entry.publishedAt ?? null,
-  updatedAt: entry.updatedAt ?? null,
-})
+const buildSponsoredPlacementStages = (now: Date): PipelineStage[] => [
+  {
+    $lookup: {
+      from: 'adcampaigns',
+      let: { directoryEntryId: '$_id' },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ['$directoryEntry', '$$directoryEntryId'] },
+                { $eq: ['$status', 'active'] },
+                { $eq: ['$sponsorType', 'brand'] },
+                { $eq: ['$adType', 'sponsored_ads'] },
+                { $in: ['directory', '$surfaces'] },
+                {
+                  $or: [{ $eq: ['$startAt', null] }, { $lte: ['$startAt', now] }],
+                },
+                {
+                  $or: [{ $eq: ['$endAt', null] }, { $gt: ['$endAt', now] }],
+                },
+              ],
+            },
+          },
+        },
+        { $sort: { priority: 1, updatedAt: -1 } },
+        { $limit: 1 },
+        { $project: { _id: 1, priority: 1, code: 1, headline: 1, disclosureLabel: 1 } },
+      ],
+      as: 'activeSponsoredPlacements',
+    },
+  } as PipelineStage,
+  {
+    $addFields: {
+      hasSponsoredPlacement: { $gt: [{ $size: '$activeSponsoredPlacements' }, 0] },
+      sponsoredPlacementPriority: {
+        $ifNull: [
+          { $arrayElemAt: ['$activeSponsoredPlacements.priority', 0] },
+          SPONSORED_PLACEMENT_FALLBACK_PRIORITY,
+        ],
+      },
+      sponsoredPlacement: { $arrayElemAt: ['$activeSponsoredPlacements', 0] },
+    },
+  } as PipelineStage,
+]
+
+const mapPublicDirectory = (entry: any) => {
+  const sponsoredPlacement = entry.sponsoredPlacement as SponsoredPlacementProjection | null
+  return {
+    id: String(entry._id),
+    name: entry.name,
+    slug: entry.slug,
+    verticalType: entry.verticalType,
+    shortDescription: entry.shortDescription,
+    description: entry.description ?? null,
+    logo: entry.logo ?? null,
+    coverImage: entry.coverImage ?? null,
+    website: entry.website ?? null,
+    canonicalUrl: entry.canonicalUrl ?? null,
+    country: entry.country ?? null,
+    region: entry.region ?? null,
+    regulatedBy: Array.isArray(entry.regulatedBy) ? entry.regulatedBy : [],
+    licenses: Array.isArray(entry.licenses) ? entry.licenses : [],
+    pros: Array.isArray(entry.pros) ? entry.pros : [],
+    cons: Array.isArray(entry.cons) ? entry.cons : [],
+    keyFeatures: Array.isArray(entry.keyFeatures) ? entry.keyFeatures : [],
+    pricing: entry.pricing ?? null,
+    categories: Array.isArray(entry.categories) ? entry.categories : [],
+    tags: Array.isArray(entry.tags) ? entry.tags : [],
+    socialLinks: entry.socialLinks ?? null,
+    verificationStatus: entry.verificationStatus,
+    isFeatured: Boolean(entry.isFeatured),
+    isSponsoredPlacement: Boolean(entry.hasSponsoredPlacement) || Boolean(sponsoredPlacement),
+    sponsoredPlacement: sponsoredPlacement
+      ? {
+          active: true,
+          campaignId: String(sponsoredPlacement._id),
+          priority: Number(sponsoredPlacement.priority ?? SPONSORED_PLACEMENT_FALLBACK_PRIORITY),
+          code: sponsoredPlacement.code ?? null,
+          headline: sponsoredPlacement.headline ?? null,
+          disclosureLabel: sponsoredPlacement.disclosureLabel ?? null,
+        }
+      : null,
+    views: Number(entry.views ?? 0),
+    averageRating: Number(entry.averageRating ?? 0),
+    ratingsCount: Number(entry.ratingsCount ?? 0),
+    commentsCount: Number(entry.commentsCount ?? 0),
+    publishedAt: entry.publishedAt ?? null,
+    updatedAt: entry.updatedAt ?? null,
+  }
+}
 
 const summarizeMetric = (
   items: Array<ReturnType<typeof mapPublicDirectory>>,
@@ -409,7 +488,7 @@ export class PublicDirectoryService {
     }
 
     const projection =
-      'title slug description coverImage views averageRating isFeatured category tags publishedAt createdAt'
+      'title slug description coverImage views averageRating isFeatured isSponsored category tags publishedAt createdAt'
 
     let items: RelatedContentProjection[] = []
 
@@ -465,6 +544,7 @@ export class PublicDirectoryService {
         description,
         coverImage: item.coverImage ?? null,
         url: `/hub/${RELATED_CONTENT_PATHS[type]}/${slugOrId}`,
+        isSponsored: Boolean(item.isSponsored),
         category: typeof item.category === 'string' ? item.category : null,
         tags: Array.isArray(item.tags) ? item.tags : [],
         views: Number(item.views ?? 0),
@@ -492,9 +572,18 @@ export class PublicDirectoryService {
 
     const sort = normalizeSort(options.sort)
     const { query, normalized } = buildBaseDirectoryQuery(filters)
+    const now = new Date()
+
+    const pipeline: PipelineStage[] = [
+      { $match: query as Record<string, unknown> },
+      ...buildSponsoredPlacementStages(now),
+      { $sort: resolveSort(sort) },
+      { $skip: skip },
+      { $limit: limit },
+    ]
 
     const [items, total] = await Promise.all([
-      DirectoryEntry.find(query).sort(resolveSort(sort)).skip(skip).limit(limit).lean(),
+      DirectoryEntry.aggregate(pipeline),
       DirectoryEntry.countDocuments(query),
     ])
 
@@ -544,15 +633,20 @@ export class PublicDirectoryService {
   async getFeaturedPublicDirectories(limitRaw?: number) {
     const limit = normalizeLimit(limitRaw)
 
-    const items = await DirectoryEntry.find({
-      status: 'published',
-      isActive: true,
-      showInDirectory: true,
-      isFeatured: true,
-    })
-      .sort({ averageRating: -1, views: -1, updatedAt: -1 })
-      .limit(limit)
-      .lean()
+    const now = new Date()
+    const items = await DirectoryEntry.aggregate([
+      {
+        $match: {
+          status: 'published',
+          isActive: true,
+          showInDirectory: true,
+          isFeatured: true,
+        },
+      },
+      ...buildSponsoredPlacementStages(now),
+      { $sort: resolveSort('featured') },
+      { $limit: limit },
+    ])
 
     return {
       items: items.map(mapPublicDirectory),

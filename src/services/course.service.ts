@@ -2,6 +2,7 @@ import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Course } from '../models/Course'
 import { automatedModerationService } from './automatedModeration.service'
+import { resolveContentSponsorshipPatch } from './contentSponsorship.service'
 
 /**
  * DTOs para Course
@@ -14,6 +15,8 @@ export interface CreateCourseDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -25,6 +28,8 @@ export interface UpdateCourseDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -32,6 +37,7 @@ export interface CourseFilters {
   category?: string
   isPremium?: boolean
   isFeatured?: boolean
+  isSponsored?: boolean
   status?: PublishStatus
   creator?: string
   tags?: string[]
@@ -72,6 +78,9 @@ export class CourseService {
 
     if (filters.isFeatured !== undefined) {
       query.isFeatured = filters.isFeatured
+    }
+    if (filters.isSponsored !== undefined) {
+      query.isSponsored = filters.isSponsored
     }
 
     if (filters.creator) {
@@ -152,8 +161,12 @@ export class CourseService {
    * Criar curso
    */
   async create(creatorId: string, data: CreateCourseDTO) {
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const course = await Course.create({
-      ...data,
+      ...baseData,
+      ...sponsorshipPatch,
       creator: creatorId,
       contentType: 'course',
     })
@@ -188,8 +201,11 @@ export class CourseService {
       throw new Error('Nao tens permissao para editar este curso')
     }
 
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const wasPublished = course.status === 'published'
-    Object.assign(course, data)
+    Object.assign(course, baseData, sponsorshipPatch)
     await course.save()
 
     const moderationResult = await automatedModerationService.evaluateAndApplyTarget({

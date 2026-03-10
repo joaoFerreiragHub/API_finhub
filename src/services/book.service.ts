@@ -2,6 +2,7 @@ import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Book } from '../models/Book'
 import { automatedModerationService } from './automatedModeration.service'
+import { resolveContentSponsorshipPatch } from './contentSponsorship.service'
 
 /**
  * DTOs para Book
@@ -14,6 +15,8 @@ export interface CreateBookDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -25,6 +28,8 @@ export interface UpdateBookDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -32,6 +37,7 @@ export interface BookFilters {
   category?: string
   isPremium?: boolean
   isFeatured?: boolean
+  isSponsored?: boolean
   status?: PublishStatus
   creator?: string
   tags?: string[]
@@ -72,6 +78,9 @@ export class BookService {
 
     if (filters.isFeatured !== undefined) {
       query.isFeatured = filters.isFeatured
+    }
+    if (filters.isSponsored !== undefined) {
+      query.isSponsored = filters.isSponsored
     }
 
     if (filters.creator) {
@@ -152,8 +161,12 @@ export class BookService {
    * Criar livro
    */
   async create(creatorId: string, data: CreateBookDTO) {
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const book = await Book.create({
-      ...data,
+      ...baseData,
+      ...sponsorshipPatch,
       creator: creatorId,
       contentType: 'book',
     })
@@ -188,8 +201,11 @@ export class BookService {
       throw new Error('Nao tens permissao para editar este livro')
     }
 
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const wasPublished = book.status === 'published'
-    Object.assign(book, data)
+    Object.assign(book, baseData, sponsorshipPatch)
     await book.save()
 
     const moderationResult = await automatedModerationService.evaluateAndApplyTarget({

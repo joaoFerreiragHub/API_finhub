@@ -2,6 +2,7 @@ import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Reel } from '../models/Reel'
 import { automatedModerationService } from './automatedModeration.service'
+import { resolveContentSponsorshipPatch } from './contentSponsorship.service'
 
 export interface CreateReelDTO {
   title: string
@@ -17,6 +18,8 @@ export interface CreateReelDTO {
   coverImage?: string
   thumbnail?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -34,6 +37,8 @@ export interface UpdateReelDTO {
   coverImage?: string
   thumbnail?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -41,6 +46,7 @@ export interface ReelFilters {
   category?: string
   isPremium?: boolean
   isFeatured?: boolean
+  isSponsored?: boolean
   status?: PublishStatus
   creator?: string
   tags?: string[]
@@ -84,6 +90,9 @@ export class ReelService {
 
     if (filters.isFeatured !== undefined) {
       query.isFeatured = filters.isFeatured
+    }
+    if (filters.isSponsored !== undefined) {
+      query.isSponsored = filters.isSponsored
     }
 
     if (filters.creator) {
@@ -173,8 +182,12 @@ export class ReelService {
       throw new Error('Duracao invalida para reel')
     }
 
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const reel = await Reel.create({
-      ...data,
+      ...baseData,
+      ...sponsorshipPatch,
       duration,
       content: data.content || data.description,
       creator: creatorId,
@@ -208,7 +221,9 @@ export class ReelService {
       throw new Error('Nao tens permissao para editar este reel')
     }
 
-    const nextData: UpdateReelDTO = { ...data }
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const nextData: UpdateReelDTO = { ...baseData }
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
 
     if (typeof nextData.duration === 'number') {
       const duration = clampDuration(nextData.duration)
@@ -223,7 +238,7 @@ export class ReelService {
     }
 
     const wasPublished = reel.status === 'published'
-    Object.assign(reel, nextData)
+    Object.assign(reel, nextData, sponsorshipPatch)
     await reel.save()
 
     const moderationResult = await automatedModerationService.evaluateAndApplyTarget({

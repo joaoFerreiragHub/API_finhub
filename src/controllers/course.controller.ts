@@ -17,6 +17,12 @@ export const listCourses = async (req: Request, res: Response) => {
       category: req.query.category as string,
       isPremium: req.query.isPremium === 'true',
       isFeatured: req.query.isFeatured === 'true',
+      isSponsored:
+        req.query.isSponsored === 'true'
+          ? true
+          : req.query.isSponsored === 'false'
+            ? false
+            : undefined,
       tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
       search: req.query.search as string,
     }

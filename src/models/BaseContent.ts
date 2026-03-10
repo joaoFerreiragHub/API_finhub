@@ -40,6 +40,8 @@ export interface IBaseContent extends Document {
   // Permissions
   isPremium: boolean
   isFeatured: boolean
+  isSponsored: boolean
+  sponsoredBy?: mongoose.Types.ObjectId | null
 
   // Status
   status: PublishStatus
@@ -159,6 +161,16 @@ export const baseContentSchema = {
     type: Boolean,
     default: false,
   },
+  isSponsored: {
+    type: Boolean,
+    default: false,
+  },
+  sponsoredBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'DirectoryEntry',
+    default: null,
+    index: true,
+  },
 
   // Status
   status: {
@@ -276,6 +288,7 @@ export const baseContentIndexes = [
   { category: 1 },
   { isPremium: 1 },
   { isFeatured: 1 },
+  { isSponsored: 1 },
   { publishedAt: -1 },
   { moderationStatus: 1, updatedAt: -1 },
   { moderatedAt: -1 },

@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 entregue).
+Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue).
 
 ---
 
@@ -564,8 +564,8 @@ isSponsored: boolean (default false)
 | 3.3 | **Ad serving** | CONCLUIDO (2026-03-10): `GET /api/ads/serve` com selecao por slot ativo, audience/device e guardrails de visibilidade/tipos | Componentes de ad slot nas paginas | Medio |
 | 3.4 | **Tracking impressoes/cliques** | CONCLUIDO (2026-03-10): `POST /api/ads/impression` + `POST /api/ads/click` com token assinado e contagem idempotente em metricas de campanha | Pixel de tracking, click handler | Medio |
 | 3.5 | **Dashboard de metricas de campanha** | CONCLUIDO (2026-03-10): `GET /api/admin/ads/campaigns/:campaignId/metrics?days=30` com timeline e breakdown (`slot`, `audience`, `device`) + CTR/fill-rate | Graficos, KPIs, export | Alto |
-| 3.6 | **Conteudo patrocinado** | Flag sponsoredBy no BaseContent | Badge "Patrocinado" nos cards | Baixo |
-| 3.7 | **Featured placement** | Logica de boost no sorting | Badge "Patrocinado" no topo do diretorio | Baixo |
+| 3.6 | **Conteudo patrocinado** | CONCLUIDO (2026-03-10): `BaseContent` com `isSponsored` + `sponsoredBy` (todos os content types), filtros publicos e exposicao em search/related-content para badge | Badge "Patrocinado" nos cards | Baixo |
+| 3.7 | **Featured placement** | CONCLUIDO (2026-03-10): boost no sorting das listagens publicas de diretorio via campanhas `sponsored_ads` ativas (`surface=directory`) com prioridade de placement + metadata para badge de patrocinio | Badge "Patrocinado" no topo do diretorio | Baixo |
 
 ### Fase 4 — Self-service e afiliacao (P4)
 

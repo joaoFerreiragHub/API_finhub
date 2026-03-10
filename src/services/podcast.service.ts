@@ -2,6 +2,7 @@ import { socialEventBus } from '../events/socialEvents'
 import { PublishStatus } from '../models/BaseContent'
 import { Podcast } from '../models/Podcast'
 import { automatedModerationService } from './automatedModeration.service'
+import { resolveContentSponsorshipPatch } from './contentSponsorship.service'
 
 /**
  * DTOs para Podcast
@@ -14,6 +15,8 @@ export interface CreatePodcastDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -25,6 +28,8 @@ export interface UpdatePodcastDTO {
   tags?: string[]
   coverImage?: string
   isPremium?: boolean
+  isSponsored?: boolean
+  sponsoredBy?: string | null
   status?: PublishStatus
 }
 
@@ -32,6 +37,7 @@ export interface PodcastFilters {
   category?: string
   isPremium?: boolean
   isFeatured?: boolean
+  isSponsored?: boolean
   status?: PublishStatus
   creator?: string
   tags?: string[]
@@ -72,6 +78,9 @@ export class PodcastService {
 
     if (filters.isFeatured !== undefined) {
       query.isFeatured = filters.isFeatured
+    }
+    if (filters.isSponsored !== undefined) {
+      query.isSponsored = filters.isSponsored
     }
 
     if (filters.creator) {
@@ -152,8 +161,12 @@ export class PodcastService {
    * Criar podcast
    */
   async create(creatorId: string, data: CreatePodcastDTO) {
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const podcast = await Podcast.create({
-      ...data,
+      ...baseData,
+      ...sponsorshipPatch,
       creator: creatorId,
       contentType: 'podcast',
     })
@@ -188,8 +201,11 @@ export class PodcastService {
       throw new Error('Nao tens permissao para editar este podcast')
     }
 
+    const { isSponsored: _isSponsored, sponsoredBy: _sponsoredBy, ...baseData } = data
+    const sponsorshipPatch = resolveContentSponsorshipPatch(data)
+
     const wasPublished = podcast.status === 'published'
-    Object.assign(podcast, data)
+    Object.assign(podcast, baseData, sponsorshipPatch)
     await podcast.save()
 
     const moderationResult = await automatedModerationService.evaluateAndApplyTarget({
