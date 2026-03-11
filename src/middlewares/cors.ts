@@ -21,6 +21,19 @@ const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000']
 const allowedOrigins = Array.from(new Set(configuredOrigins.length > 0 ? configuredOrigins : defaultOrigins))
 const allowAllOrigins = parseBoolean(process.env.CORS_ALLOW_ALL, false)
 const allowCredentials = parseBoolean(process.env.CORS_ALLOW_CREDENTIALS, true)
+const isDevEnvironment = (process.env.NODE_ENV ?? 'development') !== 'production'
+
+const isLocalDevOrigin = (origin: string): boolean => {
+  if (!isDevEnvironment) return false
+
+  try {
+    const parsed = new URL(origin)
+    if (parsed.protocol !== 'http:') return false
+    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1'
+  } catch {
+    return false
+  }
+}
 
 export const corsMiddleware = cors({
   credentials: allowCredentials,
@@ -30,7 +43,7 @@ export const corsMiddleware = cors({
       return
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || isLocalDevOrigin(origin)) {
       callback(null, true)
       return
     }

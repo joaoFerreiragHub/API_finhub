@@ -4,6 +4,18 @@ import axios from 'axios'
 const FMP_API_KEY = process.env.FMP_API_KEY
 const FMP_BASE = 'https://financialmodelingprep.com/stable'
 
+class ReitUpstreamConfigError extends Error {
+  readonly code: string
+  readonly statusCode: number
+
+  constructor(message: string, code: string, statusCode = 503) {
+    super(message)
+    this.name = 'ReitUpstreamConfigError'
+    this.code = code
+    this.statusCode = statusCode
+  }
+}
+
 // ── Feature Flags ──────────────────────────────────────────────────────────────
 // Cada fase do overhaul é controlada por uma flag independente.
 // Se alguma coisa correr mal num tipo de REIT, desliga-se a flag sem mexer no resto.
@@ -17,10 +29,65 @@ export const REIT_FLAGS = {
 } as const
 
 async function fmpGet(path: string): Promise<any> {
+  const apiKey = (FMP_API_KEY ?? '').trim()
+  if (!apiKey) {
+    throw new ReitUpstreamConfigError(
+      'FMP_API_KEY nao configurada no backend.',
+      'fmp_api_key_missing',
+      503,
+    )
+  }
+
   const separator = path.includes('?') ? '&' : '?'
-  const url = `${FMP_BASE}${path}${separator}apikey=${FMP_API_KEY}`
+  const url = `${FMP_BASE}${path}${separator}apikey=${apiKey}`
   const { data } = await axios.get(url)
   return data
+}
+
+function handleReitError(
+  res: Response,
+  symbol: unknown,
+  scope: 'DDM' | 'FFO' | 'NAV',
+  error: unknown,
+  fallbackMessage: string,
+) {
+  const safeSymbol = String(symbol ?? '').toUpperCase()
+
+  if (error instanceof ReitUpstreamConfigError) {
+    console.error(`Erro ${scope} ${safeSymbol}:`, error.message)
+    res.status(error.statusCode).json({
+      error: error.message,
+      code: error.code,
+    })
+    return
+  }
+
+  if (axios.isAxiosError(error)) {
+    const providerStatus = error.response?.status
+
+    if (providerStatus === 401 || providerStatus === 403) {
+      console.error(`Erro ${scope} ${safeSymbol}: auth no provider FMP`, error.message)
+      res.status(502).json({
+        error: 'Falha de autenticacao no provider FMP. Verifica FMP_API_KEY.',
+        code: 'fmp_auth_failed',
+        providerStatus,
+      })
+      return
+    }
+
+    if (!error.response) {
+      console.error(`Erro ${scope} ${safeSymbol}: rede/time-out FMP`, error.message)
+      res.status(504).json({
+        error: 'Falha de rede ao comunicar com o provider FMP.',
+        code: 'fmp_network_error',
+      })
+      return
+    }
+  }
+
+  const errorMessage = error instanceof Error ? error.message : String(error)
+  console.error(`Erro ${scope} ${safeSymbol}:`, errorMessage)
+  res.status(500).json({ error: fallbackMessage })
 }
 
 /** Normaliza resposta FMP: array ou objeto direto */
@@ -274,9 +341,8 @@ export const calculateDDM = async (req: Request, res: Response) => {
         flagsActive: Object.entries(REIT_FLAGS).filter(([, v]) => v).map(([k]) => k),
       },
     })
-  } catch (error: any) {
-    console.error(`Erro DDM ${symbol}:`, error.message)
-    res.status(500).json({ error: 'Erro ao calcular o DDM.' })
+  } catch (error: unknown) {
+    handleReitError(res, symbol, 'DDM', error, 'Erro ao calcular o DDM.')
   }
 }
 
@@ -467,9 +533,8 @@ export const calculateFFO = async (req: Request, res: Response) => {
         flagsActive: Object.entries(REIT_FLAGS).filter(([, v]) => v).map(([k]) => k),
       },
     })
-  } catch (error: any) {
-    console.error(`Erro FFO ${symbol}:`, error.message)
-    res.status(500).json({ error: 'Erro ao calcular FFO.' })
+  } catch (error: unknown) {
+    handleReitError(res, symbol, 'FFO', error, 'Erro ao calcular FFO.')
   }
 }
 
@@ -611,9 +676,8 @@ export const calculateNAV = async (req: Request, res: Response) => {
         flagsActive: Object.entries(REIT_FLAGS).filter(([, v]) => v).map(([k]) => k),
       },
     })
-  } catch (error: any) {
-    console.error(`Erro NAV ${symbol}:`, error.message)
-    res.status(500).json({ error: 'Erro ao calcular NAV.' })
+  } catch (error: unknown) {
+    handleReitError(res, symbol, 'NAV', error, 'Erro ao calcular NAV.')
   }
 }
 
