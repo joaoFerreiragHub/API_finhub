@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 e P4.3-02 backend+frontend MVP inicial entregue; P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
+Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend MVP inicial entregue; P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -64,8 +64,12 @@ Frontend:
 
 Estado desta iteracao:
 1. backend MVP entregue com modelo versionado, historico e preview de impacto.
-2. frontend MVP inicial entregue com area admin `/admin/monetizacao` para listar/filtrar/ativar/desativar policies.
-3. pendente para fecho completo: criar/editar policy e preview de impacto no frontend.
+2. frontend FECHADO em `FinHub-Vite` com area admin `/admin/monetizacao` a suportar:
+   - listagem/filtros/ativar/desativar;
+   - criar policy (`POST /api/admin/content/access-policies`);
+   - editar policy (`PATCH /api/admin/content/access-policies/:policyId`);
+   - preview de impacto (`POST /api/admin/content/access-policies/preview`) com resumo e amostra.
+3. controlo operacional no frontend com motivo obrigatorio, modo create/edit e validacao basica de campos antes das mutacoes.
 
 Entregue no backend:
 1. modelo `ContentAccessPolicy` com:
@@ -99,6 +103,7 @@ Validacao desta iteracao:
 3. `npm run checking`
 4. frontend `cmd /c yarn.cmd typecheck:p1`
 5. frontend `cmd /c yarn.cmd lint`
+6. frontend `cmd /c yarn.cmd test`
 
 ### 7.6 Hardening tecnico transversal (schema indexes)
 
