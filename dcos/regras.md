@@ -25,20 +25,16 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-12
 
-- Estado git: `main` sincronizado com `origin/main`; `FinHub-Vite/master` sincronizado com `origin/master` (working tree limpo).
-- Ultimo commit backend: `e441e17` (`feat(reit): add interestCoverage as debt proxy for sentinel-zero cases`).
-- Ultimo commit frontend (FinHub-Vite/master): `9569b16` (`feat(reit-ui): interestCoverage fallback for debt metric display and scoring`).
-- Onde ficamos (REIT Toolkit — tudo implementado e concluido nesta sessao):
-  - F1 REIT Subtype Detector: implementado (backend `detectReitSubtype` + frontend `SUBTYPE_WEIGHTS`) com detecao data-driven validada contra FMP real;
-  - Subtype fixes data-driven: VICI industry="REIT - Diversified" (nao Specialty) coberto por gamingNetLease; O/NNN netLeaseNames desacoplado do ebitdaIsSentinel;
-  - totalDebt sentinel fix: plausibleOrNull aplicado ao totalDebt — VICI mostra N/A em vez de 0.0x (confirmado: FMP nao tem dados de divida para VICI em nenhum plano);
-  - interestCoverage proxy: quando totalDebt=sentinel, calcula EBITDA/interestExpense como fallback de alavancagem (VICI 4.45x, NNN 4.25x, GLPI 4.04x confirmados via FMP);
-  - scoring usa coverage no lugar de Div./EBITDA quando debtToEbitda=null; display adapta label/cor/info automaticamente;
-  - spec F1_REIT_SUBTYPE_DETECTOR.md criada em `FinHub-Vite/dcos/` (referencia de implementacao);
-  - migracao Vike V1, P4.3-01/02 admin monetizacao: concluidos em sessoes anteriores.
+- Estado git: `main` com docs P4.3-01 sincronizadas; `FinHub-Vite/master` com entrega frontend P4.3-01 sincronizada (a confirmar limpo apos push deste ciclo).
+- Ultimo commit backend: `722a984` (`docs(p4.3-01): mark paywall frontend as closed and sync audit`).
+- Ultimo commit frontend (FinHub-Vite/master): `261e57e` (`feat(admin-monetization): close P4.3-01 paywall create edit preview`).
+- Onde ficamos:
+  - REIT Toolkit permanece concluido (F1 subtype detector + coverage proxy + smoke validado);
+  - P4.3-01 paywall frontend ficou FECHADO em `/admin/monetizacao` com listagem/filtros/ativar-desativar + create/edit de policy + preview de impacto;
+  - docs sincronizadas em `audiotira_04.md`, `P4_3_4_5_BACKOFFICE_NEGOCIO.md`, `FinHub-Vite/dcos/ESTADO_IMPLEMENTADO.md` e `FinHub-Vite/dcos/PENDENCIAS_PRIORIZADAS.md`.
 - Proximo passo recomendado:
-  - retomar ordem oficial do `dcos/audiotira_04.md` (P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA);
-  - QA manual do REIT Toolkit com VICI/O/NNN/EQIX apos reinicio do servidor para validar subtype + coverage.
+  - continuar na ordem oficial (`P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA`);
+  - fechar P4.3-02 no frontend com timeline detalhada por subscricao e refinamentos UX para operacao em volume.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
