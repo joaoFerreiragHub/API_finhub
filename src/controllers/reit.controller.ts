@@ -530,6 +530,14 @@ export const calculateFFO = async (req: Request, res: Response) => {
     const totalEquity: number | null = balance.totalStockholdersEquity ?? null
     const debtToEbitda = totalDebt > 0 && ebitda !== null && ebitda > 0 ? totalDebt / ebitda : null
     const debtToEquity = totalDebt > 0 && totalEquity !== null && totalEquity > 0 ? totalDebt / totalEquity : null
+    // Cobertura de juros: proxy de alavancagem quando totalDebt é sentinel (ex: VICI)
+    // Confirmado via FMP: interestExpense disponível para VICI ($818M), O (sentinel 0), NNN ($202M)
+    // plausibleOrNull protege contra sentinel 0 no interestExpense (ex: Realty Income no FMP)
+    const interestExpenseRaw: number | null = plausibleOrNull(income.interestExpense ?? null, marketCap)
+    const interestCoverage: number | null =
+      ebitda !== null && ebitda > 0 && interestExpenseRaw !== null && interestExpenseRaw > 0
+        ? parseFloat((ebitda / interestExpenseRaw).toFixed(2))
+        : null
     const subtypeResult = detectReitSubtype(
       industry,
       profile.companyName ?? '',
@@ -603,6 +611,7 @@ export const calculateFFO = async (req: Request, res: Response) => {
       ffoPayoutRatio: ffoPayoutRatio !== null ? parseFloat(ffoPayoutRatio.toFixed(1)) : null,
       debtToEbitda: debtToEbitda !== null ? parseFloat(debtToEbitda.toFixed(2)) : null,
       debtToEquity: debtToEquity !== null ? parseFloat(debtToEquity.toFixed(2)) : null,
+      interestCoverage,
       reitSubtype: subtypeResult.subtype,
       reitSubtypeConfidence: subtypeResult.confidence,
       reitSubtypeReasons: subtypeResult.reasons,
