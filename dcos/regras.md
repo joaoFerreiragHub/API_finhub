@@ -25,18 +25,19 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-12
 
-- Estado git: `main` com docs de P4.3-03 sincronizadas localmente neste ciclo; `FinHub-Vite/master` com P4.3-02 + P4.3-03 frontend validados localmente nesta ronda.
-- Ultimo commit backend: `722a984` (`docs(p4.3-01): mark paywall frontend as closed and sync audit`).
-- Ultimo commit frontend (FinHub-Vite/master): `261e57e` (`feat(admin-monetization): close P4.3-01 paywall create edit preview`).
+- Estado git: `main` com docs de P4.3-04 sincronizadas localmente neste ciclo; `FinHub-Vite/master` com P4.3-04 frontend implementado e validado nesta ronda.
+- Ultimo commit backend: `0940836` (`docs(p4.3-03): sync frontend appeals closure and next step`).
+- Ultimo commit frontend (FinHub-Vite/master): `ba725e4` (`style(admin-content): normalize formatting for p4.3-03 surfaces`).
 - Onde ficamos:
   - REIT Toolkit permanece concluido (F1 subtype detector + coverage proxy + smoke validado);
   - P4.3-01 paywall frontend ficou FECHADO em `/admin/monetizacao` com listagem/filtros/ativar-desativar + create/edit de policy + preview de impacto;
   - P4.3-02 subscricoes frontend ficou FECHADO em `/admin/monetizacao/subscricoes` com timeline detalhada por subscricao (actor/motivo/nota/snapshot) e refinamentos UX de operacao;
   - P4.3-03 apelacoes frontend ficou FECHADO em `/admin/conteudo/apelacoes` (alias `/admin/apelacoes`) com inbox filtravel, timeline de historico e decisao com motivo padronizado;
+  - P4.3-04 templates frontend ficou FECHADO em `/admin/conteudo` com selector nos dialogs de acao/lote, auto-fill de reason/note, enforcement de `requiresNote`/`requiresDoubleConfirm` e telemetria `trackFeature`;
   - docs sincronizadas em `audiotira_04.md` e `P4_3_4_5_BACKOFFICE_NEGOCIO.md` no backend neste ciclo.
 - Proximo passo recomendado:
   - continuar na ordem oficial (`P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA`);
-  - avancar para P4.3-04 no frontend com selector de templates de moderacao nas acoes criticas de `/admin/conteudo`.
+  - avancar para P4.3-05 no frontend com area de comunicacoes segmentadas (composer, preview de audiencia e historico de envios).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.

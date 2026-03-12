@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
+Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04 backend+frontend FECHADO; P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -297,7 +297,7 @@ Frontend:
 
 Estado desta iteracao:
 1. backend MVP entregue com modelo versionado, historico e RBAC admin.
-2. frontend admin ainda pendente para fechar este item.
+2. frontend FECHADO em `FinHub-Vite` com selector de templates integrado nos dialogs de moderacao.
 
 Entregue no backend:
 1. modelo `AdminModerationTemplate` com:
@@ -316,9 +316,29 @@ Entregue no backend:
    - escrita com `admin.content.moderate`.
 4. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
 
+Entregue no frontend:
+1. camada de dominio dedicada para templates:
+   - tipos: `src/features/admin/types/adminModerationTemplates.ts`;
+   - service: `src/features/admin/services/adminModerationTemplatesService.ts`;
+   - hooks React Query: `src/features/admin/hooks/useAdminModerationTemplates.ts`.
+2. integracao no `ContentModerationPage`:
+   - selector de template no dialog de acao individual;
+   - selector de template no dialog de job em lote;
+   - auto-fill de `reason` e `note` com override manual permitido.
+3. guardrails operacionais por template:
+   - `requiresNote` passa a bloquear submissao sem nota;
+   - `requiresDoubleConfirm` eleva confirmacao forte mesmo fora do default da acao.
+4. telemetria frontend de uso/aplicacao:
+   - eventos `feature_used` via `trackFeature` quando template e selecionado e quando e aplicado.
+5. cobertura de testes frontend:
+   - novo teste unitario `src/__tests__/features/admin/adminModerationTemplatesService.test.ts`;
+   - `ContentModerationPage.test.tsx` atualizado para suportar o novo hook de templates.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
+3. frontend `cmd /c yarn.cmd typecheck:p1`
+4. frontend `npx jest --runInBand src/__tests__/features/admin/adminModerationTemplatesService.test.ts src/__tests__/features/admin/ContentModerationPage.test.tsx`
 
 ### 5.5 P4.3-05 Comunicacoes admin por segmento
 
