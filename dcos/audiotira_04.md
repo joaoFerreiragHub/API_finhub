@@ -234,3 +234,4 @@ Integracao CI/CD:
 - 2026-03-10: organizacao documental sincronizada com regras: docs concluidos de P5-MARCAS backend (P4.1 a P4.5) movidos para `dcos/done/` e referencias atualizadas.
 - 2026-03-10: hardening de watchlist batch concluido no backend (`GET /api/stocks/batch-snapshot`) com parsing resiliente (`symbols`/`symbol`), timeout no provider externo e fallback degradado para evitar quebra total da pagina de watchlist.
 - 2026-03-11: housekeeping documental adicional: `P6_SETUP_TECNICO_ESCALABILIDADE.md` movido para `dcos/done/` e auditoria atualizada para manter apenas ficheiros ativos na raiz.
+- 2026-03-12: REIT Subtype Detector concluido em backend+frontend (`calculateFFO` agora devolve `reitSubtype`, `reitSubtypeConfidence`, `reitSubtypeReasons`; frontend aplica `SUBTYPE_WEIGHTS` e UI contextual para net-lease). Especificacao movida para `FinHub-Vite/dcos/done/F1_REIT_SUBTYPE_DETECTOR.md`.

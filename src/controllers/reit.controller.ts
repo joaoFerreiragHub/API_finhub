@@ -132,6 +132,7 @@ function resolveShares(income: any, balance: any, marketCap: number, price: numb
 type ConfidenceLevel = 'high' | 'medium' | 'low'
 type ReitProfile = 'growth' | 'income' | 'mixed'
 type FfoSource = 'key-metrics' | 'simplified' | 'simplified-specialty' | 'not-applicable'
+type ReitSubtype = 'net-lease' | 'mortgage' | 'specialty-tech' | 'healthcare' | 'hotel' | 'standard'
 
 function detectReitProfile(
   dividendYield: number,
@@ -189,6 +190,68 @@ function computeNavConfidence(
 
   const confidence: ConfidenceLevel = reasons.length === 0 ? 'high' : reasons.length === 1 ? 'medium' : 'low'
   return { confidence, reasons }
+}
+
+function detectReitSubtype(
+  industry: string,
+  companyName: string,
+  ebitdaRaw: number | null,
+  _debtToEbitda: number | null,
+  ffoSource: FfoSource,
+): { subtype: ReitSubtype; confidence: ConfidenceLevel; reasons: string[] } {
+  const reasons: string[] = []
+  const name = companyName.toLowerCase()
+
+  // Mortgage REIT: FFO nao e metrica aplicavel.
+  if (ffoSource === 'not-applicable' || /mortgage/i.test(industry)) {
+    return {
+      subtype: 'mortgage',
+      confidence: 'high',
+      reasons: ['ffoSource not-applicable ou industry contem mortgage'],
+    }
+  }
+
+  if (/specialty/i.test(industry)) {
+    const isGaming = /vici|gaming|casino|entertainment|leisure/i.test(name)
+    if (!isGaming) {
+      reasons.push(`industry="${industry}" sem sinais de gaming`)
+      return { subtype: 'specialty-tech', confidence: 'high', reasons }
+    }
+    reasons.push(`industry="${industry}" com sinais de gaming`)
+  }
+
+  if (/healthcare/i.test(industry)) {
+    reasons.push(`industry="${industry}"`)
+    return { subtype: 'healthcare', confidence: 'high', reasons }
+  }
+
+  if (/hotel|motel/i.test(industry)) {
+    reasons.push(`industry="${industry}"`)
+    return { subtype: 'hotel', confidence: 'high', reasons }
+  }
+
+  const ebitdaIsSentinel = ebitdaRaw === 0
+  const netLeaseNames =
+    /realty income|national retail|store capital|agree|essential|broadstone|gaming & leisure|gaming and leisure|eprt|adc|vici/i.test(
+      name,
+    )
+  const retailNoEbitda = /retail/i.test(industry) && ebitdaIsSentinel
+  const gamingNetLease = /gaming|casino|vici|leisure/i.test(name)
+
+  if (ebitdaIsSentinel && (netLeaseNames || retailNoEbitda || gamingNetLease || reasons.length > 0)) {
+    reasons.push('ebitda=0 no FMP (sentinel de nao reportado)')
+    if (netLeaseNames) reasons.push('nome sugere net-lease')
+    if (gamingNetLease) reasons.push('nome sugere gaming net-lease')
+
+    return {
+      subtype: 'net-lease',
+      confidence: netLeaseNames || gamingNetLease ? 'high' : 'medium',
+      reasons,
+    }
+  }
+
+  reasons.push('sem sinais especificos para subtipo dedicado')
+  return { subtype: 'standard', confidence: 'medium', reasons }
 }
 
 // ============================================
@@ -442,6 +505,7 @@ export const calculateFFO = async (req: Request, res: Response) => {
     // EBITDA e rácios de dívida
     // operatingIncome ?? null preserva o caso em que não há dados (não colapsa para 0)
     // plausibleOrNull: FMP devolve 0 em vez de null para grandes caps — trata como dado em falta
+    const ebitdaRawForSubtype: number | null = typeof income.ebitda === 'number' ? income.ebitda : null
     const ebitdaRaw: number | null = plausibleOrNull(income.ebitda ?? null, marketCap)
     const operatingIncomeRaw: number | null = income.operatingIncome ?? null
     const ebitda: number | null =
@@ -452,6 +516,13 @@ export const calculateFFO = async (req: Request, res: Response) => {
     const totalEquity: number | null = balance.totalStockholdersEquity ?? null
     const debtToEbitda = ebitda !== null && ebitda > 0 ? totalDebt / ebitda : null
     const debtToEquity = totalEquity !== null && totalEquity > 0 ? totalDebt / totalEquity : null
+    const subtypeResult = detectReitSubtype(
+      industry,
+      profile.companyName ?? '',
+      ebitdaRawForSubtype,
+      debtToEbitda,
+      ffoSource,
+    )
 
     const pFFO = ffoPerShare && ffoPerShare > 0 ? price / ffoPerShare : null
 
@@ -518,6 +589,9 @@ export const calculateFFO = async (req: Request, res: Response) => {
       ffoPayoutRatio: ffoPayoutRatio !== null ? parseFloat(ffoPayoutRatio.toFixed(1)) : null,
       debtToEbitda: debtToEbitda !== null ? parseFloat(debtToEbitda.toFixed(2)) : null,
       debtToEquity: debtToEquity !== null ? parseFloat(debtToEquity.toFixed(2)) : null,
+      reitSubtype: subtypeResult.subtype,
+      reitSubtypeConfidence: subtypeResult.confidence,
+      reitSubtypeReasons: subtypeResult.reasons,
       // Phase 2: Period tag
       ...(REIT_FLAGS.enablePeriodTags ? { ffoDataPeriod: formatReportPeriod(income.date, income.period) ?? 'TTM' } : {}),
       // Phase 4: FFO confidence
@@ -531,6 +605,9 @@ export const calculateFFO = async (req: Request, res: Response) => {
         depreciationWasGuarded,
         sharesSource,
         ffoConfidence: ffoConfidenceResult?.confidence ?? null,
+        reitSubtype: subtypeResult.subtype,
+        reitSubtypeConfidence: subtypeResult.confidence,
+        reitSubtypeReasons: subtypeResult.reasons,
         flagsActive: Object.entries(REIT_FLAGS).filter(([, v]) => v).map(([k]) => k),
       },
     })
