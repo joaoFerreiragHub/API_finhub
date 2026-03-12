@@ -238,14 +238,22 @@ export function detectReitSubtype(
   const retailNoEbitda = /retail/i.test(industry) && ebitdaIsSentinel
   const gamingNetLease = /gaming|casino|vici|leisure/i.test(name)
 
-  if (ebitdaIsSentinel && (netLeaseNames || retailNoEbitda || gamingNetLease || reasons.length > 0)) {
+  // Gaming net-lease: classificado sempre como net-lease independentemente do EBITDA sentinel
+  // (FMP pode devolver undefined em vez de 0 para alguns campos da VICI)
+  if (gamingNetLease) {
+    if (reasons.length > 0) reasons.push('caiu do bloco specialty como gaming net-lease')
+    else reasons.push('nome sugere gaming net-lease')
+    return { subtype: 'net-lease', confidence: 'high', reasons }
+  }
+
+  // Outros net-lease: exige sinal EBITDA sentinel (FMP devolve 0 para net-lease que nao reporta EBITDA)
+  if (ebitdaIsSentinel && (netLeaseNames || retailNoEbitda || reasons.length > 0)) {
     reasons.push('ebitda=0 no FMP (sentinel de nao reportado)')
     if (netLeaseNames) reasons.push('nome sugere net-lease')
-    if (gamingNetLease) reasons.push('nome sugere gaming net-lease')
 
     return {
       subtype: 'net-lease',
-      confidence: gamingNetLease ? 'high' : 'medium',
+      confidence: netLeaseNames ? 'high' : 'medium',
       reasons,
     }
   }
