@@ -120,7 +120,7 @@ Estado e regra nesta auditoria:
 | Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
 |---|---|---|---|
 | P6 AI/MCP | dcos/P6_MCP_AI_CONTEXTO_AGENTES.md | planeado | Nao |
-| P6 Setup Tecnico | dcos/P6_SETUP_TECNICO_ESCALABILIDADE.md | concluido | Nao |
+| P6 Setup Tecnico | dcos/done/P6_SETUP_TECNICO_ESCALABILIDADE.md | concluido | Nao |
 
 ## 8.1) Trilha Revenue e Ads (nao bloqueante para esta release)
 
@@ -233,3 +233,4 @@ Integracao CI/CD:
 - 2026-03-10: P5-MARCAS P1.1 hardening adicional no backend com contratos de request nas rotas publicas de diretorio e novo endpoint `GET /api/directories/categories` para resumo por vertical.
 - 2026-03-10: organizacao documental sincronizada com regras: docs concluidos de P5-MARCAS backend (P4.1 a P4.5) movidos para `dcos/done/` e referencias atualizadas.
 - 2026-03-10: hardening de watchlist batch concluido no backend (`GET /api/stocks/batch-snapshot`) com parsing resiliente (`symbols`/`symbol`), timeout no provider externo e fallback degradado para evitar quebra total da pagina de watchlist.
+- 2026-03-11: housekeeping documental adicional: `P6_SETUP_TECNICO_ESCALABILIDADE.md` movido para `dcos/done/` e auditoria atualizada para manter apenas ficheiros ativos na raiz.

@@ -441,7 +441,8 @@ export const calculateFFO = async (req: Request, res: Response) => {
 
     // EBITDA e rácios de dívida
     // operatingIncome ?? null preserva o caso em que não há dados (não colapsa para 0)
-    const ebitdaRaw: number | null = income.ebitda ?? null
+    // plausibleOrNull: FMP devolve 0 em vez de null para grandes caps — trata como dado em falta
+    const ebitdaRaw: number | null = plausibleOrNull(income.ebitda ?? null, marketCap)
     const operatingIncomeRaw: number | null = income.operatingIncome ?? null
     const ebitda: number | null =
       ebitdaRaw !== null ? ebitdaRaw :

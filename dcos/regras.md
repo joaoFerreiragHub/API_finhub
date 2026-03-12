@@ -9,7 +9,7 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 1. Nao fechar ponto sem os 3 artefactos: implementacao + docs + commit.
 2. Nao deixar alteracoes pendentes ao terminar um ponto (working tree limpo).
-3. Quando um ponto fica concluido, mover o ficheiro respetivo para `dcos/done/` no mesmo ciclo.
+3. Quando um ponto fica concluido, mover o ficheiro respetivo para `dcos/done/` no mesmo ciclo (regra valida para `API_finhub` e `FinHub-Vite`).
 4. Manter na raiz de `dcos/` apenas ficheiros ativos.
 5. Atualizar `dcos/audiotira_04.md` no mesmo ciclo de fecho.
 6. Validar sempre o minimo tecnico:
@@ -23,12 +23,18 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 ## Checkpoint de Retoma (ATUALIZAR EM TODO O FECHO)
 
-Ultima atualizacao: 2026-03-10
+Ultima atualizacao: 2026-03-11
 
-- Estado git: `main` sincronizado com `origin/main` (working tree limpo).
-- Ultimo commit: `0267bba` (`fix(stocks): harden watchlist batch snapshot resilience (O1-10)`).
-- Onde ficamos: hardening do endpoint `GET /api/stocks/batch-snapshot` concluido e documentado.
-- Proximo passo recomendado: P5-MARCAS Fase 1.2 no frontend (`/recursos` index em `FinHub-Vite`).
+- Estado git: `main` sincronizado com `origin/main`, com WIP local em `src/controllers/reit.controller.ts` (implementacao REITs em curso pelo utilizador).
+- Ultimo commit: `47bd3f0` (`fix(reit): improve dev CORS and surface upstream REIT errors`).
+- Onde ficamos:
+  - migracao Vike V1 do frontend concluida e estabilizada;
+  - docs Vike arquivados em `FinHub-Vite/dcos/done/`;
+  - `dcos/P6_SETUP_TECNICO_ESCALABILIDADE.md` arquivado em `dcos/done/` (backend);
+  - backend REITs em curso (nao fechar checkpoint ate terminar o WIP atual).
+- Proximo passo recomendado:
+  - terminar o WIP de REITs;
+  - retomar ordem de execucao oficial do `dcos/audiotira_04.md` (P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
