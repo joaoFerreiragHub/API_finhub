@@ -25,9 +25,9 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-12
 
-- Estado git: `main` e `FinHub-Vite/master` sincronizados com commit/push de fecho do P4.3-04 nesta ronda.
-- Ultimo commit backend: `a51a2ac` (`docs(p4.3-04): mark moderation templates frontend as closed`).
-- Ultimo commit frontend (FinHub-Vite/master): `eb75394` (`feat(admin-content): close p4.3-04 moderation templates on content workflows`).
+- Estado git: `main` e `FinHub-Vite/master` sincronizados com commit/push de fecho do P4.3-05 nesta ronda.
+- Ultimo commit backend: `98172b8` (`docs(p4.3-05): mark admin communications frontend as closed`).
+- Ultimo commit frontend (FinHub-Vite/master): `4816671` (`feat(admin-communications): close p4.3-05 segmented broadcasts frontend`).
 - Onde ficamos:
   - REIT Toolkit permanece concluido (F1 subtype detector + coverage proxy + smoke validado);
   - P4.3-01 paywall frontend ficou FECHADO em `/admin/monetizacao` com listagem/filtros/ativar-desativar + create/edit de policy + preview de impacto;
