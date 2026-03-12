@@ -25,9 +25,9 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-12
 
-- Estado git: `main` e `FinHub-Vite/master` sincronizados com commit/push de fecho do P4.3-05 nesta ronda.
-- Ultimo commit backend: `98172b8` (`docs(p4.3-05): mark admin communications frontend as closed`).
-- Ultimo commit frontend (FinHub-Vite/master): `4816671` (`feat(admin-communications): close p4.3-05 segmented broadcasts frontend`).
+- Estado git: `FinHub-Vite/master` sincronizado com fecho do P4.4-01; `API_finhub/main` com docs do mesmo ponto atualizadas nesta ronda.
+- Ultimo commit backend de entrega: `993afc0` (`docs(p4.4-01): close creators positive analytics frontend`).
+- Ultimo commit frontend (FinHub-Vite/master): `407eff4` (`feat(admin-creators): close p4.4-01 positive analytics frontend`).
 - Onde ficamos:
   - REIT Toolkit permanece concluido (F1 subtype detector + coverage proxy + smoke validado);
   - P4.3-01 paywall frontend ficou FECHADO em `/admin/monetizacao` com listagem/filtros/ativar-desativar + create/edit de policy + preview de impacto;
@@ -35,10 +35,11 @@ Ultima atualizacao: 2026-03-12
   - P4.3-03 apelacoes frontend ficou FECHADO em `/admin/conteudo/apelacoes` (alias `/admin/apelacoes`) com inbox filtravel, timeline de historico e decisao com motivo padronizado;
   - P4.3-04 templates frontend ficou FECHADO em `/admin/conteudo` com selector nos dialogs de acao/lote, auto-fill de reason/note, enforcement de `requiresNote`/`requiresDoubleConfirm` e telemetria `trackFeature`;
   - P4.3-05 comunicacoes frontend ficou FECHADO em `/admin/operacoes/comunicacoes` com composer segmentado, preview de audiencia, historico de envios e acoes `approve/send` com motivo obrigatorio;
+  - P4.4-01 analytics positivos de creators ficou FECHADO no frontend em `/admin/creators/analytics` com scorecards, filtros operacionais, leaderboard growth/engagement/trust e export CSV;
   - docs sincronizadas em `audiotira_04.md` e `P4_3_4_5_BACKOFFICE_NEGOCIO.md` no backend neste ciclo.
 - Proximo passo recomendado:
   - continuar na ordem oficial (`P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA`);
-  - avancar para P4.4-01 no frontend com dashboards de analytics positivos de creators (lista, filtros, scorecards e export operacional).
+  - avancar para P4.4-02 no frontend com UI operacional de financial tools (feature flags/limites por ambiente + metricas por vertical).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
