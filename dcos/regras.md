@@ -23,18 +23,19 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 ## Checkpoint de Retoma (ATUALIZAR EM TODO O FECHO)
 
-Ultima atualizacao: 2026-03-11
+Ultima atualizacao: 2026-03-12
 
-- Estado git: `main` sincronizado com `origin/main`, com WIP local em `src/controllers/reit.controller.ts` (implementacao REITs em curso pelo utilizador).
-- Ultimo commit: `47bd3f0` (`fix(reit): improve dev CORS and surface upstream REIT errors`).
+- Estado git: `main` sincronizado com `origin/main` (working tree limpo apos este commit).
+- Ultimo commit backend: `cea5ed7` (`chore(reits-docs): checkpoint reit progress and archive completed dcos`).
+- Ultimo commit frontend (FinHub-Vite/master): `2821e51` (`chore(reits-vike): checkpoint reit updates and archive vike docs`).
 - Onde ficamos:
-  - migracao Vike V1 do frontend concluida e estabilizada;
-  - docs Vike arquivados em `FinHub-Vite/dcos/done/`;
-  - `dcos/P6_SETUP_TECNICO_ESCALABILIDADE.md` arquivado em `dcos/done/` (backend);
-  - backend REITs em curso (nao fechar checkpoint ate terminar o WIP atual).
+  - REIT Toolkit scoring corrigido: Economic NAV substituiu Book NAV, dynamic weights ativados com guarda de confianca;
+  - fix plausibleOrNull aplicado ao EBITDA no calculateFFO (backend) — resolvido sentinel zero para net-lease;
+  - especificacao tecnica REIT Subtype Detector criada em `FinHub-Vite/dcos/F1_REIT_SUBTYPE_DETECTOR.md` (pronto para implementar);
+  - migracao Vike V1 do frontend concluida e estabilizada.
 - Proximo passo recomendado:
-  - terminar o WIP de REITs;
-  - retomar ordem de execucao oficial do `dcos/audiotira_04.md` (P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA).
+  - implementar `F1_REIT_SUBTYPE_DETECTOR.md` (backend: detectReitSubtype + frontend: SUBTYPE_WEIGHTS);
+  - validar com matriz QA do doc (VICI, O, NNN, EQIX, AGNC, PLD, SPG).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
