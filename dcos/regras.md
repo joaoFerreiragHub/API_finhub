@@ -32,11 +32,12 @@ Ultima atualizacao: 2026-03-12
   - REIT Toolkit scoring corrigido: Economic NAV substituiu Book NAV, dynamic weights ativados com guarda de confianca;
   - fix plausibleOrNull aplicado ao EBITDA no calculateFFO (backend) — resolvido sentinel zero para net-lease;
   - REIT Subtype Detector implementado (backend + frontend), com novos campos `reitSubtype*` no `calculateFFO` e pesos por subtipo no REIT Toolkit;
+  - matriz QA do F1 validada com smoke automatizado (`npm run test:reit:subtype-smoke`) em 15 casos;
   - especificacao arquivada em `FinHub-Vite/dcos/done/F1_REIT_SUBTYPE_DETECTOR.md`;
   - migracao Vike V1 do frontend concluida e estabilizada.
 - Proximo passo recomendado:
-  - validar a matriz QA do subtipo REIT (VICI, O, NNN, EQIX, AGNC, PLD, SPG);
-  - retomar ordem oficial do `dcos/audiotira_04.md` (P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA).
+  - retomar ordem oficial do `dcos/audiotira_04.md` (P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA);
+  - iniciar fecho das pendencias finais de P4 Moderation Control Plane (hardening/E2E/runbook pre-release).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
@@ -151,4 +152,3 @@ Checklist obrigatoria de fecho (executar sempre):
 3. ficheiro do ponto movido para `dcos/done/` quando concluido;
 4. `audiotira_04.md` sincronizada com o novo estado;
 5. commit realizado sem deixar pendencias.
-

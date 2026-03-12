@@ -26,6 +26,7 @@
     "test:docs:release-gate": "node scripts/docs-auditoria-04-smoke.js --strict-release",
     "test:contracts:routes": "node scripts/test-route-contracts.js",
     "test:ads:guardrails": "node scripts/ads-bulk-import-guardrails-smoke.js",
+    "test:reit:subtype-smoke": "ts-node --transpile-only scripts/reit-subtype-smoke.ts",
     "test:perf:indexes": "node scripts/perf-index-smoke.js",
     "test:security:smoke": "node scripts/security-config-smoke.js",
     "test:technical:smoke": "npm run test:admin:scopes && npm run contract:openapi && npm run test:contracts:routes && npm run test:ads:guardrails && npm run test:perf:indexes && npm run test:security:smoke && npm run test:docs:smoke",

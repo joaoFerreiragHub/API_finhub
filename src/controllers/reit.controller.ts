@@ -129,10 +129,10 @@ function resolveShares(income: any, balance: any, marketCap: number, price: numb
 
 // ── Confidence & Profile helpers ────────────────────────────────────────────────
 
-type ConfidenceLevel = 'high' | 'medium' | 'low'
+export type ConfidenceLevel = 'high' | 'medium' | 'low'
 type ReitProfile = 'growth' | 'income' | 'mixed'
-type FfoSource = 'key-metrics' | 'simplified' | 'simplified-specialty' | 'not-applicable'
-type ReitSubtype = 'net-lease' | 'mortgage' | 'specialty-tech' | 'healthcare' | 'hotel' | 'standard'
+export type FfoSource = 'key-metrics' | 'simplified' | 'simplified-specialty' | 'not-applicable'
+export type ReitSubtype = 'net-lease' | 'mortgage' | 'specialty-tech' | 'healthcare' | 'hotel' | 'standard'
 
 function detectReitProfile(
   dividendYield: number,
@@ -192,7 +192,7 @@ function computeNavConfidence(
   return { confidence, reasons }
 }
 
-function detectReitSubtype(
+export function detectReitSubtype(
   industry: string,
   companyName: string,
   ebitdaRaw: number | null,
@@ -245,7 +245,7 @@ function detectReitSubtype(
 
     return {
       subtype: 'net-lease',
-      confidence: netLeaseNames || gamingNetLease ? 'high' : 'medium',
+      confidence: gamingNetLease ? 'high' : 'medium',
       reasons,
     }
   }
