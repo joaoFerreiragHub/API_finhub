@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04 backend+frontend FECHADO; P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
+Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04 backend+frontend FECHADO; P4.3-05 e P4.4-01 backend+frontend FECHADOS; P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -446,8 +446,8 @@ Validacao desta iteracao:
 3. Export CSV para planeamento de curadoria.
 
 Estado desta iteracao:
-1. backend MVP entregue com leaderboard de creators por crescimento/engagement e export CSV.
-2. frontend admin (visualizacoes/dashboards) ainda pendente para fechar este item.
+1. backend+frontend FECHADO para analytics positivos de creators.
+2. frontend admin entregue em `/admin/creators/analytics` com scorecards, filtros operacionais, leaderboard growth/engagement/trust e export CSV.
 
 Entregue no backend:
 1. endpoints admin:
@@ -466,9 +466,26 @@ Entregue no backend:
 5. export CSV para curadoria/operacao com limite de linhas configuravel.
 6. auditoria administrativa e `requireAdminScope` aplicados com `admin.metrics.read`.
 
+Entregue no frontend (`FinHub-Vite`):
+1. nova rota admin:
+   - `GET /admin/creators/analytics` (UI de operacao para ranking de creators).
+2. painel operacional com:
+   - scorecards (`totalCreators`, `avgGrowthScore`, `avgEngagementScore`, `avgTrustScore`);
+   - filtros por `search`, `accountStatus`, `riskLevel`, `sortBy`, `sortOrder`, `windowDays`;
+   - tabela/listagem responsiva com comparacao lado a lado de growth, engagement e trust.
+3. export operacional:
+   - botao `Export CSV` ligado a `GET /api/admin/creators/analytics/positive/export.csv`.
+4. navegacao de creators atualizada:
+   - atalho cruzado entre `/admin/creators` (risk board) e `/admin/creators/analytics`.
+5. cobertura de servico adicionada:
+   - teste `adminCreatorPositiveAnalyticsService.test.ts`.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
+3. frontend `yarn lint` (warnings legacy nao bloqueantes)
+4. frontend `yarn test --runInBand src/__tests__/features/admin/adminCreatorPositiveAnalyticsService.test.ts`
+5. frontend `yarn typecheck:p1`
 
 ### 6.2 P4.4-02 Gestao admin das financial tools
 
