@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 backend+frontend MVP inicial entregue; P4.3-02, P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
+Estado: Em curso (P4.3-01 e P4.3-02 backend+frontend MVP inicial entregue; P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -141,7 +141,8 @@ Frontend:
 
 Estado desta iteracao:
 1. backend MVP entregue com modelo de subscricao admin, timeline e acoes operacionais.
-2. frontend admin ainda pendente para fechar este item.
+2. frontend MVP inicial entregue com area admin `/admin/monetizacao/subscricoes`.
+3. pendente para fecho completo: timeline detalhada por subscricao e refinamentos de UX para operacao em volume.
 
 Entregue no backend:
 1. modelo `UserSubscription` com:
@@ -173,11 +174,28 @@ Entregue no backend:
    - `POST /api/admin/users/:userId/scope-delegations/:delegationId/revoke`;
    - validacao de `userId/delegationId`, payload, `expiresAt` futuro e motivo obrigatorio.
 
+Entregue no frontend:
+1. nova rota admin `Monetizacao > Subscricoes`:
+   - `/admin/monetizacao/subscricoes` com guard de modulo `monetization`.
+2. camada de dominio dedicada:
+   - `adminSubscriptions.ts` (tipos);
+   - `adminSubscriptionsService.ts` (list/detail/mutacoes);
+   - `useAdminSubscriptions.ts` (React Query).
+3. UI operacional inicial:
+   - listagem paginada com filtros (`status`, `planCode`, `search`) e resumo agregado;
+   - detalhe por utilizador com acoes `extend-trial`, `revoke-entitlement` e `reactivate`;
+   - motivo obrigatorio no frontend para mutacoes administrativas.
+4. navegacao cruzada no modulo:
+   - links entre `Paywall` e `Subscricoes` dentro de `/admin/monetizacao*`.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
 3. `npm run checking`
 4. `npm run test:contracts:routes`
+5. frontend `cmd /c yarn.cmd typecheck:p1`
+6. frontend `cmd /c yarn.cmd lint`
+7. frontend `cmd /c yarn.cmd test --runInBand`
 
 ### 5.3 P4.3-03 Workflow de apelacao
 
