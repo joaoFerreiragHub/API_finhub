@@ -25,19 +25,20 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-12
 
-- Estado git: `main` sincronizado com `origin/main` (working tree limpo apos este commit).
-- Ultimo commit backend: `cea5ed7` (`chore(reits-docs): checkpoint reit progress and archive completed dcos`).
-- Ultimo commit frontend (FinHub-Vite/master): `2821e51` (`chore(reits-vike): checkpoint reit updates and archive vike docs`).
+- Estado git: `main` com checkpoint documental desta ronda P4.3-01 (working tree limpo no fecho do ciclo).
+- Ultimo commit backend: `69fa8c6` (`test(reit): add subtype smoke matrix and sync checkpoints`).
+- Ultimo commit frontend (FinHub-Vite/master): `38811ef` (`feat(admin): deliver P4.3-01 monetization paywall frontend MVP`).
 - Onde ficamos:
   - REIT Toolkit scoring corrigido: Economic NAV substituiu Book NAV, dynamic weights ativados com guarda de confianca;
   - fix plausibleOrNull aplicado ao EBITDA no calculateFFO (backend) — resolvido sentinel zero para net-lease;
   - REIT Subtype Detector implementado (backend + frontend), com novos campos `reitSubtype*` no `calculateFFO` e pesos por subtipo no REIT Toolkit;
   - matriz QA do F1 validada com smoke automatizado (`npm run test:reit:subtype-smoke`) em 15 casos;
   - especificacao arquivada em `FinHub-Vite/dcos/done/F1_REIT_SUBTYPE_DETECTOR.md`;
-  - migracao Vike V1 do frontend concluida e estabilizada.
+  - migracao Vike V1 do frontend concluida e estabilizada;
+  - P4.3-01 evoluido com frontend MVP inicial em `/admin/monetizacao` (listagem/filtros/ativar/desativar de access-policies), com docs sincronizadas em ambos os repos.
 - Proximo passo recomendado:
   - retomar ordem oficial do `dcos/audiotira_04.md` (P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA);
-  - iniciar fecho das pendencias finais de P4 Moderation Control Plane (hardening/E2E/runbook pre-release).
+  - fechar P4.3-01 com preview/create/edit no frontend e, em seguida, avancar para P4.3-02 (`Monetizacao > Subscricoes`).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
