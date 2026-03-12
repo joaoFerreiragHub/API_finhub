@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend MVP inicial entregue; P4.3-03, P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
+Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04, P4.3-05, P4.4-01, P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -146,8 +146,9 @@ Frontend:
 
 Estado desta iteracao:
 1. backend MVP entregue com modelo de subscricao admin, timeline e acoes operacionais.
-2. frontend MVP inicial entregue com area admin `/admin/monetizacao/subscricoes`.
-3. pendente para fecho completo: timeline detalhada por subscricao e refinamentos de UX para operacao em volume.
+2. frontend FECHADO em `FinHub-Vite` com area admin `/admin/monetizacao/subscricoes`.
+3. timeline detalhada entregue por subscricao com ordenacao por recencia, actor/motivo, versao e snapshot resumido.
+4. refinamentos de UX aplicados para operacao em volume (loading states no detalhe, feedback visual em timeline e labels de acao normalizadas).
 
 Entregue no backend:
 1. modelo `UserSubscription` com:
@@ -174,10 +175,11 @@ Entregue no backend:
    - leitura com `admin.users.read`;
    - escrita com `admin.users.write`.
 7. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
-8. hardening de contratos de request aplicado nas mutacoes de delegacao:
-   - `POST /api/admin/users/:userId/scope-delegations`;
-   - `POST /api/admin/users/:userId/scope-delegations/:delegationId/revoke`;
-   - validacao de `userId/delegationId`, payload, `expiresAt` futuro e motivo obrigatorio.
+8. hardening de contratos de request aplicado nas mutacoes de subscricao:
+   - `POST /api/admin/monetization/subscriptions/users/:userId/extend-trial`;
+   - `POST /api/admin/monetization/subscriptions/users/:userId/revoke-entitlement`;
+   - `POST /api/admin/monetization/subscriptions/users/:userId/reactivate`;
+   - validacao de `userId`, payload e motivo obrigatorio.
 
 Entregue no frontend:
 1. nova rota admin `Monetizacao > Subscricoes`:
@@ -186,10 +188,11 @@ Entregue no frontend:
    - `adminSubscriptions.ts` (tipos);
    - `adminSubscriptionsService.ts` (list/detail/mutacoes);
    - `useAdminSubscriptions.ts` (React Query).
-3. UI operacional inicial:
+3. UI operacional:
    - listagem paginada com filtros (`status`, `planCode`, `search`) e resumo agregado;
    - detalhe por utilizador com acoes `extend-trial`, `revoke-entitlement` e `reactivate`;
-   - motivo obrigatorio no frontend para mutacoes administrativas.
+   - motivo obrigatorio no frontend para mutacoes administrativas;
+   - timeline detalhada por subscricao com historico ordenado, actor, motivo/nota e snapshot resumido por evento.
 4. navegacao cruzada no modulo:
    - links entre `Paywall` e `Subscricoes` dentro de `/admin/monetizacao*`.
 
@@ -213,13 +216,13 @@ Backend:
 3. SLA e timestamps (`openedAt`, `firstResponseAt`, `resolvedAt`).
 
 Frontend:
-1. Inbox de apelacoes em `/admin/apelacoes`.
+1. Inbox de apelacoes em `/admin/conteudo/apelacoes` (com alias de compatibilidade `/admin/apelacoes`).
 2. Filtros por estado/severidade/SLA vencido.
 3. Acao de decisao com motivo padronizado e anexos internos.
 
 Estado desta iteracao:
 1. backend MVP entregue com modelo de apelacao, SLA e inbox admin.
-2. frontend admin/public ainda pendente para fechar este item.
+2. frontend FECHADO em `FinHub-Vite` com inbox operacional de apelacoes e detalhe completo.
 
 Entregue no backend:
 1. modelo `ModerationAppeal` com:
@@ -251,10 +254,32 @@ Entregue no backend:
    - abertura de apelacao com `rateLimiter.userReport`;
    - mutacao admin com `rateLimiter.adminModerationAction`.
 
+Entregue no frontend:
+1. novas rotas admin:
+   - `/admin/conteudo/apelacoes`;
+   - `/admin/apelacoes` (alias de compatibilidade).
+2. camada de dominio dedicada:
+   - `adminModerationAppeals.ts` (tipos);
+   - `adminModerationAppealsService.ts` (list/detail/status);
+   - `useAdminModerationAppeals.ts` (React Query).
+3. inbox operacional:
+   - filtros por `status`, `severity`, `contentType`, `breachedSla` e `search`;
+   - resumo agregado de estados + `breachedSla`;
+   - selecao de apelacao com detalhe e timeline historica por transicao.
+4. decisao admin:
+   - mutacao `PATCH /api/admin/content/appeals/:appealId/status`;
+   - motivo padronizado com presets por estado-alvo;
+   - nota interna opcional e validacao local de estado/motivo.
+5. navegacao cruzada:
+   - links diretos entre fila de moderacao (`/admin/conteudo`) e inbox de apelacoes.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run checking`
 3. `npm run test:technical:smoke`
+4. frontend `cmd /c yarn.cmd typecheck:p1`
+5. frontend `cmd /c yarn.cmd lint`
+6. frontend `cmd /c yarn.cmd test --runInBand`
 
 ### 5.4 P4.3-04 Templates de moderacao
 
