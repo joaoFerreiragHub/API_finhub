@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04 backend+frontend FECHADO; P4.3-05 e P4.4-01 backend+frontend FECHADOS; P4.4-02, P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
+Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04 backend+frontend FECHADO; P4.3-05, P4.4-01 e P4.4-02 backend+frontend FECHADOS; P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -495,7 +495,11 @@ Validacao desta iteracao:
 
 Estado desta iteracao:
 1. backend MVP entregue com control plane admin para financial tools e tracking de uso por vertical.
-2. frontend admin (UI de operacao/dashboard) ainda pendente para fechar este item.
+2. frontend FECHADO em `FinHub-Vite` com area admin `/admin/stats/ferramentas-financeiras` a suportar:
+   - filtros por ambiente/ferramenta/janela temporal;
+   - dashboard de uso (`requests`, `success rate`, `error rate`);
+   - control plane por ferramenta (base vs effective config, versionamento e updatedAt);
+   - mutacao de configuracao com motivo obrigatorio e overrides por ambiente.
 
 Entregue no backend:
 1. modelos novos:
@@ -531,6 +535,9 @@ Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
 3. `npm run test:contracts:routes`
+4. frontend `yarn lint` (PASS com warnings legacy nao bloqueantes)
+5. frontend `yarn test --runInBand src/__tests__/features/admin/adminFinancialToolsService.test.ts`
+6. frontend `yarn typecheck:p1`
 
 ### 6.3 P4.4-03 Gestao de anuncios/partnerships
 
