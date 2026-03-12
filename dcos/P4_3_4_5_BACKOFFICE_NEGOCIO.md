@@ -356,8 +356,7 @@ Frontend:
 3. Historico de envios e taxa de entrega.
 
 Estado desta iteracao:
-1. backend MVP entregue com modelo de broadcast, preview de audiencia e fluxo de aprovacao/envio.
-2. frontend admin ainda pendente para fechar este item.
+1. backend+frontend FECHADO com fluxo operacional completo de comunicacoes segmentadas.
 
 Entregue no backend:
 1. modelo `AdminBroadcast` com:
@@ -391,9 +390,32 @@ Entregue no backend:
    - criacao/aprovacao com `rateLimiter.adminModerationAction`;
    - envio com `rateLimiter.adminModerationBulk`.
 
+Entregue no frontend:
+1. nova area admin `Operacoes > Comunicacoes` em `/admin/operacoes/comunicacoes` com:
+   - composer de broadcast (`title`, `message`, `channel`);
+   - segmentacao por `roles`, `accountStatuses`, `includeUsers`, `excludeUsers`, `lastActiveWithinDays`;
+   - preview de audiencia com `estimatedRecipients`, `approvalRequired` e amostra de destinatarios.
+2. historico operacional de broadcasts com:
+   - listagem paginada por `status/channel/search`;
+   - resumo agregado por estado (`draft`, `approved`, `sent`, `failed`, `canceled`);
+   - detalhe por broadcast com trilhos de aprovacao/entrega e timeline.
+3. acoes administrativas auditaveis:
+   - `approve` e `send` com motivo obrigatorio no cliente;
+   - notas opcionais para contexto operacional.
+4. integracao tecnica no frontend:
+   - tipos dedicados em `adminBroadcasts.ts`;
+   - service/hook dedicados (`adminBroadcastsService`, `useAdminBroadcasts`);
+   - teste unitario novo `src/__tests__/features/admin/adminBroadcastsService.test.ts`.
+5. navegacao operacional atualizada:
+   - acesso por rota dedicada;
+   - atalho visual cruzado em `/admin/operacoes` e `/admin/operacoes/comunicacoes`.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
+3. frontend `cmd /c yarn.cmd typecheck:p1`
+4. frontend `npx eslint src/features/admin/pages/AdminCommunicationsBroadcastsPage.tsx src/features/admin/services/adminBroadcastsService.ts src/features/admin/hooks/useAdminBroadcasts.ts src/features/admin/pages/AdminBulkImportPage.tsx src/routes/admin.ts src/pages/admin/operacoes/comunicacoes/+Page.tsx src/__tests__/features/admin/adminBroadcastsService.test.ts`
+5. frontend `npx jest --runInBand src/__tests__/features/admin/adminBroadcastsService.test.ts`
 
 ### 5.6 Hardening transversal de contratos de request (P4.3)
 

@@ -34,10 +34,11 @@ Ultima atualizacao: 2026-03-12
   - P4.3-02 subscricoes frontend ficou FECHADO em `/admin/monetizacao/subscricoes` com timeline detalhada por subscricao (actor/motivo/nota/snapshot) e refinamentos UX de operacao;
   - P4.3-03 apelacoes frontend ficou FECHADO em `/admin/conteudo/apelacoes` (alias `/admin/apelacoes`) com inbox filtravel, timeline de historico e decisao com motivo padronizado;
   - P4.3-04 templates frontend ficou FECHADO em `/admin/conteudo` com selector nos dialogs de acao/lote, auto-fill de reason/note, enforcement de `requiresNote`/`requiresDoubleConfirm` e telemetria `trackFeature`;
+  - P4.3-05 comunicacoes frontend ficou FECHADO em `/admin/operacoes/comunicacoes` com composer segmentado, preview de audiencia, historico de envios e acoes `approve/send` com motivo obrigatorio;
   - docs sincronizadas em `audiotira_04.md` e `P4_3_4_5_BACKOFFICE_NEGOCIO.md` no backend neste ciclo.
 - Proximo passo recomendado:
   - continuar na ordem oficial (`P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA`);
-  - avancar para P4.3-05 no frontend com area de comunicacoes segmentadas (composer, preview de audiencia e historico de envios).
+  - avancar para P4.4-01 no frontend com dashboards de analytics positivos de creators (lista, filtros, scorecards e export operacional).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
