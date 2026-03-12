@@ -25,23 +25,20 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-12
 
-- Estado git: `main` com checkpoint documental desta ronda P4.3-01 (working tree limpo no fecho do ciclo).
-- Ultimo commit backend: `2b239f5` (`docs(p4.3-01): sync monetization frontend checkpoint across dcos`).
-- Ultimo commit frontend (FinHub-Vite/master): `bdce4e3` (`feat(admin): deliver P4.3-02 monetization subscriptions frontend MVP`).
-- Onde ficamos:
-  - REIT Toolkit scoring corrigido: Economic NAV substituiu Book NAV, dynamic weights ativados com guarda de confianca;
-  - fix plausibleOrNull aplicado ao EBITDA no calculateFFO (backend) — resolvido sentinel zero para net-lease;
-  - REIT Subtype Detector implementado (backend + frontend), com novos campos `reitSubtype*` no `calculateFFO` e pesos por subtipo no REIT Toolkit;
-  - matriz QA do F1 validada com smoke automatizado (`npm run test:reit:subtype-smoke`) em 15 casos;
-  - especificacao arquivada em `FinHub-Vite/dcos/done/F1_REIT_SUBTYPE_DETECTOR.md`;
-  - migracao Vike V1 do frontend concluida e estabilizada;
-  - P4.3-01 evoluido com frontend MVP inicial em `/admin/monetizacao` (listagem/filtros/ativar/desativar de access-policies);
-  - P4.3-02 evoluido com frontend MVP inicial em `/admin/monetizacao/subscricoes` (listagem/filtros + acoes `extend-trial`, `revoke-entitlement`, `reactivate`);
-  - docs sincronizadas em ambos os repos para checkpoint desta ronda.
+- Estado git: `main` sincronizado com `origin/main`; `FinHub-Vite/master` sincronizado com `origin/master` (working tree limpo).
+- Ultimo commit backend: `e441e17` (`feat(reit): add interestCoverage as debt proxy for sentinel-zero cases`).
+- Ultimo commit frontend (FinHub-Vite/master): `9569b16` (`feat(reit-ui): interestCoverage fallback for debt metric display and scoring`).
+- Onde ficamos (REIT Toolkit — tudo implementado e concluido nesta sessao):
+  - F1 REIT Subtype Detector: implementado (backend `detectReitSubtype` + frontend `SUBTYPE_WEIGHTS`) com detecao data-driven validada contra FMP real;
+  - Subtype fixes data-driven: VICI industry="REIT - Diversified" (nao Specialty) coberto por gamingNetLease; O/NNN netLeaseNames desacoplado do ebitdaIsSentinel;
+  - totalDebt sentinel fix: plausibleOrNull aplicado ao totalDebt — VICI mostra N/A em vez de 0.0x (confirmado: FMP nao tem dados de divida para VICI em nenhum plano);
+  - interestCoverage proxy: quando totalDebt=sentinel, calcula EBITDA/interestExpense como fallback de alavancagem (VICI 4.45x, NNN 4.25x, GLPI 4.04x confirmados via FMP);
+  - scoring usa coverage no lugar de Div./EBITDA quando debtToEbitda=null; display adapta label/cor/info automaticamente;
+  - spec F1_REIT_SUBTYPE_DETECTOR.md criada em `FinHub-Vite/dcos/` (referencia de implementacao);
+  - migracao Vike V1, P4.3-01/02 admin monetizacao: concluidos em sessoes anteriores.
 - Proximo passo recomendado:
   - retomar ordem oficial do `dcos/audiotira_04.md` (P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA);
-  - fechar P4.3-01 com preview/create/edit no frontend;
-  - fechar P4.3-02 com timeline detalhada por subscricao e refinamentos de UX operacional.
+  - QA manual do REIT Toolkit com VICI/O/NNN/EQIX apos reinicio do servidor para validar subtype + coverage.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
