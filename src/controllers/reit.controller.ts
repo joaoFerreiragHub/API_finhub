@@ -246,16 +246,18 @@ export function detectReitSubtype(
     return { subtype: 'net-lease', confidence: 'high', reasons }
   }
 
-  // Outros net-lease: exige sinal EBITDA sentinel (FMP devolve 0 para net-lease que nao reporta EBITDA)
-  if (ebitdaIsSentinel && (netLeaseNames || retailNoEbitda || reasons.length > 0)) {
-    reasons.push('ebitda=0 no FMP (sentinel de nao reportado)')
-    if (netLeaseNames) reasons.push('nome sugere net-lease')
+  // Net-lease por nome: O, NNN e similares têm EBITDA real no FMP mas são estruturalmente net-lease
+  // Confirmado com dados FMP: O (ebitda=$3.55B real), NNN (ebitda=$860M real) — o sentinel não é o sinal certo
+  if (netLeaseNames) {
+    reasons.push('nome corresponde a lista de net-lease conhecidos')
+    if (ebitdaIsSentinel) reasons.push('ebitda=0 no FMP (sentinel confirma)')
+    return { subtype: 'net-lease', confidence: 'high', reasons }
+  }
 
-    return {
-      subtype: 'net-lease',
-      confidence: netLeaseNames ? 'high' : 'medium',
-      reasons,
-    }
+  // Net-lease desconhecido: sinal fraco via EBITDA sentinel em REIT de retalho
+  if (ebitdaIsSentinel && (retailNoEbitda || reasons.length > 0)) {
+    reasons.push('ebitda=0 no FMP em REIT de retalho (possivel net-lease nao reconhecido)')
+    return { subtype: 'net-lease', confidence: 'medium', reasons }
   }
 
   reasons.push('sem sinais especificos para subtipo dedicado')
@@ -520,10 +522,14 @@ export const calculateFFO = async (req: Request, res: Response) => {
       ebitdaRaw !== null ? ebitdaRaw :
       operatingIncomeRaw !== null ? operatingIncomeRaw + depreciation :
       null
-    const totalDebt = balance.totalDebt ?? ((balance.shortTermDebt ?? 0) + (balance.longTermDebt ?? 0))
+    // totalDebt: FMP devolve 0 para estruturas de dívida atípicas (ex: VICI usa finance leases)
+    // Confirmado via FMP: VICI totalDebt=0 enquanto totalAssets=$46.7B — sentinel enganoso
+    // plausibleOrNull converte 0 em null para grandes caps; debtToEbitda/Equity ficam N/A (honesto)
+    const totalDebtRaw = balance.totalDebt ?? ((balance.shortTermDebt ?? 0) + (balance.longTermDebt ?? 0))
+    const totalDebt: number = plausibleOrNull(totalDebtRaw, marketCap) ?? 0
     const totalEquity: number | null = balance.totalStockholdersEquity ?? null
-    const debtToEbitda = ebitda !== null && ebitda > 0 ? totalDebt / ebitda : null
-    const debtToEquity = totalEquity !== null && totalEquity > 0 ? totalDebt / totalEquity : null
+    const debtToEbitda = totalDebt > 0 && ebitda !== null && ebitda > 0 ? totalDebt / ebitda : null
+    const debtToEquity = totalDebt > 0 && totalEquity !== null && totalEquity > 0 ? totalDebt / totalEquity : null
     const subtypeResult = detectReitSubtype(
       industry,
       profile.companyName ?? '',
