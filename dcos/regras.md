@@ -25,17 +25,18 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote P5 de conta/auth (RGPD + OAuth).
-- Ultimo commit backend de entrega: `d71f173` (`docs(p5): mark google oauth closed and sync audit log`).
+- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote P5 de conta/auth/social entrypoints.
+- Ultimo commit backend de entrega: `da93059` (`docs(p5): close search notifications and following feed checklist`).
 - Ultimo commit backend funcional (P5 RGPD): `05763ca` (`feat(user): add account export and deletion flows`).
-- Ultimo commit frontend (FinHub-Vite/master): `2df3a01` (`feat(auth): add google oauth action to register form`).
+- Ultimo commit frontend (FinHub-Vite/master): `8d01e3f` (`feat(search): wire global search bar into main header`).
 - Onde ficamos:
   - P5 RGPD minimo ficou FECHADO com `PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me` e UI de conta em `/conta`;
   - P5 OAuth Google ficou FECHADO com fluxo backend `google/start` + `google/callback` e CTA no login e registo;
-  - docs `P5_PRE_BETA_PLATAFORMA.md` e `audiotira_04.md` sincronizadas no mesmo ciclo.
+  - P5 `IMPORTANTES` ficou atualizado com `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"` marcados como fechados;
+  - pesquisa global passou a estar ligada no header publico ativo (`components/layout/Header.tsx`) via `GlobalSearchBar`.
 - Proximo passo recomendado:
-  - continuar no pacote P5 pre-beta e auditar os itens ainda marcados como abertos em `IMPORTANTES`;
-  - priorizar `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"` para fecho documental/tecnico.
+  - continuar no pacote P5 pre-beta pelos itens ainda abertos em `IMPORTANTES`;
+  - priorizar `SEO basico`, `Analytics real (PostHog configurado)` e `Docker + deploy pipeline`.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
