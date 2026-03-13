@@ -50,7 +50,7 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 | Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
 |---|---|---|---|
 | P4.2 | dcos/P4_MODERATION_CONTROL_PLANE.md | em_curso | Sim |
-| P4.3-4.5 | dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md | em_curso | Sim |
+| P4.3-4.5 | dcos/done/P4_3_4_5_BACKOFFICE_NEGOCIO.md | concluido | Sim |
 | P5 pre-beta | dcos/P5_PRE_BETA_PLATAFORMA.md | em_curso | Sim |
 | P5 marcas | dcos/P5_MARCAS_ENTIDADES.md | em_curso | Sim |
 | P5 criadores | dcos/P5_CRIADORES_CONTEUDO.md | proposto | Sim |
@@ -65,12 +65,11 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 ## 5) Ordem de execucao daqui para a frente
 
 1. Fechar P4_MODERATION_CONTROL_PLANE.
-2. Executar P4_3_4_5_BACKOFFICE_NEGOCIO.
-3. Executar P5_PRE_BETA_PLATAFORMA.
-4. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
-5. No fim do ciclo, executar smoke de documentacao e release-gate estrito.
-6. Executar O1-08 (`npm run test:moderation:pre-release`) na janela live-only de pre-release (T-1/T-0).
-7. Evoluir P6 em paralelo, sem desviar foco das prioridades funcionais de P4/P5.
+2. Executar P5_PRE_BETA_PLATAFORMA.
+3. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
+4. No fim do ciclo, executar smoke de documentacao e release-gate estrito.
+5. Executar O1-08 (`npm run test:moderation:pre-release`) na janela live-only de pre-release (T-1/T-0).
+6. Evoluir P6 em paralelo, sem desviar foco das prioridades funcionais de P4/P5.
 
 ## 6) Regra de encerramento por ficheiro
 
@@ -243,3 +242,7 @@ Integracao CI/CD:
 - 2026-03-12: P4.3-05 FECHADO no frontend em `FinHub-Vite` com area `Operacoes > Comunicacoes` (`/admin/operacoes/comunicacoes`), incluindo composer segmentado, preview de audiencia, historico paginado de broadcasts e acoes `approve/send` com motivo obrigatorio.
 - 2026-03-12: P4.4-01 FECHADO no frontend em `FinHub-Vite` com novo painel `Creators > Analytics positivos` (`/admin/creators/analytics`), incluindo scorecards de crescimento/engagement/trust, filtros operacionais (`search/accountStatus/riskLevel/sort/windowDays`), leaderboard responsivo e export CSV ligado a `/api/admin/creators/analytics/positive/export.csv`.
 - 2026-03-12: P4.4-02 FECHADO no frontend em `FinHub-Vite` com novo painel `Stats > Financial tools` (`/admin/stats/ferramentas-financeiras`), incluindo dashboard por ambiente/ferramenta, tabela de control plane (base/effective config) e mutacao de `financial tool` com motivo obrigatorio + overrides por ambiente.
+- 2026-03-13: P4.4-03 FECHADO no frontend em `FinHub-Vite` com novo painel `Operacoes > Anuncios` (`/admin/operacoes/anuncios`), incluindo inventory overview, governanca de slots/campanhas e workflow completo (`submit/approve/reject/activate/pause`) com motivo obrigatorio.
+- 2026-03-13: P4.5-04 FECHADO no frontend em `FinHub-Vite` com novo painel `Operacoes > Delegacoes` (`/admin/operacoes/delegacoes`), incluindo selecao de admin alvo, criacao de delegacoes por scope com expiracao e revogacao com motivo obrigatorio.
+- 2026-03-13: P4.5-05 FECHADO no frontend em `FinHub-Vite` com aplicacao real de tema admin (`system|light|dark`) no `AdminLayout` a partir de `dashboard personalization`.
+- 2026-03-13: `P4_3_4_5_BACKOFFICE_NEGOCIO.md` marcado como concluido e movido para `dcos/done/` conforme regra de ciclo de vida dos P's.

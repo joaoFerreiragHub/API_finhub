@@ -1,7 +1,7 @@
 # P4.3, P4.4, P4.5 - Backoffice de Negocio e Revenue
 
 Data: 2026-03-06
-Estado: Em curso (P4.3-01 backend+frontend FECHADO; P4.3-02 backend+frontend FECHADO; P4.3-03 backend+frontend FECHADO; P4.3-04 backend+frontend FECHADO; P4.3-05, P4.4-01 e P4.4-02 backend+frontend FECHADOS; P4.4-03, P4.5-04 e P4.5-05 backend MVP entregues; P4.5-01, P4.5-02 e P4.5-03 backend+frontend MVP entregues; hardening transversal de contratos de request P4.3, P4.4-02, P4.4-03 e P4.5-04 concluido; deduplicacao de indexes em schemas concluida)
+Estado: Concluido (P4.3-01..P4.3-05, P4.4-01..P4.4-03 e P4.5-01..P4.5-05 backend+frontend FECHADOS; hardening transversal de contratos P4.3/P4.4/P4.5 concluido; deduplicacao de indexes em schemas concluida)
 Escopo: `API_finhub` + `FinHub-Vite`
 
 ## 1) Contexto
@@ -567,8 +567,8 @@ Validacao desta iteracao:
    - criador: campanhas proprias, patrocinio e performance por placement.
 
 Estado desta iteracao:
-1. backend MVP entregue com inventario de slots, campanhas e governanca operacional no admin.
-2. frontend admin (dashboards/workflows visuais) ainda pendente para fechar este item.
+1. backend+frontend FECHADO com inventario de slots, campanhas e governanca operacional no admin.
+2. frontend entregue em `FinHub-Vite` na rota `/admin/operacoes/anuncios` com workflow completo de slots/campanhas e metricas por campanha.
 
 Entregue no backend:
 1. modelos:
@@ -610,10 +610,33 @@ Entregue no backend:
    - `POST /api/admin/ads/campaigns/:campaignId/pause`
    - cobertura de `npm run test:contracts:routes` expandida para 40 contratos.
 
+Entregue no frontend:
+1. nova rota admin `Operacoes > Anuncios`:
+   - `/admin/operacoes/anuncios` com guard de modulo `operations`.
+2. camada de dominio dedicada:
+   - `adminAdPartnership.ts` (tipos);
+   - `adminAdPartnershipService.ts` (overview/slots/campanhas/metricas e mutacoes de status);
+   - `useAdminAdPartnership.ts` (React Query).
+3. UI operacional:
+   - inventory overview com snapshot por surface/tipo;
+   - filtros/listagem de slots e campanhas com selecao de alvo;
+   - create/update de slot e campanha com motivo obrigatorio;
+   - workflow `submit/approve/reject/activate/pause` com motivo obrigatorio;
+   - leitura de metricas por campanha com janela configuravel.
+4. navegacao cruzada no modulo:
+   - links entre `Bulk import`, `Comunicacoes` e `Anuncios` em `/admin/operacoes*`.
+5. hardening tecnico:
+   - correcao de runtime no service de ads (`ADMIN_AD_*` em import de valor, nao `import type`).
+6. cobertura de testes frontend:
+   - `src/__tests__/features/admin/adminAdPartnershipService.test.ts`.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
 3. `npm run test:contracts:routes`
+4. frontend `npm run typecheck:p1`
+5. frontend `npm run lint` (PASS com warnings legacy nao bloqueantes)
+6. frontend `npx jest --runInBand src/__tests__/features/admin/adminAdPartnershipService.test.ts`
 
 ## 7) P4.5 - Opcional (produtividade/UX)
 
@@ -678,7 +701,7 @@ Backend:
 3. Persistencia do historico de jobs com resumo, warnings, erros e resultados por linha.
 
 Frontend:
-1. Area admin `Operacoes > Bulk Import` (ainda pendente).
+1. Area admin `Operacoes > Bulk Import` (MVP entregue).
 2. Upload/cola de CSV com preview antes de executar.
 3. Consulta de jobs recentes com detalhe de erros por linha.
 
@@ -797,12 +820,12 @@ Backend:
 3. Integracao direta no `requireAdminScope` para considerar delegacoes ativas em runtime.
 
 Frontend:
-1. Area admin para gerir delegacoes temporarias por utilizador (ainda pendente).
-2. Lista de delegacoes com estado (`active`, `expired`, `revoked`) e expiracao (ainda pendente).
+1. Area admin para gerir delegacoes temporarias por utilizador (MVP entregue).
+2. Lista de delegacoes com estado (`active`, `expired`, `revoked`) e expiracao (MVP entregue).
 
 Estado desta iteracao:
-1. backend MVP entregue com delegacao temporaria e enforcement no RBAC.
-2. frontend admin ainda pendente para fechar este item.
+1. backend+frontend FECHADO com delegacao temporaria e enforcement no RBAC.
+2. frontend entregue em `FinHub-Vite` na rota `/admin/operacoes/delegacoes` com criacao/listagem/revogacao operacionais.
 
 Entregue no backend:
 1. modelo novo `AdminScopeDelegation` com:
@@ -827,10 +850,30 @@ Entregue no backend:
    - criacao/revogacao com `admin.users.write`.
 7. rate limit operacional aplicado nas mutacoes via `rateLimiter.adminModerationAction`.
 
+Entregue no frontend:
+1. nova rota admin `Operacoes > Delegacoes`:
+   - `/admin/operacoes/delegacoes` com guard de modulo `operations`.
+2. camada de dominio dedicada:
+   - `adminScopeDelegation.ts` (tipos);
+   - `adminScopeDelegationService.ts` (list/create/revoke);
+   - `useAdminScopeDelegation.ts` (React Query).
+3. UI operacional:
+   - selecao de admin alvo;
+   - filtros por `status` e `scope`;
+   - criacao de delegacao por multiplos scopes com `expiresAt`;
+   - revogacao com motivo obrigatorio.
+4. navegacao cruzada no modulo:
+   - links entre `Bulk import`, `Comunicacoes`, `Anuncios` e `Delegacoes`.
+5. cobertura de testes frontend:
+   - `src/__tests__/features/admin/adminScopeDelegationService.test.ts`.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
 3. `npm run checking`
+4. frontend `npm run typecheck:p1`
+5. frontend `npm run lint` (PASS com warnings legacy nao bloqueantes)
+6. frontend `npx jest --runInBand src/__tests__/features/admin/adminScopeDelegationService.test.ts`
 
 ### 7.5 P4.5-05 Dark mode admin
 
@@ -843,12 +886,12 @@ Backend:
 3. Garantir fallback seguro para preferencias antigas sem campo de tema.
 
 Frontend:
-1. Toggle de tema no painel admin (ainda pendente).
-2. Aplicacao de tokens/tema visual no layout admin (ainda pendente).
+1. Toggle de tema no painel admin (MVP entregue no dashboard personalization).
+2. Aplicacao de tokens/tema visual no layout admin (MVP entregue).
 
 Estado desta iteracao:
-1. backend MVP entregue com suporte a tema no dashboard personalization.
-2. frontend admin ainda pendente para fechar este item.
+1. backend+frontend FECHADO com suporte e aplicacao de tema no dashboard personalization.
+2. frontend aplica tema `system|light|dark` no `AdminLayout` com fallback e restore seguro.
 
 Entregue no backend:
 1. modelo `AdminDashboardPreference` evoluido com `theme`:
@@ -863,10 +906,21 @@ Entregue no backend:
 4. variavel de ambiente nova:
    - `ADMIN_DASHBOARD_DEFAULT_THEME` (default `system`).
 
+Entregue no frontend:
+1. `AdminDashboardPage` com toggle de tema persistido (`system|light|dark`) ligado a `/api/admin/dashboard/personalization`.
+2. `AdminLayout` evoluido para:
+   - ler preferencia de tema do personalization;
+   - resolver modo `system` por `prefers-color-scheme`;
+   - aplicar override da classe `dark` no contexto admin e restaurar estado anterior ao sair.
+3. resultado operacional:
+   - a preferencia de tema admin deixa de ser apenas metadado persistido e passa a ter efeito visual real em `/admin/*`.
+
 Validacao desta iteracao:
 1. `npm run typecheck`
 2. `npm run test:technical:smoke`
 3. `npm run checking`
+4. frontend `npm run typecheck:p1`
+5. frontend `npm run lint` (PASS com warnings legacy nao bloqueantes)
 
 ## 8) Definition of Done por bloco
 

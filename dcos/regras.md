@@ -23,11 +23,11 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 ## Checkpoint de Retoma (ATUALIZAR EM TODO O FECHO)
 
-Ultima atualizacao: 2026-03-12
+Ultima atualizacao: 2026-03-13
 
-- Estado git: `FinHub-Vite/master` sincronizado com fecho do P4.4-02; `API_finhub/main` com docs P4.4-02 atualizadas nesta ronda.
+- Estado git: `FinHub-Vite/master` com fecho local dos pontos P4.4-03/P4.5-04/P4.5-05; `API_finhub/main` em sincronizacao documental de fecho do bloco P4.3-4.5.
 - Ultimo commit backend de entrega: `f5cf441` (`docs(p4.4-02): close financial tools frontend status`).
-- Ultimo commit frontend (FinHub-Vite/master): `5cc0d8e` (`feat(admin-stats): close p4.4-02 financial tools frontend`).
+- Ultimo commit frontend (FinHub-Vite/master): `e65665f` (`feat(admin): close p4.4-03 p4.5-04 p4.5-05 frontend`).
 - Onde ficamos:
   - REIT Toolkit permanece concluido (F1 subtype detector + coverage proxy + smoke validado);
   - P4.3-01 paywall frontend ficou FECHADO em `/admin/monetizacao` com listagem/filtros/ativar-desativar + create/edit de policy + preview de impacto;
@@ -37,10 +37,13 @@ Ultima atualizacao: 2026-03-12
   - P4.3-05 comunicacoes frontend ficou FECHADO em `/admin/operacoes/comunicacoes` com composer segmentado, preview de audiencia, historico de envios e acoes `approve/send` com motivo obrigatorio;
   - P4.4-01 analytics positivos de creators ficou FECHADO no frontend em `/admin/creators/analytics` com scorecards, filtros operacionais, leaderboard growth/engagement/trust e export CSV;
   - P4.4-02 financial tools ficou FECHADO no frontend em `/admin/stats/ferramentas-financeiras` com filtros por ambiente/ferramenta, dashboard de uso e mutacao de control plane com motivo obrigatorio;
-  - docs sincronizadas em `audiotira_04.md` e `P4_3_4_5_BACKOFFICE_NEGOCIO.md` no backend neste ciclo.
+  - P4.4-03 anuncios/partnerships frontend ficou FECHADO em `/admin/operacoes/anuncios` com inventory map, gestao de slots/campanhas e workflow `submit/approve/reject/activate/pause`;
+  - P4.5-04 delegacoes frontend ficou FECHADO em `/admin/operacoes/delegacoes` com selecao de admin alvo, listagem por status/scope, criacao com expiracao e revogacao com motivo obrigatorio;
+  - P4.5-05 dark mode admin frontend ficou FECHADO com aplicacao real do tema `system|light|dark` no `AdminLayout`;
+  - bloco documental `P4_3_4_5_BACKOFFICE_NEGOCIO.md` foi fechado e movido para `dcos/done/`.
 - Proximo passo recomendado:
-  - continuar na ordem oficial (`P4_MODERATION -> P4_3_4_5 -> P5_PRE_BETA`);
-  - avancar para P4.4-03 no frontend com UI operacional de anuncios/partnerships (inventory map, campanhas e governanca de serving).
+  - continuar na ordem oficial (`P4_MODERATION -> P5_PRE_BETA -> restantes P5`);
+  - executar fecho do `P4_MODERATION_CONTROL_PLANE` e depois retomar o pacote P5 pre-beta da plataforma.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.

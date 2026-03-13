@@ -15,7 +15,7 @@ Objetivo: registar ideias e futuros P's ainda nao iniciados.
 | ID | Titulo | Contexto | Prioridade | Estado | Fonte |
 |---|---|---|---|---|---|
 | P4-MODERATION-HARDENING | Moderation Control Plane | Hardening pre-release (E2E, runbooks, robustez operacional) | Alta | em_curso | `dcos/P4_MODERATION_CONTROL_PLANE.md` |
-| P4.3-4.5-BACKOFFICE | Backoffice negocio/revenue | Camada de negocio apos fecho tecnico do P4.2 | Alta | planeado | `dcos/P4_3_4_5_BACKOFFICE_NEGOCIO.md` |
+| P4.3-4.5-BACKOFFICE | Backoffice negocio/revenue | Camada de negocio apos fecho tecnico do P4.2 | Alta | concluido | `dcos/done/P4_3_4_5_BACKOFFICE_NEGOCIO.md` |
 | P5-PRE-BETA | Pre-beta da plataforma | Hardening e gate operacional antes de beta | Alta | em_curso | `dcos/P5_PRE_BETA_PLATAFORMA.md` |
 | P5-BETA-EXEC | Roadmap de execucao beta | Sequencia semanal e criterios de aceite para beta fechado | Alta | em_curso | `dcos/ROADMAP_BETA_EXECUCAO.md` |
 
