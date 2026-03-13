@@ -1,0 +1,55 @@
+name: Uptime Monitor
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      UPTIME_API_URL: ${{ vars.UPTIME_API_URL }}
+      UPTIME_WEB_URL: ${{ vars.UPTIME_WEB_URL }}
+      UPTIME_ALERT_WEBHOOK_URL: ${{ secrets.UPTIME_ALERT_WEBHOOK_URL }}
+
+    steps:
+      - name: Validate monitor targets
+        run: |
+          if [ -z "$UPTIME_API_URL" ]; then
+            echo "Repository variable UPTIME_API_URL em falta."
+            exit 1
+          fi
+
+      - name: Run external health checks
+        run: |
+          set +e
+          FAILED=0
+
+          echo "Checking API endpoint: $UPTIME_API_URL"
+          curl --fail --silent --show-error --max-time 20 "$UPTIME_API_URL" > /dev/null
+          if [ $? -ne 0 ]; then
+            FAILED=1
+            echo "API healthcheck falhou."
+          fi
+
+          if [ -n "$UPTIME_WEB_URL" ]; then
+            echo "Checking web endpoint: $UPTIME_WEB_URL"
+            curl --fail --silent --show-error --max-time 20 "$UPTIME_WEB_URL" > /dev/null
+            if [ $? -ne 0 ]; then
+              FAILED=1
+              echo "Web healthcheck falhou."
+            fi
+          else
+            echo "UPTIME_WEB_URL nao definido; check web ignorado."
+          fi
+
+          if [ $FAILED -ne 0 ] && [ -n "$UPTIME_ALERT_WEBHOOK_URL" ]; then
+            PAYLOAD=$(printf '{"source":"github-actions","workflow":"%s","runId":"%s","apiUrl":"%s","webUrl":"%s","status":"failed"}' "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$UPTIME_API_URL" "$UPTIME_WEB_URL")
+            curl -fsS -X POST "$UPTIME_ALERT_WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD" || true
+          fi
+
+          exit $FAILED

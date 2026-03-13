@@ -20,6 +20,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:3000/api/platform/monitoring/status > /dev/null 2>&1 || exit 1']
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
     volumes:
       - uploads_data:/app/uploads
     restart: unless-stopped

@@ -45,7 +45,7 @@ Data desta avaliacao: 2026-03-06 (atualizado em 2026-03-13).
 | Pagamentos/Subscricoes | Inexistente |
 | Paginas legais (termos, privacidade, cookies, aviso legal) | Fechado (2026-03-08) |
 | PWA / offline | Inexistente |
-| Testes E2E dos fluxos criticos | Config existe, testes nao |
+| Testes E2E dos fluxos criticos | Baseline dedicada entregue (script + CI), mas execucao ainda com falhas SSR pre-existentes em rotas admin/dashboard |
 
 ---
 
@@ -323,17 +323,19 @@ O criador precisa de conseguir, no minimo:
 
 ### 4.2 Docker e deployment
 
-**Estado:** Nao ha Dockerfile, docker-compose, nem scripts de deploy.
+**Estado:** FECHADO (2026-03-13) no escopo tecnico de containerizacao e pipeline base.
 
-**O que construir:**
-```
-Dockerfile (backend)
-Dockerfile (frontend)
-docker-compose.yml (dev: backend + frontend + mongo + redis)
-.github/workflows/deploy.yml (CI/CD para staging/producao)
-```
+**Entregue:**
+- Backend com `Dockerfile` de producao e pipeline de deploy para GHCR em `.github/workflows/deploy.yml`.
+- Frontend com `Dockerfile` de producao (build SSR + runtime `server/index.mjs`) e pipeline de deploy para GHCR em `.github/workflows/deploy.yml`.
+- Compose base para API+Mongo+Redis em `docker-compose.yml` com healthcheck HTTP da API.
+- Compose fullstack em `docker-compose.fullstack.yml` para API + frontend + Mongo + Redis (inclui build args e healthchecks).
+- CI de ambos os repositorios com `docker-smoke` para validar build das imagens em cada push/PR.
 
-**Esforco:** Medio (2 dias).
+**Pendencias fora deste bloco:**
+- Hardening de rollout blue/green/canary no ambiente de producao final.
+
+**Esforco:** Fechado no MVP pre-beta para deploy containerizado.
 
 ---
 
@@ -360,14 +362,18 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 
 ### 4.4 Monitoring e alertas
 
-**Estado:** Prometheus metrics existem (`/metrics`) mas nao ha dashboards nem alertas automaticos.
+**Estado:** FECHADO (2026-03-13) no baseline de monitorizacao externa de disponibilidade.
 
-**O que construir:**
-- Grafana dashboard (ou equivalente cloud)
-- Alertas: API response time > 2s, error rate > 5%, DB connection lost
-- Health check monitoring externo (UptimeRobot, Better Uptime)
+**Entregue:**
+- Workflow agendado `Uptime Monitor` em `.github/workflows/uptime-monitor.yml` (cada 5 minutos + manual trigger).
+- Healthcheck externo do endpoint API configuravel via `UPTIME_API_URL`.
+- Healthcheck opcional do frontend via `UPTIME_WEB_URL`.
+- Alerta opcional por webhook (`UPTIME_ALERT_WEBHOOK_URL`) quando algum healthcheck falha.
 
-**Esforco:** Baixo-Medio (1 dia).
+**Pendencias fora deste bloco:**
+- Dashboards de observabilidade (Grafana/DataDog) e alertas por SLO (latencia, error-rate, DB saturation).
+
+**Esforco:** Fechado no baseline pre-beta de healthcheck externo.
 
 ---
 
@@ -388,21 +394,29 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 
 ### 5.1 Testes dos fluxos criticos
 
-**Estado:** Jest, Vitest e Playwright estao configurados. Poucos testes escritos.
+**Estado:** EM CURSO (2026-03-13). Baseline tecnica entregue, com regressao SSR pre-existente ainda a corrigir para ficar green.
 
 **Testes minimos para beta:**
 
 | Fluxo | Tipo | Prioridade |
 |-------|------|-----------|
-| Registo + login | E2E | Obrigatorio |
-| Criar artigo (criador) | E2E | Obrigatorio |
-| Publicar conteudo | E2E | Obrigatorio |
-| Pesquisar acoes / REITs | E2E | Obrigatorio |
-| Admin: moderar conteudo | E2E | Desejavel |
-| Admin: suspender user | E2E | Desejavel |
-| Rating + comment num conteudo | E2E | Desejavel |
+| Registo + login | E2E | Coberto em `release.flows.o3` |
+| Criar artigo (criador) | E2E | Coberto, mas execucao atual falha por regressao SSR em `/creators/dashboard/articles` |
+| Publicar conteudo | E2E | Coberto em `release.flows.o3` |
+| Pesquisar acoes / REITs | E2E | Coberto por smoke suites de mercados |
+| Admin: moderar conteudo | E2E | Coberto, mas execucao atual falha por regressao SSR em `/admin/*` |
+| Admin: suspender user | E2E | Coberto, mas execucao atual falha por regressao SSR em `/admin/*` |
+| Rating + comment num conteudo | E2E | Coberto em `comments.smoke.spec.ts` |
 
-**Esforco:** Medio (3-4 dias para os fluxos obrigatorios).
+**Entregue adicional de operacao:**
+- Script dedicado `yarn test:e2e:critical` para executar o bloco minimo obrigatorio de pre-beta.
+- Job `e2e-critical` no CI para garantir regressao continua dos fluxos essenciais.
+
+**Pendencias fora deste bloco:**
+- Corrigir regressao SSR atual (`Element type is invalid`) nas superficies `/admin/*` e `/creators/dashboard/articles` para deixar `test:e2e:critical` totalmente green.
+- Execucao live-only T-1/T-0 com contas reais e credenciais reais, para evidencia final de release gate.
+
+**Esforco restante:** Baixo-Medio (1-2 dias para fechar green + evidencia).
 
 ---
 
@@ -616,8 +630,8 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [x] SEO basico (meta tags, sitemap, robots.txt)
 - [x] Analytics real (PostHog configurado)
 - [x] Painel admin para configuracoes de integracoes externas (analytics/pixels/captcha IDs/toggles)
-- [ ] Docker + deploy pipeline
-- [ ] Monitoring basico (health check externo)
+- [x] Docker + deploy pipeline
+- [x] Monitoring basico (health check externo)
 - [ ] Testes E2E dos fluxos criticos
 - [ ] Paginas estaticas (sobre, FAQ, contacto)
 
