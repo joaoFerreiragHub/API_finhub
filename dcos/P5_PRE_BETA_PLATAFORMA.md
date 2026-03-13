@@ -294,19 +294,22 @@ O criador precisa de conseguir, no minimo:
 
 ### 4.1 Storage de ficheiros
 
-**Estado:** Upload vai para disco local. Nao ha S3, Cloudinary, nem CDN.
+**Estado:** FECHADO (2026-03-13) no escopo minimo de beta.
 
-**Problema:** Em beta com multiplos criadores a fazer upload de imagens, videos e documentos, o disco local nao escala. Alem disso:
-- Sem CDN, imagens carregam lentas
-- Sem backup, perda de dados e possivel
-- Deploys apagam ficheiros locais
+**Entregue:**
+- Provider de storage em runtime (`UPLOAD_STORAGE_PROVIDER=local|s3`) com fallback seguro para `local` quando config S3 nao esta completa.
+- Upload middleware adaptado por provider:
+  - `local`: `multer.diskStorage()` com estrutura por tipo em `uploads/`
+  - `s3`: `multer.memoryStorage()` sem dependencia de escrita persistente local
+- `UploadService` preparado para S3 em todo o ciclo principal:
+  - upload (`PutObject`)
+  - delete por URL/chave (`DeleteObject`)
+  - listagem e total de tamanho (`ListObjectsV2`)
+- Compatibilidade com providers S3-compativeis via `UPLOAD_S3_ENDPOINT` e `UPLOAD_S3_PUBLIC_BASE_URL` (ex.: R2/Spaces).
 
-**O que construir:**
-- Migrar upload para S3 (ou compativel: Cloudflare R2, DigitalOcean Spaces)
-- CDN a frente para serving (CloudFront, Cloudflare)
-- Thumbnails geradas automaticamente (sharp / lambda)
+**Pendencias fora deste bloco:** CDN dedicado e geracao automatica de thumbnails.
 
-**Esforco:** Medio (2-3 dias).
+**Esforco:** Fechado no MVP de beta (iteracoes futuras opcionais).
 
 ---
 
@@ -328,16 +331,22 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 
 ### 4.3 Error tracking
 
-**Estado:** Erros sao logados no console. Nao ha Sentry nem servico equivalente.
+**Estado:** FECHADO (2026-03-13) no escopo minimo de beta.
 
-**Problema:** Em beta, quando algo falha, ninguem sabe a nao ser que o utilizador reporte.
+**Entregue:**
+- Backend com Sentry ativo por env:
+  - init no bootstrap do servidor
+  - `captureException` em erros de processo e erros HTTP 5xx
+  - flush em shutdown para reduzir perda de eventos
+- Frontend com Sentry ativo por env:
+  - init no entrypoint React
+  - `Sentry.ErrorBoundary` global para captura de crashes de UI
+  - env typing dedicado para `VITE_SENTRY_*`
+- Operacao fail-safe: sem DSN configurado, a app continua funcional sem envio de eventos.
 
-**O que construir:**
-- Sentry no backend (Express middleware)
-- Sentry no frontend (React error boundary)
-- Alertas para erros criticos (Slack/Discord webhook)
+**Pendencias fora deste bloco:** alertas de erros criticos para Slack/Discord webhook.
 
-**Esforco:** Baixo (meio dia com Sentry).
+**Esforco:** Fechado no MVP de beta (iteracoes futuras opcionais).
 
 ---
 
@@ -573,8 +582,8 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [x] Paginas de conteudo minimas (explorar, detalhe artigo/curso/video)
 - [x] Dashboard de criador minimo (overview, criar, listar)
 - [x] Perfil publico de criador activado
-- [ ] Storage S3 (ou equivalente) — substituir disco local
-- [ ] Error tracking (Sentry)
+- [x] Storage S3 (ou equivalente) — substituir disco local
+- [x] Error tracking (Sentry)
 
 ### 🟡 IMPORTANTES (deviam existir no beta)
 

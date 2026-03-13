@@ -6,9 +6,16 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
-import { UploadType } from '../config/upload.config'
-
-export type UploadStorageProvider = 'local' | 's3'
+import {
+  generateUploadFilename,
+  UploadType,
+} from '../config/upload.config'
+import {
+  resolveRequestedUploadStorageProvider,
+  resolveUploadS3RuntimeConfig,
+  isUploadS3ConfigReady,
+  type UploadStorageProvider,
+} from '../config/uploadStorage.config'
 
 /**
  * DTO para resposta de upload
@@ -24,21 +31,6 @@ export interface UploadResponse {
   storageProvider: UploadStorageProvider
 }
 
-const resolveStorageProvider = (): UploadStorageProvider => {
-  const rawProvider = (process.env.UPLOAD_STORAGE_PROVIDER ?? 'local').trim().toLowerCase()
-  return rawProvider === 's3' ? 's3' : 'local'
-}
-
-const parseBoolean = (rawValue: string | undefined, fallback: boolean): boolean => {
-  if (rawValue === undefined) return fallback
-  const normalized = rawValue.trim().toLowerCase()
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return false
-  return fallback
-}
-
-const stripTrailingSlashes = (value: string): string => value.replace(/\/+$/, '')
-
 const encodeS3KeyForUrl = (key: string): string =>
   key
     .split('/')
@@ -49,6 +41,7 @@ const encodeS3KeyForUrl = (key: string): string =>
  * Service de Upload
  */
 export class UploadService {
+  private readonly requestedStorageProvider: UploadStorageProvider
   private readonly storageProvider: UploadStorageProvider
   private readonly s3Client: S3Client | null
   private readonly s3Bucket: string
@@ -56,16 +49,22 @@ export class UploadService {
   private readonly s3Endpoint: string
   private readonly s3PublicBaseUrl: string
   private readonly s3ForcePathStyle: boolean
+  private readonly s3AccessKeyId: string
+  private readonly s3SecretAccessKey: string
 
   constructor() {
-    const desiredProvider = resolveStorageProvider()
-    this.s3Bucket = (process.env.UPLOAD_S3_BUCKET ?? process.env.AWS_S3_BUCKET ?? '').trim()
-    this.s3Region = (process.env.UPLOAD_S3_REGION ?? process.env.AWS_REGION ?? 'us-east-1').trim()
-    this.s3Endpoint = stripTrailingSlashes((process.env.UPLOAD_S3_ENDPOINT ?? '').trim())
-    this.s3PublicBaseUrl = stripTrailingSlashes((process.env.UPLOAD_S3_PUBLIC_BASE_URL ?? '').trim())
-    this.s3ForcePathStyle = parseBoolean(process.env.UPLOAD_S3_FORCE_PATH_STYLE, Boolean(this.s3Endpoint))
+    this.requestedStorageProvider = resolveRequestedUploadStorageProvider()
+    const s3Config = resolveUploadS3RuntimeConfig()
 
-    if (desiredProvider === 's3' && this.isS3ConfigReady()) {
+    this.s3Bucket = s3Config.bucket
+    this.s3Region = s3Config.region
+    this.s3Endpoint = s3Config.endpoint
+    this.s3PublicBaseUrl = s3Config.publicBaseUrl
+    this.s3ForcePathStyle = s3Config.forcePathStyle
+    this.s3AccessKeyId = s3Config.accessKeyId
+    this.s3SecretAccessKey = s3Config.secretAccessKey
+
+    if (this.requestedStorageProvider === 's3' && isUploadS3ConfigReady(s3Config)) {
       this.storageProvider = 's3'
       this.s3Client = new S3Client({
         region: this.s3Region,
@@ -79,7 +78,7 @@ export class UploadService {
     this.storageProvider = 'local'
     this.s3Client = null
 
-    if (desiredProvider === 's3') {
+    if (this.requestedStorageProvider === 's3') {
       console.warn(
         'UPLOAD_STORAGE_PROVIDER=s3 configurado sem credenciais/bucket suficientes. A usar fallback local.'
       )
@@ -91,12 +90,13 @@ export class UploadService {
    */
   async processUpload(file: Express.Multer.File): Promise<UploadResponse> {
     const uploadType = this.resolveUploadType(file.mimetype)
+    const normalizedFile = this.ensureUploadFilename(file)
 
     if (this.storageProvider === 's3') {
-      return this.processUploadToS3(file, uploadType)
+      return this.processUploadToS3(normalizedFile, uploadType)
     }
 
-    return this.processUploadLocal(file, uploadType)
+    return this.processUploadLocal(normalizedFile, uploadType)
   }
 
   /**
@@ -355,6 +355,7 @@ export class UploadService {
 
   getRuntimeState() {
     return {
+      requestedStorageProvider: this.requestedStorageProvider,
       storageProvider: this.storageProvider,
       s3Configured: this.isS3ConfigReady(),
       s3Bucket: this.s3Bucket || null,
@@ -392,14 +393,23 @@ export class UploadService {
     }
 
     const key = `${uploadType}/${file.filename}`
-    const uploadStream = fs.createReadStream(file.path)
+    const hasBuffer = Buffer.isBuffer((file as Express.Multer.File & { buffer?: Buffer }).buffer)
+    const fileBuffer = hasBuffer
+      ? (file as Express.Multer.File & { buffer: Buffer }).buffer
+      : null
+    const uploadStream = !fileBuffer && file.path ? fs.createReadStream(file.path) : null
+    const body = fileBuffer ?? uploadStream
+
+    if (!body) {
+      throw new Error('Ficheiro invalido: sem conteudo em memoria nem caminho temporario.')
+    }
 
     try {
       await this.s3Client.send(
         new PutObjectCommand({
           Bucket: this.s3Bucket,
           Key: key,
-          Body: uploadStream,
+          Body: body,
           ContentType: file.mimetype,
           ContentLength: file.size,
           Metadata: {
@@ -409,13 +419,15 @@ export class UploadService {
         })
       )
     } finally {
-      uploadStream.destroy()
+      uploadStream?.destroy()
     }
 
-    // Remove o temporario local apos upload bem sucedido para evitar crescimento em disco.
-    await fs.promises.unlink(file.path).catch((error) => {
-      console.warn('Nao foi possivel remover ficheiro temporario local apos upload S3:', error)
-    })
+    if (file.path) {
+      // Remove o temporario local apos upload bem sucedido para evitar crescimento em disco.
+      await fs.promises.unlink(file.path).catch((error) => {
+        console.warn('Nao foi possivel remover ficheiro temporario local apos upload S3:', error)
+      })
+    }
 
     return {
       filename: file.filename,
@@ -436,12 +448,22 @@ export class UploadService {
     return UploadType.DOCUMENT
   }
 
+  private ensureUploadFilename(file: Express.Multer.File): Express.Multer.File {
+    const filename = typeof file.filename === 'string' ? file.filename.trim() : ''
+    if (filename.length > 0) {
+      return file
+    }
+
+    return {
+      ...file,
+      filename: generateUploadFilename(file.originalname || 'upload.bin'),
+    }
+  }
+
   private isS3ConfigReady(): boolean {
     const hasBucket = this.s3Bucket.length > 0
-    const hasAccessKey = (process.env.UPLOAD_S3_ACCESS_KEY_ID ?? process.env.AWS_ACCESS_KEY_ID ?? '').trim().length > 0
-    const hasSecretKey =
-      (process.env.UPLOAD_S3_SECRET_ACCESS_KEY ?? process.env.AWS_SECRET_ACCESS_KEY ?? '').trim()
-        .length > 0
+    const hasAccessKey = this.s3AccessKeyId.length > 0
+    const hasSecretKey = this.s3SecretAccessKey.length > 0
     return hasBucket && hasAccessKey && hasSecretKey
   }
 
@@ -451,22 +473,11 @@ export class UploadService {
         secretAccessKey: string
       }
     | undefined {
-    const accessKeyId = (
-      process.env.UPLOAD_S3_ACCESS_KEY_ID ??
-      process.env.AWS_ACCESS_KEY_ID ??
-      ''
-    ).trim()
-    const secretAccessKey = (
-      process.env.UPLOAD_S3_SECRET_ACCESS_KEY ??
-      process.env.AWS_SECRET_ACCESS_KEY ??
-      ''
-    ).trim()
-
-    if (!accessKeyId || !secretAccessKey) return undefined
+    if (!this.s3AccessKeyId || !this.s3SecretAccessKey) return undefined
 
     return {
-      accessKeyId,
-      secretAccessKey,
+      accessKeyId: this.s3AccessKeyId,
+      secretAccessKey: this.s3SecretAccessKey,
     }
   }
 
@@ -526,4 +537,3 @@ export class UploadService {
 }
 
 export const uploadService = new UploadService()
-

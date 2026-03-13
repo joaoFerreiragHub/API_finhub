@@ -1,6 +1,7 @@
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
+import { resolveEffectiveUploadStorageProvider } from './uploadStorage.config'
 
 /**
  * Tipos de upload permitidos
@@ -13,7 +14,7 @@ export enum UploadType {
 }
 
 /**
- * Configuração de limites por tipo
+ * Configuracao de limites por tipo
  */
 export const uploadLimits = {
   [UploadType.IMAGE]: {
@@ -33,74 +34,79 @@ export const uploadLimits = {
   },
   [UploadType.DOCUMENT]: {
     maxSize: 10 * 1024 * 1024, // 10MB
-    allowedMimes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    allowedMimes: [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ],
     allowedExtensions: ['.pdf', '.doc', '.docx'],
   },
 }
 
 /**
- * Diretório base para uploads
+ * Diretorio base para uploads locais
  */
 const uploadsDir = path.join(__dirname, '../../uploads')
+const storageProvider = resolveEffectiveUploadStorageProvider()
 
-// Garantir que o diretório existe
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true })
+const resolveUploadTypeFromMime = (mimetype: string): UploadType => {
+  if (mimetype.startsWith('image/')) return UploadType.IMAGE
+  if (mimetype.startsWith('video/')) return UploadType.VIDEO
+  if (mimetype.startsWith('audio/')) return UploadType.AUDIO
+  return UploadType.DOCUMENT
 }
 
-// Criar subdiretórios para cada tipo
-Object.values(UploadType).forEach((type) => {
-  const typeDir = path.join(uploadsDir, type)
-  if (!fs.existsSync(typeDir)) {
-    fs.mkdirSync(typeDir, { recursive: true })
+export const generateUploadFilename = (originalName: string): string => {
+  const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`
+  const ext = path.extname(originalName)
+  const nameWithoutExt = path.basename(originalName, ext)
+  const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+  return `${uniqueSuffix}-${sanitizedName}${ext}`
+}
+
+if (storageProvider === 'local') {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true })
   }
-})
 
-/**
- * Storage configuration
- */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Determinar tipo de upload baseado no mimetype
-    let uploadType = UploadType.DOCUMENT
-
-    if (file.mimetype.startsWith('image/')) {
-      uploadType = UploadType.IMAGE
-    } else if (file.mimetype.startsWith('video/')) {
-      uploadType = UploadType.VIDEO
-    } else if (file.mimetype.startsWith('audio/')) {
-      uploadType = UploadType.AUDIO
+  for (const type of Object.values(UploadType)) {
+    const typeDir = path.join(uploadsDir, type)
+    if (!fs.existsSync(typeDir)) {
+      fs.mkdirSync(typeDir, { recursive: true })
     }
+  }
+}
 
+const diskStorage = multer.diskStorage({
+  destination: (_req, file, cb) => {
+    const uploadType = resolveUploadTypeFromMime(file.mimetype)
     const destination = path.join(uploadsDir, uploadType)
     cb(null, destination)
   },
-  filename: (req, file, cb) => {
-    // Gerar nome único: timestamp-random-originalname
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`
-    const ext = path.extname(file.originalname)
-    const nameWithoutExt = path.basename(file.originalname, ext)
-    const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()
-    cb(null, `${uniqueSuffix}-${sanitizedName}${ext}`)
+  filename: (_req, file, cb) => {
+    cb(null, generateUploadFilename(file.originalname))
   },
 })
 
-/**
- * File filter para validar tipo
- */
+const storage = storageProvider === 's3' ? multer.memoryStorage() : diskStorage
+
 const fileFilter = (uploadType: UploadType) => {
-  return (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  return (_req: unknown, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const config = uploadLimits[uploadType]
     const ext = path.extname(file.originalname).toLowerCase()
 
-    // Verificar mimetype
     if (!config.allowedMimes.includes(file.mimetype)) {
-      return cb(new Error(`Tipo de ficheiro não permitido. Permitidos: ${config.allowedMimes.join(', ')}`))
+      return cb(
+        new Error(`Tipo de ficheiro nao permitido. Permitidos: ${config.allowedMimes.join(', ')}`),
+      )
     }
 
-    // Verificar extensão
     if (!config.allowedExtensions.includes(ext)) {
-      return cb(new Error(`Extensão não permitida. Permitidas: ${config.allowedExtensions.join(', ')}`))
+      return cb(
+        new Error(
+          `Extensao nao permitida. Permitidas: ${config.allowedExtensions.join(', ')}`,
+        ),
+      )
     }
 
     cb(null, true)
@@ -108,7 +114,7 @@ const fileFilter = (uploadType: UploadType) => {
 }
 
 /**
- * Criar uploader para tipo específico
+ * Criar uploader para tipo especifico
  */
 export const createUploader = (uploadType: UploadType) => {
   return multer({
@@ -121,7 +127,7 @@ export const createUploader = (uploadType: UploadType) => {
 }
 
 /**
- * Uploaders pré-configurados
+ * Uploaders pre-configurados
  */
 export const imageUploader = createUploader(UploadType.IMAGE)
 export const videoUploader = createUploader(UploadType.VIDEO)
@@ -129,6 +135,6 @@ export const audioUploader = createUploader(UploadType.AUDIO)
 export const documentUploader = createUploader(UploadType.DOCUMENT)
 
 /**
- * Diretório de uploads (para servir ficheiros estáticos)
+ * Diretorio de uploads (para servir ficheiros estaticos)
  */
 export { uploadsDir }
