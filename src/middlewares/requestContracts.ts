@@ -1908,6 +1908,49 @@ export const validateUserUpdateMeContract = (
   next()
 }
 
+export const validateUserDeleteMeContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de eliminacao de conta invalido.')
+    return
+  }
+
+  const allowedFields = new Set(['currentPassword', 'confirmation', 'reason'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedFields.has(key)) {
+      respondValidationError(res, `Campo nao permitido: ${key}.`)
+      return
+    }
+  }
+
+  const currentPassword = validateRequiredNonEmptyString(req.body, 'currentPassword')
+  const confirmation = validateRequiredNonEmptyString(req.body, 'confirmation')
+  const reason = validateRequiredNonEmptyString(req.body, 'reason')
+
+  if (!currentPassword || !confirmation || !reason) {
+    respondValidationError(
+      res,
+      'Campos obrigatorios em falta: currentPassword, confirmation, reason.'
+    )
+    return
+  }
+
+  if (confirmation !== 'ELIMINAR') {
+    respondValidationError(res, 'Campo confirmation invalido. Escreve exatamente "ELIMINAR".')
+    return
+  }
+
+  if (reason.length < 5) {
+    respondValidationError(res, 'Campo reason invalido. Usa pelo menos 5 caracteres.')
+    return
+  }
+
+  next()
+}
+
 export const validateAdminSurfaceControlContract = (
   req: Request,
   res: Response,

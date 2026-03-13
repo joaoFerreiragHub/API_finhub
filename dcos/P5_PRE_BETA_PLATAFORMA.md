@@ -256,17 +256,19 @@ O criador precisa de conseguir, no minimo:
 
 ### 3.5 Gestao de conta / RGPD
 
-**Estado:** PARCIAL (2026-03-13). UserSettingsPage inclui edicao de perfil e alteracao de password.
+**Estado:** FECHADO (2026-03-13). Fluxo minimo de gestao de conta/RGPD entregue em API + frontend.
 
 **Entregue:**
 - Endpoint `PATCH /api/users/me` para edicao de perfil (nome, avatar, bio, social links).
 - Form dedicado em `/conta` para edicao de perfil com persistencia em API.
 - Endpoint `POST /api/auth/change-password` com validacao de password atual e rotacao de sessoes (`tokenVersion`).
 - Form dedicado em `/conta` para alteracao de password com confirmacao e sign-out apos sucesso.
+- Endpoint `GET /api/users/me/export` para export JSON dos dados essenciais da conta.
+- Endpoint `DELETE /api/users/me` com confirmacao dupla + motivo (conta desativada e dados pessoais anonimizados).
+- UI em `/conta` para export de dados (download JSON) e eliminacao de conta.
 
 **Ainda em falta:**
-- Eliminacao de conta
-- Export de dados
+- Sem pendencias no escopo minimo definido para P5.
 
 **O que construir:**
 
@@ -274,8 +276,8 @@ O criador precisa de conseguir, no minimo:
 |---------|----------|----------|
 | Editar perfil | `PATCH /api/users/me` | FECHADO (2026-03-13) |
 | Alterar password | `POST /api/auth/change-password` | FECHADO (2026-03-13) |
-| Eliminar conta | `DELETE /api/users/me` | Confirmacao dupla, motivo |
-| Export de dados | `GET /api/users/me/export` | Download JSON/ZIP |
+| Eliminar conta | `DELETE /api/users/me` | FECHADO (2026-03-13) |
+| Export de dados | `GET /api/users/me/export` | FECHADO (2026-03-13) |
 
 **Nota RGPD:** O direito a eliminacao de dados e obrigatorio na UE. Para beta pode ser um processo manual (user contacta, admin elimina), mas deve existir o caminho.
 
@@ -609,7 +611,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 
 ### 🟢 DESEJAVEL (pode vir durante o beta)
 
-- [ ] Eliminacao de conta / export RGPD
+- [x] Eliminacao de conta / export RGPD
 - [ ] Onboarding de utilizador regular
 - [ ] Recomendacoes basicas (popular, relacionado)
 - [ ] WebSocket para notificacoes real-time
