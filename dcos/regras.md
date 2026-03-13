@@ -25,16 +25,18 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` com monitorizacao `Uptime Monitor` em modo pre-release nao bloqueante + diagnostico detalhado; `FinHub-Vite/master` com correcao SSR validada localmente.
+- Estado git: `API_finhub/main` com monitorizacao pre-release nao bloqueante + P5 pre-beta atualizado com IMPORTANTES fechados; `FinHub-Vite/master` com SSR corrigido e paginas estaticas reais.
 - Ultimo commit backend funcional: `cb1a1f7` (`ci(monitoring): make uptime check non-blocking in pre-release`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `02aa430` (`fix(ssr): resolve page component shape and remove creators export ambiguity`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `8f8480a` (`feat(content): replace static placeholders with real about/faq/contact pages`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
-  - correcao SSR do frontend publicada em `FinHub-Vite/master` com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK.
+  - correcao SSR do frontend publicada em `FinHub-Vite/master` com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK;
+  - paginas estaticas `/sobre`, `/faq`, `/contacto` deixaram placeholder e passaram a conteudo real;
+  - checklist do P5 pre-beta ficou em `BLOQUEADORES 12/12`, `IMPORTANTES 14/14`, `DESEJAVEL 1/12` (total `27/38`, 71.1%).
 - Proximo passo recomendado:
-  - seguir com os restantes pontos do plano funcional e deixar variaveis live de monitorizacao (`UPTIME_API_URL`, opcional `UPTIME_WEB_URL`) para checklist de pre-release;
-  - quando entrar em pre-release final, ativar modo estrito com `UPTIME_MONITOR_ENFORCE=true`.
+  - executar trilho pre-release T-1/T-0 (configs live de captcha/analytics/pixels + evidencia operacional);
+  - depois, atacar backlog `DESEJAVEL` de maior impacto (onboarding, recomendacoes basicas, feedback/status page).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.

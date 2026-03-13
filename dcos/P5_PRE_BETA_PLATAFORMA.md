@@ -45,7 +45,7 @@ Data desta avaliacao: 2026-03-06 (atualizado em 2026-03-13).
 | Pagamentos/Subscricoes | Inexistente |
 | Paginas legais (termos, privacidade, cookies, aviso legal) | Fechado (2026-03-08) |
 | PWA / offline | Inexistente |
-| Testes E2E dos fluxos criticos | Baseline dedicada entregue (script + CI), mas execucao ainda com falhas SSR pre-existentes em rotas admin/dashboard |
+| Testes E2E dos fluxos criticos | Fechado no baseline pre-beta: suite critica em green apos correcao SSR nas rotas admin/dashboard |
 
 ---
 
@@ -287,6 +287,8 @@ O criador precisa de conseguir, no minimo:
 
 ### 3.6 Paginas estaticas uteis
 
+**Estado:** FECHADO (2026-03-13) no escopo minimo de beta para paginas institucionais base.
+
 | Pagina | Rota | Para que serve |
 |--------|------|---------------|
 | **Sobre** | `/sobre` | O que e o FinHub, missao, equipa |
@@ -294,7 +296,14 @@ O criador precisa de conseguir, no minimo:
 | **Contacto** | `/contacto` | Formulario de contacto, email de suporte |
 | **Precos** | `/precos` | Se existe premium, explicar o que inclui |
 
-**Esforco:** Baixo (1-2 dias, sao paginas de conteudo estatico).
+**Entregue:**
+- `/sobre` com conteudo institucional (missao, pilares e CTA de navegacao).
+- `/faq` com perguntas/respostas operacionais para utilizadores.
+- `/contacto` com canal de suporte e formulario simples com envio via `mailto`.
+
+**Pendencias fora deste bloco:** `/precos` fica no trilho de monetizacao/premium.
+
+**Esforco:** Fechado no baseline minimo para paginas institucionais.
 
 ---
 
@@ -394,29 +403,31 @@ O criador precisa de conseguir, no minimo:
 
 ### 5.1 Testes dos fluxos criticos
 
-**Estado:** EM CURSO (2026-03-13). Baseline tecnica entregue, com regressao SSR pre-existente ainda a corrigir para ficar green.
+**Estado:** FECHADO (2026-03-13). Baseline tecnica entregue e suite critica em green apos correcao SSR.
 
 **Testes minimos para beta:**
 
 | Fluxo | Tipo | Prioridade |
 |-------|------|-----------|
 | Registo + login | E2E | Coberto em `release.flows.o3` |
-| Criar artigo (criador) | E2E | Coberto, mas execucao atual falha por regressao SSR em `/creators/dashboard/articles` |
+| Criar artigo (criador) | E2E | Coberto em `release.flows.o3` |
 | Publicar conteudo | E2E | Coberto em `release.flows.o3` |
 | Pesquisar acoes / REITs | E2E | Coberto por smoke suites de mercados |
-| Admin: moderar conteudo | E2E | Coberto, mas execucao atual falha por regressao SSR em `/admin/*` |
-| Admin: suspender user | E2E | Coberto, mas execucao atual falha por regressao SSR em `/admin/*` |
+| Admin: moderar conteudo | E2E | Coberto em `admin.p2.6` |
+| Admin: suspender user | E2E | Coberto em `admin.p2.6` |
 | Rating + comment num conteudo | E2E | Coberto em `comments.smoke.spec.ts` |
 
 **Entregue adicional de operacao:**
 - Script dedicado `yarn test:e2e:critical` para executar o bloco minimo obrigatorio de pre-beta.
 - Job `e2e-critical` no CI para garantir regressao continua dos fluxos essenciais.
+- Execucao local validada em green:
+  - `yarn test:e2e:critical` (9/9)
+  - `yarn test:e2e:release` (12/12)
 
 **Pendencias fora deste bloco:**
-- Corrigir regressao SSR atual (`Element type is invalid`) nas superficies `/admin/*` e `/creators/dashboard/articles` para deixar `test:e2e:critical` totalmente green.
 - Execucao live-only T-1/T-0 com contas reais e credenciais reais, para evidencia final de release gate.
 
-**Esforco restante:** Baixo-Medio (1-2 dias para fechar green + evidencia).
+**Esforco restante:** Fechado no baseline tecnico; fica apenas evidencia live pre-release.
 
 ---
 
@@ -547,14 +558,14 @@ Alem do rate limiting e moderacao que ja existem:
 
 | Risco | Mitigacao | Estado |
 |-------|-----------|--------|
-| **Bot registration** | CAPTCHA (hCaptcha/Turnstile) no registo | Inexistente |
+| **Bot registration** | CAPTCHA (hCaptcha/Turnstile) no registo/login | Fechado no auth (backend+frontend) com provider por runtime config |
 | **Credential stuffing** | Rate limit agressivo no login + lockout temporario | Parcial (rate limit existe) |
 | **Content scraping** | Rate limit em endpoints publicos + User-Agent check | Parcial |
 | **XSS em conteudo** | Sanitizar HTML de artigos antes de render | A verificar |
 | **CSRF** | Token CSRF em mutations | A verificar |
 | **Spam de comments** | Auto-moderacao existe, adicionar CAPTCHA se necessario | Parcial |
 
-**Para beta:** CAPTCHA no registo e login e o minimo. Cloudflare Turnstile e gratuito e facil de implementar.
+**Para beta:** CAPTCHA em registo/login ja esta entregue. Reforco de CAPTCHA em comments fica opcional por volume/abuso real.
 
 ---
 
@@ -626,14 +637,14 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [x] Feed "a seguir" — razao para voltar
 - [x] Pagina de perfil de utilizador editavel
 - [x] Alteracao de password
-- [ ] CAPTCHA no registo/login
+- [x] CAPTCHA no registo/login
 - [x] SEO basico (meta tags, sitemap, robots.txt)
 - [x] Analytics real (PostHog configurado)
 - [x] Painel admin para configuracoes de integracoes externas (analytics/pixels/captcha IDs/toggles)
 - [x] Docker + deploy pipeline
 - [x] Monitoring basico (health check externo)
-- [ ] Testes E2E dos fluxos criticos
-- [ ] Paginas estaticas (sobre, FAQ, contacto)
+- [x] Testes E2E dos fluxos criticos
+- [x] Paginas estaticas (sobre, FAQ, contacto)
 
 ### 🟢 DESEJAVEL (pode vir durante o beta)
 
