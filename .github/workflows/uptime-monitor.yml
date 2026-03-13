@@ -16,40 +16,119 @@ jobs:
 
     steps:
       - name: Validate monitor targets
+        shell: bash
         run: |
-          if [ -z "$UPTIME_API_URL" ]; then
-            echo "Repository variable UPTIME_API_URL em falta."
+          set -euo pipefail
+
+          if [ -z "${UPTIME_API_URL:-}" ]; then
+            echo "::error title=Config missing::Repository variable UPTIME_API_URL em falta."
             exit 1
           fi
 
+          if [[ ! "$UPTIME_API_URL" =~ ^https?:// ]]; then
+            echo "::error title=Config invalid::UPTIME_API_URL deve comecar por http:// ou https:// (valor atual: $UPTIME_API_URL)."
+            exit 1
+          fi
+
+          if [ -n "${UPTIME_WEB_URL:-}" ] && [[ ! "$UPTIME_WEB_URL" =~ ^https?:// ]]; then
+            echo "::error title=Config invalid::UPTIME_WEB_URL deve comecar por http:// ou https:// (valor atual: $UPTIME_WEB_URL)."
+            exit 1
+          fi
+
+          {
+            echo "## Uptime Monitor - alvos configurados"
+            echo "- API: $UPTIME_API_URL"
+            if [ -n "${UPTIME_WEB_URL:-}" ]; then
+              echo "- WEB: $UPTIME_WEB_URL"
+            else
+              echo "- WEB: (nao configurado, check ignorado)"
+            fi
+            if [ -n "${UPTIME_ALERT_WEBHOOK_URL:-}" ]; then
+              echo "- Webhook de alerta: configurado"
+            else
+              echo "- Webhook de alerta: nao configurado"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run external health checks
+        shell: bash
         run: |
           set +e
+          set -u
+          set -o pipefail
+
           FAILED=0
+          FAIL_REASONS=()
 
-          echo "Checking API endpoint: $UPTIME_API_URL"
-          curl --fail --silent --show-error --max-time 20 "$UPTIME_API_URL" > /dev/null
-          if [ $? -ne 0 ]; then
-            FAILED=1
-            echo "API healthcheck falhou."
-          fi
+          check_endpoint() {
+            local label="$1"
+            local url="$2"
+            local tmp_body
+            local tmp_err
+            local http_code
+            local curl_exit
+            local body_snippet
+            local err_snippet
 
-          if [ -n "$UPTIME_WEB_URL" ]; then
-            echo "Checking web endpoint: $UPTIME_WEB_URL"
-            curl --fail --silent --show-error --max-time 20 "$UPTIME_WEB_URL" > /dev/null
-            if [ $? -ne 0 ]; then
+            tmp_body="$(mktemp)"
+            tmp_err="$(mktemp)"
+
+            http_code="$(curl --silent --show-error --location --max-time 20 --connect-timeout 10 \
+              --output "$tmp_body" --write-out "%{http_code}" "$url" 2>"$tmp_err")"
+            curl_exit=$?
+
+            if [ $curl_exit -ne 0 ]; then
+              err_snippet="$(head -c 220 "$tmp_err" | tr '\n' ' ')"
+              echo "::error title=${label} healthcheck falhou::curl exit ${curl_exit} para ${url}. ${err_snippet}"
+              echo "- ${label}: FAIL (curl exit ${curl_exit})" >> "$GITHUB_STEP_SUMMARY"
+              FAIL_REASONS+=("${label}=curl_${curl_exit}")
               FAILED=1
-              echo "Web healthcheck falhou."
+            elif [ "$http_code" -lt 200 ] || [ "$http_code" -ge 400 ]; then
+              body_snippet="$(head -c 220 "$tmp_body" | tr '\n' ' ')"
+              echo "::error title=${label} healthcheck falhou::HTTP ${http_code} para ${url}. Body: ${body_snippet}"
+              echo "- ${label}: FAIL (HTTP ${http_code})" >> "$GITHUB_STEP_SUMMARY"
+              FAIL_REASONS+=("${label}=http_${http_code}")
+              FAILED=1
+            else
+              echo "::notice title=${label} healthcheck OK::HTTP ${http_code} em ${url}"
+              echo "- ${label}: OK (HTTP ${http_code})" >> "$GITHUB_STEP_SUMMARY"
             fi
+
+            rm -f "$tmp_body" "$tmp_err"
+          }
+
+          {
+            echo "## Resultado checks"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          check_endpoint "API" "$UPTIME_API_URL"
+
+          if [ -n "${UPTIME_WEB_URL:-}" ]; then
+            check_endpoint "WEB" "$UPTIME_WEB_URL"
           else
-            echo "UPTIME_WEB_URL nao definido; check web ignorado."
+            echo "::notice title=WEB healthcheck ignorado::UPTIME_WEB_URL nao definido."
+            echo "- WEB: SKIP (UPTIME_WEB_URL nao definido)" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ $FAILED -ne 0 ] && [ -n "$UPTIME_ALERT_WEBHOOK_URL" ]; then
-            PAYLOAD=$(printf '{"source":"github-actions","workflow":"%s","runId":"%s","apiUrl":"%s","webUrl":"%s","status":"failed"}' "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$UPTIME_API_URL" "$UPTIME_WEB_URL")
+          if [ $FAILED -ne 0 ] && [ -n "${UPTIME_ALERT_WEBHOOK_URL:-}" ]; then
+            FAIL_JOINED="$(IFS=';'; echo "${FAIL_REASONS[*]}")"
+            PAYLOAD=$(printf '{"source":"github-actions","workflow":"%s","runId":"%s","apiUrl":"%s","webUrl":"%s","status":"failed","reasons":"%s"}' "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$UPTIME_API_URL" "${UPTIME_WEB_URL:-}" "$FAIL_JOINED")
             curl -fsS -X POST "$UPTIME_ALERT_WEBHOOK_URL" \
               -H "Content-Type: application/json" \
               -d "$PAYLOAD" || true
+          fi
+
+          if [ $FAILED -ne 0 ]; then
+            {
+              echo "## Resultado final"
+              echo "- Estado: FAIL"
+              echo "- Razoes: ${FAIL_REASONS[*]}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## Resultado final"
+              echo "- Estado: OK"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
           exit $FAILED

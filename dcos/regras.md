@@ -25,19 +25,16 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote de infra pre-beta (docker/deploy/monitoring baseline) + control plane de integracoes.
-- Ultimo commit backend funcional: `706b2ca` (`feat(infra): add uptime monitor and fullstack compose`).
+- Estado git: `API_finhub/main` com melhoria de diagnostico no workflow `Uptime Monitor`; `FinHub-Vite/master` com correcao SSR validada localmente.
+- Ultimo commit backend funcional: `pendente push deste ciclo` (`ci(monitoring): improve uptime monitor diagnostics and failure reporting`).
 - Ultimo commit frontend funcional (FinHub-Vite/master): `6a2c6ad` (`feat(infra): add frontend docker deploy and critical e2e lane`).
 - Onde ficamos:
-  - control plane backend FECHADO para integracoes externas nao-secretas com `GET /api/admin/platform/integrations`, `PATCH /api/admin/platform/integrations/:integrationKey` e `GET /api/platform/runtime-config`;
-  - painel admin FECHADO em `/admin/operacoes/integracoes` para gerir toggles + config JSON + motivo/nota com auditoria;
-  - runtime config publico ligado no frontend para analytics/captcha/SEO, com fallback seguro para env quando a API falha;
-  - infraestrutura container/deploy FECHADA no baseline tecnico: `Dockerfile` frontend, deploy GHCR frontend, `docker-compose.fullstack.yml` (api+web+mongo+redis) e workflow `Uptime Monitor`;
-  - suite `test:e2e:critical` integrada no frontend (script + lane CI nao-bloqueante), com falha atual pre-existente de SSR em `/admin/*` e `/creators/dashboard/articles` ainda por corrigir;
-  - validacoes tecnicas do ciclo executadas: backend (`typecheck`, `test:docs:smoke`) e frontend (`typecheck:p1`, `lint`, `build`, `test:e2e:critical -- --list`; execucao completa E2E ainda falha no ponto SSR acima).
+  - monitorizacao externa manteve baseline e agora tem diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
+  - erro "healthcheck exit code 1" passa a indicar causa concreta sem ambiguidade;
+  - correcao SSR do frontend validada localmente com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK.
 - Proximo passo recomendado:
-  - corrigir a regressao SSR nas rotas admin/dashboard para fechar o item `Testes E2E dos fluxos criticos`;
-  - configurar variaveis live de monitorizacao/deploy (`UPTIME_API_URL`, opcional `UPTIME_WEB_URL`, webhooks) e executar evidencia pre-release T-1/T-0 para captcha/analytics/pixels.
+  - fazer push deste commit para disparar o workflow e confirmar novo output de diagnostico no run remoto;
+  - garantir variaveis live de monitorizacao/deploy (`UPTIME_API_URL`, opcional `UPTIME_WEB_URL`, webhooks) e executar evidencia pre-release T-1/T-0 para captcha/analytics/pixels.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
