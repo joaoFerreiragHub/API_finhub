@@ -25,16 +25,16 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` com melhoria de diagnostico no workflow `Uptime Monitor`; `FinHub-Vite/master` com correcao SSR validada localmente.
-- Ultimo commit backend funcional: `fe56f1c` (`ci(monitoring): improve uptime monitor diagnostics and reporting`).
+- Estado git: `API_finhub/main` com monitorizacao `Uptime Monitor` em modo pre-release nao bloqueante + diagnostico detalhado; `FinHub-Vite/master` com correcao SSR validada localmente.
+- Ultimo commit backend funcional: `cb1a1f7` (`ci(monitoring): make uptime check non-blocking in pre-release`).
 - Ultimo commit frontend funcional (FinHub-Vite/master): `6a2c6ad` (`feat(infra): add frontend docker deploy and critical e2e lane`).
 - Onde ficamos:
-  - monitorizacao externa manteve baseline e agora tem diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
-  - erro "healthcheck exit code 1" passa a indicar causa concreta sem ambiguidade;
+  - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
+  - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
   - correcao SSR do frontend validada localmente com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK.
 - Proximo passo recomendado:
-  - fazer push deste commit para disparar o workflow e confirmar novo output de diagnostico no run remoto;
-  - garantir variaveis live de monitorizacao/deploy (`UPTIME_API_URL`, opcional `UPTIME_WEB_URL`, webhooks) e executar evidencia pre-release T-1/T-0 para captcha/analytics/pixels.
+  - seguir com os restantes pontos do plano funcional e deixar variaveis live de monitorizacao (`UPTIME_API_URL`, opcional `UPTIME_WEB_URL`) para checklist de pre-release;
+  - quando entrar em pre-release final, ativar modo estrito com `UPTIME_MONITOR_ENFORCE=true`.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
