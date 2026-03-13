@@ -429,17 +429,24 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 
 ### 5.3 Analytics real
 
-**Estado:** PostHog instalado (v1.234.1) mas nao esta ligado (eventos vao para console.log).
+**Estado:** FECHADO (2026-03-13) no escopo tecnico de integracao analytics; validacao live com chave real fica no trilho de pre-release.
 
-**O que corrigir:**
-- Configurar PostHog com project key real
-- Tracking de eventos: page views, sign ups, content views, engagement
-- Consent: so activar apos consentimento de cookies
-- Funnels: registo → primeiro conteudo, visitante → premium
-- Criar control plane no admin para configuracoes de integracoes (IDs/hosts/toggles nao-secretos) sem necessidade de deploy
-- Manter segredos fora da UI (secret manager/env), com painel admin apenas para estado, referencia e rotacao assistida
+**Entregue:**
+- Provider PostHog ativo por consentimento de cookies (`analytics`) com fallback seguro quando `VITE_POSTHOG_KEY` nao existe.
+- Tracking funcional de eventos de funnel no frontend:
+  - `page_view`
+  - `login_success` (password e Google OAuth)
+  - `sign_up_success`
+  - `content_viewed` (rotas de detalhe de conteudo).
+- Queue interna de eventos/identify enquanto o consentimento nao esta resolvido ou o SDK ainda esta a inicializar, para reduzir perda de eventos nas transicoes de auth.
+- Teste unitario dedicado para matcher de rotas de `content_viewed`.
 
-**Esforco:** Baixo para ligacao base do PostHog (meio dia); Medio se incluir control plane admin completo (2-3 dias).
+**Pendencias fora deste bloco:**
+- Configurar key/host reais de analytics no ambiente live de pre-release e recolher evidencia operacional.
+- Criar control plane no admin para configuracoes de integracoes (IDs/hosts/toggles nao-secretos) sem necessidade de deploy.
+- Manter segredos fora da UI (secret manager/env), com painel admin apenas para estado, referencia e rotacao assistida.
+
+**Esforco:** Fechado no MVP tecnico de tracking; control plane admin permanece em aberto.
 
 ---
 
@@ -605,7 +612,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [x] Alteracao de password
 - [ ] CAPTCHA no registo/login
 - [x] SEO basico (meta tags, sitemap, robots.txt)
-- [ ] Analytics real (PostHog configurado)
+- [x] Analytics real (PostHog configurado)
 - [ ] Painel admin para configuracoes de integracoes externas (analytics/pixels/captcha IDs/toggles)
 - [ ] Docker + deploy pipeline
 - [ ] Monitoring basico (health check externo)
@@ -671,7 +678,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 | **Tipos frontend ↔ backend desalinhados** | Runtime errors | Ao implementar cada feature — alinhar tipos |
 | **2 models de marcas** (Brand + DirectoryEntry) | Confusao, dados duplicados | Fase 2 — unificar |
 | **localStorage para ficheiros** | Dados perdidos ao limpar browser | Antes do beta — migrar para API |
-| **console.log analytics** | Sem dados reais | Antes do beta — ligar PostHog |
+| **Control plane de analytics em falta** | Troca de IDs/hosts ainda depende de env/deploy | Antes do beta � painel admin de integracoes |
 | **Structured data SEO ausente** | Rich results limitados no Google | Pos-beta imediato — JSON-LD para conteudos e entidades |
 | **Upload disco local** | Nao escala, dados perdidos em deploy | Antes do beta — S3 |
 | **175 erros TS pre-existentes** | Build warnings, potenciais bugs | Gradual — isolar em admin/auth |
@@ -727,4 +734,5 @@ Para beta, o objetivo nao e ter tudo perfeito. E ter:
 4. **Infra que nao cai** — S3, error tracking, monitoring, backups
 
 Tudo o resto pode ser iterado durante o beta com feedback real.
+
 

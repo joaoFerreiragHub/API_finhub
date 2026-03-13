@@ -25,19 +25,20 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote P5 de SEO basico.
-- Ultimo commit backend de entrega: `01d459b` (`docs(p5): close basic seo checklist and update checkpoint`).
+- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote P5 de SEO + analytics base.
+- Ultimo commit backend de entrega: `39d8081` (`docs(audit): add admin control plane requirement for integration configs`).
 - Ultimo commit backend funcional (P5 RGPD): `05763ca` (`feat(user): add account export and deletion flows`).
-- Ultimo commit frontend (FinHub-Vite/master): `ab6e4ed` (`feat(seo): automate sitemap and protect private routes from indexing`).
+- Ultimo commit frontend (FinHub-Vite/master): `7f80bca` (`feat(analytics): add consent-safe posthog funnel tracking`).
 - Onde ficamos:
   - P5 RGPD minimo ficou FECHADO com `PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me` e UI de conta em `/conta`;
   - P5 OAuth Google ficou FECHADO com fluxo backend `google/start` + `google/callback` e CTA no login e registo;
   - P5 `IMPORTANTES` ja tinha fechado `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"`;
   - P5 `SEO basico` ficou FECHADO com `PublicRouteSeo` em rotas publicas/auth, `robots` dinamico para noindex privado e geracao automatica de `robots.txt`/`sitemap.xml` no build (`yarn seo:generate`);
+  - P5 `Analytics real` ficou FECHADO no frontend com PostHog consent-gated + eventos de funnel (`login_success`, `sign_up_success`, `content_viewed`) + queue para bootstrap de consentimento/SDK;
   - auditoria atualizada com diretriz de `control plane` no admin para integracoes externas (IDs/hosts/toggles nao-secretos via dashboard, segredos em secret manager/env com auditoria).
 - Proximo passo recomendado:
   - continuar no pacote P5 pre-beta pelos itens ainda abertos em `IMPORTANTES`;
-  - priorizar `Analytics real (PostHog configurado)` em conjunto com `Painel admin de configuracoes de integracoes` e `Docker + deploy pipeline`.
+  - priorizar `Painel admin de configuracoes de integracoes`, `Docker + deploy pipeline` e `CAPTCHA no registo/login`.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.

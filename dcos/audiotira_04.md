@@ -291,3 +291,4 @@ Integracao CI/CD:
 - 2026-03-13: P5 pre-beta com `IMPORTANTES` atualizados para `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"`; pesquisa global ligada no header publico ativo (`components/layout/Header.tsx`) via `GlobalSearchBar`.
 - 2026-03-13: P5 pre-beta com `SEO basico` FECHADO no frontend (`PublicRouteSeo` tambem no `AuthLayout`, `meta robots` dinamico para rotas privadas, `scripts/generate-seo-assets.mjs`, `yarn seo:generate` integrado no build, `robots.txt`/`sitemap.xml` regenerados).
 - 2026-03-13: diretriz adicionada para control plane de integracoes no admin (IDs/hosts/toggles nao-secretos geridos via dashboard; segredos mantidos em env/secret manager com RBAC + audit log + versionamento).
+- 2026-03-13: P5 pre-beta com `Analytics real` FECHADO no frontend (PostHog consent-gated, eventos de funnel `login_success`/`sign_up_success`/`content_viewed`, queue para bootstrap de consentimento/SDK e teste unitario de rotas de detalhe).
