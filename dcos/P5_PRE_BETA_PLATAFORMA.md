@@ -408,22 +408,22 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 
 ### 5.2 SEO
 
-**Estado:**
-- `seo.tsx` existe com React Helmet Async
-- index.html tem titulo generico "Vite + React + TS"
-- Nao ha sitemap.xml nem robots.txt
-- SSR parcial com vite-plugin-ssr (nao totalmente leveraged)
+**Estado:** FECHADO (2026-03-13) no escopo de SEO basico.
 
-**O que corrigir:**
-- Titulo e meta description por pagina (Open Graph, Twitter Cards)
-- sitemap.xml gerado automaticamente (rotas publicas + slugs de conteudo)
-- robots.txt (permitir crawling de paginas publicas, bloquear admin/dashboard)
-- Structured data (JSON-LD) para artigos, cursos, entidades — Google rich results
-- index.html: titulo e description dinamicos
+**Entregue:**
+- Meta tags dinamicas por rota publica (title, description, canonical, Open Graph e Twitter Cards) via `PublicRouteSeo`.
+- `meta[name="robots"]` dinamico com `noindex,nofollow` para rotas privadas/utilitarias (auth, conta, admin, dashboard e oauth callback).
+- `robots.txt` com allow global e bloqueio explicito de superficies privadas.
+- `sitemap.xml` gerado automaticamente por script (`yarn seo:generate`) com rotas publicas principais.
+- Integracao da geracao no pipeline de build (`yarn build` executa `yarn seo:generate` antes do `vite build`).
+
+**Pendencias fora deste bloco:**
+- Structured data (JSON-LD) para rich results.
+- Inclusao automatica de slugs dinamicos de conteudo no sitemap em ambiente com dados reais.
 
 **Impacto:** Sem SEO, o conteudo nao aparece no Google. Para uma plataforma de conteudo, isto e critico para crescimento organico.
 
-**Esforco:** Medio (2-3 dias).
+**Esforco:** Fechado no MVP pre-beta para SEO basico.
 
 ---
 
@@ -602,7 +602,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [x] Pagina de perfil de utilizador editavel
 - [x] Alteracao de password
 - [ ] CAPTCHA no registo/login
-- [ ] SEO basico (meta tags, sitemap, robots.txt)
+- [x] SEO basico (meta tags, sitemap, robots.txt)
 - [ ] Analytics real (PostHog configurado)
 - [ ] Docker + deploy pipeline
 - [ ] Monitoring basico (health check externo)
@@ -669,7 +669,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 | **2 models de marcas** (Brand + DirectoryEntry) | Confusao, dados duplicados | Fase 2 — unificar |
 | **localStorage para ficheiros** | Dados perdidos ao limpar browser | Antes do beta — migrar para API |
 | **console.log analytics** | Sem dados reais | Antes do beta — ligar PostHog |
-| **index.html titulo generico** | SEO zero, ma primeira impressao | Antes do beta — meta tags |
+| **Structured data SEO ausente** | Rich results limitados no Google | Pos-beta imediato — JSON-LD para conteudos e entidades |
 | **Upload disco local** | Nao escala, dados perdidos em deploy | Antes do beta — S3 |
 | **175 erros TS pre-existentes** | Build warnings, potenciais bugs | Gradual — isolar em admin/auth |
 
@@ -724,3 +724,4 @@ Para beta, o objetivo nao e ter tudo perfeito. E ter:
 4. **Infra que nao cai** — S3, error tracking, monitoring, backups
 
 Tudo o resto pode ser iterado durante o beta com feedback real.
+

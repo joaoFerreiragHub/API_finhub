@@ -268,3 +268,4 @@ Integracao CI/CD:
 - 2026-03-13: P5 pre-beta evoluido com fecho de RGPD minimo (`PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me`) e UI dedicada em `/conta` para editar perfil, alterar password, exportar dados e eliminar conta.
 - 2026-03-13: OAuth Google fechado no frontend de autenticacao com CTA de entrada tambem no registo (`RegisterForm`) e callback operacional em `/oauth/google/callback`.
 - 2026-03-13: P5 pre-beta com `IMPORTANTES` atualizados para `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"`; pesquisa global ligada no header publico ativo (`components/layout/Header.tsx`) via `GlobalSearchBar`.
+- 2026-03-13: P5 pre-beta com `SEO basico` FECHADO no frontend (`PublicRouteSeo` tambem no `AuthLayout`, `meta robots` dinamico para rotas privadas, `scripts/generate-seo-assets.mjs`, `yarn seo:generate` integrado no build, `robots.txt`/`sitemap.xml` regenerados).
