@@ -1751,6 +1751,26 @@ export const validateAuthResetPasswordContract = (
   next()
 }
 
+export const validateAuthChangePasswordContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de change-password invalido.')
+    return
+  }
+
+  const currentPassword = validateRequiredNonEmptyString(req.body, 'currentPassword')
+  const newPassword = validateRequiredNonEmptyString(req.body, 'newPassword')
+  if (!currentPassword || !newPassword) {
+    respondValidationError(res, 'Campos obrigatorios em falta: currentPassword, newPassword.')
+    return
+  }
+
+  next()
+}
+
 export const validateAuthRefreshContract = (
   req: Request,
   res: Response,

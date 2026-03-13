@@ -116,4 +116,9 @@ export interface ResetPasswordDTO {
   newPassword: string
 }
 
+export interface ChangePasswordDTO {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface UpdateCookieConsentDTO extends CookieConsentDTO {}

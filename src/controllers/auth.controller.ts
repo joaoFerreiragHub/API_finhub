@@ -9,6 +9,7 @@ import {
   LoginDTO,
   RegisterDTO,
   RefreshTokenDTO,
+  ChangePasswordDTO,
   ResetPasswordDTO,
   UpdateCookieConsentDTO,
 } from '../types/auth'
@@ -888,6 +889,77 @@ export const resetPassword = async (req: Request<{}, {}, ResetPasswordDTO>, res:
     logControllerError(CONTROLLER_DOMAIN, 'reset_password', error, req)
     return res.status(500).json({
       error: 'Erro ao redefinir password.',
+      details: error.message,
+    })
+  }
+}
+
+/**
+ * Change Password - Atualizar password da conta autenticada
+ * POST /api/auth/change-password
+ */
+export const changePassword = async (
+  req: Request<{}, {}, ChangePasswordDTO> & AuthRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Nao autenticado.',
+      })
+    }
+
+    const currentPassword = req.body.currentPassword?.trim()
+    const newPassword = req.body.newPassword?.trim()
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        error: 'Password atual e nova password sao obrigatorias.',
+      })
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: 'A nova password deve ter pelo menos 6 caracteres.',
+      })
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        error: 'A nova password deve ser diferente da password atual.',
+      })
+    }
+
+    const user = await User.findById(req.user.id).select('+password')
+    if (!user) {
+      return res.status(404).json({
+        error: 'Utilizador nao encontrado.',
+      })
+    }
+
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword)
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({
+        error: 'Password atual invalida.',
+      })
+    }
+
+    const now = new Date()
+    user.password = newPassword
+    user.passwordResetTokenHash = undefined
+    user.passwordResetTokenExpiresAt = undefined
+    user.tokenVersion += 1
+    user.lastForcedLogoutAt = now
+    user.lastActiveAt = now
+    await user.save()
+
+    return res.status(200).json({
+      message: 'Password alterada com sucesso. Inicia sessao novamente.',
+    })
+  } catch (error: any) {
+    logControllerError(CONTROLLER_DOMAIN, 'change_password', error, req)
+    return res.status(500).json({
+      error: 'Erro ao alterar password.',
       details: error.message,
     })
   }

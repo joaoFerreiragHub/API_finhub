@@ -10,6 +10,7 @@ import {
   sendEmailTest,
   forgotPassword,
   resetPassword,
+  changePassword,
   verifyEmail,
   resendVerification,
   updateCookieConsent,
@@ -26,6 +27,7 @@ import {
   validateAuthCookieConsentContract,
   validateAuthForgotPasswordContract,
   validateAuthLoginContract,
+  validateAuthChangePasswordContract,
   validateAuthRefreshContract,
   validateAuthRegisterContract,
   validateAuthResetPasswordContract,
@@ -104,6 +106,19 @@ router.get(
  * @access  Private
  */
 router.post('/resend-verification', authenticate, rateLimiter.general, resendVerification)
+
+/**
+ * @route   POST /api/auth/change-password
+ * @desc    Alterar password da conta autenticada
+ * @access  Private
+ */
+router.post(
+  '/change-password',
+  authenticate,
+  rateLimiter.general,
+  validateAuthChangePasswordContract,
+  changePassword
+)
 
 /**
  * @route   PATCH /api/auth/cookie-consent

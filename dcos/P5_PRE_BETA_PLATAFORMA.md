@@ -256,9 +256,14 @@ O criador precisa de conseguir, no minimo:
 
 ### 3.5 Gestao de conta / RGPD
 
-**Estado:** UserSettingsPage existe mas focada em claims e assisted sessions. Nao ha:
+**Estado:** PARCIAL (2026-03-13). UserSettingsPage existe e passou a incluir alteracao de password.
+
+**Entregue:**
+- Endpoint `POST /api/auth/change-password` com validacao de password atual e rotacao de sessoes (`tokenVersion`).
+- Form dedicado em `/conta` para alteracao de password com confirmacao e sign-out apos sucesso.
+
+**Ainda em falta:**
 - Edicao de perfil (nome, avatar, bio, social links)
-- Alteracao de password
 - Eliminacao de conta
 - Export de dados
 
@@ -267,7 +272,7 @@ O criador precisa de conseguir, no minimo:
 | Feature | Endpoint | Frontend |
 |---------|----------|----------|
 | Editar perfil | `PATCH /api/users/me` | Form com campos do perfil |
-| Alterar password | `POST /api/auth/change-password` | Form com password atual + nova |
+| Alterar password | `POST /api/auth/change-password` | FECHADO (2026-03-13) |
 | Eliminar conta | `DELETE /api/users/me` | Confirmacao dupla, motivo |
 | Export de dados | `GET /api/users/me/export` | Download JSON/ZIP |
 
@@ -592,7 +597,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [ ] Centro de notificacoes — feedback de engagement
 - [ ] Feed "a seguir" — razao para voltar
 - [ ] Pagina de perfil de utilizador editavel
-- [ ] Alteracao de password
+- [x] Alteracao de password
 - [ ] CAPTCHA no registo/login
 - [ ] SEO basico (meta tags, sitemap, robots.txt)
 - [ ] Analytics real (PostHog configurado)
