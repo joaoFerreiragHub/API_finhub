@@ -6,7 +6,7 @@ Esta analise complementa os documentos P5 de criadores e marcas. Foca-se em tudo
 
 O FinHub e uma plataforma de literacia financeira e investimentos que agrega criadores de conteudo, entidades financeiras (corretoras, seguradoras, etc.) e ferramentas de mercado. O objetivo e escala — muitos utilizadores, muitos criadores, muitos conteudos.
 
-Data desta avaliacao: 2026-03-06.
+Data desta avaliacao: 2026-03-06 (atualizado em 2026-03-13).
 
 ---
 
@@ -41,7 +41,7 @@ Data desta avaliacao: 2026-03-06.
 
 | Area | Estado |
 |------|--------|
-| Email (verificacao, password reset, notificacoes) | Inexistente |
+| Email (verificacao, password reset, notificacoes) | Parcial: transacional de auth fechado (2026-03-13), digest/newsletter pendente |
 | Pagamentos/Subscricoes | Inexistente |
 | Paginas legais (termos, privacidade, cookies, aviso legal) | Fechado (2026-03-08) |
 | PWA / offline | Inexistente |
@@ -55,67 +55,54 @@ Estes sao items que, se nao existirem, impedem um beta mesmo limitado.
 
 ### 2.1 Email transacional
 
-**Estado:** Zero. Nao ha SMTP, SendGrid, Mailgun, nem nenhum servico de email configurado.
+**Estado:** FECHADO (2026-03-13) para email transacional de autenticacao.
 
-**Impacto:** Sem email, nao e possivel:
-- Verificar contas novas
-- Recuperar passwords
-- Notificar criadores de eventos importantes
-- Enviar confirmacoes de acoes criticas
+**Entregue:**
+- Servico `src/services/email.service.ts` com providers `console`, `resend` e `sendgrid`.
+- Templates para verificacao, reset de password, boas-vindas, alerta de moderacao e teste operacional.
+- Endpoints ligados ao fluxo:
+  - `POST /api/auth/forgot-password`
+  - `POST /api/auth/reset-password`
+  - `GET /api/auth/verify-email`
+  - `POST /api/auth/resend-verification`
+- Links frontend ativos nos emails:
+  - `/esqueci-password`
+  - `/reset-password?token=...`
+  - `/verificar-email?token=...`
 
-**O que construir:**
-
-```
-1. Servico de email — src/services/email.service.ts
-   - Provider: SendGrid ou Resend (recomendado: Resend — simples, barato, bom DX)
-   - Templates HTML para cada tipo de email
-   - Queue para nao bloquear requests
-
-2. Tipos de email para beta:
-   - Verificacao de conta (obrigatorio)
-   - Reset de password (obrigatorio)
-   - Boas-vindas apos registo (nice to have)
-   - Conteudo publicado (notificacao a seguidores) (nice to have)
-   - Alerta de moderacao (conta suspensa, conteudo removido) (obrigatorio)
-
-3. Endpoints:
-   - POST /api/auth/forgot-password
-   - POST /api/auth/reset-password
-   - POST /api/auth/verify-email
-   - POST /api/auth/resend-verification
-```
-
-**Esforco:** Medio (2-3 dias com Resend/SendGrid).
+**Pendencias fora deste bloco:** newsletter/digest e comunicacoes de produto.
 
 ---
 
 ### 2.2 Reset de password
 
-**Estado:** Nao existe. O User model tem password mas nao ha fluxo de recuperacao.
+**Estado:** FECHADO (2026-03-13).
 
-**O que construir:**
-- Endpoint `POST /api/auth/forgot-password` — gera token temporario, envia email
-- Endpoint `POST /api/auth/reset-password` — valida token, atualiza password
-- Frontend: paginas `/esqueci-password` e `/reset-password?token=...`
-- Token com expiracao (30 minutos)
-- Rate limiting no forgot-password (evitar abuse)
-
-**Esforco:** Baixo (1 dia, depende do email service).
+**Entregue:**
+- Endpoint `POST /api/auth/forgot-password` (resposta neutra para evitar enum de emails).
+- Endpoint `POST /api/auth/reset-password` com validacao de token e invalidacao de sessoes ativas.
+- Token seguro com expiracao (`PASSWORD_RESET_TOKEN_TTL_MINUTES`, default 30 min).
+- Rate limiting aplicado via `rateLimiter.general`.
+- Frontend com fluxo completo:
+  - `/esqueci-password` (pedido de recuperacao)
+  - `/reset-password?token=...` (definicao da nova password)
+  - Link direto no login para iniciar recuperacao.
 
 ---
 
 ### 2.3 Verificacao de email
 
-**Estado:** Nao existe. Qualquer pessoa pode registar com qualquer email.
+**Estado:** FECHADO (2026-03-13).
 
-**O que construir:**
-- Campo `emailVerified: boolean` no User model (default false)
-- Enviar email com link de verificacao no registo
-- Endpoint `GET /api/auth/verify-email?token=...`
-- Guard: funcionalidades criticas (publicar conteudo, comments) requerem email verificado
-- UI: banner "Verifica o teu email" enquanto nao verificado
-
-**Esforco:** Baixo (1 dia, depende do email service).
+**Entregue:**
+- Campo `emailVerified` no User model com token hash + expiracao.
+- Email de verificacao enviado no registo com link dedicado.
+- Endpoint `GET /api/auth/verify-email?token=...`.
+- Endpoint `POST /api/auth/resend-verification` para reenvio autenticado.
+- Guard ativo para acoes criticas (criar/publicar conteudo e comentar).
+- UI entregue:
+  - pagina `/verificar-email?token=...`
+  - banner global para contas por verificar com acao de reenvio.
 
 ---
 
@@ -560,9 +547,9 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 
 ### 🔴 BLOQUEADORES (sem isto nao se lanca)
 
-- [ ] Email service (Resend/SendGrid) — transacional
-- [ ] Reset de password — endpoint + paginas
-- [ ] Verificacao de email — endpoint + banner
+- [x] Email service (Resend/SendGrid) — transacional
+- [x] Reset de password — endpoint + paginas
+- [x] Verificacao de email — endpoint + banner
 - [x] Aviso legal financeiro — pagina + footer link
 - [x] Termos de servico — pagina com conteudo real
 - [x] Politica de privacidade — pagina com conteudo real
