@@ -33,9 +33,9 @@ Data desta avaliacao: 2026-03-06 (atualizado em 2026-03-13).
 |------|------|-------|
 | **Criadores** | Backend completo (6 content types), frontend parcialmente mockado | Ver P5_CRIADORES_CONTEUDO.md |
 | **Marcas/Entidades** | Backend + admin completos, 0 paginas publicas | Ver P5_MARCAS_ENTIDADES.md |
-| **Dashboard de criador** | Layout + sidebar + rotas | Paginas ainda placeholder |
-| **Hub de conteudos** | Estrutura de rotas, homepage integrada | 7 paginas explore sao placeholder |
-| **Perfis publicos** | Componentes + tipos definidos | Desactivados via surfaceControl |
+| **Dashboard de criador** | Layout + sidebar + rotas | MVP funcional (overview + criar + listar conteudo); evolucao analitica avancada pendente |
+| **Hub de conteudos** | Estrutura de rotas, homepage integrada | MVP funcional nas paginas minimas de descoberta e detalhe |
+| **Perfis publicos** | Componentes + tipos definidos | Ativos por defeito com kill switch via surfaceControl |
 
 ### 1.3 Areas a zero
 
@@ -129,6 +129,8 @@ Estes sao items que, se nao existirem, impedem um beta mesmo limitado.
 
 ### 2.5 Paginas de conteudo publicas (minimo viavel)
 
+**Estado:** FECHADO (2026-03-13) no escopo minimo de beta.
+
 Nao e preciso ter todas as 80 paginas placeholder prontas para beta. Mas e preciso que o utilizador consiga:
 - Descobrir conteudo
 - Ver detalhe de conteudo
@@ -147,13 +149,22 @@ Nao e preciso ter todas as 80 paginas placeholder prontas para beta. Mas e preci
 | `/recursos` | Desejavel | Index do diretorio |
 | `/recursos/:slug` | Desejavel | Detalhe de entidade |
 
-**Backend ja existe para todos.** O trabalho e frontend — criar as paginas reais a partir dos componentes e hooks existentes.
-
-**Esforco:** Alto (5-7 dias para as paginas obrigatorias).
+**Entregue:**
+- Rotas obrigatorias funcionais no frontend:
+  - `/explorar/tudo`
+  - `/artigos/:slug`
+  - `/cursos/:slug`
+  - `/videos/:slug`
+  - `/criadores`
+  - `/criadores/:username`
+- Perfis/listagem de creators deixaram de estar em placeholder e passaram a usar dados publicos da API com fallback controlado.
+- Compatibilidade adicional de links via alias `/creators/*` para nao quebrar navegacao legado.
 
 ---
 
 ### 2.6 Dashboard de criador (minimo viavel)
+
+**Estado:** FECHADO (2026-03-13) no escopo minimo de beta.
 
 O criador precisa de conseguir, no minimo:
 - Ver o seu conteudo
@@ -165,13 +176,18 @@ O criador precisa de conseguir, no minimo:
 
 | Pagina | Estado atual | O que falta |
 |--------|-------------|-------------|
-| `/creators/dashboard` | Placeholder | Resumo com KPIs e atalhos |
-| `/creators/dashboard/overview` | Componente existe | Ligar a API |
-| `/creators/dashboard/articles/create` | Rota existe | Form funcional (backend ja existe) |
-| `/creators/dashboard/courses/create` | Form existe | Validar integracao |
-| `/creators/dashboard/articles` | ManageArticles existe | Validar integracao |
+| `/creators/dashboard` | MVP funcional | Refinar KPIs e atalhos avancados |
+| `/creators/dashboard/overview` | Integrado | Hardening de analytics avancada |
+| `/creators/dashboard/articles/create` | Funcional | Melhorias UX incrementais |
+| `/creators/dashboard/courses/create` | Funcional | Melhorias UX incrementais |
+| `/creators/dashboard/articles` | Funcional | Otimizacoes de operacao e escala |
 
-**Esforco:** Medio (3-4 dias).
+**Entregue:**
+- Fluxo minimo operacional para creator coberto:
+  - overview de dashboard
+  - criacao de conteudo
+  - listagem/gestao de conteudo
+- Integracao base com backend funcional nas rotas minimas.
 
 ---
 
@@ -554,9 +570,9 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [x] Termos de servico — pagina com conteudo real
 - [x] Politica de privacidade — pagina com conteudo real
 - [x] Banner de consentimento de cookies — RGPD
-- [ ] Paginas de conteudo minimas (explorar, detalhe artigo/curso/video)
-- [ ] Dashboard de criador minimo (overview, criar, listar)
-- [ ] Perfil publico de criador activado
+- [x] Paginas de conteudo minimas (explorar, detalhe artigo/curso/video)
+- [x] Dashboard de criador minimo (overview, criar, listar)
+- [x] Perfil publico de criador activado
 - [ ] Storage S3 (ou equivalente) — substituir disco local
 - [ ] Error tracking (Sentry)
 
