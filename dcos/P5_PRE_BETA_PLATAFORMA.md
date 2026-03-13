@@ -256,14 +256,15 @@ O criador precisa de conseguir, no minimo:
 
 ### 3.5 Gestao de conta / RGPD
 
-**Estado:** PARCIAL (2026-03-13). UserSettingsPage existe e passou a incluir alteracao de password.
+**Estado:** PARCIAL (2026-03-13). UserSettingsPage inclui edicao de perfil e alteracao de password.
 
 **Entregue:**
+- Endpoint `PATCH /api/users/me` para edicao de perfil (nome, avatar, bio, social links).
+- Form dedicado em `/conta` para edicao de perfil com persistencia em API.
 - Endpoint `POST /api/auth/change-password` com validacao de password atual e rotacao de sessoes (`tokenVersion`).
 - Form dedicado em `/conta` para alteracao de password com confirmacao e sign-out apos sucesso.
 
 **Ainda em falta:**
-- Edicao de perfil (nome, avatar, bio, social links)
 - Eliminacao de conta
 - Export de dados
 
@@ -271,7 +272,7 @@ O criador precisa de conseguir, no minimo:
 
 | Feature | Endpoint | Frontend |
 |---------|----------|----------|
-| Editar perfil | `PATCH /api/users/me` | Form com campos do perfil |
+| Editar perfil | `PATCH /api/users/me` | FECHADO (2026-03-13) |
 | Alterar password | `POST /api/auth/change-password` | FECHADO (2026-03-13) |
 | Eliminar conta | `DELETE /api/users/me` | Confirmacao dupla, motivo |
 | Export de dados | `GET /api/users/me/export` | Download JSON/ZIP |
@@ -596,7 +597,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [ ] Pesquisa global — utilizador precisa de encontrar conteudo
 - [ ] Centro de notificacoes — feedback de engagement
 - [ ] Feed "a seguir" — razao para voltar
-- [ ] Pagina de perfil de utilizador editavel
+- [x] Pagina de perfil de utilizador editavel
 - [x] Alteracao de password
 - [ ] CAPTCHA no registo/login
 - [ ] SEO basico (meta tags, sitemap, robots.txt)

@@ -1831,6 +1831,83 @@ export const validateAuthCookieConsentContract = (
   next()
 }
 
+export const validateUserUpdateMeContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de update profile invalido.')
+    return
+  }
+
+  const allowedFields = new Set(['name', 'avatar', 'bio', 'socialLinks'])
+  const payloadKeys = Object.keys(req.body)
+
+  if (payloadKeys.length === 0) {
+    respondValidationError(res, 'Payload vazio para update profile.')
+    return
+  }
+
+  for (const key of payloadKeys) {
+    if (!allowedFields.has(key)) {
+      respondValidationError(res, `Campo nao permitido: ${key}.`)
+      return
+    }
+  }
+
+  if ('name' in req.body) {
+    const name = req.body.name
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      respondValidationError(res, 'Campo name invalido.')
+      return
+    }
+  }
+
+  const validateNullableStringField = (field: 'avatar' | 'bio') => {
+    if (!(field in req.body)) return true
+    const value = req.body[field]
+    if (value === null) return true
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      respondValidationError(res, `Campo ${field} invalido.`)
+      return false
+    }
+    return true
+  }
+
+  if (!validateNullableStringField('avatar')) return
+  if (!validateNullableStringField('bio')) return
+
+  if ('socialLinks' in req.body) {
+    const socialLinks = req.body.socialLinks
+    if (socialLinks !== null) {
+      if (!isRecord(socialLinks)) {
+        respondValidationError(res, 'Campo socialLinks invalido.')
+        return
+      }
+
+      const allowedSocialLinks = new Set(['website', 'twitter', 'linkedin', 'instagram'])
+      const socialKeys = Object.keys(socialLinks)
+
+      for (const key of socialKeys) {
+        if (!allowedSocialLinks.has(key)) {
+          respondValidationError(res, `Campo socialLinks.${key} nao permitido.`)
+          return
+        }
+
+        const value = socialLinks[key]
+        if (value === null) continue
+        if (typeof value !== 'string' || value.trim().length === 0) {
+          respondValidationError(res, `Campo socialLinks.${key} invalido.`)
+          return
+        }
+      }
+    }
+  }
+
+  next()
+}
+
 export const validateAdminSurfaceControlContract = (
   req: Request,
   res: Response,

@@ -35,6 +35,7 @@ import brandPortalRoutes from './brandPortal.routes'
 import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
 import feedRoutes from './feed.routes'
+import userRoutes from './user.routes'
 import appealRoutes from './appeal.routes'
 import adsRoutes from './ads.routes'
 import affiliateRoutes from './affiliate.routes'
@@ -70,6 +71,7 @@ router.get('/', (req, res) => {
         favorites: '/api/favorites',
         notifications: '/api/notifications',
       },
+      users: '/api/users',
       feed: '/api/feed',
       universal: {
         ratings: '/api/ratings',
@@ -126,6 +128,7 @@ router.use('/follow', followRoutes)
 router.use('/favorites', favoriteRoutes)
 router.use('/notifications', notificationRoutes)
 router.use('/feed', feedRoutes)
+router.use('/users', userRoutes)
 
 // Rotas universais (ratings & comments)
 router.use('/ratings', ratingRoutes)
