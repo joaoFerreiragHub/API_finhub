@@ -25,18 +25,19 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote de `control plane` para integracoes de plataforma.
-- Ultimo commit backend funcional: `1625109` (`feat(admin): add platform integrations control plane runtime`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `79c8cbf` (`feat(admin): add runtime integration management UI`).
+- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote de infra pre-beta (docker/deploy/monitoring baseline) + control plane de integracoes.
+- Ultimo commit backend funcional: `706b2ca` (`feat(infra): add uptime monitor and fullstack compose`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `6a2c6ad` (`feat(infra): add frontend docker deploy and critical e2e lane`).
 - Onde ficamos:
   - control plane backend FECHADO para integracoes externas nao-secretas com `GET /api/admin/platform/integrations`, `PATCH /api/admin/platform/integrations/:integrationKey` e `GET /api/platform/runtime-config`;
   - painel admin FECHADO em `/admin/operacoes/integracoes` para gerir toggles + config JSON + motivo/nota com auditoria;
   - runtime config publico ligado no frontend para analytics/captcha/SEO, com fallback seguro para env quando a API falha;
-  - navegacao operacional admin abstraida em componente unico (`AdminOperationsNav`) para reduzir duplicacao e escalar os blocos de operacoes;
-  - validacoes tecnicas do ciclo executadas: backend (`typecheck`, `test:contracts:routes`, `test:docs:smoke`) e frontend (`typecheck:p1`, `lint`, testes unitarios alvo, `build`).
+  - infraestrutura container/deploy FECHADA no baseline tecnico: `Dockerfile` frontend, deploy GHCR frontend, `docker-compose.fullstack.yml` (api+web+mongo+redis) e workflow `Uptime Monitor`;
+  - suite `test:e2e:critical` integrada no frontend (script + lane CI nao-bloqueante), com falha atual pre-existente de SSR em `/admin/*` e `/creators/dashboard/articles` ainda por corrigir;
+  - validacoes tecnicas do ciclo executadas: backend (`typecheck`, `test:docs:smoke`) e frontend (`typecheck:p1`, `lint`, `build`, `test:e2e:critical -- --list`; execucao completa E2E ainda falha no ponto SSR acima).
 - Proximo passo recomendado:
-  - continuar o P5 pre-beta pelos itens ainda abertos em `IMPORTANTES` (`Docker + deploy pipeline`, monitoring basico e E2E criticos);
-  - manter captcha/pixels/analytics IDs e restantes segredos/chaves live no trilho de pre-release (T-1/T-0), com evidencia de validacao real.
+  - corrigir a regressao SSR nas rotas admin/dashboard para fechar o item `Testes E2E dos fluxos criticos`;
+  - configurar variaveis live de monitorizacao/deploy (`UPTIME_API_URL`, opcional `UPTIME_WEB_URL`, webhooks) e executar evidencia pre-release T-1/T-0 para captcha/analytics/pixels.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
