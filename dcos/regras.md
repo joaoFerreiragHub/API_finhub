@@ -25,8 +25,8 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `FinHub-Vite/master` com fecho local dos pontos P4.4-03/P4.5-04/P4.5-05; `API_finhub/main` em sincronizacao documental de fecho do bloco P4.3-4.5.
-- Ultimo commit backend de entrega: `f5cf441` (`docs(p4.4-02): close financial tools frontend status`).
+- Estado git: `FinHub-Vite/master` com fecho local dos pontos P4.4-03/P4.5-04/P4.5-05; `API_finhub/main` com docs do bloco P4.3-4.5 sincronizadas nesta ronda.
+- Ultimo commit backend de entrega: `b4994c1` (`docs(p4.3-4.5): close frontend pendings and archive backlog file`).
 - Ultimo commit frontend (FinHub-Vite/master): `e65665f` (`feat(admin): close p4.4-03 p4.5-04 p4.5-05 frontend`).
 - Onde ficamos:
   - REIT Toolkit permanece concluido (F1 subtype detector + coverage proxy + smoke validado);
