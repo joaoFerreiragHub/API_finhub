@@ -25,20 +25,18 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote P5 de SEO + analytics base.
-- Ultimo commit backend de entrega: `39d8081` (`docs(audit): add admin control plane requirement for integration configs`).
-- Ultimo commit backend funcional (P5 RGPD): `05763ca` (`feat(user): add account export and deletion flows`).
-- Ultimo commit frontend (FinHub-Vite/master): `7f80bca` (`feat(analytics): add consent-safe posthog funnel tracking`).
+- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote de `control plane` para integracoes de plataforma.
+- Ultimo commit backend funcional: `1625109` (`feat(admin): add platform integrations control plane runtime`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `79c8cbf` (`feat(admin): add runtime integration management UI`).
 - Onde ficamos:
-  - P5 RGPD minimo ficou FECHADO com `PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me` e UI de conta em `/conta`;
-  - P5 OAuth Google ficou FECHADO com fluxo backend `google/start` + `google/callback` e CTA no login e registo;
-  - P5 `IMPORTANTES` ja tinha fechado `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"`;
-  - P5 `SEO basico` ficou FECHADO com `PublicRouteSeo` em rotas publicas/auth, `robots` dinamico para noindex privado e geracao automatica de `robots.txt`/`sitemap.xml` no build (`yarn seo:generate`);
-  - P5 `Analytics real` ficou FECHADO no frontend com PostHog consent-gated + eventos de funnel (`login_success`, `sign_up_success`, `content_viewed`) + queue para bootstrap de consentimento/SDK;
-  - auditoria atualizada com diretriz de `control plane` no admin para integracoes externas (IDs/hosts/toggles nao-secretos via dashboard, segredos em secret manager/env com auditoria).
+  - control plane backend FECHADO para integracoes externas nao-secretas com `GET /api/admin/platform/integrations`, `PATCH /api/admin/platform/integrations/:integrationKey` e `GET /api/platform/runtime-config`;
+  - painel admin FECHADO em `/admin/operacoes/integracoes` para gerir toggles + config JSON + motivo/nota com auditoria;
+  - runtime config publico ligado no frontend para analytics/captcha/SEO, com fallback seguro para env quando a API falha;
+  - navegacao operacional admin abstraida em componente unico (`AdminOperationsNav`) para reduzir duplicacao e escalar os blocos de operacoes;
+  - validacoes tecnicas do ciclo executadas: backend (`typecheck`, `test:contracts:routes`, `test:docs:smoke`) e frontend (`typecheck:p1`, `lint`, testes unitarios alvo, `build`).
 - Proximo passo recomendado:
-  - continuar no pacote P5 pre-beta pelos itens ainda abertos em `IMPORTANTES`;
-  - priorizar `Painel admin de configuracoes de integracoes`, `Docker + deploy pipeline` e `CAPTCHA no registo/login`.
+  - continuar o P5 pre-beta pelos itens ainda abertos em `IMPORTANTES` (`Docker + deploy pipeline`, monitoring basico e E2E criticos);
+  - manter captcha/pixels/analytics IDs e restantes segredos/chaves live no trilho de pre-release (T-1/T-0), com evidencia de validacao real.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
