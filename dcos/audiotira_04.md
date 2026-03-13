@@ -61,6 +61,27 @@ Regras desta tabela:
 2. Apenas variaveis com valor default seguro ou inferivel podem ser auto-preenchidas.
 3. Sem evidencia de validacao em ambiente real, o item continua pendente no gate de pre-release.
 
+### 3.2) Diretriz de configuracao por painel admin (sem dependencia de dev)
+
+Objetivo operacional:
+
+- reduzir dependencia de programadores para trocar IDs/hosts/toggles de integracoes externas no ciclo normal de operacao;
+- manter segredos protegidos sem exposicao direta em UI.
+
+Regras obrigatorias desta diretriz:
+
+1. Configuracoes nao-secretas (ex.: `VITE_GA_ID`, `VITE_FB_PIXEL_ID`, `VITE_POSTHOG_HOST`, toggles de ativacao) devem ser geridas via painel admin.
+2. Segredos (API keys/secrets/private keys) devem permanecer em secret manager/env; no painel admin so pode existir referencia, estado e acao de rotacao assistida.
+3. Alteracoes feitas no painel admin exigem RBAC, motivo obrigatorio, versionamento e audit log.
+4. Integracoes de tracking no frontend devem continuar condicionadas a consentimento RGPD.
+
+Criterios minimos de produto para este painel:
+
+- mascarar valores sensiveis;
+- validar conectividade/health por integracao;
+- permitir rollback para a versao anterior;
+- incluir kill switch por integracao.
+
 ## 4) Escopo obrigatorio pre-release final (P4 + P5)
 
 A lista abaixo passa a ser obrigatoria para release final.
@@ -269,3 +290,4 @@ Integracao CI/CD:
 - 2026-03-13: OAuth Google fechado no frontend de autenticacao com CTA de entrada tambem no registo (`RegisterForm`) e callback operacional em `/oauth/google/callback`.
 - 2026-03-13: P5 pre-beta com `IMPORTANTES` atualizados para `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"`; pesquisa global ligada no header publico ativo (`components/layout/Header.tsx`) via `GlobalSearchBar`.
 - 2026-03-13: P5 pre-beta com `SEO basico` FECHADO no frontend (`PublicRouteSeo` tambem no `AuthLayout`, `meta robots` dinamico para rotas privadas, `scripts/generate-seo-assets.mjs`, `yarn seo:generate` integrado no build, `robots.txt`/`sitemap.xml` regenerados).
+- 2026-03-13: diretriz adicionada para control plane de integracoes no admin (IDs/hosts/toggles nao-secretos geridos via dashboard; segredos mantidos em env/secret manager com RBAC + audit log + versionamento).

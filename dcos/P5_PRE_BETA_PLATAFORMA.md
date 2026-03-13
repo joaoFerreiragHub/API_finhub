@@ -436,8 +436,10 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 - Tracking de eventos: page views, sign ups, content views, engagement
 - Consent: so activar apos consentimento de cookies
 - Funnels: registo → primeiro conteudo, visitante → premium
+- Criar control plane no admin para configuracoes de integracoes (IDs/hosts/toggles nao-secretos) sem necessidade de deploy
+- Manter segredos fora da UI (secret manager/env), com painel admin apenas para estado, referencia e rotacao assistida
 
-**Esforco:** Baixo (meio dia).
+**Esforco:** Baixo para ligacao base do PostHog (meio dia); Medio se incluir control plane admin completo (2-3 dias).
 
 ---
 
@@ -604,6 +606,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [ ] CAPTCHA no registo/login
 - [x] SEO basico (meta tags, sitemap, robots.txt)
 - [ ] Analytics real (PostHog configurado)
+- [ ] Painel admin para configuracoes de integracoes externas (analytics/pixels/captcha IDs/toggles)
 - [ ] Docker + deploy pipeline
 - [ ] Monitoring basico (health check externo)
 - [ ] Testes E2E dos fluxos criticos
