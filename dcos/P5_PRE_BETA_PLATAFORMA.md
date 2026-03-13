@@ -596,9 +596,9 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 ### 🟡 IMPORTANTES (deviam existir no beta)
 
 - [x] OAuth Google — reduz friccao de registo
-- [ ] Pesquisa global — utilizador precisa de encontrar conteudo
-- [ ] Centro de notificacoes — feedback de engagement
-- [ ] Feed "a seguir" — razao para voltar
+- [x] Pesquisa global — utilizador precisa de encontrar conteudo
+- [x] Centro de notificacoes — feedback de engagement
+- [x] Feed "a seguir" — razao para voltar
 - [x] Pagina de perfil de utilizador editavel
 - [x] Alteracao de password
 - [ ] CAPTCHA no registo/login
