@@ -265,3 +265,5 @@ Integracao CI/CD:
 - 2026-03-13: P4.5-04 FECHADO no frontend em `FinHub-Vite` com novo painel `Operacoes > Delegacoes` (`/admin/operacoes/delegacoes`), incluindo selecao de admin alvo, criacao de delegacoes por scope com expiracao e revogacao com motivo obrigatorio.
 - 2026-03-13: P4.5-05 FECHADO no frontend em `FinHub-Vite` com aplicacao real de tema admin (`system|light|dark`) no `AdminLayout` a partir de `dashboard personalization`.
 - 2026-03-13: `P4_3_4_5_BACKOFFICE_NEGOCIO.md` marcado como concluido e movido para `dcos/done/` conforme regra de ciclo de vida dos P's.
+- 2026-03-13: P5 pre-beta evoluido com fecho de RGPD minimo (`PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me`) e UI dedicada em `/conta` para editar perfil, alterar password, exportar dados e eliminar conta.
+- 2026-03-13: OAuth Google fechado no frontend de autenticacao com CTA de entrada tambem no registo (`RegisterForm`) e callback operacional em `/oauth/google/callback`.

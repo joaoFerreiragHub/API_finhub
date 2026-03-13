@@ -22,7 +22,7 @@ Data desta avaliacao: 2026-03-06 (atualizado em 2026-03-13).
 | **Gestao de utilizadores** | ✅ Producao | Status, suspensoes, audit trail |
 | **Editorial CMS** | ✅ Producao | Seccoes, items, time-based visibility |
 | **Gestao de diretorios** | ✅ Producao | CRUD, publish/archive, claims |
-| **Auth (login/registo)** | ✅ Funcional | JWT + refresh tokens, multi-role |
+| **Auth (login/registo)** | ✅ Funcional | JWT + refresh tokens, multi-role + OAuth Google |
 | **Homepage** | ✅ Funcional | Hero, content rows, responsive, dark mode |
 | **Assisted sessions** | ✅ Funcional | Consent flow, banner, revoke |
 | **Audit logs** | ✅ Funcional | Export CSV, filtros, paginacao |
@@ -595,7 +595,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 
 ### 🟡 IMPORTANTES (deviam existir no beta)
 
-- [ ] OAuth Google — reduz friccao de registo
+- [x] OAuth Google — reduz friccao de registo
 - [ ] Pesquisa global — utilizador precisa de encontrar conteudo
 - [ ] Centro de notificacoes — feedback de engagement
 - [ ] Feed "a seguir" — razao para voltar
