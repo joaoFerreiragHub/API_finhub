@@ -25,25 +25,17 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `FinHub-Vite/master` com fecho local dos pontos P4.4-03/P4.5-04/P4.5-05; `API_finhub/main` com docs do bloco P4.3-4.5 sincronizadas nesta ronda.
-- Ultimo commit backend de entrega: `b4994c1` (`docs(p4.3-4.5): close frontend pendings and archive backlog file`).
-- Ultimo commit frontend (FinHub-Vite/master): `e65665f` (`feat(admin): close p4.4-03 p4.5-04 p4.5-05 frontend`).
+- Estado git: `API_finhub/main` e `FinHub-Vite/master` alinhados no pacote P5 de conta/auth (RGPD + OAuth).
+- Ultimo commit backend de entrega: `d71f173` (`docs(p5): mark google oauth closed and sync audit log`).
+- Ultimo commit backend funcional (P5 RGPD): `05763ca` (`feat(user): add account export and deletion flows`).
+- Ultimo commit frontend (FinHub-Vite/master): `2df3a01` (`feat(auth): add google oauth action to register form`).
 - Onde ficamos:
-  - REIT Toolkit permanece concluido (F1 subtype detector + coverage proxy + smoke validado);
-  - P4.3-01 paywall frontend ficou FECHADO em `/admin/monetizacao` com listagem/filtros/ativar-desativar + create/edit de policy + preview de impacto;
-  - P4.3-02 subscricoes frontend ficou FECHADO em `/admin/monetizacao/subscricoes` com timeline detalhada por subscricao (actor/motivo/nota/snapshot) e refinamentos UX de operacao;
-  - P4.3-03 apelacoes frontend ficou FECHADO em `/admin/conteudo/apelacoes` (alias `/admin/apelacoes`) com inbox filtravel, timeline de historico e decisao com motivo padronizado;
-  - P4.3-04 templates frontend ficou FECHADO em `/admin/conteudo` com selector nos dialogs de acao/lote, auto-fill de reason/note, enforcement de `requiresNote`/`requiresDoubleConfirm` e telemetria `trackFeature`;
-  - P4.3-05 comunicacoes frontend ficou FECHADO em `/admin/operacoes/comunicacoes` com composer segmentado, preview de audiencia, historico de envios e acoes `approve/send` com motivo obrigatorio;
-  - P4.4-01 analytics positivos de creators ficou FECHADO no frontend em `/admin/creators/analytics` com scorecards, filtros operacionais, leaderboard growth/engagement/trust e export CSV;
-  - P4.4-02 financial tools ficou FECHADO no frontend em `/admin/stats/ferramentas-financeiras` com filtros por ambiente/ferramenta, dashboard de uso e mutacao de control plane com motivo obrigatorio;
-  - P4.4-03 anuncios/partnerships frontend ficou FECHADO em `/admin/operacoes/anuncios` com inventory map, gestao de slots/campanhas e workflow `submit/approve/reject/activate/pause`;
-  - P4.5-04 delegacoes frontend ficou FECHADO em `/admin/operacoes/delegacoes` com selecao de admin alvo, listagem por status/scope, criacao com expiracao e revogacao com motivo obrigatorio;
-  - P4.5-05 dark mode admin frontend ficou FECHADO com aplicacao real do tema `system|light|dark` no `AdminLayout`;
-  - bloco documental `P4_3_4_5_BACKOFFICE_NEGOCIO.md` foi fechado e movido para `dcos/done/`.
+  - P5 RGPD minimo ficou FECHADO com `PATCH /api/users/me`, `GET /api/users/me/export`, `DELETE /api/users/me` e UI de conta em `/conta`;
+  - P5 OAuth Google ficou FECHADO com fluxo backend `google/start` + `google/callback` e CTA no login e registo;
+  - docs `P5_PRE_BETA_PLATAFORMA.md` e `audiotira_04.md` sincronizadas no mesmo ciclo.
 - Proximo passo recomendado:
-  - continuar na ordem oficial (`P4_MODERATION -> P5_PRE_BETA -> restantes P5`);
-  - executar fecho do `P4_MODERATION_CONTROL_PLANE` e depois retomar o pacote P5 pre-beta da plataforma.
+  - continuar no pacote P5 pre-beta e auditar os itens ainda marcados como abertos em `IMPORTANTES`;
+  - priorizar `Pesquisa global`, `Centro de notificacoes` e `Feed "a seguir"` para fecho documental/tecnico.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
