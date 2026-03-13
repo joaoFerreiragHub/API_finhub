@@ -26,7 +26,7 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 Ultima atualizacao: 2026-03-13
 
 - Estado git: `API_finhub/main` com melhoria de diagnostico no workflow `Uptime Monitor`; `FinHub-Vite/master` com correcao SSR validada localmente.
-- Ultimo commit backend funcional: `pendente push deste ciclo` (`ci(monitoring): improve uptime monitor diagnostics and failure reporting`).
+- Ultimo commit backend funcional: `fe56f1c` (`ci(monitoring): improve uptime monitor diagnostics and reporting`).
 - Ultimo commit frontend funcional (FinHub-Vite/master): `6a2c6ad` (`feat(infra): add frontend docker deploy and critical e2e lane`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline e agora tem diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
