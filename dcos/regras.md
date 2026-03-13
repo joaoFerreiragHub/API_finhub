@@ -25,18 +25,20 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-13
 
-- Estado git: `API_finhub/main` com monitorizacao pre-release nao bloqueante + P5 pre-beta atualizado com IMPORTANTES fechados; `FinHub-Vite/master` com SSR corrigido e paginas estaticas reais.
+- Estado git: `API_finhub/main` com monitorizacao pre-release nao bloqueante + docs P5-MARCAS sincronizadas; `FinHub-Vite/master` com SSR corrigido, paginas institucionais reais e comparador publico de recursos.
 - Ultimo commit backend funcional: `cb1a1f7` (`ci(monitoring): make uptime check non-blocking in pre-release`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `8f8480a` (`feat(content): replace static placeholders with real about/faq/contact pages`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `c0eddca` (`feat(brands): deliver public directory compare flow`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
   - correcao SSR do frontend publicada em `FinHub-Vite/master` com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK;
   - paginas estaticas `/sobre`, `/faq`, `/contacto` deixaram placeholder e passaram a conteudo real;
+  - P5-MARCAS Fase 2.6 frontend fechada com comparador publico em `/recursos/comparar` (selecao 2-3 recursos, tabela de metricas e interseccao de campos partilhados), com deep-link por `?slugs=...`;
+  - analytics de `content_viewed` foi endurecido para ignorar rotas estaticas de `/recursos/*` (ex.: `corretoras`, `plataformas`, `comparar`);
   - checklist do P5 pre-beta ficou em `BLOQUEADORES 12/12`, `IMPORTANTES 14/14`, `DESEJAVEL 1/12` (total `27/38`, 71.1%).
 - Proximo passo recomendado:
   - executar trilho pre-release T-1/T-0 (configs live de captcha/analytics/pixels + evidencia operacional);
-  - depois, atacar backlog `DESEJAVEL` de maior impacto (onboarding, recomendacoes basicas, feedback/status page).
+  - continuar P5-MARCAS no frontend dos blocos de monetizacao (campanhas/ads/portal) para fechar lacunas de Fase 3/Fase 4.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.

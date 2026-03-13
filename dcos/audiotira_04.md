@@ -1,6 +1,6 @@
 ﻿# AUDITORIA_04 - Guia Unico de Execucao
 
-Data: 2026-03-08
+Data: 2026-03-13
 Escopo: API_finhub + FinHub-Vite
 
 ## 1) Objetivo
@@ -293,4 +293,8 @@ Integracao CI/CD:
 - 2026-03-13: diretriz adicionada para control plane de integracoes no admin (IDs/hosts/toggles nao-secretos geridos via dashboard; segredos mantidos em env/secret manager com RBAC + audit log + versionamento).
 - 2026-03-13: P5 pre-beta com `Analytics real` FECHADO no frontend (PostHog consent-gated, eventos de funnel `login_success`/`sign_up_success`/`content_viewed`, queue para bootstrap de consentimento/SDK e teste unitario de rotas de detalhe).
 - 2026-03-13: control plane de integracoes FECHADO no escopo tecnico (API: `GET/PATCH /api/admin/platform/integrations/:integrationKey` + `GET /api/platform/runtime-config`; Frontend: painel `Operacoes > Integracoes`, runtime config consumido por analytics/captcha/SEO e navegacao operacional unificada).
-- 2026-03-13: P5 pre-beta avancou com infra/operacao FECHADA no baseline tecnico (frontend com `Dockerfile` + deploy GHCR + server SSR de runtime, compose fullstack `api+web+mongo+redis`, workflow `Uptime Monitor` com checks externos); suite `test:e2e:critical` foi integrada no CI e permanece em curso por regressao SSR pre-existente em `/admin/*` e `/creators/dashboard/articles`.
+- 2026-03-13: P5 pre-beta avancou com infra/operacao FECHADA no baseline tecnico (frontend com `Dockerfile` + deploy GHCR + server SSR de runtime, compose fullstack `api+web+mongo+redis`, workflow `Uptime Monitor` com checks externos).
+- 2026-03-13: regressao SSR pre-existente foi corrigida no frontend (`/admin/*` e `/creators/dashboard/articles`), com suites `yarn test:e2e:critical` (9/9) e `yarn test:e2e:release` (12/12) em green.
+- 2026-03-13: `Uptime Monitor` endurecido com diagnostico explicito (erro de config/HTTP/curl + `GITHUB_STEP_SUMMARY`) e modo pre-release nao bloqueante quando `UPTIME_API_URL` nao esta definida (`UPTIME_MONITOR_ENFORCE=true` ativa modo estrito).
+- 2026-03-13: paginas estaticas institucionais (`/sobre`, `/faq`, `/contacto`) deixaram placeholder e passaram a conteudo real no frontend; checklist P5 atualizado para `BLOQUEADORES 12/12` e `IMPORTANTES 14/14`.
+- 2026-03-13: P5-MARCAS Fase 2.6 frontend FECHADA com comparador em `/recursos/comparar` (selecao de 2-3 slugs, tabela de metricas, campos partilhados e deep link por query string); matcher de analytics atualizado para ignorar rotas estaticas de `/recursos/*`.

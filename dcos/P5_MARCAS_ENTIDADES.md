@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-10 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida; hardening da API publica de diretorio com contratos de request e endpoint `GET /api/directories/categories`).
+Atualizacao de execucao: 2026-03-13 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida; hardening da API publica de diretorio com contratos de request e endpoint `GET /api/directories/categories`; frontend publico de `/recursos*` implementado com listagem/verticais/detalhe e comparador em `/recursos/comparar`).
 
 ---
 
@@ -123,19 +123,20 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 | **API service** | ✅ | `adminDirectoriesService.ts` — calls ao backend |
 | **Types** | ✅ | `adminDirectories.ts` — tipos completos |
 
-### 2.6 Frontend publico — Rotas definidas (nao implementadas)
+### 2.6 Frontend publico — Rotas implementadas (2026-03-13)
 
 | Rota | Pagina | Estado |
 |------|--------|--------|
-| `/recursos` | BrandsListPage.tsx | 🔴 Placeholder |
-| `/recursos/:slug` | BrandDetailPage.tsx | 🔴 Placeholder |
-| `/recursos/corretoras` | BrandsBrokersPage.tsx | 🔴 Placeholder |
-| `/recursos/plataformas` | BrandsPlatformsPage.tsx | 🔴 Placeholder |
-| `/recursos/exchanges` | BrandsExchangesPage.tsx | 🔴 Placeholder |
-| `/recursos/apps` | BrandsAppsPage.tsx | 🔴 Placeholder |
-| `/recursos/sites` | BrandsSitesPage.tsx | 🔴 Placeholder |
-| `/recursos/podcasts` | BrandsPodcastsPage.tsx | 🔴 Placeholder |
-| `/recursos/livros` | BrandsLivrosPage.tsx | 🔴 Placeholder |
+| `/recursos` | BrandsListPage.tsx | ✅ Implementado |
+| `/recursos/:slug` | BrandDetailPage.tsx | ✅ Implementado |
+| `/recursos/corretoras` | BrandsBrokersPage.tsx | ✅ Implementado |
+| `/recursos/plataformas` | BrandsPlatformsPage.tsx | ✅ Implementado |
+| `/recursos/exchanges` | BrandsExchangesPage.tsx | ✅ Implementado |
+| `/recursos/apps` | BrandsAppsPage.tsx | ✅ Implementado |
+| `/recursos/sites` | BrandsSitesPage.tsx | ✅ Implementado |
+| `/recursos/podcasts` | BrandsPodcastsPage.tsx | ✅ Implementado |
+| `/recursos/livros` | BrandsLivrosPage.tsx | ✅ Implementado |
+| `/recursos/comparar` | BrandsComparePage.tsx | ✅ Implementado |
 
 **Nota:** Os links ja estao no footer (Corretoras, Plataformas, Apps, Sites) e na navegacao do header.
 
@@ -145,7 +146,11 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 
 ### 3.1 Paginas publicas de recursos/diretorio
 
-**O que falta:** Todas as 9 paginas publicas sao placeholder. O backend editorial ja tem APIs publicas prontas a consumir.
+**Estado atual (2026-03-13):** gap P1 fechado no frontend com paginas publicas reais (`/recursos`, verticais e detalhe), consumo da API publica de diretorio e comparador (`/recursos/comparar`).
+
+**Evolucao futura (nao bloqueante):**
+- enriquecer UX de comparacao (persistencia de shortlist por utilizador, share card e export);
+- ampliar verticais com landing dedicada para `insurance`, `bank`, `fund`, `newsletter`.
 
 **Paginas necessarias:**
 
@@ -171,7 +176,7 @@ Existem **dois sistemas** no codebase que tratam de marcas/entidades, o que pode
 - Badge de verificacao
 - API: `GET /api/directories/:vertical/:slug` + `GET /api/directories/:vertical/:slug/related-content`
 
-**Prioridade:** P1 — sem paginas publicas, o diretorio nao tem utilidade para o utilizador final nem para as marcas.
+**Prioridade:** P1 — FECHADO no baseline atual.
 
 ---
 
@@ -547,10 +552,10 @@ isSponsored: boolean (default false)
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
 | 1.1 | **API publica de DirectoryEntry** | CONCLUIDO (2026-03-10): list, byVertical, bySlug, featured, categories, search, compare + contratos de request nas rotas publicas | - | Medio |
-| 1.2 | **Pagina index `/recursos`** | — | Grid de categorias, featured, pesquisa | Medio |
-| 1.3 | **Paginas verticais `/recursos/corretoras` etc.** | — | Listagem filtrada, cards com rating/badges | Medio |
-| 1.4 | **Pagina detalhe `/recursos/:slug`** | — | Header, info, ratings, comments, conteudo relacionado | Medio |
-| 1.5 | **Ratings e comments nas entidades** | CONCLUIDO (2026-03-09): `targetType=directory_entry` + contadores sincronizados no model | Componentes de rating/comment nas paginas | Baixo |
+| 1.2 | **Pagina index `/recursos`** | — | CONCLUIDO (2026-03-13): grid de categorias, featured, pesquisa global e CTA para comparador | Medio |
+| 1.3 | **Paginas verticais `/recursos/corretoras` etc.** | — | CONCLUIDO (2026-03-13): listagem filtrada com ordenacao/verificacao/featured e cards completos | Medio |
+| 1.4 | **Pagina detalhe `/recursos/:slug`** | — | CONCLUIDO (2026-03-13): header, info, ratings, comments e related content | Medio |
+| 1.5 | **Ratings e comments nas entidades** | CONCLUIDO (2026-03-09): `targetType=directory_entry` + contadores sincronizados no model | CONCLUIDO (2026-03-13): secoes de rating/comment ativas no detalhe publico | Baixo |
 | 1.6 | **Views counter no DirectoryEntry** | CONCLUIDO (2026-03-09): campo `views` + incremento no detalhe publico | - | Baixo |
 
 ### Fase 2 — Qualidade e confianca (P2)
@@ -560,9 +565,9 @@ isSponsored: boolean (default false)
 | 2.1 | **Unificacao Brand → DirectoryEntry** | CONCLUIDO (2026-03-10): script `migrate:brands:directory` + `/api/brands` desmontado do router principal + search de `brand` migrado para `DirectoryEntry` | Atualizar imports/refs | Medio |
 | 2.2 | **Vertical types adicionais** | CONCLUIDO (2026-03-09): `insurance`, `bank`, `fund`, `fintech`, `newsletter` no enum + validacoes sincronizadas | Novos icones/categorias | Baixo |
 | 2.3 | **Campos de entidade financeira** | CONCLUIDO (2026-03-09): `regulatedBy`, `licenses`, `pros`, `cons`, `keyFeatures`, `pricing` no model + respostas admin/public | Seccoes no detalhe | Medio |
-| 2.4 | **Badge de verificacao visual** | Ja existe no model | Componente de badge, tooltip com info | Baixo |
-| 2.5 | **Conteudo relacionado** | CONCLUIDO (2026-03-09): `GET /api/directories/:vertical/:slug/related-content` (agrega artigos/cursos/videos/lives/books/podcasts publicados por relevancia) | Seccao na pagina de detalhe | Medio |
-| 2.6 | **Comparador de entidades** | CONCLUIDO (2026-03-10): `GET /api/directories/compare?slugs=a,b[,c]` com metricas comparadas (`views`, `averageRating`, `ratingsCount`, `commentsCount`) | UI tabela comparativa (2-3 entidades) | Alto |
+| 2.4 | **Badge de verificacao visual** | Ja existe no model | CONCLUIDO (2026-03-13): badge visual aplicado nas listagens/detalhe | Baixo |
+| 2.5 | **Conteudo relacionado** | CONCLUIDO (2026-03-09): `GET /api/directories/:vertical/:slug/related-content` (agrega artigos/cursos/videos/lives/books/podcasts publicados por relevancia) | CONCLUIDO (2026-03-13): secao de related content ativa no detalhe | Medio |
+| 2.6 | **Comparador de entidades** | CONCLUIDO (2026-03-10): `GET /api/directories/compare?slugs=a,b[,c]` com metricas comparadas (`views`, `averageRating`, `ratingsCount`, `commentsCount`) | CONCLUIDO (2026-03-13): UI comparativa em `/recursos/comparar` com selecao 2-3 slugs, metricas lider e campos partilhados | Alto |
 
 ### Fase 3 — Publicidade e campanhas (P3)
 
