@@ -27,11 +27,11 @@ Ultima atualizacao: 2026-03-13
 
 - Estado git: `API_finhub/main` com monitorizacao `Uptime Monitor` em modo pre-release nao bloqueante + diagnostico detalhado; `FinHub-Vite/master` com correcao SSR validada localmente.
 - Ultimo commit backend funcional: `cb1a1f7` (`ci(monitoring): make uptime check non-blocking in pre-release`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `6a2c6ad` (`feat(infra): add frontend docker deploy and critical e2e lane`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `02aa430` (`fix(ssr): resolve page component shape and remove creators export ambiguity`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
-  - correcao SSR do frontend validada localmente com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK.
+  - correcao SSR do frontend publicada em `FinHub-Vite/master` com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK.
 - Proximo passo recomendado:
   - seguir com os restantes pontos do plano funcional e deixar variaveis live de monitorizacao (`UPTIME_API_URL`, opcional `UPTIME_WEB_URL`) para checklist de pre-release;
   - quando entrar em pre-release final, ativar modo estrito com `UPTIME_MONITOR_ENFORCE=true`.
