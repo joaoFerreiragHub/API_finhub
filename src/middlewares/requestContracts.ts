@@ -58,6 +58,13 @@ type AdPartnershipSponsorType = 'brand' | 'creator' | 'platform'
 type FinancialToolKey = 'stocks' | 'etf' | 'reit' | 'crypto'
 type FinancialToolEnvironment = 'development' | 'staging' | 'production'
 type FinancialToolExperienceMode = 'legacy' | 'standard' | 'enhanced'
+type PlatformIntegrationKey =
+  | 'analytics_posthog'
+  | 'analytics_google_analytics'
+  | 'analytics_google_tag_manager'
+  | 'analytics_meta_pixel'
+  | 'captcha_client'
+  | 'seo_defaults'
 type BrandWalletTransactionType = 'top_up' | 'campaign_spend' | 'refund' | 'manual_adjustment'
 type BrandWalletTransactionStatus = 'pending' | 'completed' | 'failed' | 'cancelled'
 type PublicDirectoryVerticalType =
@@ -180,6 +187,14 @@ const FINANCIAL_TOOL_EXPERIENCE_MODES: readonly FinancialToolExperienceMode[] = 
   'legacy',
   'standard',
   'enhanced',
+]
+const PLATFORM_INTEGRATION_KEYS: readonly PlatformIntegrationKey[] = [
+  'analytics_posthog',
+  'analytics_google_analytics',
+  'analytics_google_tag_manager',
+  'analytics_meta_pixel',
+  'captcha_client',
+  'seo_defaults',
 ]
 const BRAND_WALLET_TRANSACTION_TYPES: readonly BrandWalletTransactionType[] = [
   'top_up',
@@ -1984,6 +1999,71 @@ export const validateAdminSurfaceControlContract = (
       respondValidationError(res, `Campo ${key} invalido.`)
       return
     }
+  }
+
+  next()
+}
+
+export const validateAdminPlatformIntegrationUpdateContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const integrationKey = trimString(req.params.integrationKey)
+  if (!integrationKey) {
+    respondValidationError(res, 'Parametro integrationKey obrigatorio.')
+    return
+  }
+
+  if (!PLATFORM_INTEGRATION_KEYS.includes(integrationKey as PlatformIntegrationKey)) {
+    respondValidationError(
+      res,
+      `Parametro integrationKey invalido. Valores: ${PLATFORM_INTEGRATION_KEYS.join(', ')}.`
+    )
+    return
+  }
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de atualizacao de integracao invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['enabled', 'config', 'reason', 'note'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na atualizacao de integracao.`)
+      return
+    }
+  }
+
+  const reason = validateRequiredNonEmptyString(req.body, 'reason')
+  if (!reason) {
+    respondValidationError(res, 'Campo reason obrigatorio.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  const hasEnabledField = Object.prototype.hasOwnProperty.call(req.body, 'enabled')
+  const hasConfigField = Object.prototype.hasOwnProperty.call(req.body, 'config')
+
+  if (!hasEnabledField && !hasConfigField) {
+    respondValidationError(res, 'Envia pelo menos enabled ou config na atualizacao da integracao.')
+    return
+  }
+
+  if (hasEnabledField && typeof req.body.enabled !== 'boolean') {
+    respondValidationError(res, 'Campo enabled invalido (boolean).')
+    return
+  }
+
+  if (hasConfigField && !isRecord(req.body.config)) {
+    respondValidationError(res, 'Campo config invalido (objeto).')
+    return
   }
 
   next()

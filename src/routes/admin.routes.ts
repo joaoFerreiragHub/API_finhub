@@ -56,6 +56,10 @@ import {
   updateAdminSurfaceControl,
 } from '../controllers/adminSurfaceControl.controller'
 import {
+  listAdminPlatformIntegrations,
+  updateAdminPlatformIntegration,
+} from '../controllers/adminPlatformIntegration.controller'
+import {
   activateAdminContentAccessPolicy,
   createAdminContentAccessPolicy,
   deactivateAdminContentAccessPolicy,
@@ -198,6 +202,7 @@ import {
   validateAdminScopeDelegationCreateContract,
   validateAdminScopeDelegationRevokeContract,
   validateAdminSubscriptionExtendTrialContract,
+  validateAdminPlatformIntegrationUpdateContract,
   validateAdminSubscriptionReactivateContract,
   validateAdminSubscriptionRevokeEntitlementContract,
   validateAdminSurfaceControlContract,
@@ -517,6 +522,50 @@ router.post(
   }),
   requireAdminScope('admin.content.moderate'),
   updateAdminSurfaceControl
+)
+
+/**
+ * @route   GET /api/admin/platform/integrations
+ * @desc    Ler configuracoes operacionais de integracoes (analytics/captcha/seo)
+ * @access  Private (Admin com escopo admin.content.read)
+ */
+router.get(
+  '/platform/integrations',
+  authenticate,
+  auditAdminAction({
+    action: 'admin.platform.integrations.list',
+    resourceType: 'platform_integration_config',
+    scope: 'admin.content.read',
+  }),
+  requireAdminScope('admin.content.read'),
+  listAdminPlatformIntegrations
+)
+
+/**
+ * @route   PATCH /api/admin/platform/integrations/:integrationKey
+ * @desc    Atualizar configuracao operacional de uma integracao da plataforma
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.patch(
+  '/platform/integrations/:integrationKey',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  validateAdminPlatformIntegrationUpdateContract,
+  auditAdminAction({
+    action: 'admin.platform.integrations.update',
+    resourceType: 'platform_integration_config',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.integrationKey,
+    getMetadata: (req) => ({
+      enabled: typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined,
+      configKeys:
+        req.body?.config && typeof req.body.config === 'object' && !Array.isArray(req.body.config)
+          ? Object.keys(req.body.config as Record<string, unknown>)
+          : undefined,
+    }),
+  }),
+  requireAdminScope('admin.content.moderate'),
+  updateAdminPlatformIntegration
 )
 
 /**

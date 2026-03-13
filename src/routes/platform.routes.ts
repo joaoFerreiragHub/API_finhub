@@ -11,6 +11,7 @@ import {
   getPublicLoggingMonitoring,
   getPublicMonitoringStatus,
 } from '../controllers/publicMonitoring.controller'
+import { getPublicPlatformRuntimeConfig } from '../controllers/publicPlatformRuntimeConfig.controller'
 
 const router = Router()
 
@@ -27,6 +28,13 @@ router.get('/surfaces', listPublicSurfaceControls)
  * @access  Public
  */
 router.get('/surfaces/:surfaceKey', getPublicSurfaceControl)
+
+/**
+ * @route   GET /api/platform/runtime-config
+ * @desc    Expor configuracao publica de runtime (analytics/captcha/seo)
+ * @access  Public
+ */
+router.get('/runtime-config', getPublicPlatformRuntimeConfig)
 
 /**
  * @route   GET /api/platform/legal/documents

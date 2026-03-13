@@ -91,6 +91,7 @@ router.get('/', (req, res) => {
       editorial: '/api/editorial',
       directories: '/api/directories',
       platform: '/api/platform',
+      runtimeConfig: '/api/platform/runtime-config',
       legal: '/api/platform/legal',
       monitoring: '/api/platform/monitoring/status',
       monitoringLogging: '/api/platform/monitoring/logging',

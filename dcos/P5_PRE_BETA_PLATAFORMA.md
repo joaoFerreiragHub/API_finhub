@@ -416,6 +416,7 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 - `robots.txt` com allow global e bloqueio explicito de superficies privadas.
 - `sitemap.xml` gerado automaticamente por script (`yarn seo:generate`) com rotas publicas principais.
 - Integracao da geracao no pipeline de build (`yarn build` executa `yarn seo:generate` antes do `vite build`).
+- Defaults de SEO (siteName/siteUrl/description/image + regras noindex) agora expostos por runtime config publico (`GET /api/platform/runtime-config`) e geridos no admin em `seo_defaults`.
 
 **Pendencias fora deste bloco:**
 - Structured data (JSON-LD) para rich results.
@@ -429,7 +430,7 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
 
 ### 5.3 Analytics real
 
-**Estado:** FECHADO (2026-03-13) no escopo tecnico de integracao analytics; validacao live com chave real fica no trilho de pre-release.
+**Estado:** FECHADO (2026-03-13) no escopo tecnico de integracao analytics + control plane admin; validacao live com chave real fica no trilho de pre-release.
 
 **Entregue:**
 - Provider PostHog ativo por consentimento de cookies (`analytics`) com fallback seguro quando `VITE_POSTHOG_KEY` nao existe.
@@ -440,13 +441,14 @@ docker-compose.yml (dev: backend + frontend + mongo + redis)
   - `content_viewed` (rotas de detalhe de conteudo).
 - Queue interna de eventos/identify enquanto o consentimento nao esta resolvido ou o SDK ainda esta a inicializar, para reduzir perda de eventos nas transicoes de auth.
 - Teste unitario dedicado para matcher de rotas de `content_viewed`.
+- Control plane admin para integracoes externas nao-secretas com endpoints `GET /api/admin/platform/integrations`, `PATCH /api/admin/platform/integrations/:integrationKey` e `GET /api/platform/runtime-config`.
+- Frontend ligado ao runtime config para analytics/captcha/SEO com fallback seguro para env quando a API nao responde.
 
 **Pendencias fora deste bloco:**
 - Configurar key/host reais de analytics no ambiente live de pre-release e recolher evidencia operacional.
-- Criar control plane no admin para configuracoes de integracoes (IDs/hosts/toggles nao-secretos) sem necessidade de deploy.
 - Manter segredos fora da UI (secret manager/env), com painel admin apenas para estado, referencia e rotacao assistida.
 
-**Esforco:** Fechado no MVP tecnico de tracking; control plane admin permanece em aberto.
+**Esforco:** Fechado no MVP tecnico de tracking + control plane admin.
 
 ---
 
@@ -613,7 +615,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 - [ ] CAPTCHA no registo/login
 - [x] SEO basico (meta tags, sitemap, robots.txt)
 - [x] Analytics real (PostHog configurado)
-- [ ] Painel admin para configuracoes de integracoes externas (analytics/pixels/captcha IDs/toggles)
+- [x] Painel admin para configuracoes de integracoes externas (analytics/pixels/captcha IDs/toggles)
 - [ ] Docker + deploy pipeline
 - [ ] Monitoring basico (health check externo)
 - [ ] Testes E2E dos fluxos criticos
@@ -678,7 +680,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 | **Tipos frontend ↔ backend desalinhados** | Runtime errors | Ao implementar cada feature — alinhar tipos |
 | **2 models de marcas** (Brand + DirectoryEntry) | Confusao, dados duplicados | Fase 2 — unificar |
 | **localStorage para ficheiros** | Dados perdidos ao limpar browser | Antes do beta — migrar para API |
-| **Control plane de analytics em falta** | Troca de IDs/hosts ainda depende de env/deploy | Antes do beta � painel admin de integracoes |
+| **Control plane sem health-check automatico** | IDs/toggles geridos, mas falta teste de conectividade por integracao | Pre-release T-1/T-0 - smoke live + alertas |
 | **Structured data SEO ausente** | Rich results limitados no Google | Pos-beta imediato — JSON-LD para conteudos e entidades |
 | **Upload disco local** | Nao escala, dados perdidos em deploy | Antes do beta — S3 |
 | **175 erros TS pre-existentes** | Build warnings, potenciais bugs | Gradual — isolar em admin/auth |
@@ -734,5 +736,8 @@ Para beta, o objetivo nao e ter tudo perfeito. E ter:
 4. **Infra que nao cai** — S3, error tracking, monitoring, backups
 
 Tudo o resto pode ser iterado durante o beta com feedback real.
+
+
+
 
 
