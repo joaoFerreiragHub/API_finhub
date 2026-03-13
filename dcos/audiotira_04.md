@@ -42,6 +42,25 @@ Regra operacional:
 - durante implementacao diaria, o item permanece `em_curso` sem bloquear os restantes pontos P4/P5;
 - o fecho final da release continua dependente da evidencia deste smoke.
 
+### 3.1) Configuracoes live-only (integracoes externas)
+
+Estas integracoes dependem de chaves reais (captcha, pixel ids, etc.) e devem ficar no trilho de pre-release (T-1/T-0), com evidencia de validacao.
+
+| Integracao | Variaveis manuais de pre-release | Notas |
+|---|---|---|
+| CAPTCHA (backend + frontend) | `CAPTCHA_PROVIDER`, `CAPTCHA_SECRET_KEY`, `VITE_CAPTCHA_PROVIDER`, `VITE_CAPTCHA_SITE_KEY` | Quando ativo no gate E2E, incluir tambem `RELEASE_E2E_CAPTCHA_TOKEN`. |
+| Pixels e analytics | `VITE_GA_ID`, `VITE_FB_PIXEL_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST` | Ativar apenas apos consentimento de cookies no frontend. |
+| Error tracking (Sentry) | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE`, `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_RELEASE`, `VITE_SENTRY_TRACES_SAMPLE_RATE` | DSN vazio mantem operacao fail-safe sem envio de eventos. |
+| OAuth Google | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, `GOOGLE_OAUTH_FRONTEND_CALLBACK_URL` | Exige credenciais/projeto real e callbacks do dominio final. |
+| Email transacional | `EMAIL_PROVIDER`, `EMAIL_RESEND_API_KEY`, `EMAIL_SENDGRID_API_KEY`, `EMAIL_FROM_ADDRESS` | Chaves de provider real apenas no pre-release/live. |
+| Upload S3 | `UPLOAD_STORAGE_PROVIDER`, `UPLOAD_S3_BUCKET`, `UPLOAD_S3_REGION`, `UPLOAD_S3_ENDPOINT`, `UPLOAD_S3_PUBLIC_BASE_URL`, `UPLOAD_S3_ACCESS_KEY_ID`, `UPLOAD_S3_SECRET_ACCESS_KEY`, `UPLOAD_S3_FORCE_PATH_STYLE` | Se as chaves estiverem incompletas, o runtime faz fallback para `local`. |
+
+Regras desta tabela:
+
+1. Segredos e IDs live ficam sempre como preenchimento manual de pre-release.
+2. Apenas variaveis com valor default seguro ou inferivel podem ser auto-preenchidas.
+3. Sem evidencia de validacao em ambiente real, o item continua pendente no gate de pre-release.
+
 ## 4) Escopo obrigatorio pre-release final (P4 + P5)
 
 A lista abaixo passa a ser obrigatoria para release final.
