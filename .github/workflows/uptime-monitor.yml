@@ -12,6 +12,7 @@ jobs:
     env:
       UPTIME_API_URL: ${{ vars.UPTIME_API_URL }}
       UPTIME_WEB_URL: ${{ vars.UPTIME_WEB_URL }}
+      UPTIME_MONITOR_ENFORCE: ${{ vars.UPTIME_MONITOR_ENFORCE }}
       UPTIME_ALERT_WEBHOOK_URL: ${{ secrets.UPTIME_ALERT_WEBHOOK_URL }}
 
     steps:
@@ -19,10 +20,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          ENFORCE_MODE="${UPTIME_MONITOR_ENFORCE:-false}"
 
           if [ -z "${UPTIME_API_URL:-}" ]; then
-            echo "::error title=Config missing::Repository variable UPTIME_API_URL em falta."
-            exit 1
+            if [ "$ENFORCE_MODE" = "true" ]; then
+              echo "::error title=Config missing::Repository variable UPTIME_API_URL em falta."
+              exit 1
+            fi
+
+            echo "::notice title=Uptime monitor skipped::UPTIME_API_URL em falta (modo pre-release nao bloqueante)."
+            {
+              echo "## Uptime Monitor - skipped"
+              echo "- Razao: UPTIME_API_URL em falta."
+              echo "- Acao: configurar a variavel no pre-release para ativar os checks."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "UPTIME_MONITOR_SKIP=1" >> "$GITHUB_ENV"
+            exit 0
           fi
 
           if [[ ! "$UPTIME_API_URL" =~ ^https?:// ]]; then
@@ -51,6 +64,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run external health checks
+        if: env.UPTIME_MONITOR_SKIP != '1'
         shell: bash
         run: |
           set +e
