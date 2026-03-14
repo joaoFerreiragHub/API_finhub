@@ -1,6 +1,6 @@
 ﻿# AUDITORIA_04 - Guia Unico de Execucao
 
-Data: 2026-03-13
+Data: 2026-03-14
 Escopo: API_finhub + FinHub-Vite
 
 ## 1) Objetivo
@@ -298,3 +298,4 @@ Integracao CI/CD:
 - 2026-03-13: `Uptime Monitor` endurecido com diagnostico explicito (erro de config/HTTP/curl + `GITHUB_STEP_SUMMARY`) e modo pre-release nao bloqueante quando `UPTIME_API_URL` nao esta definida (`UPTIME_MONITOR_ENFORCE=true` ativa modo estrito).
 - 2026-03-13: paginas estaticas institucionais (`/sobre`, `/faq`, `/contacto`) deixaram placeholder e passaram a conteudo real no frontend; checklist P5 atualizado para `BLOQUEADORES 12/12` e `IMPORTANTES 14/14`.
 - 2026-03-13: P5-MARCAS Fase 2.6 frontend FECHADA com comparador em `/recursos/comparar` (selecao de 2-3 slugs, tabela de metricas, campos partilhados e deep link por query string); matcher de analytics atualizado para ignorar rotas estaticas de `/recursos/*`.
+- 2026-03-14: P5-MARCAS Fase 3 frontend evoluida com ad serving publico integrado no diretorio (`/recursos`, verticais e detalhe) via `PublicAdSlot`, com consumo de `GET /api/ads/serve` e tracking de `POST /api/ads/impression` + `POST /api/ads/click` em modo fail-safe quando slot nao esta configurado.

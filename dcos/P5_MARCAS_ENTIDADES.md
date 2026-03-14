@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-13 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida; hardening da API publica de diretorio com contratos de request e endpoint `GET /api/directories/categories`; frontend publico de `/recursos*` implementado com listagem/verticais/detalhe e comparador em `/recursos/comparar`).
+Atualizacao de execucao: 2026-03-14 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida; hardening da API publica de diretorio com contratos de request e endpoint `GET /api/directories/categories`; frontend publico de `/recursos*` implementado com listagem/verticais/detalhe/comparador e ad serving publico ligado a `/api/ads/serve` com tracking `/api/ads/impression` + `/api/ads/click`).
 
 ---
 
@@ -273,9 +273,14 @@ page, limit
 
 ### 3.5 Sistema de publicidade / campanhas para marcas
 
-**Estado atual (2026-03-10):** backend base existe com `AdCampaign` + `AdSlotConfig` no admin. Nesta iteracao foi concluido o desacoplamento operacional de `Brand` para `DirectoryEntry` (campanhas de marca passam por `directoryEntryId`, com suporte de migracao legacy), o fluxo admin de revisao (`submit-approval`, `approve`, `reject`), o serving publico com tracking (`/api/ads/serve`, `/api/ads/impression`, `/api/ads/click`) e as metricas agregadas de campanha (`GET /api/admin/ads/campaigns/:campaignId/metrics`).
+**Estado atual (2026-03-14):** backend e frontend base de campanhas/ads ativos.
 
-**O que precisa de ser construido:**
+**Entregue:**
+- backend com `AdCampaign` + `AdSlotConfig`, fluxo admin (`submit-approval`, `approve`, `reject`), serving publico com tracking (`/api/ads/serve`, `/api/ads/impression`, `/api/ads/click`) e metricas agregadas (`GET /api/admin/ads/campaigns/:campaignId/metrics`);
+- frontend admin em `/admin/operacoes/anuncios` com gestao de slots/campanhas, workflow de estado e painel de metricas;
+- frontend publico com slots patrocinados no diretorio (`/recursos`, verticais e detalhe) via `PublicAdSlot`, incluindo tracking de impressao/clique.
+
+**Blueprint de referencia (iteracoes futuras):**
 
 #### 3.5.1 Model `BrandCampaign`
 
@@ -574,12 +579,12 @@ isSponsored: boolean (default false)
 | # | Item | Backend | Frontend | Esforco |
 |---|------|---------|----------|---------|
 | 3.1 | **Model BrandCampaign** | CONCLUIDO (2026-03-10): `AdCampaign`/`AdSlotConfig` ativos no admin + alvo de marca desacoplado para `directoryEntryId` (com scripts de migracao legacy) | — | Medio |
-| 3.2 | **Admin: gestao de campanhas** | CONCLUIDO (2026-03-10): CRUD + fluxo de revisao (`POST /api/admin/ads/campaigns/:campaignId/submit-approval`, `.../approve`, `.../reject`) | Pagina admin de campanhas | Medio |
-| 3.3 | **Ad serving** | CONCLUIDO (2026-03-10): `GET /api/ads/serve` com selecao por slot ativo, audience/device e guardrails de visibilidade/tipos | Componentes de ad slot nas paginas | Medio |
-| 3.4 | **Tracking impressoes/cliques** | CONCLUIDO (2026-03-10): `POST /api/ads/impression` + `POST /api/ads/click` com token assinado e contagem idempotente em metricas de campanha | Pixel de tracking, click handler | Medio |
-| 3.5 | **Dashboard de metricas de campanha** | CONCLUIDO (2026-03-10): `GET /api/admin/ads/campaigns/:campaignId/metrics?days=30` com timeline e breakdown (`slot`, `audience`, `device`) + CTR/fill-rate | Graficos, KPIs, export | Alto |
-| 3.6 | **Conteudo patrocinado** | CONCLUIDO (2026-03-10): `BaseContent` com `isSponsored` + `sponsoredBy` (todos os content types), filtros publicos e exposicao em search/related-content para badge | Badge "Patrocinado" nos cards | Baixo |
-| 3.7 | **Featured placement** | CONCLUIDO (2026-03-10): boost no sorting das listagens publicas de diretorio via campanhas `sponsored_ads` ativas (`surface=directory`) com prioridade de placement + metadata para badge de patrocinio | Badge "Patrocinado" no topo do diretorio | Baixo |
+| 3.2 | **Admin: gestao de campanhas** | CONCLUIDO (2026-03-10): CRUD + fluxo de revisao (`POST /api/admin/ads/campaigns/:campaignId/submit-approval`, `.../approve`, `.../reject`) | CONCLUIDO (2026-03-13): pagina admin em `/admin/operacoes/anuncios` com governance de slots/campanhas e acoes de estado | Medio |
+| 3.3 | **Ad serving** | CONCLUIDO (2026-03-10): `GET /api/ads/serve` com selecao por slot ativo, audience/device e guardrails de visibilidade/tipos | CONCLUIDO (2026-03-14): componentes de ad slot aplicados no diretorio publico (`/recursos`, verticais e detalhe) | Medio |
+| 3.4 | **Tracking impressoes/cliques** | CONCLUIDO (2026-03-10): `POST /api/ads/impression` + `POST /api/ads/click` com token assinado e contagem idempotente em metricas de campanha | CONCLUIDO (2026-03-14): tracking de impressao/clique ligado no componente publico (`PublicAdSlot`) | Medio |
+| 3.5 | **Dashboard de metricas de campanha** | CONCLUIDO (2026-03-10): `GET /api/admin/ads/campaigns/:campaignId/metrics?days=30` com timeline e breakdown (`slot`, `audience`, `device`) + CTR/fill-rate | CONCLUIDO (2026-03-13): KPIs + timeline + breakdown no painel admin de anuncios | Alto |
+| 3.6 | **Conteudo patrocinado** | CONCLUIDO (2026-03-10): `BaseContent` com `isSponsored` + `sponsoredBy` (todos os content types), filtros publicos e exposicao em search/related-content para badge | CONCLUIDO (2026-03-13): badge "Patrocinado" em cards/listagens e detalhe de recursos | Baixo |
+| 3.7 | **Featured placement** | CONCLUIDO (2026-03-10): boost no sorting das listagens publicas de diretorio via campanhas `sponsored_ads` ativas (`surface=directory`) com prioridade de placement + metadata para badge de patrocinio | CONCLUIDO (2026-03-13): destaque patrocinado visivel no topo/listagens do diretorio | Baixo |
 
 ### Fase 4 — Self-service e afiliacao (P4)
 
