@@ -26,7 +26,7 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 Ultima atualizacao: 2026-03-14
 
 - Estado git: `API_finhub/main` com alertas operacionais internos ligados ao health do control plane de integracoes e consolidado unico de gates em `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`; `FinHub-Vite/master` com dashboard/admin alerts preparado para o novo tipo de alerta.
-- Ultimo commit backend funcional: `c28fd0a` (`feat(admin-alerts): surface degraded integration health in operational alerts`).
+- Ultimo commit backend (ciclo atual): `938ff2d` (`docs(release): consolidate release and pre-release gates`).
 - Ultimo commit frontend funcional (FinHub-Vite/master): `65f56f9` (`feat(admin-alerts): add integration health degraded alert type`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
@@ -37,7 +37,7 @@ Ultima atualizacao: 2026-03-14
   - dashboard de alertas internos agora sinaliza integracoes degradadas (`platform_integration_health_degraded`) quando o health estiver em `warning`/`error`;
   - gates e checklist de `release`/`pre-release` foram consolidados num ficheiro unico (`dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`) para execucao T-1/T-0 e Go/No-Go final;
   - gate E2E critico/release manteve baseline em green apos o incremento;
-  - validacoes executadas neste ciclo: backend `npm run typecheck`; frontend `yarn typecheck:p1`, `yarn lint`, `yarn test:e2e:critical`.
+  - validacoes executadas neste ciclo: `npm run test:docs:smoke` (OK).
 - Proximo passo recomendado:
   - retomar blocos funcionais em aberto de P4/P5 (prioridade: `P5_FIRE_PORTFOLIO_SIMULATOR.md` no escopo dev);
   - manter o trilho live-only apenas no consolidado de pre-release (`dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`) ate janela T-1/T-0.
