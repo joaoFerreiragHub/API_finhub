@@ -15,6 +15,7 @@ import { ContentReport, ContentReportReason } from '../models/ContentReport'
 import { UserModerationEvent } from '../models/UserModerationEvent'
 import { CreatorOperationalAction, User, UserRole } from '../models/User'
 import { buildReportSignalSummary, isPriorityAtLeast } from './contentReport.service'
+import { platformIntegrationConfigService } from './platformIntegrationConfig.service'
 
 export type AdminOperationalAlertType =
   | 'ban_applied'
@@ -31,6 +32,7 @@ export type AdminOperationalAlertType =
   | 'content_jobs_stale_backlog'
   | 'content_jobs_retry_spike'
   | 'false_positive_spike'
+  | 'platform_integration_health_degraded'
 export type AdminOperationalAlertSeverity = 'critical' | 'high' | 'medium'
 export type AdminOperationalAlertStateStatus = 'open' | 'acknowledged' | 'dismissed'
 
@@ -82,6 +84,7 @@ export interface AdminOperationalAlertsResponse {
     staleQueuedMinutes: number
     retrySpikeMinJobs: number
     falsePositiveSpikeMinEvents: number
+    integrationHealthDegradedStatuses: Array<'warning' | 'error'>
   }
   summary: {
     critical: number
@@ -218,6 +221,7 @@ const FALSE_POSITIVE_SPIKE_MIN_EVENTS = parseEnvPositiveInt(
   process.env.ADMIN_ALERT_FALSE_POSITIVE_SPIKE_MIN_EVENTS,
   8
 )
+const INTEGRATION_HEALTH_DEGRADED_STATUSES: Array<'warning' | 'error'> = ['warning', 'error']
 
 const toPositiveInt = (value: unknown, fallback: number): number => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
@@ -506,6 +510,7 @@ export class AdminOperationalAlertsService {
       staleJobAlerts,
       retrySpikeAlerts,
       falsePositiveAlerts,
+      integrationHealthAlerts,
     ] = await Promise.all([
       this.listBanAlerts(windowStart, limit),
       this.listSurfaceDisabledAlerts(windowStart, limit),
@@ -519,6 +524,7 @@ export class AdminOperationalAlertsService {
       this.listStaleJobAlerts(now),
       this.listRetrySpikeAlerts(windowStart),
       this.listFalsePositiveSpikeAlerts(windowStart),
+      this.listPlatformIntegrationHealthAlerts(limit),
     ])
 
     const baseItems = [
@@ -534,6 +540,7 @@ export class AdminOperationalAlertsService {
       ...staleJobAlerts,
       ...retrySpikeAlerts,
       ...falsePositiveAlerts,
+      ...integrationHealthAlerts,
     ]
       .sort((a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime())
       .slice(0, limit)
@@ -563,6 +570,7 @@ export class AdminOperationalAlertsService {
         staleQueuedMinutes: JOB_STALE_QUEUED_MINUTES,
         retrySpikeMinJobs: JOB_RETRY_SPIKE_MIN_JOBS,
         falsePositiveSpikeMinEvents: FALSE_POSITIVE_SPIKE_MIN_EVENTS,
+        integrationHealthDegradedStatuses: INTEGRATION_HEALTH_DEGRADED_STATUSES,
       },
       summary: getSeveritySummary(items),
       stateSummary: getStateSummary(enrichedItems),
@@ -1379,6 +1387,59 @@ export class AdminOperationalAlertsService {
         },
       },
     ]
+  }
+
+  private async listPlatformIntegrationHealthAlerts(
+    limit: number
+  ): Promise<AdminOperationalAlert[]> {
+    const snapshot = await platformIntegrationConfigService.listIntegrations()
+
+    const degraded = snapshot.items
+      .filter(
+        (item) =>
+          item.health.status === 'warning' || item.health.status === 'error'
+      )
+      .slice(0, limit)
+
+    const alerts: AdminOperationalAlert[] = []
+    for (const item of degraded) {
+      const severity: AdminOperationalAlertSeverity =
+        item.health.status === 'error' ? 'critical' : 'high'
+      const detectedAt = item.updatedAt ?? item.health.checkedAt ?? snapshot.generatedAt
+
+      alerts.push({
+        id: `integration-health:${item.key}:${item.health.status}`,
+        type: 'platform_integration_health_degraded',
+        severity,
+        title: 'Integracao com health degradado',
+        description: `${item.label} esta em estado ${item.health.status} e requer revisao de configuracao.`,
+        action: 'admin.platform.integrations.update',
+        resourceType: 'platform_integration_config',
+        resourceId: item.key,
+        detectedAt: detectedAt.toISOString(),
+        actor: item.updatedBy
+          ? {
+              id: item.updatedBy.id,
+              name: item.updatedBy.name,
+              username: item.updatedBy.username,
+              email: item.updatedBy.email,
+              role: toRole(item.updatedBy.role),
+            }
+          : null,
+        metadata: {
+          integrationKey: item.key,
+          category: item.category,
+          enabled: item.enabled,
+          historyCount: item.historyCount,
+          healthStatus: item.health.status,
+          healthSummary: item.health.summary,
+          healthIssues: item.health.issues,
+          checkedAt: item.health.checkedAt.toISOString(),
+        },
+      })
+    }
+
+    return alerts
   }
 }
 

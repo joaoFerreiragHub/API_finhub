@@ -470,6 +470,7 @@ O criador precisa de conseguir, no minimo:
 - Health-check operacional por integracao exposto pelo backend (`ok|warning|error` + lista de issues) e visivel no painel admin.
 - Versionamento com rollback da ultima versao em cada integracao, mantendo historico circular para reversao rapida.
 - Editor admin estruturado para configuracoes de analytics/captcha/SEO (com opcao de JSON avancado), reduzindo dependencia de alteracoes manuais por developers.
+- Alertas operacionais internos ligados ao health de integracoes (`platform_integration_health_degraded`) para destacar no dashboard admin quando houver `warning/error`.
 - Frontend ligado ao runtime config para analytics/captcha/SEO com fallback seguro para env quando a API nao responde.
 
 **Pendencias fora deste bloco:**
