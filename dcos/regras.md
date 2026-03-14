@@ -25,7 +25,7 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-14
 
-- Estado git: `API_finhub/main` com alertas operacionais internos ligados ao health do control plane de integracoes e `FinHub-Vite/master` com dashboard/admin alerts preparado para o novo tipo de alerta.
+- Estado git: `API_finhub/main` com alertas operacionais internos ligados ao health do control plane de integracoes e consolidado unico de gates em `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`; `FinHub-Vite/master` com dashboard/admin alerts preparado para o novo tipo de alerta.
 - Ultimo commit backend funcional: `c28fd0a` (`feat(admin-alerts): surface degraded integration health in operational alerts`).
 - Ultimo commit frontend funcional (FinHub-Vite/master): `65f56f9` (`feat(admin-alerts): add integration health degraded alert type`).
 - Onde ficamos:
@@ -35,11 +35,12 @@ Ultima atualizacao: 2026-03-14
   - rollback da ultima versao por integracao entregue com endpoint dedicado (`POST /api/admin/platform/integrations/:integrationKey/rollback`) e historico circular;
   - painel admin de integracoes ganhou editor estruturado para SEO/analytics/captcha com opcao de JSON avancado e toggle para mostrar/ocultar IDs/chaves;
   - dashboard de alertas internos agora sinaliza integracoes degradadas (`platform_integration_health_degraded`) quando o health estiver em `warning`/`error`;
+  - gates e checklist de `release`/`pre-release` foram consolidados num ficheiro unico (`dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`) para execucao T-1/T-0 e Go/No-Go final;
   - gate E2E critico/release manteve baseline em green apos o incremento;
   - validacoes executadas neste ciclo: backend `npm run typecheck`; frontend `yarn typecheck:p1`, `yarn lint`, `yarn test:e2e:critical`.
 - Proximo passo recomendado:
-  - executar trilho pre-release T-1/T-0 (configs live de captcha/analytics/pixels + evidencia operacional);
-  - fechar o proximo incremento de observabilidade no control plane (health-check de conectividade live com providers externos + alertas operacionais).
+  - retomar blocos funcionais em aberto de P4/P5 (prioridade: `P5_FIRE_PORTFOLIO_SIMULATOR.md` no escopo dev);
+  - manter o trilho live-only apenas no consolidado de pre-release (`dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`) ate janela T-1/T-0.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.

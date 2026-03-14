@@ -82,6 +82,14 @@ Criterios minimos de produto para este painel:
 - permitir rollback para a versao anterior;
 - incluir kill switch por integracao.
 
+### 3.3) Consolidado unico de release/pre-release
+
+Para reduzir dispersao operacional, todos os gates de release e pre-release ficam consolidados em:
+
+- `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`
+
+Este ficheiro deve ser usado como checklist unica de execucao no T-1/T-0 e no Go/No-Go final.
+
 ## 4) Escopo obrigatorio pre-release final (P4 + P5)
 
 A lista abaixo passa a ser obrigatoria para release final.
@@ -199,6 +207,7 @@ Integracao CI/CD:
 
 - `test:docs:smoke` corre no workflow de CI em cada push/PR;
 - `test:docs:release-gate` pode ser exigido no deploy definindo `RELEASE_DOCS_GATE=true` em `Repository Variables`.
+- checklist operacional de release/pre-release centralizada em `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`.
 
 ## 10) Fontes historicas consolidadas
 
@@ -303,3 +312,4 @@ Integracao CI/CD:
 - 2026-03-14: hardening de governanca do portal de marca FECHADO com role `brand_manager` no backend/frontend, matriz de permissao `read/write` para `/api/brand-portal/*` (apenas `brand_manager`/`admin`) e gate E2E critico/release atualizado em `e2e/release.flows.o3.spec.ts` com cobertura dedicada de `/marcas/portal`.
 - 2026-03-14: control plane de integracoes evoluido com health-check operacional (`ok|warning|error` + issues) e rollback versionado por integracao (`POST /api/admin/platform/integrations/:integrationKey/rollback`), incluindo painel admin com editor estruturado para analytics/captcha/SEO e acao de rollback da ultima versao.
 - 2026-03-14: alerta operacional interno adicionado para degradacao de health nas integracoes (`platform_integration_health_degraded`), agregando itens `warning/error` do control plane no dashboard/admin alerts sem dependencia de credenciais live.
+- 2026-03-14: consolidado operacional de release/pre-release publicado em `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md` para unificar gates, validacoes e evidencias live T-1/T-0.
