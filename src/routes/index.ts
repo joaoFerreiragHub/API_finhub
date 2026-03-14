@@ -36,6 +36,7 @@ import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
 import feedRoutes from './feed.routes'
 import userRoutes from './user.routes'
+import portfolioRoutes from './portfolio.routes'
 import appealRoutes from './appeal.routes'
 import adsRoutes from './ads.routes'
 import affiliateRoutes from './affiliate.routes'
@@ -72,6 +73,7 @@ router.get('/', (req, res) => {
         notifications: '/api/notifications',
       },
       users: '/api/users',
+      portfolio: '/api/portfolio',
       feed: '/api/feed',
       universal: {
         ratings: '/api/ratings',
@@ -130,6 +132,7 @@ router.use('/favorites', favoriteRoutes)
 router.use('/notifications', notificationRoutes)
 router.use('/feed', feedRoutes)
 router.use('/users', userRoutes)
+router.use('/portfolio', portfolioRoutes)
 
 // Rotas universais (ratings & comments)
 router.use('/ratings', ratingRoutes)

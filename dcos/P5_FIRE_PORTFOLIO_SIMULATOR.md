@@ -1,5 +1,24 @@
 # P5 — FIRE Portfolio Simulator: Especificacao Tecnica
 
+Data base: 2026-03-07
+Atualizacao execucao: 2026-03-14
+Estado: em_curso
+
+## Atualizacao de execucao (backend MVP)
+
+Entregue neste ciclo:
+
+1. novos modelos `Portfolio` e `PortfolioHolding`;
+2. nova API autenticada `/api/portfolio` com CRUD de portfolio e holdings;
+3. endpoint de simulacao inicial `POST /api/portfolio/:id/simulate` com cenarios `optimistic|base|conservative|bear`.
+
+Fora deste ciclo (proximas iteracoes):
+
+1. integracao de dados historicos reais por ativo para calibrar volatilidade/cagr;
+2. simulacao Monte Carlo e cenarios avancados;
+3. camada frontend dedicada (`/ferramentas/fire/*`).
+
+
 ## Visao
 
 Uma ferramenta onde o utilizador:

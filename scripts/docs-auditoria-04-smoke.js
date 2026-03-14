@@ -43,7 +43,13 @@ const parseAuditTableRows = (markdown) => {
   const rows = []
   const lines = markdown.split(/\r?\n/)
 
-  const sectionIndex = findSectionIndex(lines, 'Escopo obrigatorio pre-release final (P4 + P5)')
+  const sectionCandidates = [
+    'Escopo obrigatorio de execucao (P4 + P5)',
+    'Escopo obrigatorio pre-release final (P4 + P5)',
+  ]
+  const sectionIndex = sectionCandidates
+    .map((candidate) => findSectionIndex(lines, candidate))
+    .find((index) => index !== -1) ?? -1
   if (sectionIndex === -1) return rows
 
   for (let i = sectionIndex + 1; i < lines.length; i += 1) {

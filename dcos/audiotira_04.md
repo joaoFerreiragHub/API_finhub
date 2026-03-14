@@ -6,7 +6,8 @@ Escopo: API_finhub + FinHub-Vite
 ## 1) Objetivo
 
 Este ficheiro e a fonte unica de estado, decisao e ordem de execucao.
-A release final so fecha quando todos os blocos P4 e P5 deste guia estiverem implementados.
+Durante implementacao diaria, este guia foca apenas execucao tecnica de P4/P5 (fora do trilho live-only).
+Release/pre-release ficam centralizados no runbook dedicado.
 O P6 (AI/MCP) faz parte do plano estrategico, mas nao bloqueia esta release.
 O P_REVENUE_E_ADS_ESTRATEGIA reforca a diretriz de monetizacao, mas nao bloqueia esta release.
 
@@ -18,82 +19,18 @@ O P_REVENUE_E_ADS_ESTRATEGIA reforca a diretriz de monetizacao, mas nao bloqueia
 - O2-01 a O2-12: concluido.
 - O3-01 a O3-08: concluido.
 
-## 3) Bloqueio de pre-release (T-1/T-0)
+## 3) Trilho release/pre-release (separado)
 
-Executar com sucesso:
-
-```bash
-npm run test:moderation:pre-release
-```
-
-Variaveis obrigatorias em ambiente real:
-
-1. MODERATION_SMOKE_ADMIN_EMAIL
-2. MODERATION_SMOKE_ADMIN_PASSWORD
-3. MODERATION_SMOKE_REPORTER_EMAIL
-4. MODERATION_SMOKE_REPORTER_PASSWORD
-5. MODERATION_SMOKE_TARGET_TYPE
-6. MODERATION_SMOKE_TARGET_ID
-7. opcional: MODERATION_SMOKE_REPORT_REASON
-
-Regra operacional:
-
-- este teste e `live-only` (contas reais + ambiente real) e deve ser executado no dia de live beta testing (janela T-1/T-0);
-- durante implementacao diaria, o item permanece `em_curso` sem bloquear os restantes pontos P4/P5;
-- o fecho final da release continua dependente da evidencia deste smoke.
-
-### 3.1) Configuracoes live-only (integracoes externas)
-
-Estas integracoes dependem de chaves reais (captcha, pixel ids, etc.) e devem ficar no trilho de pre-release (T-1/T-0), com evidencia de validacao.
-
-| Integracao | Variaveis manuais de pre-release | Notas |
-|---|---|---|
-| CAPTCHA (backend + frontend) | `CAPTCHA_PROVIDER`, `CAPTCHA_SECRET_KEY`, `VITE_CAPTCHA_PROVIDER`, `VITE_CAPTCHA_SITE_KEY` | Quando ativo no gate E2E, incluir tambem `RELEASE_E2E_CAPTCHA_TOKEN`. |
-| Pixels e analytics | `VITE_GA_ID`, `VITE_FB_PIXEL_ID`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST` | Ativar apenas apos consentimento de cookies no frontend. |
-| Error tracking (Sentry) | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE`, `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_RELEASE`, `VITE_SENTRY_TRACES_SAMPLE_RATE` | DSN vazio mantem operacao fail-safe sem envio de eventos. |
-| OAuth Google | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, `GOOGLE_OAUTH_FRONTEND_CALLBACK_URL` | Exige credenciais/projeto real e callbacks do dominio final. |
-| Email transacional | `EMAIL_PROVIDER`, `EMAIL_RESEND_API_KEY`, `EMAIL_SENDGRID_API_KEY`, `EMAIL_FROM_ADDRESS` | Chaves de provider real apenas no pre-release/live. |
-| Upload S3 | `UPLOAD_STORAGE_PROVIDER`, `UPLOAD_S3_BUCKET`, `UPLOAD_S3_REGION`, `UPLOAD_S3_ENDPOINT`, `UPLOAD_S3_PUBLIC_BASE_URL`, `UPLOAD_S3_ACCESS_KEY_ID`, `UPLOAD_S3_SECRET_ACCESS_KEY`, `UPLOAD_S3_FORCE_PATH_STYLE` | Se as chaves estiverem incompletas, o runtime faz fallback para `local`. |
-
-Regras desta tabela:
-
-1. Segredos e IDs live ficam sempre como preenchimento manual de pre-release.
-2. Apenas variaveis com valor default seguro ou inferivel podem ser auto-preenchidas.
-3. Sem evidencia de validacao em ambiente real, o item continua pendente no gate de pre-release.
-
-### 3.2) Diretriz de configuracao por painel admin (sem dependencia de dev)
-
-Objetivo operacional:
-
-- reduzir dependencia de programadores para trocar IDs/hosts/toggles de integracoes externas no ciclo normal de operacao;
-- manter segredos protegidos sem exposicao direta em UI.
-
-Regras obrigatorias desta diretriz:
-
-1. Configuracoes nao-secretas (ex.: `VITE_GA_ID`, `VITE_FB_PIXEL_ID`, `VITE_POSTHOG_HOST`, toggles de ativacao) devem ser geridas via painel admin.
-2. Segredos (API keys/secrets/private keys) devem permanecer em secret manager/env; no painel admin so pode existir referencia, estado e acao de rotacao assistida.
-3. Alteracoes feitas no painel admin exigem RBAC, motivo obrigatorio, versionamento e audit log.
-4. Integracoes de tracking no frontend devem continuar condicionadas a consentimento RGPD.
-
-Criterios minimos de produto para este painel:
-
-- mascarar valores sensiveis;
-- validar conectividade/health por integracao;
-- permitir rollback para a versao anterior;
-- incluir kill switch por integracao.
-
-### 3.3) Consolidado unico de release/pre-release
-
-Para reduzir dispersao operacional, todos os gates de release e pre-release ficam consolidados em:
+Tudo o que for gate de release/pre-release foi movido para:
 
 - `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`
 
-Este ficheiro deve ser usado como checklist unica de execucao no T-1/T-0 e no Go/No-Go final.
+Este guia (`audiotira_04`) fica focado em execucao de desenvolvimento (backend/frontend) e fecho tecnico dos blocos P4/P5.
 
-## 4) Escopo obrigatorio pre-release final (P4 + P5)
+## 4) Escopo obrigatorio de execucao (P4 + P5)
 
-A lista abaixo passa a ser obrigatoria para release final.
-Enquanto um item estiver aberto, nao existe fecho de release.
+A lista abaixo e o backlog tecnico obrigatorio em desenvolvimento.
+Enquanto existir item aberto, o guia nao pode ser marcado como fechado.
 
 | Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
 |---|---|---|---|
@@ -103,7 +40,7 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 | P5 marcas | dcos/P5_MARCAS_ENTIDADES.md | em_curso | Sim |
 | P5 criadores | dcos/P5_CRIADORES_CONTEUDO.md | proposto | Sim |
 | P5 ferramentas | dcos/P5_FERRAMENTAS_AUDIT_E_NOVAS.md | proposto | Sim |
-| P5 FIRE | dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md | proposto | Sim |
+| P5 FIRE | dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md | em_curso | Sim |
 | P5 hub pessoal | dcos/P5_VISAO_HUB_FINANCEIRO_PESSOAL.md | proposto | Sim |
 | P5 educacao | dcos/P5_EDUCACAO_LITERACIA.md | proposto | Sim |
 | P5 comunidade | dcos/P5_COMUNIDADE_SOCIAL.md | proposto | Sim |
@@ -115,8 +52,8 @@ Enquanto um item estiver aberto, nao existe fecho de release.
 1. Fechar P4_MODERATION_CONTROL_PLANE.
 2. Executar P5_PRE_BETA_PLATAFORMA.
 3. Executar os restantes P5 por prioridade de produto e dependencia tecnica.
-4. No fim do ciclo, executar smoke de documentacao e release-gate estrito.
-5. Executar O1-08 (`npm run test:moderation:pre-release`) na janela live-only de pre-release (T-1/T-0).
+4. Em cada ciclo, executar smoke de documentacao e validacao tecnica minima.
+5. Deixar qualquer gate live-only fora deste fluxo, no runbook de release/pre-release dedicado.
 6. Evoluir P6 em paralelo, sem desviar foco das prioridades funcionais de P4/P5.
 
 ## 6) Regra de encerramento por ficheiro
@@ -129,13 +66,13 @@ Cada ficheiro P4/P5 so pode ser marcado como concluido quando tiver:
 4. commit dedicado;
 5. movimento do ficheiro concluido para `dcos/done/`.
 
-## 7) Criterio de Go/No-Go final
+## 7) Criterio de fecho tecnico deste guia
 
-Go-live final permitido apenas quando:
+Este guia so pode ser movido para `dcos/done/` quando:
 
-1. todos os ficheiros P4/P5 listados na secao 4 estiverem concluido;
+1. todos os ficheiros P4/P5 listados na secao 4 estiverem concluidos;
 2. todos esses ficheiros estiverem movidos para `dcos/done/`;
-3. este ficheiro (`dcos/audiotira_04.md`) mostrar 100% fechado.
+3. os gates live-only/release estiverem rastreados no runbook dedicado.
 
 ## 7.1) Diretriz transversal de monetizacao e publicidade
 
@@ -181,7 +118,7 @@ Guardrails obrigatorios nesta trilha:
 2. modelos de revenue baseados em dados (`Data Insights as a Service`) exigem consentimento/opt-out, agregacao forte e cumprimento RGPD antes de ativacao comercial.
 3. white-label/embed deve evitar segredos em URL; preferir token assinado de curta duracao e allowlist de dominios.
 
-## 9) Smoke de documentacao (obrigatorio no fim do pre-release)
+## 9) Smoke de documentacao (execucao continua)
 
 Executar no backend API_finhub:
 
@@ -198,7 +135,7 @@ Resultado esperado durante implementacao em curso:
 npm run test:docs:release-gate
 ```
 
-Resultado esperado para fecho final:
+Resultado esperado para fecho tecnico deste guia:
 
 - so passa quando todos os itens obrigatorios da secao 4 estiverem concluidos;
 - so passa quando todos esses itens estiverem em `dcos/done/`.
@@ -206,8 +143,8 @@ Resultado esperado para fecho final:
 Integracao CI/CD:
 
 - `test:docs:smoke` corre no workflow de CI em cada push/PR;
-- `test:docs:release-gate` pode ser exigido no deploy definindo `RELEASE_DOCS_GATE=true` em `Repository Variables`.
-- checklist operacional de release/pre-release centralizada em `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`.
+- `test:docs:release-gate` pode ser exigido em modo estrito no ciclo final de release.
+- gates live-only/release/pre-release ficam centralizados em `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`.
 
 ## 10) Fontes historicas consolidadas
 
@@ -313,3 +250,5 @@ Integracao CI/CD:
 - 2026-03-14: control plane de integracoes evoluido com health-check operacional (`ok|warning|error` + issues) e rollback versionado por integracao (`POST /api/admin/platform/integrations/:integrationKey/rollback`), incluindo painel admin com editor estruturado para analytics/captcha/SEO e acao de rollback da ultima versao.
 - 2026-03-14: alerta operacional interno adicionado para degradacao de health nas integracoes (`platform_integration_health_degraded`), agregando itens `warning/error` do control plane no dashboard/admin alerts sem dependencia de credenciais live.
 - 2026-03-14: consolidado operacional de release/pre-release publicado em `dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md` para unificar gates, validacoes e evidencias live T-1/T-0.
+- 2026-03-14: `audiotira_04` passou a focar execucao tecnica (nao-live), com trilho release/pre-release separado no runbook consolidado.
+- 2026-03-14: P5-FIRE iniciado no backend com MVP de portfolio (`/api/portfolio`) incluindo CRUD, holdings e simulacao base de cenarios FIRE.
