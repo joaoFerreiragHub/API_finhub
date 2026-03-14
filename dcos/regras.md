@@ -25,19 +25,19 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-14
 
-- Estado git: `API_finhub/main` com docs de auditoria/P5-MARCAS sincronizados para o fecho de Fase 4 frontend; `FinHub-Vite/master` com portal de marca self-service publicado em `/marcas/portal`.
-- Ultimo commit backend funcional: `cb1a1f7` (`ci(monitoring): make uptime check non-blocking in pre-release`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `a4fff89` (`feat(brands): add self-service brand portal frontend baseline`).
+- Estado git: `API_finhub/main` com governanca `brand_manager` aplicada ao portal de marca (backend + docs) e `FinHub-Vite/master` com role matrix no frontend + gate E2E de `/marcas/portal`.
+- Ultimo commit backend funcional: `d3c351f` (`feat(brand-portal): add brand_manager governance matrix and docs`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `e92a18d` (`feat(brand-portal): enforce brand_manager role across frontend and release gate`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
-  - correcao SSR do frontend publicada em `FinHub-Vite/master` com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK;
-  - P5-MARCAS Fase 4 frontend foi fechada com stack dedicada do brand portal (`types`, `service`, hooks React Query, pagina e rota `/marcas/portal`);
-  - tabs do portal entregues: overview, wallet (incl. top-up request), campanhas (create/update/submit/metrics), afiliacao (links/clicks) e integracoes (API keys + usage);
-  - cobertura unitaria adicionada em `src/__tests__/features/brandPortal/brandPortalService.test.ts` com validacao de mapping para wallets/campaigns/integrations.
+  - hardening de governanca do portal concluido com role `brand_manager` no backend/frontend e matriz de permissao aplicada em `/api/brand-portal/*` (`brand_manager`/`admin`);
+  - rota frontend `/marcas/portal` restringida por role e atalho no header condicionado a `brand_manager`/`admin`;
+  - gate E2E critico/release inclui agora cobertura dedicada de `/marcas/portal` (checks para `free` e `brand_manager`);
+  - validacoes executadas neste ciclo: backend `npm run typecheck`; frontend `yarn typecheck:p1`, `yarn lint`, `yarn test:e2e:critical`.
 - Proximo passo recomendado:
   - executar trilho pre-release T-1/T-0 (configs live de captcha/analytics/pixels + evidencia operacional);
-  - endurecer governanca do portal de marca (role `brand_manager` + matriz de permissoes) e incluir `/marcas/portal` no gate E2E critico/release.
+  - continuar o bloco seguinte da auditoria (`audiotira_04`) com foco em governanca/configuracao admin-driven para integracoes e SEO.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
