@@ -25,21 +25,19 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-14
 
-- Estado git: `API_finhub/main` com monitorizacao pre-release nao bloqueante + docs P5-MARCAS sincronizadas; `FinHub-Vite/master` com SSR corrigido, paginas institucionais reais, comparador de recursos e ad serving publico no diretorio.
+- Estado git: `API_finhub/main` com docs de auditoria/P5-MARCAS sincronizados para o fecho de Fase 4 frontend; `FinHub-Vite/master` com portal de marca self-service publicado em `/marcas/portal`.
 - Ultimo commit backend funcional: `cb1a1f7` (`ci(monitoring): make uptime check non-blocking in pre-release`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `9fceddd` (`feat(ads): add public ad serving slots for resources`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `a4fff89` (`feat(brands): add self-service brand portal frontend baseline`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
   - correcao SSR do frontend publicada em `FinHub-Vite/master` com `typecheck`, `lint`, `test:e2e:critical`, `test:e2e:release` e `build` OK;
-  - paginas estaticas `/sobre`, `/faq`, `/contacto` deixaram placeholder e passaram a conteudo real;
-  - P5-MARCAS Fase 2.6 frontend fechada com comparador publico em `/recursos/comparar` (selecao 2-3 recursos, tabela de metricas e interseccao de campos partilhados), com deep-link por `?slugs=...`;
-  - P5-MARCAS Fase 3 frontend evoluida com `PublicAdSlot` no diretorio (`/recursos`, verticais e detalhe), consumo de `GET /api/ads/serve` e tracking `POST /api/ads/impression` + `POST /api/ads/click` (fail-safe quando slot nao existe/configurado);
-  - analytics de `content_viewed` foi endurecido para ignorar rotas estaticas de `/recursos/*` (ex.: `corretoras`, `plataformas`, `comparar`);
-  - checklist do P5 pre-beta ficou em `BLOQUEADORES 12/12`, `IMPORTANTES 14/14`, `DESEJAVEL 1/12` (total `27/38`, 71.1%).
+  - P5-MARCAS Fase 4 frontend foi fechada com stack dedicada do brand portal (`types`, `service`, hooks React Query, pagina e rota `/marcas/portal`);
+  - tabs do portal entregues: overview, wallet (incl. top-up request), campanhas (create/update/submit/metrics), afiliacao (links/clicks) e integracoes (API keys + usage);
+  - cobertura unitaria adicionada em `src/__tests__/features/brandPortal/brandPortalService.test.ts` com validacao de mapping para wallets/campaigns/integrations.
 - Proximo passo recomendado:
   - executar trilho pre-release T-1/T-0 (configs live de captcha/analytics/pixels + evidencia operacional);
-  - continuar P5-MARCAS no frontend dos blocos de portal de marca/self-service (Fase 4: wallet, campanhas da marca e afiliacao) para fechar lacunas de operacao B2B.
+  - endurecer governanca do portal de marca (role `brand_manager` + matriz de permissoes) e incluir `/marcas/portal` no gate E2E critico/release.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
