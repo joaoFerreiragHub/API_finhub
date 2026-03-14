@@ -25,19 +25,20 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-14
 
-- Estado git: `API_finhub/main` com governanca `brand_manager` aplicada ao portal de marca (backend + docs) e `FinHub-Vite/master` com role matrix no frontend + gate E2E de `/marcas/portal`.
-- Ultimo commit backend funcional: `d3c351f` (`feat(brand-portal): add brand_manager governance matrix and docs`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `e92a18d` (`feat(brand-portal): enforce brand_manager role across frontend and release gate`).
+- Estado git: `API_finhub/main` com control plane de integracoes evoluido (health + rollback + historico) e `FinHub-Vite/master` com painel admin estruturado para gerir analytics/captcha/SEO sem editar JSON manual por defeito.
+- Ultimo commit backend funcional: `0aa8339` (`feat(platform-integrations): add health status and rollback control plane`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `4daece1` (`feat(admin-integrations): add health checks, rollback and structured config editors`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
-  - hardening de governanca do portal concluido com role `brand_manager` no backend/frontend e matriz de permissao aplicada em `/api/brand-portal/*` (`brand_manager`/`admin`);
-  - rota frontend `/marcas/portal` restringida por role e atalho no header condicionado a `brand_manager`/`admin`;
-  - gate E2E critico/release inclui agora cobertura dedicada de `/marcas/portal` (checks para `free` e `brand_manager`);
+  - control plane de integracoes agora inclui health-check operacional por integracao (`ok|warning|error` + issues) no backend e UI admin;
+  - rollback da ultima versao por integracao entregue com endpoint dedicado (`POST /api/admin/platform/integrations/:integrationKey/rollback`) e historico circular;
+  - painel admin de integracoes ganhou editor estruturado para SEO/analytics/captcha com opcao de JSON avancado e toggle para mostrar/ocultar IDs/chaves;
+  - gate E2E critico/release manteve baseline em green apos o incremento;
   - validacoes executadas neste ciclo: backend `npm run typecheck`; frontend `yarn typecheck:p1`, `yarn lint`, `yarn test:e2e:critical`.
 - Proximo passo recomendado:
   - executar trilho pre-release T-1/T-0 (configs live de captcha/analytics/pixels + evidencia operacional);
-  - continuar o bloco seguinte da auditoria (`audiotira_04`) com foco em governanca/configuracao admin-driven para integracoes e SEO.
+  - fechar o proximo incremento de observabilidade no control plane (health-check de conectividade live com providers externos + alertas operacionais).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
