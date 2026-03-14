@@ -136,3 +136,49 @@ export const updateAdminPlatformIntegration = async (req: AuthRequest, res: Resp
     return handleIntegrationError(res, error, 'Erro ao atualizar integracao de plataforma.')
   }
 }
+
+/**
+ * POST /api/admin/platform/integrations/:integrationKey/rollback
+ */
+export const rollbackAdminPlatformIntegration = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Autenticacao necessaria.',
+      })
+    }
+
+    const integrationKey = req.params.integrationKey
+    if (!isValidPlatformIntegrationKey(integrationKey)) {
+      return res.status(400).json({
+        error: 'Parametro integrationKey invalido.',
+      })
+    }
+
+    const reason = resolveReason(req, res)
+    if (reason === null) return
+    if (!reason) {
+      return res.status(400).json({
+        error: 'Motivo obrigatorio para rollback de integracao.',
+      })
+    }
+
+    const note = resolveNote(req, res)
+    if (note === null) return
+
+    const result = await platformIntegrationConfigService.rollbackIntegration({
+      actorId: req.user.id,
+      key: integrationKey,
+      reason,
+      note,
+    })
+
+    return res.status(200).json({
+      message: 'Rollback da integracao executado com sucesso.',
+      item: result,
+    })
+  } catch (error: unknown) {
+    logControllerError(CONTROLLER_DOMAIN, 'rollback_admin_platform_integration', error, req)
+    return handleIntegrationError(res, error, 'Erro ao executar rollback da integracao de plataforma.')
+  }
+}

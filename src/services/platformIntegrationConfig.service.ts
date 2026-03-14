@@ -1,6 +1,7 @@
 import mongoose from 'mongoose'
 import {
   IPlatformIntegrationConfig,
+  IPlatformIntegrationConfigHistoryEntry,
   PlatformIntegrationConfig,
   PlatformIntegrationKey,
   PLATFORM_INTEGRATION_KEYS,
@@ -67,6 +68,22 @@ interface UpdatePlatformIntegrationInput {
   note?: string
 }
 
+interface RollbackPlatformIntegrationInput {
+  actorId: string
+  key: PlatformIntegrationKey
+  reason: string
+  note?: string
+}
+
+export type PlatformIntegrationHealthStatus = 'ok' | 'warning' | 'error'
+
+export interface PlatformIntegrationHealth {
+  status: PlatformIntegrationHealthStatus
+  summary: string
+  issues: string[]
+  checkedAt: Date
+}
+
 export interface PlatformIntegrationConfigItem {
   key: PlatformIntegrationKey
   label: string
@@ -74,6 +91,8 @@ export interface PlatformIntegrationConfigItem {
   category: PlatformIntegrationCategory
   enabled: boolean
   config: Record<string, unknown>
+  historyCount: number
+  health: PlatformIntegrationHealth
   reason: string | null
   note: string | null
   updatedAt: Date | null
@@ -377,6 +396,58 @@ const normalizeSeoDefaultsConfig = (raw: unknown, fallback: SeoDefaultsConfig): 
   }
 }
 
+const MAX_INTEGRATION_HISTORY_ENTRIES = 20
+const GA4_ID_PATTERN = /^G-[A-Z0-9]+$/i
+const GTM_ID_PATTERN = /^GTM-[A-Z0-9]+$/i
+const META_PIXEL_ID_PATTERN = /^\d{5,}$/
+
+const isAbsoluteUrl = (value: string | null): boolean => {
+  if (!value) return false
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch (_error) {
+    return false
+  }
+}
+
+const makeSnapshotEntry = (input: {
+  enabled: boolean
+  config: Record<string, unknown>
+  reason?: string | null
+  note?: string | null
+  updatedBy?: mongoose.Types.ObjectId | null
+  updatedAt?: Date
+}): IPlatformIntegrationConfigHistoryEntry => ({
+  enabled: input.enabled,
+  config: input.config,
+  reason: input.reason ?? null,
+  note: input.note ?? null,
+  updatedBy: input.updatedBy ?? null,
+  updatedAt: input.updatedAt ?? new Date(),
+})
+
+const trimHistory = (
+  value: IPlatformIntegrationConfigHistoryEntry[]
+): IPlatformIntegrationConfigHistoryEntry[] => {
+  if (value.length <= MAX_INTEGRATION_HISTORY_ENTRIES) return value
+  return value.slice(value.length - MAX_INTEGRATION_HISTORY_ENTRIES)
+}
+
+const toOptionalObjectId = (value: unknown): mongoose.Types.ObjectId | null => {
+  if (value instanceof mongoose.Types.ObjectId) return value
+  if (typeof value === 'string' && mongoose.Types.ObjectId.isValid(value)) {
+    return new mongoose.Types.ObjectId(value)
+  }
+  if (isRecord(value)) {
+    const candidate = value.id ?? value._id
+    if (typeof candidate === 'string' && mongoose.Types.ObjectId.isValid(candidate)) {
+      return new mongoose.Types.ObjectId(candidate)
+    }
+  }
+  return null
+}
+
 const PLATFORM_INTEGRATION_DEFINITIONS: ReadonlyArray<PlatformIntegrationDefinition> = [
   {
     key: 'analytics_posthog',
@@ -461,6 +532,88 @@ const PLATFORM_INTEGRATION_DEFINITIONS: ReadonlyArray<PlatformIntegrationDefinit
 const getIntegrationDefinition = (key: PlatformIntegrationKey): PlatformIntegrationDefinition | null =>
   PLATFORM_INTEGRATION_DEFINITIONS.find((item) => item.key === key) ?? null
 
+const resolveIntegrationHealth = (
+  definition: PlatformIntegrationDefinition,
+  enabled: boolean,
+  config: Record<string, unknown>
+): PlatformIntegrationHealth => {
+  if (!enabled) {
+    return {
+      status: 'ok',
+      summary: 'Integracao desligada por kill switch.',
+      issues: [],
+      checkedAt: new Date(),
+    }
+  }
+
+  const issues: string[] = []
+
+  if (definition.key === 'analytics_posthog') {
+    const normalized = normalizeAnalyticsPosthogConfig(config, DEFAULT_POSTHOG_CONFIG)
+    if (!normalized.key) issues.push('POSTHOG key em falta.')
+    if (!isAbsoluteUrl(normalized.host)) issues.push('POSTHOG host invalido.')
+  } else if (definition.key === 'analytics_google_analytics') {
+    const normalized = normalizeAnalyticsGoogleAnalyticsConfig(config, DEFAULT_GOOGLE_ANALYTICS_CONFIG)
+    if (!normalized.measurementId) {
+      issues.push('GA4 measurementId em falta.')
+    } else if (!GA4_ID_PATTERN.test(normalized.measurementId)) {
+      issues.push('GA4 measurementId com formato invalido (esperado G-XXXX).')
+    }
+  } else if (definition.key === 'analytics_google_tag_manager') {
+    const normalized = normalizeAnalyticsGoogleTagManagerConfig(config, DEFAULT_GOOGLE_TAG_MANAGER_CONFIG)
+    if (!normalized.containerId) {
+      issues.push('GTM containerId em falta.')
+    } else if (!GTM_ID_PATTERN.test(normalized.containerId)) {
+      issues.push('GTM containerId com formato invalido (esperado GTM-XXXX).')
+    }
+  } else if (definition.key === 'analytics_meta_pixel') {
+    const normalized = normalizeAnalyticsMetaPixelConfig(config, DEFAULT_META_PIXEL_CONFIG)
+    if (!normalized.pixelId) {
+      issues.push('Meta Pixel ID em falta.')
+    } else if (!META_PIXEL_ID_PATTERN.test(normalized.pixelId)) {
+      issues.push('Meta Pixel ID com formato invalido (apenas digitos, >= 5).')
+    }
+  } else if (definition.key === 'captcha_client') {
+    const normalized = normalizeCaptchaClientConfig(config, DEFAULT_CAPTCHA_CONFIG)
+    if (normalized.provider === 'disabled') {
+      issues.push('Captcha ativo mas provider=disabled.')
+    }
+    if (!normalized.siteKey) {
+      issues.push('Captcha siteKey em falta.')
+    }
+  } else if (definition.key === 'seo_defaults') {
+    const normalized = normalizeSeoDefaultsConfig(config, DEFAULT_SEO_CONFIG)
+    if (!normalized.siteName || normalized.siteName.trim().length < 2) {
+      issues.push('SEO siteName curto ou vazio.')
+    }
+    if (!isAbsoluteUrl(normalized.siteUrl)) {
+      issues.push('SEO siteUrl invalido.')
+    }
+    if (!normalized.defaultDescription || normalized.defaultDescription.trim().length < 40) {
+      issues.push('SEO defaultDescription demasiado curto (min recomendado: 40 caracteres).')
+    }
+    if (!normalized.defaultImage) {
+      issues.push('SEO defaultImage em falta.')
+    }
+  }
+
+  if (issues.length === 0) {
+    return {
+      status: 'ok',
+      summary: 'Configuracao valida.',
+      issues: [],
+      checkedAt: new Date(),
+    }
+  }
+
+  return {
+    status: 'warning',
+    summary: 'Configuracao incompleta ou com campos invalidos.',
+    issues,
+    checkedAt: new Date(),
+  }
+}
+
 const toObjectId = (rawId: string, fieldName: string): mongoose.Types.ObjectId => {
   if (!mongoose.Types.ObjectId.isValid(rawId)) {
     throw new PlatformIntegrationConfigServiceError(400, `${fieldName} invalido.`)
@@ -509,7 +662,8 @@ export class PlatformIntegrationConfigService {
     }
 
     const currentLookup = await this.getIntegrationLookup()
-    const currentItem = this.mapIntegration(definition, currentLookup.get(definition.key) ?? null)
+    const currentRow = currentLookup.get(definition.key) ?? null
+    const currentItem = this.mapIntegration(definition, currentRow)
 
     const nextEnabled = typeof input.enabled === 'boolean' ? input.enabled : currentItem.enabled
     let nextConfig = currentItem.config
@@ -536,17 +690,36 @@ export class PlatformIntegrationConfigService {
       throw new PlatformIntegrationConfigServiceError(409, 'Sem alteracoes validas para aplicar.')
     }
 
+    const updateDocument: Record<string, unknown> = {
+      $set: {
+        enabled: nextEnabled,
+        config: nextConfig,
+        reason,
+        note,
+        updatedBy: actorId,
+      },
+    }
+
+    if (currentRow) {
+      const historyEntry = makeSnapshotEntry({
+        enabled: currentItem.enabled,
+        config: currentItem.config,
+        reason: currentItem.reason,
+        note: currentItem.note,
+        updatedBy: toOptionalObjectId(currentRow.updatedBy),
+        updatedAt: currentRow.updatedAt ?? new Date(),
+      })
+      updateDocument.$push = {
+        history: {
+          $each: [historyEntry],
+          $slice: -MAX_INTEGRATION_HISTORY_ENTRIES,
+        },
+      }
+    }
+
     const updated = (await PlatformIntegrationConfig.findOneAndUpdate(
       { key: input.key },
-      {
-        $set: {
-          enabled: nextEnabled,
-          config: nextConfig,
-          reason,
-          note,
-          updatedBy: actorId,
-        },
-      },
+      updateDocument,
       {
         upsert: true,
         new: true,
@@ -560,6 +733,81 @@ export class PlatformIntegrationConfigService {
 
     if (!updated) {
       throw new PlatformIntegrationConfigServiceError(500, 'Erro ao atualizar integracao de plataforma.')
+    }
+
+    return this.mapIntegration(definition, updated)
+  }
+
+  async rollbackIntegration(input: RollbackPlatformIntegrationInput) {
+    const actorId = toObjectId(input.actorId, 'actorId')
+    if (!isValidPlatformIntegrationKey(input.key)) {
+      throw new PlatformIntegrationConfigServiceError(400, 'integrationKey invalida.')
+    }
+
+    const definition = getIntegrationDefinition(input.key)
+    if (!definition) {
+      throw new PlatformIntegrationConfigServiceError(400, 'integrationKey invalida.')
+    }
+
+    const reason = trimReason(input.reason)
+    if (!reason) {
+      throw new PlatformIntegrationConfigServiceError(400, 'reason e obrigatorio.')
+    }
+    const note = trimReason(input.note)
+
+    const row = (await PlatformIntegrationConfig.findOne({ key: input.key }).lean()) as
+      | (Partial<IPlatformIntegrationConfig> & {
+          history?: IPlatformIntegrationConfigHistoryEntry[]
+        })
+      | null
+
+    if (!row) {
+      throw new PlatformIntegrationConfigServiceError(404, 'Integracao sem versao persistida para rollback.')
+    }
+
+    const history = Array.isArray(row.history) ? row.history : []
+    if (history.length === 0) {
+      throw new PlatformIntegrationConfigServiceError(409, 'Sem historico disponivel para rollback.')
+    }
+
+    const rollbackTarget = history[history.length - 1]
+    const rollbackConfig = definition.normalize(rollbackTarget.config, definition.defaultConfig)
+    const currentConfig = definition.normalize(row.config, definition.defaultConfig)
+    const currentSnapshot = makeSnapshotEntry({
+      enabled: typeof row.enabled === 'boolean' ? row.enabled : definition.defaultEnabled,
+      config: currentConfig,
+      reason: typeof row.reason === 'string' ? row.reason : null,
+      note: typeof row.note === 'string' ? row.note : null,
+      updatedBy: toOptionalObjectId(row.updatedBy),
+      updatedAt: row.updatedAt ?? new Date(),
+    })
+
+    const nextHistory = trimHistory([...history.slice(0, -1), currentSnapshot])
+
+    const updated = (await PlatformIntegrationConfig.findOneAndUpdate(
+      { key: input.key },
+      {
+        $set: {
+          enabled: rollbackTarget.enabled,
+          config: rollbackConfig,
+          reason,
+          note,
+          updatedBy: actorId,
+          history: nextHistory,
+        },
+      },
+      {
+        new: true,
+      }
+    )
+      .populate('updatedBy', 'name username email role')
+      .lean()) as (Partial<IPlatformIntegrationConfig> & {
+      updatedBy?: PlatformIntegrationActor | null
+      history?: IPlatformIntegrationConfigHistoryEntry[]
+    }) | null
+
+    if (!updated) {
+      throw new PlatformIntegrationConfigServiceError(500, 'Erro ao executar rollback da integracao.')
     }
 
     return this.mapIntegration(definition, updated)
@@ -641,11 +889,19 @@ export class PlatformIntegrationConfigService {
       key: { $in: PLATFORM_INTEGRATION_KEYS },
     })
       .populate('updatedBy', 'name username email role')
-      .lean()) as Array<Partial<IPlatformIntegrationConfig> & { updatedBy?: PlatformIntegrationActor | null }>
+      .lean()) as Array<
+      Partial<IPlatformIntegrationConfig> & {
+        updatedBy?: PlatformIntegrationActor | null
+        history?: IPlatformIntegrationConfigHistoryEntry[]
+      }
+    >
 
     const lookup = new Map<
       PlatformIntegrationKey,
-      Partial<IPlatformIntegrationConfig> & { updatedBy?: PlatformIntegrationActor | null }
+      Partial<IPlatformIntegrationConfig> & {
+        updatedBy?: PlatformIntegrationActor | null
+        history?: IPlatformIntegrationConfigHistoryEntry[]
+      }
     >()
     for (const row of rows) {
       if (isValidPlatformIntegrationKey(row.key)) {
@@ -658,17 +914,27 @@ export class PlatformIntegrationConfigService {
 
   private mapIntegration(
     definition: PlatformIntegrationDefinition,
-    row: (Partial<IPlatformIntegrationConfig> & { updatedBy?: PlatformIntegrationActor | null }) | null
+    row:
+      | (Partial<IPlatformIntegrationConfig> & {
+          updatedBy?: PlatformIntegrationActor | null
+          history?: IPlatformIntegrationConfigHistoryEntry[]
+        })
+      | null
   ): PlatformIntegrationConfigItem {
     const normalizedConfig = definition.normalize(row?.config, definition.defaultConfig)
+    const enabled = typeof row?.enabled === 'boolean' ? row.enabled : definition.defaultEnabled
+    const historyCount = Array.isArray(row?.history) ? row.history.length : 0
+    const health = resolveIntegrationHealth(definition, enabled, normalizedConfig)
 
     return {
       key: definition.key,
       label: definition.label,
       description: definition.description,
       category: definition.category,
-      enabled: typeof row?.enabled === 'boolean' ? row.enabled : definition.defaultEnabled,
+      enabled,
       config: normalizedConfig,
+      historyCount,
+      health,
       reason: typeof row?.reason === 'string' ? row.reason : null,
       note: typeof row?.note === 'string' ? row.note : null,
       updatedAt: row?.updatedAt ?? null,

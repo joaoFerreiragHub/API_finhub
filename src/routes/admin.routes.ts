@@ -57,6 +57,7 @@ import {
 } from '../controllers/adminSurfaceControl.controller'
 import {
   listAdminPlatformIntegrations,
+  rollbackAdminPlatformIntegration,
   updateAdminPlatformIntegration,
 } from '../controllers/adminPlatformIntegration.controller'
 import {
@@ -201,6 +202,7 @@ import {
   validateAdminSessionRevokeContract,
   validateAdminScopeDelegationCreateContract,
   validateAdminScopeDelegationRevokeContract,
+  validateAdminPlatformIntegrationRollbackContract,
   validateAdminSubscriptionExtendTrialContract,
   validateAdminPlatformIntegrationUpdateContract,
   validateAdminSubscriptionReactivateContract,
@@ -566,6 +568,26 @@ router.patch(
   }),
   requireAdminScope('admin.content.moderate'),
   updateAdminPlatformIntegration
+)
+
+/**
+ * @route   POST /api/admin/platform/integrations/:integrationKey/rollback
+ * @desc    Reverter para a versao anterior da configuracao de integracao
+ * @access  Private (Admin com escopo admin.content.moderate)
+ */
+router.post(
+  '/platform/integrations/:integrationKey/rollback',
+  authenticate,
+  rateLimiter.adminModerationAction,
+  validateAdminPlatformIntegrationRollbackContract,
+  auditAdminAction({
+    action: 'admin.platform.integrations.rollback',
+    resourceType: 'platform_integration_config',
+    scope: 'admin.content.moderate',
+    getResourceId: (req) => req.params.integrationKey,
+  }),
+  requireAdminScope('admin.content.moderate'),
+  rollbackAdminPlatformIntegration
 )
 
 /**

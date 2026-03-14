@@ -11,6 +11,15 @@ export const PLATFORM_INTEGRATION_KEYS = [
 
 export type PlatformIntegrationKey = (typeof PLATFORM_INTEGRATION_KEYS)[number]
 
+export interface IPlatformIntegrationConfigHistoryEntry {
+  enabled: boolean
+  config: Record<string, unknown>
+  reason?: string | null
+  note?: string | null
+  updatedBy?: mongoose.Types.ObjectId | null
+  updatedAt: Date
+}
+
 export interface IPlatformIntegrationConfig extends Document {
   key: PlatformIntegrationKey
   enabled: boolean
@@ -18,9 +27,46 @@ export interface IPlatformIntegrationConfig extends Document {
   reason?: string | null
   note?: string | null
   updatedBy?: mongoose.Types.ObjectId | null
+  history: IPlatformIntegrationConfigHistoryEntry[]
   createdAt: Date
   updatedAt: Date
 }
+
+const PlatformIntegrationConfigHistorySchema = new Schema<IPlatformIntegrationConfigHistoryEntry>(
+  {
+    enabled: {
+      type: Boolean,
+      required: true,
+    },
+    config: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+    reason: {
+      type: String,
+      default: null,
+      maxlength: 500,
+      trim: true,
+    },
+    note: {
+      type: String,
+      default: null,
+      maxlength: 2000,
+      trim: true,
+    },
+    updatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    updatedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+)
 
 const PlatformIntegrationConfigSchema = new Schema<IPlatformIntegrationConfig>(
   {
@@ -56,6 +102,10 @@ const PlatformIntegrationConfigSchema = new Schema<IPlatformIntegrationConfig>(
       ref: 'User',
       default: null,
       index: true,
+    },
+    history: {
+      type: [PlatformIntegrationConfigHistorySchema],
+      default: [],
     },
   },
   {

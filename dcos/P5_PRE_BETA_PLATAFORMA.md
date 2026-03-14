@@ -455,7 +455,7 @@ O criador precisa de conseguir, no minimo:
 
 ### 5.3 Analytics real
 
-**Estado:** FECHADO (2026-03-13) no escopo tecnico de integracao analytics + control plane admin; validacao live com chave real fica no trilho de pre-release.
+**Estado:** FECHADO (2026-03-14) no escopo tecnico de integracao analytics + control plane admin; validacao live com chave real fica no trilho de pre-release.
 
 **Entregue:**
 - Provider PostHog ativo por consentimento de cookies (`analytics`) com fallback seguro quando `VITE_POSTHOG_KEY` nao existe.
@@ -466,7 +466,10 @@ O criador precisa de conseguir, no minimo:
   - `content_viewed` (rotas de detalhe de conteudo).
 - Queue interna de eventos/identify enquanto o consentimento nao esta resolvido ou o SDK ainda esta a inicializar, para reduzir perda de eventos nas transicoes de auth.
 - Teste unitario dedicado para matcher de rotas de `content_viewed`.
-- Control plane admin para integracoes externas nao-secretas com endpoints `GET /api/admin/platform/integrations`, `PATCH /api/admin/platform/integrations/:integrationKey` e `GET /api/platform/runtime-config`.
+- Control plane admin para integracoes externas nao-secretas com endpoints `GET /api/admin/platform/integrations`, `PATCH /api/admin/platform/integrations/:integrationKey`, `POST /api/admin/platform/integrations/:integrationKey/rollback` e `GET /api/platform/runtime-config`.
+- Health-check operacional por integracao exposto pelo backend (`ok|warning|error` + lista de issues) e visivel no painel admin.
+- Versionamento com rollback da ultima versao em cada integracao, mantendo historico circular para reversao rapida.
+- Editor admin estruturado para configuracoes de analytics/captcha/SEO (com opcao de JSON avancado), reduzindo dependencia de alteracoes manuais por developers.
 - Frontend ligado ao runtime config para analytics/captcha/SEO com fallback seguro para env quando a API nao responde.
 
 **Pendencias fora deste bloco:**
@@ -705,7 +708,7 @@ O admin dashboard ja mostra metricas operacionais. Para beta, precisa-se de metr
 | **Tipos frontend ↔ backend desalinhados** | Runtime errors | Ao implementar cada feature — alinhar tipos |
 | **2 models de marcas** (Brand + DirectoryEntry) | Confusao, dados duplicados | Fase 2 — unificar |
 | **localStorage para ficheiros** | Dados perdidos ao limpar browser | Antes do beta — migrar para API |
-| **Control plane sem health-check automatico** | IDs/toggles geridos, mas falta teste de conectividade por integracao | Pre-release T-1/T-0 - smoke live + alertas |
+| **Control plane sem health-check live** | Health sintatico e rollback ja estao ativos, mas ainda falta check de conectividade real com providers externos | Pre-release T-1/T-0 - smoke live + alertas |
 | **Structured data SEO ausente** | Rich results limitados no Google | Pos-beta imediato — JSON-LD para conteudos e entidades |
 | **Upload disco local** | Nao escala, dados perdidos em deploy | Antes do beta — S3 |
 | **175 erros TS pre-existentes** | Build warnings, potenciais bugs | Gradual — isolar em admin/auth |

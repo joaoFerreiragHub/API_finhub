@@ -2070,6 +2070,45 @@ export const validateAdminPlatformIntegrationUpdateContract = (
   next()
 }
 
+export const validateAdminPlatformIntegrationRollbackContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const integrationKey = trimString(req.params.integrationKey)
+  if (!integrationKey) {
+    respondValidationError(res, 'Parametro integrationKey obrigatorio.')
+    return
+  }
+
+  if (!PLATFORM_INTEGRATION_KEYS.includes(integrationKey as PlatformIntegrationKey)) {
+    respondValidationError(
+      res,
+      `Parametro integrationKey invalido. Valores: ${PLATFORM_INTEGRATION_KEYS.join(', ')}.`
+    )
+    return
+  }
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de rollback de integracao invalido.')
+    return
+  }
+
+  const reason = validateRequiredNonEmptyString(req.body, 'reason')
+  if (!reason) {
+    respondValidationError(res, 'Campo reason obrigatorio.')
+    return
+  }
+
+  const note = validateOptionalString(req.body, 'note')
+  if (!note.valid) {
+    respondValidationError(res, 'Campo note invalido.')
+    return
+  }
+
+  next()
+}
+
 export const validateAdminAssistedSessionRequestContract = (
   req: Request,
   res: Response,
