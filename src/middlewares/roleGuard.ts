@@ -4,6 +4,13 @@ import { UserRole } from '../models/User'
 import { AdminScope, canAdminUseScope, isAdminWriteScope } from '../admin/permissions'
 import { adminScopeDelegationService } from '../services/adminScopeDelegation.service'
 
+type BrandPortalPermission = 'read' | 'write'
+
+const BRAND_PORTAL_ROLE_MATRIX: Record<BrandPortalPermission, UserRole[]> = {
+  read: ['brand_manager', 'admin'],
+  write: ['brand_manager', 'admin'],
+}
+
 /**
  * Middleware para verificar se o utilizador tem uma das roles permitidas
  */
@@ -88,6 +95,15 @@ export const requireCreator = requireRole('creator', 'admin')
  * Middleware específico para premium
  */
 export const requirePremium = requireRole('premium', 'creator', 'admin')
+
+/**
+ * Middleware especifico para matriz de permissoes do brand portal.
+ */
+export const requireBrandPortalPermission = (permission: BrandPortalPermission) =>
+  requireRole(...BRAND_PORTAL_ROLE_MATRIX[permission])
+
+export const requireBrandPortalRead = requireBrandPortalPermission('read')
+export const requireBrandPortalWrite = requireBrandPortalPermission('write')
 
 /**
  * Middleware para garantir que o email da conta esta verificado.

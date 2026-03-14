@@ -260,6 +260,7 @@ const toRole = (value: unknown): UserRole | undefined => {
     value === 'free' ||
     value === 'premium' ||
     value === 'creator' ||
+    value === 'brand_manager' ||
     value === 'admin'
   ) {
     return value

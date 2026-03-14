@@ -365,6 +365,7 @@ const emptyRoleDistribution = (): Record<UserRole, number> => ({
   free: 0,
   premium: 0,
   creator: 0,
+  brand_manager: 0,
   admin: 0,
 })
 

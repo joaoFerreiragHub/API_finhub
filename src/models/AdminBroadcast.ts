@@ -121,7 +121,7 @@ const AdminBroadcastSchema = new Schema<IAdminBroadcast>(
     segment: {
       roles: {
         type: [String],
-        enum: ['visitor', 'free', 'premium', 'creator', 'admin'],
+        enum: ['visitor', 'free', 'premium', 'creator', 'brand_manager', 'admin'],
         default: [],
       },
       accountStatuses: {

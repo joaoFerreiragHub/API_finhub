@@ -16,7 +16,14 @@ import { logControllerError } from '../utils/domainLogger'
 
 const CONTROLLER_DOMAIN = 'admin_user_controller'
 
-const VALID_USER_ROLES = new Set<UserRole>(['visitor', 'free', 'premium', 'creator', 'admin'])
+const VALID_USER_ROLES = new Set<UserRole>([
+  'visitor',
+  'free',
+  'premium',
+  'creator',
+  'brand_manager',
+  'admin',
+])
 const VALID_ACCOUNT_STATUSES = new Set<UserAccountStatus>(['active', 'suspended', 'banned'])
 const VALID_SORT_FIELDS = new Set<AdminUserSortField>([
   'createdAt',

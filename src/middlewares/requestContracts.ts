@@ -22,7 +22,7 @@ type ContentAccessPolicyCategory =
 type ContentAccessPolicyRequiredRole = 'free' | 'premium'
 type ModerationAppealStatus = 'open' | 'under_review' | 'accepted' | 'rejected' | 'closed'
 type SubscriptionBillingCycle = 'monthly' | 'annual' | 'lifetime' | 'custom'
-type AdminBroadcastRole = 'visitor' | 'free' | 'premium' | 'creator' | 'admin'
+type AdminBroadcastRole = 'visitor' | 'free' | 'premium' | 'creator' | 'brand_manager' | 'admin'
 type AdminBroadcastAccountStatus = 'active' | 'suspended' | 'banned'
 type AdminBroadcastChannel = 'in_app'
 type AdPartnershipType = 'external_ads' | 'sponsored_ads' | 'house_ads' | 'value_ads'
@@ -127,6 +127,7 @@ const ADMIN_BROADCAST_ROLES: readonly AdminBroadcastRole[] = [
   'free',
   'premium',
   'creator',
+  'brand_manager',
   'admin',
 ]
 const ADMIN_BROADCAST_ACCOUNT_STATUSES: readonly AdminBroadcastAccountStatus[] = [

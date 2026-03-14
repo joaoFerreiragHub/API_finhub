@@ -10,7 +10,7 @@ import { Notification } from '../models/Notification'
 import { User, UserAccountStatus, UserRole } from '../models/User'
 import { resolvePagination } from '../utils/pagination'
 
-const VALID_ROLES: UserRole[] = ['visitor', 'free', 'premium', 'creator', 'admin']
+const VALID_ROLES: UserRole[] = ['visitor', 'free', 'premium', 'creator', 'brand_manager', 'admin']
 const VALID_ACCOUNT_STATUSES: UserAccountStatus[] = ['active', 'suspended', 'banned']
 const VALID_STATUSES: AdminBroadcastStatus[] = ['draft', 'approved', 'sent', 'failed', 'canceled']
 const VALID_CHANNELS: AdminBroadcastChannel[] = ['in_app']

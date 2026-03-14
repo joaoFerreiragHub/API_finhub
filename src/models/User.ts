@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose'
 import bcrypt from 'bcryptjs'
 
-export type UserRole = 'visitor' | 'free' | 'premium' | 'creator' | 'admin'
+export type UserRole = 'visitor' | 'free' | 'premium' | 'creator' | 'brand_manager' | 'admin'
 export type UserAccountStatus = 'active' | 'suspended' | 'banned'
 export type CreatorOperationalAction =
   | 'set_cooldown'
@@ -130,7 +130,7 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['visitor', 'free', 'premium', 'creator', 'admin'],
+      enum: ['visitor', 'free', 'premium', 'creator', 'brand_manager', 'admin'],
       default: 'free',
     },
     adminScopes: {

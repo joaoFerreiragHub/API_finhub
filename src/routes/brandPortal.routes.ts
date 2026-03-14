@@ -27,6 +27,7 @@ import {
 } from '../controllers/brandPortalIntegration.controller'
 import { authenticate } from '../middlewares/auth'
 import { rateLimiter } from '../middlewares/rateLimiter'
+import { requireBrandPortalRead, requireBrandPortalWrite } from '../middlewares/roleGuard'
 import {
   validateBrandPortalAffiliateLinkClicksContract,
   validateBrandPortalAffiliateLinkCreateContract,
@@ -59,6 +60,7 @@ const router = Router()
 router.get(
   '/overview',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalOverviewContract,
   getBrandPortalOverview
@@ -72,6 +74,7 @@ router.get(
 router.get(
   '/directories',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalDirectoriesContract,
   listBrandPortalDirectories
@@ -85,6 +88,7 @@ router.get(
 router.get(
   '/wallets',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalWalletListContract,
   listBrandPortalWallets
@@ -98,6 +102,7 @@ router.get(
 router.get(
   '/wallets/:directoryEntryId',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalWalletDetailContract,
   getBrandPortalWallet
@@ -111,6 +116,7 @@ router.get(
 router.get(
   '/wallets/:directoryEntryId/transactions',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalWalletTransactionsContract,
   listBrandPortalWalletTransactions
@@ -124,6 +130,7 @@ router.get(
 router.post(
   '/wallets/:directoryEntryId/top-up-requests',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalWalletTopUpRequestContract,
   requestBrandPortalWalletTopUp
@@ -137,6 +144,7 @@ router.post(
 router.get(
   '/campaigns',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalCampaignListContract,
   listBrandPortalCampaigns
@@ -150,6 +158,7 @@ router.get(
 router.post(
   '/campaigns',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalCampaignCreateContract,
   createBrandPortalCampaign
@@ -160,7 +169,13 @@ router.post(
  * @desc    Obter campanha self-service da marca
  * @access  Private
  */
-router.get('/campaigns/:campaignId', authenticate, getBrandPortalCampaign)
+router.get(
+  '/campaigns/:campaignId',
+  authenticate,
+  requireBrandPortalRead,
+  rateLimiter.api,
+  getBrandPortalCampaign
+)
 
 /**
  * @route   PATCH /api/brand-portal/campaigns/:campaignId
@@ -170,6 +185,7 @@ router.get('/campaigns/:campaignId', authenticate, getBrandPortalCampaign)
 router.patch(
   '/campaigns/:campaignId',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalCampaignUpdateContract,
   updateBrandPortalCampaign
@@ -183,6 +199,7 @@ router.patch(
 router.post(
   '/campaigns/:campaignId/submit-approval',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalCampaignSubmitApprovalContract,
   submitBrandPortalCampaignForApproval
@@ -196,6 +213,7 @@ router.post(
 router.get(
   '/campaigns/:campaignId/metrics',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalCampaignMetricsContract,
   getBrandPortalCampaignMetrics
@@ -209,6 +227,7 @@ router.get(
 router.get(
   '/affiliate-links',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalAffiliateLinkListContract,
   listBrandPortalAffiliateLinks
@@ -222,6 +241,7 @@ router.get(
 router.post(
   '/affiliate-links',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalAffiliateLinkCreateContract,
   createBrandPortalAffiliateLink
@@ -235,6 +255,7 @@ router.post(
 router.patch(
   '/affiliate-links/:linkId',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalAffiliateLinkUpdateContract,
   updateBrandPortalAffiliateLink
@@ -248,6 +269,7 @@ router.patch(
 router.get(
   '/affiliate-links/:linkId/clicks',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalAffiliateLinkClicksContract,
   listBrandPortalAffiliateLinkClicks
@@ -261,6 +283,7 @@ router.get(
 router.get(
   '/integrations/api-keys',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalIntegrationApiKeyListContract,
   listBrandPortalIntegrationApiKeys
@@ -274,6 +297,7 @@ router.get(
 router.post(
   '/integrations/api-keys',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalIntegrationApiKeyCreateContract,
   createBrandPortalIntegrationApiKey
@@ -287,6 +311,7 @@ router.post(
 router.post(
   '/integrations/api-keys/:keyId/revoke',
   authenticate,
+  requireBrandPortalWrite,
   rateLimiter.api,
   validateBrandPortalIntegrationApiKeyRevokeContract,
   revokeBrandPortalIntegrationApiKey
@@ -300,6 +325,7 @@ router.post(
 router.get(
   '/integrations/api-keys/:keyId/usage',
   authenticate,
+  requireBrandPortalRead,
   rateLimiter.api,
   validateBrandPortalIntegrationApiKeyUsageContract,
   listBrandPortalIntegrationApiKeyUsage

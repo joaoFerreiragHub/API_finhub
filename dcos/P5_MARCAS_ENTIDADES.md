@@ -16,7 +16,7 @@ A plataforma ganha com isto atraves de publicidade paga, posicionamento premium,
 ## Estado atual consolidado
 
 Data desta avaliacao: 2026-03-06.
-Atualizacao de execucao: 2026-03-14 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida; hardening da API publica de diretorio com contratos de request e endpoint `GET /api/directories/categories`; frontend publico de `/recursos*` implementado com listagem/verticais/detalhe/comparador e ad serving publico ligado a `/api/ads/serve` com tracking `/api/ads/impression` + `/api/ads/click`; frontend do portal de marca/self-service entregue em `/marcas/portal` com overview, wallet, campanhas, afiliacao e integracoes de API keys).
+Atualizacao de execucao: 2026-03-14 (backend P1.1 + P1.5 + P1.6 + P2.1 + P2.2 + P2.3 + P2.5 + P2.6 + P3.1 + P3.2 + P3.3 + P3.4 + P3.5 + P3.6 + P3.7 entregue; P4.1/P4.2/P4.3/P4.4/P4.5 backend concluida; hardening da API publica de diretorio com contratos de request e endpoint `GET /api/directories/categories`; frontend publico de `/recursos*` implementado com listagem/verticais/detalhe/comparador e ad serving publico ligado a `/api/ads/serve` com tracking `/api/ads/impression` + `/api/ads/click`; frontend do portal de marca/self-service entregue em `/marcas/portal` com overview, wallet, campanhas, afiliacao e integracoes de API keys; governanca endurecida com role `brand_manager` + matriz de permissoes no backend + cobertura de `/marcas/portal` no gate E2E critico/release).
 
 ---
 
@@ -432,9 +432,11 @@ POST /api/ads/click       { token: string }
 - Afiliacao com criacao/edicao de links e consulta de cliques
 - Integracoes com API keys (listar, criar, revogar, usage)
 
-**Melhorias futuras (nao bloqueantes):**
-
-**Roles necessarios:** formalizar role dedicada `brand_manager` (atual: ownership por `DirectoryEntry.ownerUser` + auth base).
+**Governanca entregue (2026-03-14):**
+- Role dedicada `brand_manager` adicionada ao backend e frontend.
+- Matriz de permissao do portal aplicada no backend (`read/write` permitido apenas para `brand_manager` e `admin`).
+- Rota frontend `/marcas/portal` restringida a `brand_manager`/`admin` e atalho no header condicionado por role.
+- Gate E2E critico/release atualizado com cobertura dedicada para `/marcas/portal`.
 
 **Dashboard de marca:**
 - Perfil da marca (editar info, logo, descricao)
@@ -672,7 +674,7 @@ Seguir o padrao dos content controllers existentes:
 
 ### Riscos
 - **Residuos do legado Brand**: ainda existem referencias internas a limpar apos migracoes aplicadas por ambiente
-- **Governanca de acesso do portal**: falta role dedicada `brand_manager` com politica final de permissao/backoffice
-- **Cobertura E2E do portal**: falta incorporar `/marcas/portal` no gate E2E critico/release
+- **Governanca de acesso do portal**: FECHADO (2026-03-14) com role `brand_manager` + matriz `read/write` no backend + restricao de rota no frontend
+- **Cobertura E2E do portal**: FECHADO (2026-03-14) com `release.flows.o3.spec.ts` no gate `test:e2e:critical`/`test:e2e:release`
 - **Validacoes live-only**: integracoes com chaves/ids reais continuam no trilho de pre-release T-1/T-0
 
