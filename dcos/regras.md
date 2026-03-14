@@ -25,15 +25,16 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-14
 
-- Estado git: `API_finhub/main` com control plane de integracoes evoluido (health + rollback + historico) e `FinHub-Vite/master` com painel admin estruturado para gerir analytics/captcha/SEO sem editar JSON manual por defeito.
-- Ultimo commit backend funcional: `0aa8339` (`feat(platform-integrations): add health status and rollback control plane`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `4daece1` (`feat(admin-integrations): add health checks, rollback and structured config editors`).
+- Estado git: `API_finhub/main` com alertas operacionais internos ligados ao health do control plane de integracoes e `FinHub-Vite/master` com dashboard/admin alerts preparado para o novo tipo de alerta.
+- Ultimo commit backend funcional: `c28fd0a` (`feat(admin-alerts): surface degraded integration health in operational alerts`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `65f56f9` (`feat(admin-alerts): add integration health degraded alert type`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
   - control plane de integracoes agora inclui health-check operacional por integracao (`ok|warning|error` + issues) no backend e UI admin;
   - rollback da ultima versao por integracao entregue com endpoint dedicado (`POST /api/admin/platform/integrations/:integrationKey/rollback`) e historico circular;
   - painel admin de integracoes ganhou editor estruturado para SEO/analytics/captcha com opcao de JSON avancado e toggle para mostrar/ocultar IDs/chaves;
+  - dashboard de alertas internos agora sinaliza integracoes degradadas (`platform_integration_health_degraded`) quando o health estiver em `warning`/`error`;
   - gate E2E critico/release manteve baseline em green apos o incremento;
   - validacoes executadas neste ciclo: backend `npm run typecheck`; frontend `yarn typecheck:p1`, `yarn lint`, `yarn test:e2e:critical`.
 - Proximo passo recomendado:
