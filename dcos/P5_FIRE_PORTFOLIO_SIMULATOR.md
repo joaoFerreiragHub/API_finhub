@@ -4,7 +4,7 @@ Data base: 2026-03-07
 Atualizacao execucao: 2026-03-15
 Estado: em_curso
 
-## Atualizacao de execucao (backend + frontend MVP)
+## Atualizacao de execucao (backend + frontend)
 
 Entregue neste ciclo:
 
@@ -27,11 +27,15 @@ Entregue neste ciclo:
 7. simulacao Monte Carlo v1 no backend:
    - `simulate` passa a aceitar `monteCarlo` com `enabled`, `scenario` e `simulations`;
    - resposta devolve `monteCarlo.successProbabilityPct`, percentis (meses/anos/valor final) e curva anual de probabilidade por horizonte.
+8. frontend FIRE do simulador evoluiu com camada visual para `whatIf` e `monteCarlo`:
+   - comparacao visual baseline vs ajustado para tempo ate FIRE, valor final projetado e rendimento passivo;
+   - painel Monte Carlo com destaque de `successProbabilityPct`, narrativa de probabilidade por horizonte e percentis `P10/P50/P90`;
+   - curva de probabilidade por horizonte no `/ferramentas/fire/simulador` com grafico de linha (anos vs probabilidade).
 
 Fora deste ciclo (proximas iteracoes):
 
-1. expandir frontend FIRE com graficos ricos, import/export e fluxo what-if dedicado;
-2. otimizar Monte Carlo para execucao async/cache e permitir stress tests multi-choque no frontend.
+1. expandir frontend FIRE com import/export de carteiras e cenarios guardados para comparacoes recorrentes;
+2. otimizar Monte Carlo para execucao async/cache e validar latencia em portfolios maiores.
 
 
 ## Visao

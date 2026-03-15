@@ -25,9 +25,9 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 Ultima atualizacao: 2026-03-15
 
-- Estado git: `API_finhub/main` com P5-FIRE evoluido no backend para calibracao historica + camada what-if + Monte Carlo no simulador (alteracoes locais ainda sem commit); `FinHub-Vite/master` mantem camada `/ferramentas/fire/*` ligada aos endpoints autenticados `/api/portfolio`.
+- Estado git: `API_finhub/main` em fecho documental do ciclo P5-FIRE frontend visual (what-if + Monte Carlo); `FinHub-Vite/master` com simulador FIRE atualizado em `/ferramentas/fire/simulador` e push concluido.
 - Ultimo commit backend funcional (API_finhub/main): `bbca1f5` (`feat(p5-fire): add historical calibration to portfolio simulation`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `f5bb20d` (`feat(p5-fire): add frontend fire tool routes and portfolio simulator flows`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `241abc3` (`feat(p5-fire): add whatIf and Monte Carlo visual to FIRE frontend`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
@@ -41,13 +41,14 @@ Ultima atualizacao: 2026-03-15
   - o simulador devolve rastreabilidade de calibracao em `assumptions.historicalCalibration` (source, contagem de holdings calibrados, itens e motivos de fallback);
   - `POST /api/portfolio/:id/simulate` agora aceita `whatIf` (`contributionDelta`, `annualReturnShock`, `inflationShock`, `scenario`) e devolve comparativo `baseline` vs `adjusted` com `delta`;
   - `POST /api/portfolio/:id/simulate` agora aceita `monteCarlo` (`enabled`, `scenario`, `simulations`) e devolve `successProbabilityPct`, percentis e curva anual de probabilidade por horizonte;
+  - frontend FIRE ganhou comparacao visual `whatIf` (baseline vs ajustado) e painel Monte Carlo com curva de probabilidade por horizonte + percentis `P10/P50/P90`;
   - runbook consolidado de pre-release recebeu pendencia explicita para saneamento do `tsconfig.app.json` no frontend (gate T-1/T-0);
-  - validacoes executadas neste ciclo no backend: `npm run typecheck`, `npm run test:docs:smoke`;
-  - tentativa de `cmd /c npx tsc --noEmit --pretty false -p tsconfig.app.json` permanece com falhas pre-existentes fora do escopo FIRE; limitacao mantida documentada e tratada no runbook pre-release.
+  - validacoes executadas neste ciclo: backend `npm run typecheck`, backend `npm run test:docs:smoke`, frontend `npx tsc --noEmit --project tsconfig.app.json`;
+  - o `tsc` do frontend continua com falhas pre-existentes fora do escopo FIRE (admin/auth e configuracao de includes), sem novos erros no ficheiro FIRE alterado.
 - Proximo passo recomendado:
-  - ligar no frontend FIRE os novos blocos `whatIf` e `monteCarlo` com comparacao visual (baseline vs ajustado + probabilidade por horizonte);
   - endurecer Monte Carlo para execucao async/cache e validar latencia com portfolios maiores;
-  - depois do bloco FIRE, seguir para o proximo P5 funcional em backlog tecnico, mantendo release/pre-release apenas no runbook consolidado.
+  - avaliar extensao do simulador FIRE com cenarios guardados/import-export para analise recorrente;
+  - seguir para os bugs P2 pendentes (`crypto market cap`, `ETF overlap disclaimer`, `watchlist batching`) apos validacao final deste ciclo.
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
