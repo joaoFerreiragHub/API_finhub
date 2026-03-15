@@ -1,22 +1,27 @@
 # P5 — FIRE Portfolio Simulator: Especificacao Tecnica
 
 Data base: 2026-03-07
-Atualizacao execucao: 2026-03-14
+Atualizacao execucao: 2026-03-15
 Estado: em_curso
 
-## Atualizacao de execucao (backend MVP)
+## Atualizacao de execucao (backend + frontend MVP)
 
 Entregue neste ciclo:
 
 1. novos modelos `Portfolio` e `PortfolioHolding`;
 2. nova API autenticada `/api/portfolio` com CRUD de portfolio e holdings;
 3. endpoint de simulacao inicial `POST /api/portfolio/:id/simulate` com cenarios `optimistic|base|conservative|bear`.
+4. frontend FIRE em `FinHub-Vite` ligado aos endpoints acima:
+   - novas rotas `/ferramentas/fire`, `/ferramentas/fire/portfolio`, `/ferramentas/fire/simulador`, `/ferramentas/fire/dashboard`;
+   - pagina de portfolio com CRUD de portfolio e holdings;
+   - pagina de simulador com execucao de cenarios e leitura de timeline/sugestoes;
+   - dashboard FIRE com KPIs de progresso e alocacao por tipo de ativo.
 
 Fora deste ciclo (proximas iteracoes):
 
 1. integracao de dados historicos reais por ativo para calibrar volatilidade/cagr;
 2. simulacao Monte Carlo e cenarios avancados;
-3. camada frontend dedicada (`/ferramentas/fire/*`).
+3. expandir frontend FIRE com graficos ricos, import/export e fluxo what-if dedicado.
 
 
 ## Visao

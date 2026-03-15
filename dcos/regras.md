@@ -23,11 +23,11 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 ## Checkpoint de Retoma (ATUALIZAR EM TODO O FECHO)
 
-Ultima atualizacao: 2026-03-14
+Ultima atualizacao: 2026-03-15
 
-- Estado git: `API_finhub/main` com `audiotira_04` focada em execucao tecnica (nao-live), trilho release/pre-release em runbook dedicado e P5-FIRE iniciado no backend via `/api/portfolio`; `FinHub-Vite/master` com dashboard/admin alerts preparado para o novo tipo de alerta.
-- Ultimo commit backend (ciclo atual): `c9f5dad` (`feat(p5-fire): add portfolio API mvp and split dev execution from release gates`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `65f56f9` (`feat(admin-alerts): add integration health degraded alert type`).
+- Estado git: `API_finhub/main` com trilho P5-FIRE atualizado em docs para refletir backend+frontend MVP; `FinHub-Vite/master` com camada `/ferramentas/fire/*` ligada aos endpoints autenticados `/api/portfolio`.
+- Ultimo commit backend funcional (API_finhub/main): `c9f5dad` (`feat(p5-fire): add portfolio API mvp and split dev execution from release gates`).
+- Ultimo commit frontend funcional (FinHub-Vite/master): `f5bb20d` (`feat(p5-fire): add frontend fire tool routes and portfolio simulator flows`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
@@ -38,9 +38,11 @@ Ultima atualizacao: 2026-03-14
   - gates e checklist de `release`/`pre-release` foram consolidados num ficheiro unico (`dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`) para execucao T-1/T-0 e Go/No-Go final;
   - `audiotira_04` foi simplificada para backlog tecnico de desenvolvimento e manteve rastreio de P4/P5 sem gates live no corpo principal;
   - P5-FIRE entrou em `em_curso` com MVP backend entregue: modelos `Portfolio`/`PortfolioHolding`, CRUD autenticado de portfolio e holdings, e simulacao inicial por cenario em `POST /api/portfolio/:id/simulate`;
-  - validacoes executadas neste ciclo: `npm run typecheck`, `npm run test:docs:smoke`, `npm run test:contracts:routes`.
+  - P5-FIRE evoluiu com frontend dedicado em `FinHub-Vite`: rotas `/ferramentas/fire/*`, pagina de portfolio (CRUD portfolio+holdings), simulador de cenarios e dashboard inicial;
+  - validacoes executadas neste ciclo no frontend: `cmd /c yarn.cmd typecheck:p1`, `cmd /c npx eslint src/features/fire src/router.tsx src/features/tools/pages/ToolsHubPage.tsx`, `cmd /c yarn.cmd build`;
+  - tentativa de `cmd /c npx tsc --noEmit --pretty false -p tsconfig.app.json` permanece com falhas pre-existentes fora do escopo FIRE; limitacao documentada e nao usada como gate deste ponto.
 - Proximo passo recomendado:
-  - continuar P5-FIRE no escopo dev com calibracao de dados de mercado (returns/yields historicos) e camada frontend `/ferramentas/fire/*`;
+  - continuar P5-FIRE no escopo dev com calibracao de dados historicos por ativo (returns/yields/volatilidade) e enriquecer o simulador com what-if e graficos;
   - depois do bloco FIRE, seguir para o proximo P5 funcional em backlog tecnico, mantendo release/pre-release apenas no runbook consolidado.
 
 Regra operacional obrigatoria deste bloco:
