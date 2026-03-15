@@ -28,6 +28,7 @@ Ultima atualizacao: 2026-03-15
 - Estado git: `API_finhub/main` em fecho documental do ciclo P5-FIRE frontend visual (what-if + Monte Carlo); `FinHub-Vite/master` com simulador FIRE atualizado em `/ferramentas/fire/simulador` e push concluido.
 - Ultimo commit backend funcional (API_finhub/main): `bbca1f5` (`feat(p5-fire): add historical calibration to portfolio simulation`).
 - Ultimo commit frontend funcional (FinHub-Vite/master): `241abc3` (`feat(p5-fire): add whatIf and Monte Carlo visual to FIRE frontend`).
+- Commit documental deste ciclo (API_finhub/main): `0cced85` (`docs(p5-fire): record frontend whatif and montecarlo visual rollout`).
 - Onde ficamos:
   - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
   - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;

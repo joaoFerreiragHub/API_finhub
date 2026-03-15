@@ -25,7 +25,7 @@ Validacoes executadas:
 
 Commit hash:
 - Frontend (FinHub-Vite): `241abc3`
-- Backend/docs (API_finhub): `PENDING`
+- Backend/docs (API_finhub): `0cced85`
 
 Proximo passo:
 - Validar visualmente o simulador FIRE em light/dark com dados reais de portfolio e seguir para os 3 bugs criticos P2 apos aprovacao.
