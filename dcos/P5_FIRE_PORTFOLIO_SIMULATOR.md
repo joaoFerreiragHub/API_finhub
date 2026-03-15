@@ -16,12 +16,15 @@ Entregue neste ciclo:
    - pagina de portfolio com CRUD de portfolio e holdings;
    - pagina de simulador com execucao de cenarios e leitura de timeline/sugestoes;
    - dashboard FIRE com KPIs de progresso e alocacao por tipo de ativo.
+5. calibracao historica inicial no backend de simulacao:
+   - `simulate` passa a aceitar `useHistoricalCalibration` e `historicalLookbackMonths`;
+   - retorno/yield/volatilidade por ativo sao calibrados via historico FMP (`historical-price-eod/full` + `dividends`) com fallback seguro;
+   - metadados de calibracao passam a ser devolvidos em `assumptions.historicalCalibration` para rastreabilidade.
 
 Fora deste ciclo (proximas iteracoes):
 
-1. integracao de dados historicos reais por ativo para calibrar volatilidade/cagr;
-2. simulacao Monte Carlo e cenarios avancados;
-3. expandir frontend FIRE com graficos ricos, import/export e fluxo what-if dedicado.
+1. simulacao Monte Carlo e cenarios avancados;
+2. expandir frontend FIRE com graficos ricos, import/export e fluxo what-if dedicado.
 
 
 ## Visao

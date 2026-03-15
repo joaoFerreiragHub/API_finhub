@@ -83,6 +83,12 @@ Regra: segredos continuam em `env/secret manager`; painel admin so gere configur
 | Integrations control plane | health sintatico + rollback versionado ativos | validar conectividade real com providers e alertas operacionais |
 | Analytics control plane | integracao tecnica FE/BE fechada | validar key/host reais em ambiente live |
 
+### 3.4) Pendencia tecnica registada para janela pre-release
+
+| Item | Estado atual | Acao no T-1/T-0 |
+|---|---|---|
+| TypeScript FE (`tsconfig.app.json`) | `cmd /c npx tsc --noEmit --pretty false -p tsconfig.app.json` com falhas pre-existentes fora do escopo FIRE | executar trilho dedicado de saneamento TS no frontend e anexar evidencia de execucao green antes do Go/No-Go |
+
 ## 4) Template de evidencia (usar no dia de pre-release)
 
 Preencher para cada gate executado:

@@ -253,3 +253,4 @@ Integracao CI/CD:
 - 2026-03-14: `audiotira_04` passou a focar execucao tecnica (nao-live), com trilho release/pre-release separado no runbook consolidado.
 - 2026-03-14: P5-FIRE iniciado no backend com MVP de portfolio (`/api/portfolio`) incluindo CRUD, holdings e simulacao base de cenarios FIRE.
 - 2026-03-15: P5-FIRE evoluiu com frontend MVP em `FinHub-Vite` (`/ferramentas/fire/*`) ligado a `/api/portfolio`, cobrindo CRUD de portfolio/holdings, simulador por cenarios e dashboard inicial de progresso.
+- 2026-03-15: P5-FIRE evoluiu no backend com calibracao historica por ativo (retorno/yield/volatilidade) no `POST /api/portfolio/:id/simulate`, incluindo fallback seguro e metadados de calibracao em `assumptions.historicalCalibration`.

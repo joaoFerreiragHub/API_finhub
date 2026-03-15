@@ -1,7 +1,16 @@
+import axios from 'axios'
 import mongoose from 'mongoose'
 import { Portfolio, PortfolioCurrency, PortfolioFireTargetMethod } from '../models/Portfolio'
 import { PortfolioAssetType, PortfolioHolding } from '../models/PortfolioHolding'
 import { resolvePagination } from '../utils/pagination'
+
+const FMP_STABLE = 'https://financialmodelingprep.com/stable'
+const FMP_API_KEY = process.env.FMP_API_KEY
+const HISTORICAL_CALIBRATION_TIMEOUT_MS = 10000
+const DEFAULT_HISTORICAL_LOOKBACK_MONTHS = 36
+const MIN_HISTORICAL_LOOKBACK_MONTHS = 6
+const MAX_HISTORICAL_LOOKBACK_MONTHS = 120
+const MIN_HISTORICAL_RETURN_SAMPLES = 6
 
 const SUPPORTED_CURRENCIES: readonly PortfolioCurrency[] = ['EUR', 'USD', 'GBP']
 const SUPPORTED_ASSET_TYPES: readonly PortfolioAssetType[] = [
@@ -23,14 +32,15 @@ type SimulationScenario = (typeof SUPPORTED_SCENARIOS)[number]
 
 interface ScenarioPreset {
   returnMultiplier: number
+  volatilityPenalty: number
   inflationOverride?: number
 }
 
 const SCENARIO_PRESETS: Record<SimulationScenario, ScenarioPreset> = {
-  optimistic: { returnMultiplier: 1.2, inflationOverride: 0.015 },
-  base: { returnMultiplier: 1 },
-  conservative: { returnMultiplier: 0.75, inflationOverride: 0.03 },
-  bear: { returnMultiplier: 0.45, inflationOverride: 0.035 },
+  optimistic: { returnMultiplier: 1.2, volatilityPenalty: 0.05, inflationOverride: 0.015 },
+  base: { returnMultiplier: 1, volatilityPenalty: 0.12 },
+  conservative: { returnMultiplier: 0.75, volatilityPenalty: 0.2, inflationOverride: 0.03 },
+  bear: { returnMultiplier: 0.45, volatilityPenalty: 0.32, inflationOverride: 0.035 },
 }
 
 const DEFAULT_ANNUAL_RETURN_BY_ASSET: Record<PortfolioAssetType, number> = {
@@ -48,6 +58,15 @@ const DEFAULT_DIVIDEND_YIELD_BY_ASSET: Record<PortfolioAssetType, number> = {
   reit: 0.045,
   crypto: 0,
   bond: 0.025,
+  cash: 0.01,
+}
+
+const DEFAULT_VOLATILITY_BY_ASSET: Record<PortfolioAssetType, number> = {
+  stock: 0.18,
+  etf: 0.14,
+  reit: 0.16,
+  crypto: 0.6,
+  bond: 0.07,
   cash: 0.01,
 }
 
@@ -118,6 +137,7 @@ export interface PortfolioListFilters {
 export interface PortfolioSimulationCustomOverride {
   annualReturn?: number
   dividendYield?: number
+  annualVolatility?: number
 }
 
 export interface SimulatePortfolioInput {
@@ -125,6 +145,8 @@ export interface SimulatePortfolioInput {
   maxYears?: number
   drip?: boolean
   includeInflation?: boolean
+  useHistoricalCalibration?: boolean
+  historicalLookbackMonths?: number
   customOverrides?: Record<string, PortfolioSimulationCustomOverride>
 }
 
@@ -135,7 +157,59 @@ interface HoldingState {
   price: number
   annualReturn: number
   annualDividendYield: number
+  annualVolatility: number
   allocationWeight: number
+}
+
+interface HoldingHistoricalCalibration {
+  ticker: string
+  annualReturn: number
+  annualDividendYield: number
+  annualVolatility: number
+  lookbackMonths: number
+  priceSamples: number
+  monthlyReturnSamples: number
+  dividendSamples: number
+}
+
+interface HoldingHistoricalCalibrationReportItem {
+  ticker: string
+  assetType: PortfolioAssetType
+  status: 'calibrated' | 'fallback'
+  annualReturn: number | null
+  annualDividendYield: number | null
+  annualVolatility: number | null
+  lookbackMonths: number
+  priceSamples: number
+  monthlyReturnSamples: number
+  dividendSamples: number
+  reason?: string
+}
+
+interface HistoricalCalibrationContext {
+  enabled: boolean
+  source: 'fmp_stable' | null
+  lookbackMonths: number
+  attemptedHoldings: number
+  calibratedHoldings: number
+  items: HoldingHistoricalCalibrationReportItem[]
+  byTicker: Map<string, HoldingHistoricalCalibration>
+  reason?: string
+}
+
+interface HoldingCalibrationComputationResult {
+  report: HoldingHistoricalCalibrationReportItem
+  calibration?: HoldingHistoricalCalibration
+}
+
+interface FmpHistoricalPriceRow {
+  date: string
+  close: number
+}
+
+interface FmpDividendRow {
+  date: string
+  amount: number
 }
 
 interface ScenarioSimulationResult {
@@ -221,6 +295,9 @@ const readNumber = (value: unknown): number => {
   return value
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
 const normalizeOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
@@ -270,7 +347,8 @@ const toHoldingState = (
   holdings: HoldingLeanLike[],
   overrides: Record<string, PortfolioSimulationCustomOverride>,
   scenario: SimulationScenario,
-  allocationWeights: number[]
+  allocationWeights: number[],
+  historicalCalibrationByTicker: Map<string, HoldingHistoricalCalibration>
 ): HoldingState[] => {
   const preset = SCENARIO_PRESETS[scenario]
   return holdings.map((holding, index) => {
@@ -279,16 +357,31 @@ const toHoldingState = (
       SUPPORTED_ASSET_TYPES.find((value) => value === holding.assetType) ??
       ('stock' as PortfolioAssetType)
     const override = overrides[ticker] ?? {}
+    const calibration = historicalCalibrationByTicker.get(ticker)
     const baseAnnualReturn =
       typeof override.annualReturn === 'number'
         ? override.annualReturn
+        : calibration?.annualReturn !== undefined
+        ? calibration.annualReturn
         : typeof holding.totalReturnCAGR === 'number'
         ? readNumber(holding.totalReturnCAGR)
         : DEFAULT_ANNUAL_RETURN_BY_ASSET[assetType]
-    const adjustedAnnualReturn = clamp(baseAnnualReturn * preset.returnMultiplier, -0.9, 2)
+    const annualVolatility =
+      typeof override.annualVolatility === 'number'
+        ? clamp(readNumber(override.annualVolatility), 0, 1.2)
+        : calibration?.annualVolatility !== undefined
+        ? clamp(calibration.annualVolatility, 0, 1.2)
+        : DEFAULT_VOLATILITY_BY_ASSET[assetType]
+    const adjustedAnnualReturn = clamp(
+      baseAnnualReturn * preset.returnMultiplier - annualVolatility * preset.volatilityPenalty,
+      -0.95,
+      2
+    )
     const annualDividendYield =
       typeof override.dividendYield === 'number'
         ? clamp(override.dividendYield, 0, 1)
+        : calibration?.annualDividendYield !== undefined
+        ? clamp(calibration.annualDividendYield, 0, 1)
         : typeof holding.dividendYield === 'number'
         ? clamp(readNumber(holding.dividendYield), 0, 1)
         : DEFAULT_DIVIDEND_YIELD_BY_ASSET[assetType]
@@ -302,6 +395,7 @@ const toHoldingState = (
       price,
       annualReturn: adjustedAnnualReturn,
       annualDividendYield,
+      annualVolatility,
       allocationWeight: allocationWeights[index] ?? 0,
     }
   })
@@ -856,6 +950,12 @@ class PortfolioService {
     const maxMonths = maxYears * 12
     const drip = input.drip !== false
     const includeInflation = input.includeInflation !== false
+    const useHistoricalCalibration = input.useHistoricalCalibration !== false
+    const historicalLookbackMonths = clamp(
+      Math.floor(readNumber(input.historicalLookbackMonths) || DEFAULT_HISTORICAL_LOOKBACK_MONTHS),
+      MIN_HISTORICAL_LOOKBACK_MONTHS,
+      MAX_HISTORICAL_LOOKBACK_MONTHS
+    )
     const overrides = Object.entries(input.customOverrides ?? {}).reduce(
       (acc, [ticker, value]) => {
         acc[sanitizeTicker(ticker)] = value
@@ -874,9 +974,20 @@ class PortfolioService {
       inflationRate: clamp(readNumber(portfolio.fireTarget.inflationRate) || 0.02, 0, 0.2),
     }
     const allocationWeights = normalizeAllocationWeights(holdings, monthlyContribution)
+    const historicalCalibration = await this.buildHistoricalCalibrationContext({
+      holdings,
+      enabled: useHistoricalCalibration,
+      lookbackMonths: historicalLookbackMonths,
+    })
 
     const scenarioResults = scenarios.map((scenario) => {
-      const states = toHoldingState(holdings, overrides, scenario, allocationWeights)
+      const states = toHoldingState(
+        holdings,
+        overrides,
+        scenario,
+        allocationWeights,
+        historicalCalibration.byTicker
+      )
       return this.runScenarioSimulation({
         scenario,
         states,
@@ -904,6 +1015,15 @@ class PortfolioService {
         drip,
         includeInflation,
         maxYears,
+        useHistoricalCalibration: historicalCalibration.enabled,
+        historicalLookbackMonths: historicalCalibration.lookbackMonths,
+        historicalCalibration: {
+          source: historicalCalibration.source,
+          attemptedHoldings: historicalCalibration.attemptedHoldings,
+          calibratedHoldings: historicalCalibration.calibratedHoldings,
+          reason: historicalCalibration.reason,
+          items: historicalCalibration.items,
+        },
       },
       fireTarget: {
         method: fireTargetMethod,
@@ -964,6 +1084,390 @@ class PortfolioService {
       throw new PortfolioServiceError('Campo scenarios invalido.', 400, 'INVALID_SCENARIOS')
     }
     return sanitized
+  }
+
+  private async buildHistoricalCalibrationContext(input: {
+    holdings: HoldingLeanLike[]
+    enabled: boolean
+    lookbackMonths: number
+  }): Promise<HistoricalCalibrationContext> {
+    const normalizedHoldings = input.holdings
+      .map((holding) => {
+        const ticker = sanitizeTicker(String(holding.ticker ?? ''))
+        if (!ticker) return null
+
+        const assetType =
+          SUPPORTED_ASSET_TYPES.find((value) => value === holding.assetType) ??
+          ('stock' as PortfolioAssetType)
+        const fallbackPrice = Math.max(
+          0.0001,
+          readNumber(holding.currentPrice) || readNumber(holding.averageCost)
+        )
+        const fallbackDividendYield =
+          typeof holding.dividendYield === 'number'
+            ? clamp(readNumber(holding.dividendYield), 0, 1)
+            : DEFAULT_DIVIDEND_YIELD_BY_ASSET[assetType]
+
+        return {
+          ticker,
+          assetType,
+          fallbackPrice,
+          fallbackDividendYield,
+        }
+      })
+      .filter(
+        (item): item is {
+          ticker: string
+          assetType: PortfolioAssetType
+          fallbackPrice: number
+          fallbackDividendYield: number
+        } => item !== null
+      )
+
+    if (!input.enabled) {
+      return {
+        enabled: false,
+        source: null,
+        lookbackMonths: input.lookbackMonths,
+        attemptedHoldings: normalizedHoldings.length,
+        calibratedHoldings: 0,
+        reason: 'disabled_by_input',
+        items: normalizedHoldings.map((holding) => ({
+          ticker: holding.ticker,
+          assetType: holding.assetType,
+          status: 'fallback',
+          annualReturn: null,
+          annualDividendYield: null,
+          annualVolatility: null,
+          lookbackMonths: input.lookbackMonths,
+          priceSamples: 0,
+          monthlyReturnSamples: 0,
+          dividendSamples: 0,
+          reason: 'disabled_by_input',
+        })),
+        byTicker: new Map(),
+      }
+    }
+
+    if (!FMP_API_KEY) {
+      return {
+        enabled: false,
+        source: null,
+        lookbackMonths: input.lookbackMonths,
+        attemptedHoldings: normalizedHoldings.length,
+        calibratedHoldings: 0,
+        reason: 'missing_fmp_api_key',
+        items: normalizedHoldings.map((holding) => ({
+          ticker: holding.ticker,
+          assetType: holding.assetType,
+          status: 'fallback',
+          annualReturn: null,
+          annualDividendYield: null,
+          annualVolatility: null,
+          lookbackMonths: input.lookbackMonths,
+          priceSamples: 0,
+          monthlyReturnSamples: 0,
+          dividendSamples: 0,
+          reason: 'missing_fmp_api_key',
+        })),
+        byTicker: new Map(),
+      }
+    }
+
+    const calibrationRows = await Promise.all(
+      normalizedHoldings.map((holding) =>
+        this.calibrateHoldingFromHistory(holding, input.lookbackMonths)
+      )
+    )
+    const byTicker = new Map<string, HoldingHistoricalCalibration>()
+    calibrationRows.forEach((row) => {
+      if (row.calibration) {
+        byTicker.set(row.calibration.ticker, row.calibration)
+      }
+    })
+
+    return {
+      enabled: true,
+      source: 'fmp_stable',
+      lookbackMonths: input.lookbackMonths,
+      attemptedHoldings: normalizedHoldings.length,
+      calibratedHoldings: byTicker.size,
+      items: calibrationRows.map((row) => row.report),
+      byTicker,
+    }
+  }
+
+  private async calibrateHoldingFromHistory(
+    input: {
+      ticker: string
+      assetType: PortfolioAssetType
+      fallbackPrice: number
+      fallbackDividendYield: number
+    },
+    lookbackMonths: number
+  ): Promise<HoldingCalibrationComputationResult> {
+    if (input.assetType === 'cash') {
+      return {
+        report: {
+          ticker: input.ticker,
+          assetType: input.assetType,
+          status: 'fallback',
+          annualReturn: null,
+          annualDividendYield: null,
+          annualVolatility: null,
+          lookbackMonths,
+          priceSamples: 0,
+          monthlyReturnSamples: 0,
+          dividendSamples: 0,
+          reason: 'cash_uses_default_assumptions',
+        },
+      }
+    }
+
+    try {
+      const priceRows = await this.fetchHistoricalPriceRows(input.ticker, lookbackMonths)
+      const monthlyCloses = this.buildMonthlyCloseSeries(priceRows)
+      const monthlyReturns = this.buildMonthlyReturns(monthlyCloses)
+
+      if (monthlyReturns.length < MIN_HISTORICAL_RETURN_SAMPLES) {
+        return {
+          report: {
+            ticker: input.ticker,
+            assetType: input.assetType,
+            status: 'fallback',
+            annualReturn: null,
+            annualDividendYield: null,
+            annualVolatility: null,
+            lookbackMonths,
+            priceSamples: priceRows.length,
+            monthlyReturnSamples: monthlyReturns.length,
+            dividendSamples: 0,
+            reason: 'not_enough_price_samples',
+          },
+        }
+      }
+
+      const annualReturn = clamp(
+        this.annualizedReturnFromMonthlyReturns(monthlyReturns),
+        -0.95,
+        2
+      )
+      const annualVolatility = clamp(
+        this.annualizedVolatilityFromMonthlyReturns(monthlyReturns),
+        0,
+        1.2
+      )
+
+      const priceAnchor = monthlyCloses[monthlyCloses.length - 1] ?? input.fallbackPrice
+      const latestDate = priceRows[priceRows.length - 1]?.date
+      const dividendStats = this.shouldFetchDividendHistory(input.assetType)
+        ? await this.fetchTrailingDividendYield(input.ticker, priceAnchor, latestDate)
+        : { annualDividendYield: null, dividendSamples: 0 }
+      const annualDividendYield = clamp(
+        dividendStats.annualDividendYield ?? input.fallbackDividendYield,
+        0,
+        1
+      )
+
+      const calibration: HoldingHistoricalCalibration = {
+        ticker: input.ticker,
+        annualReturn,
+        annualDividendYield,
+        annualVolatility,
+        lookbackMonths,
+        priceSamples: priceRows.length,
+        monthlyReturnSamples: monthlyReturns.length,
+        dividendSamples: dividendStats.dividendSamples,
+      }
+
+      return {
+        calibration,
+        report: {
+          ticker: input.ticker,
+          assetType: input.assetType,
+          status: 'calibrated',
+          annualReturn: calibration.annualReturn,
+          annualDividendYield: calibration.annualDividendYield,
+          annualVolatility: calibration.annualVolatility,
+          lookbackMonths: calibration.lookbackMonths,
+          priceSamples: calibration.priceSamples,
+          monthlyReturnSamples: calibration.monthlyReturnSamples,
+          dividendSamples: calibration.dividendSamples,
+        },
+      }
+    } catch (error) {
+      console.warn('[portfolio.simulation] historical calibration failed', {
+        ticker: input.ticker,
+        reason: error instanceof Error ? error.message : 'unknown_error',
+      })
+      return {
+        report: {
+          ticker: input.ticker,
+          assetType: input.assetType,
+          status: 'fallback',
+          annualReturn: null,
+          annualDividendYield: null,
+          annualVolatility: null,
+          lookbackMonths,
+          priceSamples: 0,
+          monthlyReturnSamples: 0,
+          dividendSamples: 0,
+          reason: 'historical_fetch_failed',
+        },
+      }
+    }
+  }
+
+  private async fetchHistoricalPriceRows(
+    ticker: string,
+    lookbackMonths: number
+  ): Promise<FmpHistoricalPriceRow[]> {
+    if (!FMP_API_KEY) {
+      return []
+    }
+
+    const now = new Date()
+    const from = shiftMonths(now, -lookbackMonths)
+    const fromIso = from.toISOString().slice(0, 10)
+    const toIso = now.toISOString().slice(0, 10)
+    const url =
+      `${FMP_STABLE}/historical-price-eod/full?symbol=${encodeURIComponent(ticker)}` +
+      `&from=${fromIso}&to=${toIso}&apikey=${FMP_API_KEY}`
+
+    const response = await axios.get(url, {
+      timeout: HISTORICAL_CALIBRATION_TIMEOUT_MS,
+    })
+    const payload = response.data
+
+    const rawRows = Array.isArray(payload)
+      ? payload
+      : isRecord(payload) && Array.isArray(payload.historical)
+      ? payload.historical
+      : []
+
+    const rows = rawRows
+      .map((row) => {
+        if (!isRecord(row)) return null
+        const dateRaw = row.date
+        const closeRaw = row.close
+        const date = typeof dateRaw === 'string' ? dateRaw : ''
+        const close = Number(closeRaw)
+        if (!date || !Number.isFinite(close) || close <= 0) return null
+        return { date, close }
+      })
+      .filter((row): row is FmpHistoricalPriceRow => row !== null)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    return rows
+  }
+
+  private buildMonthlyCloseSeries(rows: FmpHistoricalPriceRow[]): number[] {
+    if (rows.length === 0) {
+      return []
+    }
+
+    const closeByMonth = new Map<string, number>()
+    rows.forEach((row) => {
+      const monthKey = row.date.slice(0, 7)
+      closeByMonth.set(monthKey, row.close)
+    })
+
+    return Array.from(closeByMonth.values()).filter((value) => value > 0)
+  }
+
+  private buildMonthlyReturns(prices: number[]): number[] {
+    const returns: number[] = []
+    for (let index = 1; index < prices.length; index += 1) {
+      const previous = prices[index - 1]
+      const current = prices[index]
+      if (previous <= 0 || current <= 0) continue
+      returns.push(current / previous - 1)
+    }
+    return returns
+  }
+
+  private annualizedReturnFromMonthlyReturns(monthlyReturns: number[]): number {
+    if (monthlyReturns.length === 0) {
+      return 0
+    }
+
+    const growthFactor = monthlyReturns.reduce((acc, value) => acc * (1 + value), 1)
+    if (growthFactor <= 0) {
+      return -0.95
+    }
+    const averageMonthlyGrowth = Math.pow(growthFactor, 1 / monthlyReturns.length)
+    return Math.pow(averageMonthlyGrowth, 12) - 1
+  }
+
+  private annualizedVolatilityFromMonthlyReturns(monthlyReturns: number[]): number {
+    if (monthlyReturns.length <= 1) {
+      return 0
+    }
+
+    const mean = monthlyReturns.reduce((sum, value) => sum + value, 0) / monthlyReturns.length
+    const variance =
+      monthlyReturns.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+      (monthlyReturns.length - 1)
+    return Math.sqrt(Math.max(variance, 0)) * Math.sqrt(12)
+  }
+
+  private shouldFetchDividendHistory(assetType: PortfolioAssetType): boolean {
+    return assetType === 'stock' || assetType === 'etf' || assetType === 'reit' || assetType === 'bond'
+  }
+
+  private async fetchTrailingDividendYield(
+    ticker: string,
+    referencePrice: number,
+    referenceDateIso?: string
+  ): Promise<{ annualDividendYield: number | null; dividendSamples: number }> {
+    if (!FMP_API_KEY || referencePrice <= 0) {
+      return { annualDividendYield: null, dividendSamples: 0 }
+    }
+
+    const url = `${FMP_STABLE}/dividends?symbol=${encodeURIComponent(ticker)}&apikey=${FMP_API_KEY}`
+    const response = await axios.get(url, {
+      timeout: HISTORICAL_CALIBRATION_TIMEOUT_MS,
+    })
+    const payload = response.data
+    const rawRows = Array.isArray(payload)
+      ? payload
+      : isRecord(payload) && Array.isArray(payload.historical)
+      ? payload.historical
+      : []
+
+    const rows = rawRows
+      .map((row) => {
+        if (!isRecord(row)) return null
+        const dateRaw = row.date
+        const amountRaw = row.adjDividend ?? row.dividend
+        const date = typeof dateRaw === 'string' ? dateRaw : ''
+        const amount = Number(amountRaw)
+        if (!date || !Number.isFinite(amount) || amount <= 0) return null
+        return { date, amount }
+      })
+      .filter((row): row is FmpDividendRow => row !== null)
+
+    if (rows.length === 0) {
+      return { annualDividendYield: null, dividendSamples: 0 }
+    }
+
+    const referenceDate = referenceDateIso ? new Date(referenceDateIso) : new Date()
+    const fromDate = new Date(referenceDate.getTime())
+    fromDate.setUTCFullYear(fromDate.getUTCFullYear() - 1)
+    const trailingRows = rows.filter((row) => {
+      const date = new Date(row.date)
+      return date >= fromDate && date <= referenceDate
+    })
+
+    const annualDividend = trailingRows.reduce((sum, row) => sum + row.amount, 0)
+    if (annualDividend <= 0) {
+      return { annualDividendYield: null, dividendSamples: trailingRows.length }
+    }
+
+    return {
+      annualDividendYield: annualDividend / referencePrice,
+      dividendSamples: trailingRows.length,
+    }
   }
 
   private runScenarioSimulation(input: {
