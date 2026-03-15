@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run typecheck:p1:*)"
+      "Bash(npm run typecheck:p1:*)",
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "Bash(tasklist)"
     ]
   }
 }
