@@ -11,6 +11,9 @@ const DEFAULT_HISTORICAL_LOOKBACK_MONTHS = 36
 const MIN_HISTORICAL_LOOKBACK_MONTHS = 6
 const MAX_HISTORICAL_LOOKBACK_MONTHS = 120
 const MIN_HISTORICAL_RETURN_SAMPLES = 6
+const DEFAULT_MONTE_CARLO_SIMULATIONS = 1000
+const MIN_MONTE_CARLO_SIMULATIONS = 100
+const MAX_MONTE_CARLO_SIMULATIONS = 5000
 
 const SUPPORTED_CURRENCIES: readonly PortfolioCurrency[] = ['EUR', 'USD', 'GBP']
 const SUPPORTED_ASSET_TYPES: readonly PortfolioAssetType[] = [
@@ -140,6 +143,20 @@ export interface PortfolioSimulationCustomOverride {
   annualVolatility?: number
 }
 
+export interface PortfolioSimulationWhatIfInput {
+  enabled?: boolean
+  scenario?: SimulationScenario
+  contributionDelta?: number
+  annualReturnShock?: number
+  inflationShock?: number
+}
+
+export interface PortfolioSimulationMonteCarloInput {
+  enabled?: boolean
+  scenario?: SimulationScenario
+  simulations?: number
+}
+
 export interface SimulatePortfolioInput {
   scenarios?: SimulationScenario[]
   maxYears?: number
@@ -148,6 +165,8 @@ export interface SimulatePortfolioInput {
   useHistoricalCalibration?: boolean
   historicalLookbackMonths?: number
   customOverrides?: Record<string, PortfolioSimulationCustomOverride>
+  whatIf?: PortfolioSimulationWhatIfInput
+  monteCarlo?: PortfolioSimulationMonteCarloInput
 }
 
 interface HoldingState {
@@ -231,6 +250,52 @@ interface ScenarioSimulationResult {
     monthlyPassiveIncome: number
     progressPct: number
   }>
+}
+
+interface MonteCarloPercentiles {
+  p10: number
+  p25: number
+  p50: number
+  p75: number
+  p90: number
+}
+
+interface MonteCarloSimulationResult {
+  enabled: boolean
+  scenario: SimulationScenario
+  simulations: number
+  achievedRuns: number
+  successProbabilityPct: number
+  monthsToFirePercentiles: MonteCarloPercentiles | null
+  yearsToFirePercentiles: MonteCarloPercentiles | null
+  finalPortfolioValuePercentiles: MonteCarloPercentiles
+  timelineSuccessProbability: Array<{
+    month: number
+    years: number
+    date: string
+    probabilityPct: number
+  }>
+}
+
+interface WhatIfSimulationResult {
+  enabled: boolean
+  scenario: SimulationScenario
+  assumptions: {
+    contributionDelta: number
+    adjustedMonthlyContribution: number
+    annualReturnShock: number
+    inflationShock: number
+  }
+  baseline: ScenarioSimulationResult
+  adjusted: ScenarioSimulationResult
+  delta: {
+    achievedChanged: boolean
+    monthsToFire: number | null
+    yearsToFire: number | null
+    finalPortfolioValue: number
+    projectedMonthlyPassiveIncome: number
+    targetAtEnd: number
+  }
 }
 
 interface SummaryByPortfolio {
@@ -320,6 +385,51 @@ const clamp = (value: number, min: number, max: number): number => {
   if (value < min) return min
   if (value > max) return max
   return value
+}
+
+const percentileFromSorted = (values: number[], percentile: number): number | null => {
+  if (values.length === 0) {
+    return null
+  }
+
+  const boundedPercentile = clamp(percentile, 0, 1)
+  const index = (values.length - 1) * boundedPercentile
+  const lowerIndex = Math.floor(index)
+  const upperIndex = Math.min(values.length - 1, lowerIndex + 1)
+  const weight = index - lowerIndex
+  const interpolated = values[lowerIndex] + (values[upperIndex] - values[lowerIndex]) * weight
+  return interpolated
+}
+
+const buildPercentiles = (values: number[]): MonteCarloPercentiles | null => {
+  if (values.length === 0) {
+    return null
+  }
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const p10 = percentileFromSorted(sorted, 0.1)
+  const p25 = percentileFromSorted(sorted, 0.25)
+  const p50 = percentileFromSorted(sorted, 0.5)
+  const p75 = percentileFromSorted(sorted, 0.75)
+  const p90 = percentileFromSorted(sorted, 0.9)
+  if (p10 === null || p25 === null || p50 === null || p75 === null || p90 === null) {
+    return null
+  }
+
+  return {
+    p10: Number(p10.toFixed(2)),
+    p25: Number(p25.toFixed(2)),
+    p50: Number(p50.toFixed(2)),
+    p75: Number(p75.toFixed(2)),
+    p90: Number(p90.toFixed(2)),
+  }
+}
+
+const sampleStandardNormal = (): number => {
+  // Box-Muller transform.
+  const u1 = Math.max(Number.EPSILON, Math.random())
+  const u2 = Math.max(Number.EPSILON, Math.random())
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
 }
 
 const normalizeAllocationWeights = (holdings: HoldingLeanLike[], monthlyContribution: number): number[] => {
@@ -974,13 +1084,43 @@ class PortfolioService {
       inflationRate: clamp(readNumber(portfolio.fireTarget.inflationRate) || 0.02, 0, 0.2),
     }
     const allocationWeights = normalizeAllocationWeights(holdings, monthlyContribution)
+    const whatIfInput: PortfolioSimulationWhatIfInput = isRecord(input.whatIf)
+      ? (input.whatIf as PortfolioSimulationWhatIfInput)
+      : {}
+    const whatIfEnabled =
+      whatIfInput.enabled === true ||
+      whatIfInput.contributionDelta !== undefined ||
+      whatIfInput.annualReturnShock !== undefined ||
+      whatIfInput.inflationShock !== undefined
+    const whatIfScenario = this.resolveSimulationScenario(whatIfInput.scenario, scenarios)
+    const whatIfContributionDelta = readNumber(whatIfInput.contributionDelta)
+    const whatIfAnnualReturnShock = clamp(readNumber(whatIfInput.annualReturnShock), -0.5, 0.5)
+    const whatIfInflationShock = clamp(readNumber(whatIfInput.inflationShock), -0.08, 0.08)
+
+    const monteCarloInput: PortfolioSimulationMonteCarloInput = isRecord(input.monteCarlo)
+      ? (input.monteCarlo as PortfolioSimulationMonteCarloInput)
+      : {}
+    const monteCarloEnabled =
+      monteCarloInput.enabled === true || monteCarloInput.simulations !== undefined
+    const monteCarloScenario = this.resolveSimulationScenario(monteCarloInput.scenario, scenarios)
+    const monteCarloSimulations = clamp(
+      Math.floor(readNumber(monteCarloInput.simulations) || DEFAULT_MONTE_CARLO_SIMULATIONS),
+      MIN_MONTE_CARLO_SIMULATIONS,
+      MAX_MONTE_CARLO_SIMULATIONS
+    )
+
     const historicalCalibration = await this.buildHistoricalCalibrationContext({
       holdings,
       enabled: useHistoricalCalibration,
       lookbackMonths: historicalLookbackMonths,
     })
 
-    const scenarioResults = scenarios.map((scenario) => {
+    const runScenario = (
+      scenario: SimulationScenario,
+      scenarioMonthlyContribution: number,
+      annualReturnShock = 0,
+      inflationShock = 0
+    ) => {
       const states = toHoldingState(
         holdings,
         overrides,
@@ -994,16 +1134,92 @@ class PortfolioService {
         maxMonths,
         drip,
         includeInflation,
+        monthlyContribution: scenarioMonthlyContribution,
+        contributionGrowthRate,
+        annualReturnShock,
+        inflationShock,
+        fireTargetMethod,
+        fireTarget,
+      })
+    }
+
+    const scenarioResults = scenarios.map((scenario) => runScenario(scenario, monthlyContribution))
+
+    const baseScenario =
+      scenarioResults.find((item) => item.scenario === 'base') ?? scenarioResults[0]
+    const suggestions = this.buildSuggestions(baseScenario, monthlyContribution)
+
+    let whatIf: WhatIfSimulationResult | null = null
+    if (whatIfEnabled) {
+      const baseline =
+        scenarioResults.find((item) => item.scenario === whatIfScenario) ??
+        runScenario(whatIfScenario, monthlyContribution)
+      const adjustedMonthlyContribution = Math.max(0, monthlyContribution + whatIfContributionDelta)
+      const adjusted = runScenario(
+        whatIfScenario,
+        adjustedMonthlyContribution,
+        whatIfAnnualReturnShock,
+        whatIfInflationShock
+      )
+      const monthsDelta =
+        baseline.monthsToFire !== null && adjusted.monthsToFire !== null
+          ? adjusted.monthsToFire - baseline.monthsToFire
+          : null
+      const yearsDelta =
+        baseline.yearsToFire !== null && adjusted.yearsToFire !== null
+          ? Number((adjusted.yearsToFire - baseline.yearsToFire).toFixed(2))
+          : null
+
+      whatIf = {
+        enabled: true,
+        scenario: whatIfScenario,
+        assumptions: {
+          contributionDelta: Number(whatIfContributionDelta.toFixed(2)),
+          adjustedMonthlyContribution: Number(adjustedMonthlyContribution.toFixed(2)),
+          annualReturnShock: Number(whatIfAnnualReturnShock.toFixed(4)),
+          inflationShock: Number(whatIfInflationShock.toFixed(4)),
+        },
+        baseline,
+        adjusted,
+        delta: {
+          achievedChanged: baseline.achieved !== adjusted.achieved,
+          monthsToFire: monthsDelta,
+          yearsToFire: yearsDelta,
+          finalPortfolioValue: Number(
+            (adjusted.finalPortfolioValue - baseline.finalPortfolioValue).toFixed(2)
+          ),
+          projectedMonthlyPassiveIncome: Number(
+            (
+              adjusted.projectedMonthlyPassiveIncome - baseline.projectedMonthlyPassiveIncome
+            ).toFixed(2)
+          ),
+          targetAtEnd: Number((adjusted.targetAtEnd - baseline.targetAtEnd).toFixed(2)),
+        },
+      }
+    }
+
+    let monteCarlo: MonteCarloSimulationResult | null = null
+    if (monteCarloEnabled) {
+      const states = toHoldingState(
+        holdings,
+        overrides,
+        monteCarloScenario,
+        allocationWeights,
+        historicalCalibration.byTicker
+      )
+      monteCarlo = this.runMonteCarloSimulation({
+        scenario: monteCarloScenario,
+        simulations: monteCarloSimulations,
+        states,
+        maxMonths,
+        drip,
+        includeInflation,
         monthlyContribution,
         contributionGrowthRate,
         fireTargetMethod,
         fireTarget,
       })
-    })
-
-    const baseScenario =
-      scenarioResults.find((item) => item.scenario === 'base') ?? scenarioResults[0]
-    const suggestions = this.buildSuggestions(baseScenario, monthlyContribution)
+    }
 
     return {
       portfolioId: String(portfolio._id),
@@ -1024,6 +1240,20 @@ class PortfolioService {
           reason: historicalCalibration.reason,
           items: historicalCalibration.items,
         },
+        whatIf: whatIf
+          ? {
+              scenario: whatIf.scenario,
+              contributionDelta: whatIf.assumptions.contributionDelta,
+              annualReturnShock: whatIf.assumptions.annualReturnShock,
+              inflationShock: whatIf.assumptions.inflationShock,
+            }
+          : null,
+        monteCarlo: monteCarlo
+          ? {
+              scenario: monteCarlo.scenario,
+              simulations: monteCarlo.simulations,
+            }
+          : null,
       },
       fireTarget: {
         method: fireTargetMethod,
@@ -1034,6 +1264,8 @@ class PortfolioService {
         inflationRate: fireTarget.inflationRate,
       },
       scenarios: scenarioResults,
+      whatIf,
+      monteCarlo,
       suggestions,
       generatedAt: new Date().toISOString(),
     }
@@ -1084,6 +1316,20 @@ class PortfolioService {
       throw new PortfolioServiceError('Campo scenarios invalido.', 400, 'INVALID_SCENARIOS')
     }
     return sanitized
+  }
+
+  private resolveSimulationScenario(
+    scenarioInput: unknown,
+    fallbackScenarios: SimulationScenario[]
+  ): SimulationScenario {
+    if (
+      typeof scenarioInput === 'string' &&
+      SUPPORTED_SCENARIOS.includes(scenarioInput as SimulationScenario)
+    ) {
+      return scenarioInput as SimulationScenario
+    }
+
+    return fallbackScenarios.find((scenario) => scenario === 'base') ?? fallbackScenarios[0] ?? 'base'
   }
 
   private async buildHistoricalCalibrationContext(input: {
@@ -1478,6 +1724,8 @@ class PortfolioService {
     includeInflation: boolean
     monthlyContribution: number
     contributionGrowthRate: number
+    annualReturnShock?: number
+    inflationShock?: number
     fireTargetMethod: PortfolioFireTargetMethod
     fireTarget: {
       monthlyExpenses: number
@@ -1489,10 +1737,13 @@ class PortfolioService {
   }): ScenarioSimulationResult {
     const startDate = new Date()
     const scenarioPreset = SCENARIO_PRESETS[input.scenario]
-    const inflationRate =
+    const annualReturnShock = clamp(readNumber(input.annualReturnShock), -0.95, 1.5)
+    const inflationShock = clamp(readNumber(input.inflationShock), -0.1, 0.1)
+    const scenarioInflationBase =
       scenarioPreset.inflationOverride !== undefined
         ? scenarioPreset.inflationOverride
         : input.fireTarget.inflationRate
+    const inflationRate = clamp(scenarioInflationBase + inflationShock, 0, 0.2)
     const states = input.states.map((state) => ({ ...state }))
     const timeline: ScenarioSimulationResult['timeline'] = []
     let totalContributed = 0
@@ -1510,7 +1761,8 @@ class PortfolioService {
       let passiveIncome = 0
 
       states.forEach((state) => {
-        const monthlyReturn = Math.pow(1 + state.annualReturn, 1 / 12) - 1
+        const effectiveAnnualReturn = clamp(state.annualReturn + annualReturnShock, -0.95, 2)
+        const monthlyReturn = Math.pow(1 + effectiveAnnualReturn, 1 / 12) - 1
         state.price = Math.max(0.0001, state.price * (1 + monthlyReturn))
         const allocation = monthlyContribution * state.allocationWeight
         if (allocation > 0) {
@@ -1578,6 +1830,146 @@ class PortfolioService {
       projectedMonthlyPassiveIncome: Number(lastPassiveIncome.toFixed(2)),
       totalContributed: Number(totalContributed.toFixed(2)),
       timeline,
+    }
+  }
+
+  private runMonteCarloSimulation(input: {
+    scenario: SimulationScenario
+    simulations: number
+    states: HoldingState[]
+    maxMonths: number
+    drip: boolean
+    includeInflation: boolean
+    monthlyContribution: number
+    contributionGrowthRate: number
+    fireTargetMethod: PortfolioFireTargetMethod
+    fireTarget: {
+      monthlyExpenses: number
+      desiredMonthlyIncome: number
+      targetAmount: number
+      withdrawalRate: number
+      inflationRate: number
+    }
+  }): MonteCarloSimulationResult {
+    const startDate = new Date()
+    const scenarioPreset = SCENARIO_PRESETS[input.scenario]
+    const baseInflationRate =
+      scenarioPreset.inflationOverride !== undefined
+        ? scenarioPreset.inflationOverride
+        : input.fireTarget.inflationRate
+    const inflationRate = clamp(baseInflationRate, 0, 0.2)
+    const fireMonthByRun: Array<number | null> = []
+    const finalPortfolioValues: number[] = []
+
+    for (let simulation = 0; simulation < input.simulations; simulation += 1) {
+      const states = input.states.map((state) => ({ ...state }))
+      let fireMonth: number | null = null
+      let lastPortfolioValue = 0
+
+      for (let month = 1; month <= input.maxMonths; month += 1) {
+        const annualContributionMultiplier = Math.pow(
+          1 + input.contributionGrowthRate,
+          Math.floor((month - 1) / 12)
+        )
+        const monthlyContribution = input.monthlyContribution * annualContributionMultiplier
+        let portfolioValue = 0
+        let passiveIncome = 0
+
+        states.forEach((state) => {
+          const expectedMonthlyReturn = Math.pow(1 + state.annualReturn, 1 / 12) - 1
+          const monthlyVolatility = clamp(state.annualVolatility, 0, 1.2) / Math.sqrt(12)
+          const stochasticReturn = expectedMonthlyReturn + sampleStandardNormal() * monthlyVolatility
+          const monthlyReturn = clamp(stochasticReturn, -0.95, 2)
+          state.price = Math.max(0.0001, state.price * (1 + monthlyReturn))
+
+          const allocation = monthlyContribution * state.allocationWeight
+          if (allocation > 0) {
+            const newShares = allocation / state.price
+            state.shares += newShares
+          }
+
+          const monthlyDividend = state.shares * state.price * (state.annualDividendYield / 12)
+          if (input.drip && monthlyDividend > 0) {
+            state.shares += monthlyDividend / state.price
+          }
+
+          const holdingValue = state.shares * state.price
+          portfolioValue += holdingValue
+          passiveIncome += holdingValue * (state.annualDividendYield / 12)
+        })
+
+        const yearsElapsed = month / 12
+        const inflationFactor = input.includeInflation ? Math.pow(1 + inflationRate, yearsElapsed) : 1
+        const targetValue = calculateFireTarget(
+          input.fireTargetMethod,
+          input.fireTarget,
+          inflationFactor
+        )
+        lastPortfolioValue = portfolioValue
+
+        const fireReached =
+          input.fireTargetMethod === 'passive_income'
+            ? passiveIncome >= targetValue
+            : portfolioValue >= targetValue
+
+        if (fireReached) {
+          fireMonth = month
+          break
+        }
+      }
+
+      fireMonthByRun.push(fireMonth)
+      finalPortfolioValues.push(Number(lastPortfolioValue.toFixed(2)))
+    }
+
+    const achievedRuns = fireMonthByRun.filter((month): month is number => month !== null).length
+    const successProbabilityPct = Number(((achievedRuns / input.simulations) * 100).toFixed(2))
+    const fireMonths = fireMonthByRun.filter((month): month is number => month !== null)
+    const monthsToFirePercentiles = buildPercentiles(fireMonths)
+    const yearsToFirePercentiles =
+      monthsToFirePercentiles === null
+        ? null
+        : {
+            p10: Number((monthsToFirePercentiles.p10 / 12).toFixed(2)),
+            p25: Number((monthsToFirePercentiles.p25 / 12).toFixed(2)),
+            p50: Number((monthsToFirePercentiles.p50 / 12).toFixed(2)),
+            p75: Number((monthsToFirePercentiles.p75 / 12).toFixed(2)),
+            p90: Number((monthsToFirePercentiles.p90 / 12).toFixed(2)),
+          }
+    const finalPortfolioValuePercentiles = buildPercentiles(finalPortfolioValues) ?? {
+      p10: 0,
+      p25: 0,
+      p50: 0,
+      p75: 0,
+      p90: 0,
+    }
+
+    const timelineSuccessProbability: MonteCarloSimulationResult['timelineSuccessProbability'] = []
+    const maxYears = Math.max(1, Math.ceil(input.maxMonths / 12))
+    for (let year = 1; year <= maxYears; year += 1) {
+      const month = Math.min(input.maxMonths, year * 12)
+      const reachedByMonth = fireMonthByRun.reduce<number>((total, fireMonth) => {
+        if (fireMonth === null) return total
+        return fireMonth <= month ? total + 1 : total
+      }, 0)
+      timelineSuccessProbability.push({
+        month,
+        years: Number((month / 12).toFixed(2)),
+        date: toIsoYearMonth(shiftMonths(startDate, month)),
+        probabilityPct: Number(((reachedByMonth / input.simulations) * 100).toFixed(2)),
+      })
+    }
+
+    return {
+      enabled: true,
+      scenario: input.scenario,
+      simulations: input.simulations,
+      achievedRuns,
+      successProbabilityPct,
+      monthsToFirePercentiles,
+      yearsToFirePercentiles,
+      finalPortfolioValuePercentiles,
+      timelineSuccessProbability,
     }
   }
 

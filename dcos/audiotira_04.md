@@ -254,3 +254,4 @@ Integracao CI/CD:
 - 2026-03-14: P5-FIRE iniciado no backend com MVP de portfolio (`/api/portfolio`) incluindo CRUD, holdings e simulacao base de cenarios FIRE.
 - 2026-03-15: P5-FIRE evoluiu com frontend MVP em `FinHub-Vite` (`/ferramentas/fire/*`) ligado a `/api/portfolio`, cobrindo CRUD de portfolio/holdings, simulador por cenarios e dashboard inicial de progresso.
 - 2026-03-15: P5-FIRE evoluiu no backend com calibracao historica por ativo (retorno/yield/volatilidade) no `POST /api/portfolio/:id/simulate`, incluindo fallback seguro e metadados de calibracao em `assumptions.historicalCalibration`.
+- 2026-03-15: P5-FIRE evoluiu no backend com camada `whatIf` (choques de contribuicao/retorno/inflacao) e simulacao `monteCarlo` no `POST /api/portfolio/:id/simulate`, devolvendo comparativo baseline/ajustado, probabilidade de atingir FIRE por horizonte e percentis de tempo/valor final.

@@ -21,10 +21,17 @@ Entregue neste ciclo:
    - retorno/yield/volatilidade por ativo sao calibrados via historico FMP (`historical-price-eod/full` + `dividends`) com fallback seguro;
    - metadados de calibracao passam a ser devolvidos em `assumptions.historicalCalibration` para rastreabilidade.
 
+6. camada what-if no backend de simulacao:
+   - `simulate` passa a aceitar `whatIf` com `contributionDelta`, `annualReturnShock`, `inflationShock` e `scenario`;
+   - resposta devolve `whatIf.baseline`, `whatIf.adjusted` e `whatIf.delta` para comparar impacto vs baseline.
+7. simulacao Monte Carlo v1 no backend:
+   - `simulate` passa a aceitar `monteCarlo` com `enabled`, `scenario` e `simulations`;
+   - resposta devolve `monteCarlo.successProbabilityPct`, percentis (meses/anos/valor final) e curva anual de probabilidade por horizonte.
+
 Fora deste ciclo (proximas iteracoes):
 
-1. simulacao Monte Carlo e cenarios avancados;
-2. expandir frontend FIRE com graficos ricos, import/export e fluxo what-if dedicado.
+1. expandir frontend FIRE com graficos ricos, import/export e fluxo what-if dedicado;
+2. otimizar Monte Carlo para execucao async/cache e permitir stress tests multi-choque no frontend.
 
 
 ## Visao
@@ -292,20 +299,29 @@ Repetir ate FIRE atingido OU horizonte maximo (ex: 40 anos)
 
 O utilizador pode tambem definir taxas customizadas por ativo.
 
-### 4.4 Monte Carlo (fase avancada)
+### 4.4 Monte Carlo (v1 backend entregue)
 
 Em vez de projecoes lineares, simular 1000+ cenarios aleatorios baseados na volatilidade historica de cada ativo:
 
 ```
 Para cada simulacao:
   Para cada mes:
-    retorno = retornoMedio + randomNormal() × volatilidade
+    retorno = retornoMedio + randomNormal() * volatilidade
 
 Resultado: percentil 10%, 25%, 50%, 75%, 90%
-→ "Ha 75% de probabilidade de atingires FIRE em 12 anos"
+-> "Ha 75% de probabilidade de atingires FIRE em 12 anos"
 ```
 
-Isto requer precos historicos (para calcular volatilidade) — fase 2.
+Estado atual:
+
+1. backend ja calcula Monte Carlo com base em volatilidade por ativo (historica quando disponivel via calibracao; fallback por tipo de ativo);
+2. endpoint devolve probabilidade de atingir FIRE no horizonte e percentis p10/p25/p50/p75/p90;
+3. output inclui timeline anual de probabilidade acumulada para facilitar visualizacao no frontend.
+
+Pendencias:
+
+1. execucao async/cache para portfolios muito grandes e corridas > 1000;
+2. camada de UX dedicada no frontend para sliders/choques com comparacao visual.
 
 ---
 
@@ -343,68 +359,66 @@ POST   /api/portfolio/:id/simulate       — correr simulacao FIRE
   "maxYears": 40,
   "drip": true,
   "includeInflation": true,
+  "useHistoricalCalibration": true,
+  "historicalLookbackMonths": 36,
   "customOverrides": {
-    "AAPL": { "annualReturn": 0.10, "dividendGrowth": 0.05 },
+    "AAPL": { "annualReturn": 0.10, "dividendYield": 0.02 },
     "BTC": { "annualReturn": 0.15 }
+  },
+  "whatIf": {
+    "enabled": true,
+    "scenario": "base",
+    "contributionDelta": 200,
+    "annualReturnShock": 0.01,
+    "inflationShock": 0.005
+  },
+  "monteCarlo": {
+    "enabled": true,
+    "scenario": "base",
+    "simulations": 1000
   }
 }
 ```
 
-**Response:**
+**Response (estrutura atual):**
 ```json
 {
-  "fireTarget": {
-    "method": "expenses",
-    "monthlyExpenses": 2000,
-    "withdrawalRate": 0.04,
-    "targetToday": 600000,
-    "targetInflationAdjusted": 720000
+  "portfolioId": "...",
+  "portfolioName": "Carteira Principal",
+  "currency": "EUR",
+  "assumptions": {
+    "monthlyContribution": 1500,
+    "historicalCalibration": { "source": "fmp_stable", "calibratedHoldings": 3 },
+    "whatIf": { "scenario": "base", "contributionDelta": 200, "annualReturnShock": 0.01, "inflationShock": 0.005 },
+    "monteCarlo": { "scenario": "base", "simulations": 1000 }
   },
-  "currentPortfolio": {
-    "totalValue": 49500,
-    "totalInvested": 45000,
-    "unrealizedGain": 4500,
-    "monthlyDividendIncome": 120,
-    "annualDividendYield": 2.9,
-    "diversification": {
-      "byType": { "stock": 35, "etf": 25, "reit": 22, "crypto": 18 },
-      "bySector": { "tech": 35, "real_estate": 22, "diversified": 25, "crypto": 18 }
-    }
+  "fireTarget": { "method": "expenses", "monthlyExpenses": 2000, "withdrawalRate": 0.04, "inflationRate": 0.02 },
+  "scenarios": [
+    { "scenario": "optimistic", "monthsToFire": 95, "timeline": [/* ... */] },
+    { "scenario": "base", "monthsToFire": 122, "timeline": [/* ... */] },
+    { "scenario": "conservative", "monthsToFire": null, "timeline": [/* ... */] }
+  ],
+  "whatIf": {
+    "enabled": true,
+    "baseline": { "scenario": "base", "monthsToFire": 122 },
+    "adjusted": { "scenario": "base", "monthsToFire": 108 },
+    "delta": { "monthsToFire": -14, "finalPortfolioValue": 82450.32 }
   },
-  "scenarios": {
-    "optimistic": {
-      "yearsToFire": 8.5,
-      "monthsToFire": 102,
-      "totalInvestedAtFire": 198000,
-      "portfolioValueAtFire": 720000,
-      "monthlyPassiveIncomeAtFire": 2400,
-      "fireDate": "2034-09",
-      "timeline": [
-        {
-          "month": 1,
-          "date": "2026-04",
-          "portfolioValue": 51200,
-          "totalInvested": 46500,
-          "monthlyDividends": 125,
-          "cumulativeDividends": 125,
-          "byAsset": {
-            "AAPL": { "shares": 51.1, "value": 9800, "dividends": 12 },
-            "VWCE": { "shares": 108.4, "value": 10500, "dividends": 0 },
-            "O": { "shares": 207.3, "value": 12100, "dividends": 85 },
-            "BTC": { "shares": 0.503, "value": 21200, "dividends": 0 }
-          }
-        }
-        // ... mes a mes ate FIRE
-      ]
-    },
-    "base": { /* ... */ },
-    "conservative": { /* ... */ }
+  "monteCarlo": {
+    "enabled": true,
+    "simulations": 1000,
+    "successProbabilityPct": 68.4,
+    "monthsToFirePercentiles": { "p10": 96, "p25": 108, "p50": 126, "p75": 149, "p90": 180 },
+    "timelineSuccessProbability": [
+      { "years": 5, "probabilityPct": 12.3 },
+      { "years": 10, "probabilityPct": 54.8 },
+      { "years": 15, "probabilityPct": 68.4 }
+    ]
   },
-  "insights": [
-    { "type": "concentration_risk", "message": "BTC representa 40% da carteira — considerar diversificar" },
-    { "type": "dividend_gap", "message": "Rendimento passivo atual (€120/mes) cobre 6% do objetivo" },
-    { "type": "fire_accelerator", "message": "Aumentar contribuicao em €200/mes reduziria 14 meses ao objetivo" }
-  ]
+  "suggestions": [
+    { "type": "fire_accelerator", "message": "Aumentar contribuicao em 200/mes pode reduzir meses ao objetivo." }
+  ],
+  "generatedAt": "2026-03-15T10:00:00.000Z"
 }
 ```
 
@@ -694,7 +708,7 @@ Facilitar a entrada de dados:
 | 2.2 | Donut de composicao (tipo, sector) | Baixo |
 | 2.3 | Insights e alertas automaticos (concentracao, yield gap) | Medio |
 | 2.4 | Milestone tracker visual | Baixo |
-| 2.5 | What-if scenarios (slider de contribuicao, crash sim) | Medio |
+| 2.5 | What-if UX dedicado no frontend (backend v1 ja entregue) | Medio |
 | 2.6 | Dividendos projetados chart (bar chart mensal) | Baixo |
 | 2.7 | Import CSV (Degiro, Trading 212) | Medio |
 | 2.8 | DRIP toggle e simulacao | Baixo |
@@ -706,7 +720,7 @@ Facilitar a entrada de dados:
 | # | Item | Esforco |
 |---|------|---------|
 | 3.1 | Precos historicos (Yahoo Finance integration) | Medio |
-| 3.2 | Monte Carlo simulation (1000 cenarios) | Alto |
+| 3.2 | Monte Carlo hardening (async/cache e stress tests, backend v1 ja entregue) | Alto |
 | 3.3 | Benchmark comparison (vs S&P 500) | Medio |
 | 3.4 | Tax impact por pais (PT, BR, US) | Medio |
 | 3.5 | Coast FIRE calculator dedicado | Baixo |

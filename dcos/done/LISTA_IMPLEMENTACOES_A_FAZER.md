@@ -1,6 +1,6 @@
 # Lista de Implementacoes a Fazer
 
-Data da ultima atualizacao: 2026-03-06
+Data da ultima atualizacao: 2026-03-15
 Objetivo: registar ideias e futuros P's ainda nao iniciados.
 
 ## Regras de uso
@@ -32,3 +32,5 @@ Objetivo: registar ideias e futuros P's ainda nao iniciados.
 | P5-COMUNIDADE | Comunidade social (many-to-many) | Discussions, reputacao, Q&A, integracao com ferramentas e criadores | Media | proposto | `dcos/P5_COMUNIDADE_SOCIAL.md` |
 | P5-CONTEXTO | Contexto de mercado e inteligencia | Market Pulse, impacto pessoal, trending, alertas contextuais, contexto em conteudo | Media | proposto | `dcos/P5_CONTEXTO_MERCADO.md` |
 | P5-ACCOUNTABILITY | Accountability e gamificacao | Objetivos pessoais, streaks, achievements, leaderboards, challenges | Media | proposto | `dcos/P5_ACCOUNTABILITY_GAMIFICACAO.md` |
+| P8-UI-UX | Elevacao UI/UX (estrategia) | Analise comparativa vs TradingView/Koyfin/Revolut + roadmap P8.0-P8.5 | Media | planeado | `dcos/P8_UI_UX_ELEVACAO.md` |
+| P8-UI-UX-IMPL | Elevacao UI/UX (implementacao tecnica) | Spec de execucao com substituicoes exactas de codigo por ficheiro e fase | Media | planeado | `dcos/P8_UI_UX_IMPLEMENTACAO_TECNICA.md` |
