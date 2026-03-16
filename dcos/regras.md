@@ -42,12 +42,13 @@ Ultima atualizacao: 2026-03-15
   - o simulador devolve rastreabilidade de calibracao em `assumptions.historicalCalibration` (source, contagem de holdings calibrados, itens e motivos de fallback);
   - `POST /api/portfolio/:id/simulate` agora aceita `whatIf` (`contributionDelta`, `annualReturnShock`, `inflationShock`, `scenario`) e devolve comparativo `baseline` vs `adjusted` com `delta`;
   - `POST /api/portfolio/:id/simulate` agora aceita `monteCarlo` (`enabled`, `scenario`, `simulations`) e devolve `successProbabilityPct`, percentis e curva anual de probabilidade por horizonte;
+  - Monte Carlo no backend foi endurecido com cache in-memory de curta duracao para pedidos identicos e execucao cooperativa (yield periodico ao event loop) para reduzir bloqueio em corridas maiores;
   - frontend FIRE ganhou comparacao visual `whatIf` (baseline vs ajustado) e painel Monte Carlo com curva de probabilidade por horizonte + percentis `P10/P50/P90`;
   - runbook consolidado de pre-release recebeu pendencia explicita para saneamento do `tsconfig.app.json` no frontend (gate T-1/T-0);
   - validacoes executadas neste ciclo: backend `npm run typecheck`, backend `npm run test:docs:smoke`, frontend `npx tsc --noEmit --project tsconfig.app.json`;
   - o `tsc` do frontend continua com falhas pre-existentes fora do escopo FIRE (admin/auth e configuracao de includes), sem novos erros no ficheiro FIRE alterado.
 - Proximo passo recomendado:
-  - endurecer Monte Carlo para execucao async/cache e validar latencia com portfolios maiores;
+  - validar latencia do simulador FIRE com portfolios maiores e decidir eventual migracao de Monte Carlo para worker/queue dedicado;
   - avaliar extensao do simulador FIRE com cenarios guardados/import-export para analise recorrente;
   - seguir para os bugs P2 pendentes (`crypto market cap`, `ETF overlap disclaimer`, `watchlist batching`) apos validacao final deste ciclo.
 

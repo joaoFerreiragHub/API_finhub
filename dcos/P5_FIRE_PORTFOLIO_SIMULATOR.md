@@ -31,11 +31,15 @@ Entregue neste ciclo:
    - comparacao visual baseline vs ajustado para tempo ate FIRE, valor final projetado e rendimento passivo;
    - painel Monte Carlo com destaque de `successProbabilityPct`, narrativa de probabilidade por horizonte e percentis `P10/P50/P90`;
    - curva de probabilidade por horizonte no `/ferramentas/fire/simulador` com grafico de linha (anos vs probabilidade).
+9. hardening de performance do Monte Carlo no backend:
+   - simulacao Monte Carlo passou a usar cache in-memory com TTL curto para repetir pedidos identicos sem recomputar imediatamente;
+   - execucao passou a ser cooperativa (yield periodico ao event loop) para reduzir bloqueio em corridas maiores;
+   - sem alteracao de contrato de resposta do endpoint `POST /api/portfolio/:id/simulate`.
 
 Fora deste ciclo (proximas iteracoes):
 
 1. expandir frontend FIRE com import/export de carteiras e cenarios guardados para comparacoes recorrentes;
-2. otimizar Monte Carlo para execucao async/cache e validar latencia em portfolios maiores.
+2. validar latencia do simulador FIRE com portfolios maiores e decidir se vale mover Monte Carlo para worker/queue dedicado.
 
 
 ## Visao

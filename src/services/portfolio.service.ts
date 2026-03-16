@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import axios from 'axios'
 import mongoose from 'mongoose'
 import { Portfolio, PortfolioCurrency, PortfolioFireTargetMethod } from '../models/Portfolio'
@@ -14,6 +15,9 @@ const MIN_HISTORICAL_RETURN_SAMPLES = 6
 const DEFAULT_MONTE_CARLO_SIMULATIONS = 1000
 const MIN_MONTE_CARLO_SIMULATIONS = 100
 const MAX_MONTE_CARLO_SIMULATIONS = 5000
+const MONTE_CARLO_CACHE_TTL_MS = 2 * 60 * 1000
+const MONTE_CARLO_CACHE_MAX_ENTRIES = 40
+const MONTE_CARLO_YIELD_EVERY_RUNS = 200
 
 const SUPPORTED_CURRENCIES: readonly PortfolioCurrency[] = ['EUR', 'USD', 'GBP']
 const SUPPORTED_ASSET_TYPES: readonly PortfolioAssetType[] = [
@@ -252,6 +256,25 @@ interface ScenarioSimulationResult {
   }>
 }
 
+interface MonteCarloSimulationInput {
+  scenario: SimulationScenario
+  simulations: number
+  states: HoldingState[]
+  maxMonths: number
+  drip: boolean
+  includeInflation: boolean
+  monthlyContribution: number
+  contributionGrowthRate: number
+  fireTargetMethod: PortfolioFireTargetMethod
+  fireTarget: {
+    monthlyExpenses: number
+    desiredMonthlyIncome: number
+    targetAmount: number
+    withdrawalRate: number
+    inflationRate: number
+  }
+}
+
 interface MonteCarloPercentiles {
   p10: number
   p25: number
@@ -275,6 +298,12 @@ interface MonteCarloSimulationResult {
     date: string
     probabilityPct: number
   }>
+}
+
+interface MonteCarloCacheEntry {
+  expiresAt: number
+  touchedAt: number
+  result: MonteCarloSimulationResult
 }
 
 interface WhatIfSimulationResult {
@@ -431,6 +460,22 @@ const sampleStandardNormal = (): number => {
   const u2 = Math.max(Number.EPSILON, Math.random())
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
 }
+
+const yieldToEventLoop = async (): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, 0))
+
+const clonePercentiles = (value: MonteCarloPercentiles | null): MonteCarloPercentiles | null =>
+  value === null ? null : { ...value }
+
+const cloneMonteCarloSimulationResult = (
+  value: MonteCarloSimulationResult
+): MonteCarloSimulationResult => ({
+  ...value,
+  monthsToFirePercentiles: clonePercentiles(value.monthsToFirePercentiles),
+  yearsToFirePercentiles: clonePercentiles(value.yearsToFirePercentiles),
+  finalPortfolioValuePercentiles: { ...value.finalPortfolioValuePercentiles },
+  timelineSuccessProbability: value.timelineSuccessProbability.map((point) => ({ ...point })),
+})
 
 const normalizeAllocationWeights = (holdings: HoldingLeanLike[], monthlyContribution: number): number[] => {
   const allocations = holdings.map((item) => Math.max(0, readNumber(item.monthlyAllocation)))
@@ -674,6 +719,8 @@ export class PortfolioServiceError extends Error {
 }
 
 class PortfolioService {
+  private monteCarloCache = new Map<string, MonteCarloCacheEntry>()
+
   async createPortfolio(userIdRaw: string, input: CreatePortfolioInput) {
     const userId = toObjectId(userIdRaw, 'userId')
     const name = String(input.name ?? '').trim()
@@ -1207,7 +1254,7 @@ class PortfolioService {
         allocationWeights,
         historicalCalibration.byTicker
       )
-      monteCarlo = this.runMonteCarloSimulation({
+      monteCarlo = await this.runMonteCarloSimulationWithCache({
         scenario: monteCarloScenario,
         simulations: monteCarloSimulations,
         states,
@@ -1833,24 +1880,105 @@ class PortfolioService {
     }
   }
 
-  private runMonteCarloSimulation(input: {
-    scenario: SimulationScenario
-    simulations: number
-    states: HoldingState[]
-    maxMonths: number
-    drip: boolean
-    includeInflation: boolean
-    monthlyContribution: number
-    contributionGrowthRate: number
-    fireTargetMethod: PortfolioFireTargetMethod
-    fireTarget: {
-      monthlyExpenses: number
-      desiredMonthlyIncome: number
-      targetAmount: number
-      withdrawalRate: number
-      inflationRate: number
+  private buildMonteCarloCacheKey(input: MonteCarloSimulationInput): string {
+    const cachePayload = {
+      scenario: input.scenario,
+      simulations: input.simulations,
+      maxMonths: input.maxMonths,
+      drip: input.drip,
+      includeInflation: input.includeInflation,
+      monthlyContribution: Number(input.monthlyContribution.toFixed(4)),
+      contributionGrowthRate: Number(input.contributionGrowthRate.toFixed(6)),
+      fireTargetMethod: input.fireTargetMethod,
+      fireTarget: {
+        monthlyExpenses: Number(input.fireTarget.monthlyExpenses.toFixed(2)),
+        desiredMonthlyIncome: Number(input.fireTarget.desiredMonthlyIncome.toFixed(2)),
+        targetAmount: Number(input.fireTarget.targetAmount.toFixed(2)),
+        withdrawalRate: Number(input.fireTarget.withdrawalRate.toFixed(6)),
+        inflationRate: Number(input.fireTarget.inflationRate.toFixed(6)),
+      },
+      states: input.states.map((state) => ({
+        ticker: state.ticker,
+        assetType: state.assetType,
+        shares: Number(state.shares.toFixed(8)),
+        price: Number(state.price.toFixed(8)),
+        annualReturn: Number(state.annualReturn.toFixed(8)),
+        annualDividendYield: Number(state.annualDividendYield.toFixed(8)),
+        annualVolatility: Number(state.annualVolatility.toFixed(8)),
+        allocationWeight: Number(state.allocationWeight.toFixed(8)),
+      })),
     }
-  }): MonteCarloSimulationResult {
+
+    return createHash('sha256').update(JSON.stringify(cachePayload)).digest('hex')
+  }
+
+  private pruneMonteCarloCache(now = Date.now()) {
+    for (const [key, entry] of this.monteCarloCache.entries()) {
+      if (entry.expiresAt <= now) {
+        this.monteCarloCache.delete(key)
+      }
+    }
+
+    if (this.monteCarloCache.size <= MONTE_CARLO_CACHE_MAX_ENTRIES) {
+      return
+    }
+
+    const entriesByLastUse = [...this.monteCarloCache.entries()].sort(
+      (left, right) => left[1].touchedAt - right[1].touchedAt
+    )
+    const overflow = this.monteCarloCache.size - MONTE_CARLO_CACHE_MAX_ENTRIES
+    for (let index = 0; index < overflow; index += 1) {
+      const key = entriesByLastUse[index]?.[0]
+      if (key) {
+        this.monteCarloCache.delete(key)
+      }
+    }
+  }
+
+  private getCachedMonteCarloResult(cacheKey: string): MonteCarloSimulationResult | null {
+    const now = Date.now()
+    const cachedEntry = this.monteCarloCache.get(cacheKey)
+    if (!cachedEntry) {
+      return null
+    }
+
+    if (cachedEntry.expiresAt <= now) {
+      this.monteCarloCache.delete(cacheKey)
+      return null
+    }
+
+    cachedEntry.touchedAt = now
+    return cloneMonteCarloSimulationResult(cachedEntry.result)
+  }
+
+  private setCachedMonteCarloResult(cacheKey: string, result: MonteCarloSimulationResult) {
+    const now = Date.now()
+    this.pruneMonteCarloCache(now)
+    this.monteCarloCache.set(cacheKey, {
+      expiresAt: now + MONTE_CARLO_CACHE_TTL_MS,
+      touchedAt: now,
+      result: cloneMonteCarloSimulationResult(result),
+    })
+    this.pruneMonteCarloCache(now)
+  }
+
+  private async runMonteCarloSimulationWithCache(
+    input: MonteCarloSimulationInput
+  ): Promise<MonteCarloSimulationResult> {
+    const cacheKey = this.buildMonteCarloCacheKey(input)
+    const cached = this.getCachedMonteCarloResult(cacheKey)
+    if (cached) {
+      return cached
+    }
+
+    const computed = await this.runMonteCarloSimulation(input)
+    this.setCachedMonteCarloResult(cacheKey, computed)
+    return cloneMonteCarloSimulationResult(computed)
+  }
+
+  private async runMonteCarloSimulation(
+    input: MonteCarloSimulationInput
+  ): Promise<MonteCarloSimulationResult> {
     const startDate = new Date()
     const scenarioPreset = SCENARIO_PRESETS[input.scenario]
     const baseInflationRate =
@@ -1920,6 +2048,13 @@ class PortfolioService {
 
       fireMonthByRun.push(fireMonth)
       finalPortfolioValues.push(Number(lastPortfolioValue.toFixed(2)))
+
+      if (
+        input.simulations >= MONTE_CARLO_YIELD_EVERY_RUNS &&
+        (simulation + 1) % MONTE_CARLO_YIELD_EVERY_RUNS === 0
+      ) {
+        await yieldToEventLoop()
+      }
     }
 
     const achievedRuns = fireMonthByRun.filter((month): month is number => month !== null).length
