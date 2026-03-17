@@ -1,0 +1,433 @@
+{
+  "id": "TASK_FIRE_ENDPOINTS_INTEGRATION",
+  "title": "FIRE Frontend Integration com Endpoints Existentes",
+  "createdAt": "2026-03-17",
+  "version": "1.0",
+  "status": "actionable",
+  "priority": 1,
+  "totalEffortEstimate": "27h",
+  "phases": [
+    {
+      "phaseId": "PHASE_1",
+      "phaseName": "Setup e Diagnóstico",
+      "effortEstimate": "1h",
+      "subtasks": [
+        {
+          "id": "1.1",
+          "name": "FIRE-Setup-01-Diagnosis",
+          "title": "Validar Estado Inicial do Projeto",
+          "effortEstimate": "0.5h",
+          "dependencies": [],
+          "blockedBy": [],
+          "acceptanceCriteria": [
+            "Backend git status limpo em API_finhub/main",
+            "Frontend git status limpo em FinHub-Vite/master",
+            "Último commit backend identificado (bbca1f5 ou posterior)",
+            "Último commit frontend identificado (241abc3 ou posterior)",
+            "Endpoints portfolio confirmados: POST/GET/PATCH/DELETE /api/portfolio*",
+            "Endpoint simulação confirmado: POST /api/portfolio/:id/simulate",
+            "Modelos Portfolio + PortfolioHolding confirmados"
+          ]
+        },
+        {
+          "id": "1.2",
+          "name": "FIRE-Setup-02-Map-Frontend",
+          "title": "Mapear Estrutura Frontend FIRE Existente",
+          "effortEstimate": "0.5h",
+          "dependencies": ["1.1"],
+          "blockedBy": [],
+          "acceptanceCriteria": [
+            "Estrutura de pastas documentada",
+            "Rotas /ferramentas/fire/* confirmadas",
+            "Componentes principais identificados",
+            "Serviços/API clients identificados",
+            "Dependencies verificadas (Recharts, Tailwind, shadcn/ui)",
+            "Ficheiros TypeScript confirmados"
+          ]
+        }
+      ]
+    },
+    {
+      "phaseId": "PHASE_2",
+      "phaseName": "Integração Backend ↔ Frontend",
+      "effortEstimate": "6.5h",
+      "subtasks": [
+        {
+          "id": "2.1",
+          "name": "FIRE-Integration-01-API-Service",
+          "title": "Criar/Validar Service de API (Portfolio Client)",
+          "effortEstimate": "1.5h",
+          "dependencies": ["1.1", "1.2"],
+          "filesToCreate": [
+            "FinHub-Vite/src/services/portfolioApiClient.ts"
+          ],
+          "acceptanceCriteria": [
+            "Ficheiro portfolioApiClient.ts existe",
+            "URLs corretas (POST /api/portfolio, etc.)",
+            "Headers incluem Content-Type e Authorization",
+            "simulatePortfolio() aceita params corretos",
+            "Error handling com 401/403/500",
+            "npm run typecheck passa"
+          ]
+        },
+        {
+          "id": "2.2",
+          "name": "FIRE-Integration-02-Portfolio-Hook",
+          "title": "Hook React para Portfolio CRUD (usePortfolio)",
+          "effortEstimate": "1.5h",
+          "dependencies": ["2.1"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/hooks/usePortfolio.ts"
+          ],
+          "acceptanceCriteria": [
+            "Hook usa React Query useQuery + useMutation",
+            "Métodos: create, get, update, delete",
+            "Refetch automático após mutação",
+            "Tipos TypeScript completos",
+            "npm run typecheck passa"
+          ]
+        },
+        {
+          "id": "2.3",
+          "name": "FIRE-Integration-03-Simulation-Hook",
+          "title": "Hook React para Simulação (usePortfolioSimulation)",
+          "effortEstimate": "1.5h",
+          "dependencies": ["2.1"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/hooks/usePortfolioSimulation.ts"
+          ],
+          "acceptanceCriteria": [
+            "Hook usa React Query",
+            "runSimulation(params) chama API corretamente",
+            "simulationResult tipado com resposta backend",
+            "Cache TTL = 5 minutos",
+            "npm run typecheck passa"
+          ]
+        },
+        {
+          "id": "2.4",
+          "name": "FIRE-Integration-04-Holdings-Hook",
+          "title": "Hook React para Holdings CRUD (usePortfolioHoldings)",
+          "effortEstimate": "1h",
+          "dependencies": ["2.1"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/hooks/usePortfolioHoldings.ts"
+          ],
+          "acceptanceCriteria": [
+            "Hook usa React Query",
+            "Métodos: add, update, delete holding",
+            "Estado sincronizado com servidor",
+            "Refetch automático",
+            "npm run typecheck passa"
+          ]
+        },
+        {
+          "id": "2.5",
+          "name": "FIRE-Integration-05-Fire-Context",
+          "title": "Context/State Provider para Portfolio (FireContext)",
+          "effortEstimate": "0.5h",
+          "dependencies": ["2.2"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/context/FireContext.tsx"
+          ],
+          "acceptanceCriteria": [
+            "Context criado e exportado",
+            "Provider wraps aplicação FIRE",
+            "Hook useFireContext() acessível",
+            "TypeScript tipado",
+            "npm run typecheck passa"
+          ]
+        }
+      ]
+    },
+    {
+      "phaseId": "PHASE_3",
+      "phaseName": "Componentes de UI (Renderização)",
+      "effortEstimate": "14h",
+      "subtasks": [
+        {
+          "id": "3.1",
+          "name": "FIRE-Components-01-Portfolio-Manager-Page",
+          "title": "Página Portfolio Manager",
+          "effortEstimate": "2h",
+          "dependencies": ["2.2", "2.5"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/pages/PortfolioManagerPage.tsx"
+          ],
+          "acceptanceCriteria": [
+            "Tabela portfolios renderiza",
+            "Form criar portfolio funcional",
+            "Form editar portfolio funcional",
+            "Ação eliminar com confirmação",
+            "Toast success/error",
+            "Light/dark mode OK",
+            "Sem hardcodes de cor",
+            "npm run typecheck passa",
+            "Responsive"
+          ]
+        },
+        {
+          "id": "3.2",
+          "name": "FIRE-Components-02-Holdings-Manager",
+          "title": "Componente Holdings Manager",
+          "effortEstimate": "2.5h",
+          "dependencies": ["2.4", "2.5"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/components/HoldingsTable.tsx",
+            "FinHub-Vite/src/features/fire/components/HoldingForm.tsx"
+          ],
+          "acceptanceCriteria": [
+            "Tabela holdings renderiza",
+            "Form add/edit holding funcional",
+            "Autocomplete tickers",
+            "Validação inputs",
+            "Preço atual + yield mostrados",
+            "Toast success/error",
+            "Light/dark mode OK",
+            "npm run typecheck passa",
+            "Responsive"
+          ]
+        },
+        {
+          "id": "3.3",
+          "name": "FIRE-Components-03-Simulator-Controls",
+          "title": "Painel Simulador (Form de Entrada)",
+          "effortEstimate": "2h",
+          "dependencies": ["2.3", "2.5"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/components/SimulatorControls.tsx"
+          ],
+          "acceptanceCriteria": [
+            "Checkboxes cenários",
+            "Input maxYears",
+            "Toggle DRIP",
+            "Secção whatIf (contribution, return, inflation)",
+            "Secção Monte Carlo (enabled, simulations)",
+            "Botão Executar Simulação",
+            "Validação inputs",
+            "Light/dark mode OK",
+            "npm run typecheck passa",
+            "Responsive sliders"
+          ]
+        },
+        {
+          "id": "3.4",
+          "name": "FIRE-Components-04-Simulation-Results",
+          "title": "Painel Resultado Simulação",
+          "effortEstimate": "2.5h",
+          "dependencies": ["2.3"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/components/SimulationResultsTable.tsx",
+            "FinHub-Vite/src/features/fire/components/PortfolioEvolutionChart.tsx"
+          ],
+          "acceptanceCriteria": [
+            "Tabela renderiza cenários",
+            "Valores formatados corretamente",
+            "Gráfico Area/Line renderiza sem erros",
+            "Gráfico responsivo",
+            "Legenda clara",
+            "Cores diferenciam cenários",
+            "Light/dark mode OK",
+            "Sem hardcodes de cor",
+            "npm run typecheck passa"
+          ]
+        },
+        {
+          "id": "3.5",
+          "name": "FIRE-Components-05-WhatIf-Comparison",
+          "title": "Painel whatIf (Comparativo Visual)",
+          "effortEstimate": "1.5h",
+          "dependencies": ["2.3"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/components/WhatIfComparison.tsx"
+          ],
+          "acceptanceCriteria": [
+            "Layout 2 colunas ou toggle",
+            "Cards baseline vs adjusted",
+            "Delta calculado corretamente",
+            "Destaque visual para delta",
+            "Light/dark mode OK",
+            "npm run typecheck passa",
+            "Responsive"
+          ]
+        },
+        {
+          "id": "3.6",
+          "name": "FIRE-Components-06-Monte-Carlo-Panel",
+          "title": "Painel Monte Carlo",
+          "effortEstimate": "2h",
+          "dependencies": ["2.3"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/components/MonteCarloChart.tsx",
+            "FinHub-Vite/src/features/fire/components/MonteCarloStats.tsx"
+          ],
+          "acceptanceCriteria": [
+            "Line chart com timeline probabilidade",
+            "Eixo Y: 0-100%",
+            "Tooltip funcional",
+            "Stats card com successProbabilityPct",
+            "Percentis P10/P25/P50/P75/P90",
+            "Cores positivas",
+            "Light/dark mode OK",
+            "npm run typecheck passa",
+            "Responsive"
+          ]
+        },
+        {
+          "id": "3.7",
+          "name": "FIRE-Components-07-Simulator-Page-Unified",
+          "title": "Página Simulador Unificada",
+          "effortEstimate": "1.5h",
+          "dependencies": ["3.3", "3.4", "3.5", "3.6"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/pages/FireSimulatorPage.tsx (completar)"
+          ],
+          "acceptanceCriteria": [
+            "Seletor portfolio funcional",
+            "Tabs: Resultado, What-If, Monte Carlo",
+            "Componentes renderizam em tabs corretos",
+            "Loading state spinner",
+            "Error state mensagem",
+            "Light/dark mode",
+            "Sem hardcodes de cor",
+            "npm run typecheck passa",
+            "Responsive tabs"
+          ]
+        },
+        {
+          "id": "3.8",
+          "name": "FIRE-Components-08-FIRE-Dashboard",
+          "title": "Dashboard FIRE",
+          "effortEstimate": "2h",
+          "dependencies": ["2.2", "2.5"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/pages/FireDashboardPage.tsx"
+          ],
+          "acceptanceCriteria": [
+            "KPI cards (progress, valor, tempo)",
+            "Gráfico composição Donut",
+            "Milestones timeline",
+            "Insights com ícones",
+            "Light/dark mode OK",
+            "npm run typecheck passa",
+            "Responsive"
+          ]
+        }
+      ]
+    },
+    {
+      "phaseId": "PHASE_4",
+      "phaseName": "Testes e Validação",
+      "effortEstimate": "5.5h",
+      "subtasks": [
+        {
+          "id": "4.1",
+          "name": "FIRE-Validation-01-E2E-Tests",
+          "title": "Testes End-to-End",
+          "effortEstimate": "2.5h",
+          "dependencies": ["3.7", "3.5", "3.6"],
+          "filesToCreate": [
+            "FinHub-Vite/src/features/fire/tests/simulatorE2E.test.ts"
+          ],
+          "acceptanceCriteria": [
+            "Teste criar portfolio passa",
+            "Teste add holdings passa",
+            "Teste simulação passa",
+            "Teste results table passa",
+            "Teste whatIf passa",
+            "Teste Monte Carlo passa",
+            "Teste dark mode passa",
+            "npm run test passa",
+            "Coverage > 70% FIRE"
+          ]
+        },
+        {
+          "id": "4.2",
+          "name": "FIRE-Validation-02-TypeScript-Build",
+          "title": "TypeScript e Validações Técnicas",
+          "effortEstimate": "1h",
+          "dependencies": ["3.7"],
+          "acceptanceCriteria": [
+            "Frontend npm run typecheck sem novos erros",
+            "Frontend npm run lint passa",
+            "Frontend npm run build sucede",
+            "Backend npm run typecheck 100%",
+            "Backend npm run test:docs:smoke passa",
+            "Commit hash registado",
+            "Nenhum ficheiro sujo"
+          ]
+        },
+        {
+          "id": "4.3",
+          "name": "FIRE-Validation-03-Theme-Compliance",
+          "title": "Light/Dark Mode Validation",
+          "effortEstimate": "1h",
+          "dependencies": ["3.1", "3.2", "3.3", "3.4", "3.5", "3.6", "3.7", "3.8"],
+          "acceptanceCriteria": [
+            "Nenhum hardcode de color (bg-white, text-gray-900, etc.)",
+            "Todas as cores usam CSS variables",
+            "Visual test light mode OK",
+            "Visual test dark mode OK",
+            "Toggle dark mode → cores adaptam",
+            "Documentar limitações se existirem"
+          ]
+        },
+        {
+          "id": "4.4",
+          "name": "FIRE-Validation-04-Docs-and-Handoff",
+          "title": "Documentação Final e Handoff",
+          "effortEstimate": "1.5h",
+          "dependencies": ["4.1", "4.2", "4.3"],
+          "filesToCreate": [
+            ".project-agent-bridge/outbox/result-TASK_FIRE_ENDPOINTS.md"
+          ],
+          "filesToEdit": [
+            "API_finhub/dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md",
+            "API_finhub/dcos/regras.md"
+          ],
+          "acceptanceCriteria": [
+            "P5_FIRE_PORTFOLIO_SIMULATOR.md atualizado com Frontend Integration",
+            "Todos ficheiros .tsx listados",
+            "Hooks e context documentados",
+            "Testes E2E documentados",
+            "regras.md Checkpoint atualizado",
+            "Ficheiro handoff criado",
+            "Nenhum ficheiro sujo",
+            "Commit final realizado"
+          ]
+        }
+      ]
+    }
+  ],
+  "globalDefinitionOfDone": [
+    "Todas sub-tarefas 1.1-4.4 concluídas",
+    "Nenhum erro TypeScript novo",
+    "Light mode renderiza corretamente",
+    "Dark mode renderiza corretamente",
+    "Todas cores usam CSS variables",
+    "Fluxo end-to-end testado",
+    "whatIf renderiza corretamente",
+    "Monte Carlo renderiza corretamente",
+    "Testes E2E passam",
+    "Documentação atualizada",
+    "git status limpo",
+    "Commit final criado",
+    "Handoff concluído"
+  ],
+  "estimateBreakdown": {
+    "PHASE_1": "1h",
+    "PHASE_2": "6.5h",
+    "PHASE_3": "14h",
+    "PHASE_4": "5.5h",
+    "TOTAL": "27h"
+  },
+  "references": [
+    "dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md",
+    "dcos/regras.md",
+    "dcos/audiotira_04.md",
+    "API_finhub/src/routes/portfolio.routes.ts",
+    "API_finhub/src/models/Portfolio.ts",
+    "API_finhub/src/controllers/portfolio.controller.ts",
+    "FinHub-Vite/src/features/markets/pages/ReitsToolkitPage.tsx"
+  ]
+}

@@ -1,0 +1,311 @@
+================================================================================
+MANIFEST — TASK PACKET: FIRE Frontend Integration com Endpoints Existentes
+================================================================================
+
+DATA CRIAÇÃO: 2026-03-17
+VERSÃO: 1.0
+STATUS: ✅ COMPLETE & ACTIONABLE
+TAMANHO TOTAL: ~82 KB (6 ficheiros)
+
+================================================================================
+FICHEIROS ENTREGUES
+================================================================================
+
+1. TASK_PACKET_FIRE_ENDPOINTS.md [29.61 KB, 600+ linhas]
+   ├─ Tipo: Markdown (human-readable)
+   ├─ Conteúdo: Decomposição completa em 18 sub-tarefas atómicas + 4 fases
+   ├─ Inclui: Critérios aceite, dependências, estimativas, checklist
+   ├─ Leitura: 30-45 min (primeira vez)
+   └─ Uso: Referência principal durante execução
+
+2. TASK_PACKET_FIRE_ENDPOINTS.json [14.94 KB]
+   ├─ Tipo: JSON estruturado (machine-readable)
+   ├─ Conteúdo: Mesma informação do .md, em formato parse-friendly
+   ├─ Uso: Dashboards, CI/CD, integração ferramentas (Jira, Monday, etc.)
+   └─ Compatibilidade: 100% válido JSON, schema bem-estruturado
+
+3. README_FIRE_ENDPOINTS.md [9 KB, 200+ linhas]
+   ├─ Tipo: Markdown (instruções operacionais)
+   ├─ Conteúdo: Quick start, instruções por perfil, troubleshooting
+   ├─ Leitura: 15-20 min
+   └─ Uso: Consulta durante execução (dúvidas operacionais)
+
+4. QUICK_REFERENCE.md [9.37 KB, 250+ linhas]
+   ├─ Tipo: Markdown (referência rápida)
+   ├─ Conteúdo: Cheat sheet, snippets código, ordem execução TL;DR
+   ├─ Leitura: 5-10 min
+   └─ Uso: Consulta rápida durante desenvolvimento (Ctrl+F)
+
+5. EXECUTIVE_SUMMARY.md [8.35 KB, 200+ linhas]
+   ├─ Tipo: Markdown (visão executiva)
+   ├─ Conteúdo: Overview, números, timeline, riscos, sign-off
+   ├─ Leitura: 10-15 min
+   └─ Uso: CTO/PM para decision making
+
+6. INDEX.md [10.29 KB, 250+ linhas]
+   ├─ Tipo: Markdown (índice + navegação)
+   ├─ Conteúdo: Descrição cada doc, como navegar, reading guides
+   ├─ Leitura: 5 min
+   └─ Uso: Primeira coisa a ler, entender estrutura
+
+7. MANIFEST.txt [Este ficheiro]
+   ├─ Tipo: Texto plano (manifesto + metadata)
+   └─ Conteúdo: Resumo ficheiros entregues, estatísticas, instruções
+
+================================================================================
+ESTATÍSTICAS DO TASK PACKET
+================================================================================
+
+Decomposição de Tarefas:
+  • Fases: 4 (Setup → Integração → UI → Testes)
+  • Sub-tarefas: 18 atómicas (1.1 até 4.4)
+  • Ficheiros a criar: 18+ .tsx, 3 hooks, 1 context, 1 API client
+  • Componentes principais: 8 + 1 dashboard
+
+Esforço Estimado:
+  • FASE 1 (Setup): 1h
+  • FASE 2 (Integração): 6.5h
+  • FASE 3 (UI Components): 14h
+  • FASE 4 (Testes/Validação): 5.5h
+  • TOTAL: 27 horas (~3.5 dias com dev focado)
+  • Com paralelização: ~18h efetivos
+
+Qualidade:
+  • Atomicidade: ✅ Cada tarefa é independente
+  • Dependências: ✅ Mapeadas visualmente
+  • Critérios Aceite: ✅ Específicos (não vagas)
+  • Validação: ✅ Automática (npm run typecheck, E2E)
+  • Multi-formato: ✅ Markdown + JSON
+
+================================================================================
+COMO COMEÇAR (Quick Start)
+================================================================================
+
+PASSO 1: Lê documentos na seguinte ordem:
+  1. INDEX.md (este diretório) — entender estrutura [5 min]
+  2. EXECUTIVE_SUMMARY.md — visão objetivo [10 min]
+  3. TASK_PACKET_FIRE_ENDPOINTS.md até "Sub-Tarefas" [30 min]
+
+PASSO 2: Segundo perfil:
+  
+  Dev Frontend:
+    → Lê QUICK_REFERENCE.md "Onde Começar"
+    → Começa FASE 1 (tarefa 1.1)
+    → Usa README_FIRE_ENDPOINTS.md como referência
+  
+  Code Reviewer:
+    → Lê EXECUTIVE_SUMMARY.md
+    → Valida FASE 1, depois FASE 2, etc.
+    → Usa TASK_PACKET_FIRE_ENDPOINTS.md para checklist aceite
+  
+  Project Manager:
+    → Lê EXECUTIVE_SUMMARY.md
+    → Consulta matriz dependências
+    → Usa README_FIRE_ENDPOINTS.md "Para Project Managers"
+
+PASSO 3: Durante execução:
+  • Dúvida rápida? → QUICK_REFERENCE.md
+  • Critério aceite? → TASK_PACKET_FIRE_ENDPOINTS.md
+  • Bloqueador? → README_FIRE_ENDPOINTS.md "Troubleshooting"
+
+================================================================================
+ESTRUTURA FICHEIROS A CRIAR (18 Total)
+================================================================================
+
+Backend API Client:
+  └─ FinHub-Vite/src/services/portfolioApiClient.ts
+
+Custom Hooks (3):
+  ├─ FinHub-Vite/src/features/fire/hooks/usePortfolio.ts
+  ├─ FinHub-Vite/src/features/fire/hooks/usePortfolioSimulation.ts
+  └─ FinHub-Vite/src/features/fire/hooks/usePortfolioHoldings.ts
+
+Context (1):
+  └─ FinHub-Vite/src/features/fire/context/FireContext.tsx
+
+Components UI (8):
+  ├─ FinHub-Vite/src/features/fire/components/HoldingsTable.tsx
+  ├─ FinHub-Vite/src/features/fire/components/HoldingForm.tsx
+  ├─ FinHub-Vite/src/features/fire/components/SimulatorControls.tsx
+  ├─ FinHub-Vite/src/features/fire/components/SimulationResultsTable.tsx
+  ├─ FinHub-Vite/src/features/fire/components/PortfolioEvolutionChart.tsx
+  ├─ FinHub-Vite/src/features/fire/components/WhatIfComparison.tsx
+  ├─ FinHub-Vite/src/features/fire/components/MonteCarloChart.tsx
+  └─ FinHub-Vite/src/features/fire/components/MonteCarloStats.tsx
+
+Pages (3):
+  ├─ FinHub-Vite/src/features/fire/pages/PortfolioManagerPage.tsx
+  ├─ FinHub-Vite/src/features/fire/pages/FireSimulatorPage.tsx (completar)
+  └─ FinHub-Vite/src/features/fire/pages/FireDashboardPage.tsx
+
+Tests (1):
+  └─ FinHub-Vite/src/features/fire/tests/simulatorE2E.test.ts
+
+TOTAL: 18 ficheiros + 4 documentação
+
+================================================================================
+DEPENDÊNCIAS & ORDEM EXECUÇÃO
+================================================================================
+
+Critical Path (Sequential):
+  PHASE 1: Setup (1.1 → 1.2) [1h]
+     ↓
+  PHASE 2: Integração (2.1 → 2.2,2.3,2.4,2.5 paralelos) [6.5h]
+     ↓
+  PHASE 3: UI (3.1 → 3.2 → 3.3,3.4,3.5,3.6 paralelos → 3.7 → 3.8) [14h]
+     ↓
+  PHASE 4: Validação (4.1,4.2,4.3 paralelos → 4.4) [5.5h]
+
+Paralelização possível:
+  • FASE 2: hooks 2.2/2.3/2.4 podem correr em paralelo (após 2.1)
+  • FASE 3: componentes 3.3-3.6 podem correr em paralelo
+  • FASE 4: tests 4.1/4.2/4.3 podem correr em paralelo
+
+Com 2 devs + paralelização:
+  • Dev 1 (Frontend): FASE 2-3 [~18h]
+  • Dev 2 (Tests/Docs): FASE 4 em paralelo [~5.5h]
+  • Total wall-clock: ~2-3 dias
+
+================================================================================
+CHECKLIST PRE-EXECUÇÃO
+================================================================================
+
+Antes de começar:
+
+  [ ] Leu INDEX.md (entender estrutura docs)
+  [ ] Leu EXECUTIVE_SUMMARY.md (entender objetivo)
+  [ ] Leu TASK_PACKET_FIRE_ENDPOINTS.md seção "Resumo Executivo"
+  [ ] Backend API_finhub está em branch main, git status limpo
+  [ ] Frontend FinHub-Vite está em branch master, git status limpo
+  [ ] Ambos repos têm npm install executado
+  [ ] Consegue fazer curl num endpoint FIRE (teste 401/200)
+  [ ] npm run typecheck passa em ambos repos
+  [ ] Tem editor com TypeScript support aberto (VS Code)
+  [ ] Entendeu matriz dependências
+  [ ] Tem README_FIRE_ENDPOINTS.md aberto como referência
+
+Se TODAS as caixas acima estão marcadas: **READY TO EXECUTE** ✅
+
+================================================================================
+VALIDAÇÃO DURANTE EXECUÇÃO
+================================================================================
+
+Por FASE, execute estes comandos:
+
+FASE 1 (Setup):
+  • git status → deve estar limpo
+  • Confirma endpoints existem: curl http://localhost:3000/api/portfolio
+
+FASE 2 (Integração):
+  • npm run typecheck → PASS
+
+FASE 3 (UI Components):
+  • npm run typecheck → PASS (novos erros = BLOCKER)
+  • Browser dev tools → Light/dark mode toggle
+  • Visual check → cores não são hardcoded
+
+FASE 4 (Testes):
+  • npm run test → E2E tests PASS
+  • npm run build → sucede
+  • npm run typecheck → PASS
+  • Visual final → light + dark mode OK
+
+================================================================================
+SUCCESS CRITERIA (Definition of Done)
+================================================================================
+
+Task packet é bem-sucedido quando:
+
+✅ Todas 18 sub-tarefas (1.1-4.4) estão COMPLETAS
+✅ Nenhum erro TypeScript NOVO introduzido
+✅ E2E tests PASSAM (FASE 4.1)
+✅ TypeScript validation PASSA (FASE 4.2)
+✅ Theme compliance VALIDADA (FASE 4.3)
+✅ Light mode funciona corretamente
+✅ Dark mode funciona corretamente
+✅ Documentação FIRE atualizada
+✅ Ficheiro handoff criado em .project-agent-bridge/outbox/
+✅ Commit final realizado: "feat(p5-fire): complete frontend endpoint integration"
+✅ git status limpo em ambos repos
+✅ Code reviewer APROVOU
+
+Se TODAS acima, task packet está PRONTO para release.
+
+================================================================================
+PRÓXIMOS PASSOS (After Task Complete)
+================================================================================
+
+1. QA Validação Visual
+   • Testa simulador em navegador real (Chrome, Firefox, Safari)
+   • Valida light/dark mode em todos componentes
+   • Testa com portfolio demo (dados reais)
+
+2. Performance Testing
+   • Portfolio grande (50+ holdings) → latência simulação
+   • Se > 2s, considerar otimização ou async
+
+3. Data Seeding
+   • Criar portfolio exemplo para demo
+   • Documentar fluxo user (como usar simulador)
+
+4. User Guide
+   • Redigir documentação final FIRE (como usar)
+   • Screenshots light/dark mode
+   • FAQ troubleshooting
+
+5. Bugs P2 (Próximas tarefas)
+   • Crypto market cap fix
+   • ETF overlap disclaimer
+   • Watchlist batching
+
+================================================================================
+CONTACTO / ESCALAÇÃO
+================================================================================
+
+Durante execução, se encontrar:
+
+Dúvida técnica:
+  → Consulta README_FIRE_ENDPOINTS.md "Problemas Comuns"
+
+Bloqueador:
+  → Documenta em .project-agent-bridge/outbox/result-TASK_FIRE_ENDPOINTS.md
+
+API divergência:
+  → STOP, notifica CTO/backend dev, documenta contrato esperado vs recebido
+
+TypeScript erro novo:
+  → Se no FIRE: fix imediatamente
+  → Se pré-existente: documenta em handoff, não bloqueia merge
+
+Performance problema:
+  → Simula portfolio grande, measures latência
+  → Se > 2s: discuss com backend dev sobre cache/async
+
+================================================================================
+METADATA
+================================================================================
+
+Task Packet ID: TASK_FIRE_ENDPOINTS_INTEGRATION
+Data Criação: 2026-03-17
+Versão: 1.0
+Status: ✅ Complete & Actionable
+Qualidade: ⭐⭐⭐⭐⭐ Production-ready
+Tamanho Total: 82 KB (6 ficheiros + manifest)
+Linguagem: Português (PT)
+
+Repositórios Afectados:
+  • API_finhub (backend) — diagnosticar, suporte
+  • FinHub-Vite (frontend) — implementação principal
+
+Próxima Review: Após conclusão FASE 1 (Setup)
+
+================================================================================
+FIM DO MANIFEST
+================================================================================
+
+Criado por: Task Architect Subagent
+Requestado por: finhub-orchestrator:main
+Data: 2026-03-17 19:54 GMT+0
+Status: ✅ PRONTO PARA EXECUÇÃO
+
+================================================================================

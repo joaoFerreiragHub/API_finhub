@@ -41,6 +41,7 @@ import appealRoutes from './appeal.routes'
 import adsRoutes from './ads.routes'
 import affiliateRoutes from './affiliate.routes'
 import brandIntegrationRoutes from './brandIntegration.routes'
+import agentActivityLogRoutes from './agentActivityLog.routes'
 import {
   enforceFinancialToolAvailability,
   trackFinancialToolUsage,
@@ -90,6 +91,7 @@ router.get('/', (req, res) => {
         reits: '/api/reits',
       },
       admin: '/api/admin',
+      agentLogs: '/api/admin/agent-logs',
       editorial: '/api/editorial',
       directories: '/api/directories',
       platform: '/api/platform',
@@ -182,6 +184,7 @@ router.use(
 
 // Rotas administrativas
 router.use('/admin', adminRoutes)
+router.use('/admin/agent-logs', agentActivityLogRoutes)
 
 // Rotas editoriais publicas
 router.use('/editorial', editorialRoutes)
