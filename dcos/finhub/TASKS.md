@@ -1,7 +1,7 @@
 # FinHub — Backlog de Tasks
 
 > Fonte de verdade para o que está por fazer.
-> Última atualização: 2026-03-21
+> Última atualização: 2026-03-22
 
 **Legenda:** 🔴 Bloqueador beta | 🟡 Importante | 🟢 Desejável | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
 
@@ -16,8 +16,10 @@
 | B1 | Crypto market cap usa `quoteVolume` em vez de `price × circulatingSupply` | `API_finhub` — crypto service | ✅ |
 | B2 | ETF Overlap: disclaimer ausente (dados simulados apresentados como reais) | `FinHub-Vite` — EtfOverlapPage | ✅ |
 | B3 | Watchlist: N chamadas paralelas ao FMP em vez de batch único | `API_finhub` — watchlist service | ✅ |
-| B4 | Cards de conteúdo e criadores sem navegação — clicar não leva a lado nenhum nos cards antigos (homepage, secções, widgets) | `FinHub-Vite` — cards componentes globais | ⏳ |
+| B4 | Cards de conteúdo e criadores sem navegação — clicar não leva a lado nenhum nos cards antigos (homepage, secções, widgets) | `FinHub-Vite` — cards componentes globais | 🔄 Parcial — ExploreContentCard corrigido (Link→`<a>`), cards de criador agora abrem modal. Faltam widgets/secções antigos |
 | B5 | Footer: links de páginas legais (Privacidade, Termos, Cookies, Sobre) apontam para rotas inexistentes (404) | `FinHub-Vite` — Footer + páginas legais | ⏳ |
+| B6 | Creator profile page não recebia username — `@username/+Page.tsx` lia `routeParams` dos props (sempre undefined); "Ver perfil" redirecionava para `/creators` | `FinHub-Vite` — `@username/+Page.tsx` + `CreatorProfilePage.tsx` | ✅ Fix: usePageContext() + fallback regex no pathname |
+| B7 | CI P5.7 falhava — `toSocialMediaLinks` mapper usava `'Other'` em vez de `'website'` para platform website | `FinHub-Vite` — `publicCreatorsService.ts` | ✅ |
 
 ---
 
@@ -81,7 +83,9 @@
 | Creator dashboard — criar/editar/publicar vídeo (flow completo) | ⏳ | Frontend |
 | Creator dashboard — campo welcome video (URL YouTube/Vimeo para introdução pública) | ✅ | Backend + Frontend |
 | Popup de criador — modal ao clicar em card de criador (welcome video + cursos + conteúdos top) | ✅ | Frontend |
-| P5.8 — Creator Welcome Card configurável: criador escolhe o que mostra no seu cartão de visita público (dados pessoais, video boas-vindas, cursos, artigos, produtos, website, redes sociais, etc.) | ⏳ | Backend + Frontend |
+| P5.8 — Creator Welcome Card configurável: criador escolhe o que mostra no seu cartão de visita público (dados pessoais, video boas-vindas, cursos, artigos, produtos, website, redes sociais, etc.) | ✅ | Backend + Frontend — `ICreatorCardConfig` no User model, `CreatorCardConfigPanel` no dashboard, `CreatorModal` com render condicional + previewMode |
+| Redesign visual do CreatorModal — header com avatar/nome/rating, tabs polidas, social com cores, layout vídeo+bio lado a lado, website como domain pill | ✅ | Frontend — `CreatorHeader`, `CreatorModal`, `CreatorSocial`, `CreatorCourses` redesenhados |
+| Creator profile page — navegação "Ver perfil" funcional (rota `@username` + fallback URL path) | ✅ | Frontend |
 | Páginas de marcas/entidades públicas (zero atualmente) | ⏳ | Frontend |
 
 ### 3.2 Importantes para Beta 🟡
@@ -158,7 +162,9 @@
 | Tipos frontend ↔ backend desalinhados | Runtime errors | Ao implementar cada feature |
 | 2 modelos de marcas (Brand + DirectoryEntry) | Dados duplicados | Fase 2 — unificar |
 | Upload disco local (não S3) | Não escala | Antes do beta |
-| ~175 erros TS pré-existentes | Build warnings | Gradual — isolar |
+| ~285 erros TS pré-existentes (cresceu de ~175) | Build warnings, não bloqueia `typecheck:p1` | Gradual — isolar |
+| Componentes de cards duplicados (3 versões de CreatorCard, 2 de ArticleCard, 3 de BookCard) | Dificulta manutenção, bugs diferentes por versão | Cleanup antes de beta — consolidar na versão `features/` |
+| Dados mock para teste visual de cards (4 criadores `@mock-card-test.finhub`) | Não podem ir para produção | Limpar com `npm run seed:cards:clean` antes do deploy |
 | SEO structured data ausente (JSON-LD) | Rich results limitados | Pós-beta imediato |
 | Excesso de bibliotecas UI (PrimeReact + Mantine + shadcn) | Inconsistência visual | Ao redesenhar componentes |
 

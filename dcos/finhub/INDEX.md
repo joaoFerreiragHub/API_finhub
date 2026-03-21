@@ -24,11 +24,11 @@
 |------|--------|------|
 | P1 — Paridade de negócio | ✅ Fechado | |
 | P2 — Admin MVP | ✅ Fechado | |
-| P3 — Análise Rápida de stocks | 🔄 Em curso | Cobertura setorial em falta |
-| P4 — Editorial CMS + Moderation | 🔄 Em curso | Hardening + E2E em falta |
-| P5 — Pré-beta funcional | ⏳ A iniciar | Ver TASKS.md |
-| P8 — Elevação UI/UX | ⏳ Planeado | Ver DESIGN.md |
+| P3 — Análise Rápida de stocks | 🔄 Em curso | Gate final em falta |
+| P4 — Editorial CMS + Moderation | 🔄 Em curso | Gate pre-release em falta |
+| P5 — Pré-beta funcional | 🔄 Em curso | P5.1-P5.8 ✅, faltam: criar/editar artigo+vídeo, marcas, B4 cards antigos, B5 footer |
+| P8 — Elevação UI/UX | 🔄 Em curso | Fundações ✅, Cards ✅, CreatorModal redesenhado ✅, faltam: Header, FinHubScore, páginas |
 
-**Bugs críticos conhecidos:** 2 (B4, B5 — ver TASKS.md → Secção 0)
+**Bugs críticos conhecidos:** 2 abertos (B4 parcial, B5) + 2 corrigidos (B6, B7) — ver TASKS.md → Secção 0
 
-**Última atualização:** 2026-03-21
+**Última atualização:** 2026-03-22

@@ -1,6 +1,6 @@
 # FinHub — Roadmap
 
-> Última atualização: 2026-03-20
+> Última atualização: 2026-03-22
 
 ---
 
@@ -50,53 +50,60 @@ Contratos backend/frontend, limpeza de endpoints, homepage sem mocks, pipeline C
 - P4.4 Analytics de creators + ferramentas financeiras + anúncios ✅
 - P4.5 Delegações de scopes + tema admin ✅
 
-### ⏳ P5 — Pré-Beta Funcional
+### 🔄 P5 — Pré-Beta Funcional
 **Objetivo:** ciclo completo funcional antes do lançamento beta.
 
 ```
 Semana 1-2: Páginas públicas de conteúdo
-  ├─ Explore (listagem agregada)
-  ├─ Detalhe de artigo, curso, vídeo
-  ├─ Lista de criadores + perfil público
-  └─ SEO básico (meta tags, sitemap)
+  ├─ Explore (listagem agregada)                              ✅
+  ├─ Detalhe de artigo, curso, vídeo                          ✅
+  ├─ Lista de criadores + perfil público                      ✅
+  └─ SEO básico (meta tags, sitemap)                          ✅
 
-Semana 3-4: Creator Dashboard MVP
-  ├─ Overview com KPIs reais
-  ├─ Criar/editar/publicar artigo
-  ├─ Criar/editar/publicar vídeo
-  └─ Páginas de marcas/entidades públicas
+Semana 3-4: Creator Dashboard + Creators
+  ├─ Overview com KPIs reais                                  ✅
+  ├─ Gestão de artigos (tabela + publicar/despublicar)        ✅
+  ├─ Creator popup modal (welcome video, cursos, social)      ✅ P5.7
+  ├─ Creator card configurável (toggles + preview)            ✅ P5.8
+  ├─ Creator profile page funcional (@username routing fix)   ✅
+  ├─ Criar/editar/publicar artigo                             ⏳
+  ├─ Criar/editar/publicar vídeo                              ⏳
+  └─ Páginas de marcas/entidades públicas                     ⏳
 
 Semana 5-6: Polish + Lançamento Beta
-  ├─ Onboarding de utilizador
-  ├─ Pesquisa global
-  ├─ Feed "a seguir"
-  ├─ FIRE frontend completo
-  ├─ Testes E2E fluxos críticos
-  └─ Audit de mocks + tipos + performance
+  ├─ Onboarding de utilizador                                 ⏳
+  ├─ Pesquisa global                                          ✅
+  ├─ Feed "a seguir"                                          ✅
+  ├─ FIRE frontend completo                                   🔄
+  ├─ Testes E2E fluxos críticos                               ⏳
+  └─ Audit de mocks + tipos + performance                     ⏳
 ```
 
-### ⏳ P8 — Elevação UI/UX
+### 🔄 P8 — Elevação UI/UX
 **Objetivo:** identidade visual forte, data density legível, micro-interações.
-Pode correr em paralelo com P5 a partir das fundações.
+Corre em paralelo com P5.
 
 ```
-Fase 1 — Fundações (sem breaking changes)
-  ├─ Tipografia Inter + tabular-nums
-  ├─ Dark mode mais escuro
-  ├─ Chart colors semânticas
-  └─ Market colors no Tailwind
+Fase 1 — Fundações (sem breaking changes)                     ✅ COMPLETA
+  ├─ Tipografia Inter + tabular-nums                          ✅
+  ├─ Dark mode mais escuro                                    ✅
+  ├─ Chart colors semânticas                                  ✅
+  └─ Market colors no Tailwind                                ✅
 
-Fase 2 — Componentes Críticos
-  ├─ Header redesenhado
-  ├─ Cards de conteúdo modernizados
-  ├─ Charts com tooltips ricos + gradient fill
-  └─ FinHubScore visual proeminente
+Fase 2 — Componentes Críticos                                 🔄
+  ├─ Header redesenhado                                       ⏳
+  ├─ Cards de conteúdo modernizados                           ✅ P8.4
+  ├─ Cards de criador modernizados                            ✅ P8.4
+  ├─ CreatorModal redesenhado (avatar, tabs, social, layout)  ✅
+  ├─ Charts com tooltips ricos + gradient fill                ✅ P8.3
+  ├─ MetricCard com badge + tabular-nums                      ✅ P8.2
+  └─ FinHubScore visual proeminente                           ⏳
 
 Fase 3 — Páginas
-  ├─ Homepage
-  ├─ Quick Analysis (ação)
-  ├─ Hub de conteúdo
-  └─ Perfil de criador
+  ├─ Homepage                                                 ⏳
+  ├─ Quick Analysis (ação)                                    ⏳
+  ├─ Hub de conteúdo                                          ⏳
+  └─ Perfil de criador                                        ⏳
 ```
 
 ### ⏳ P6 — Analytics de Negócio + Sponsorship
@@ -117,12 +124,12 @@ Planeado. Sem data.
 - [x] Error tracking (Sentry)
 - [x] Auth completo (JWT, refresh, change password, delete account, export GDPR)
 - [x] Admin dashboard operacional
-- [ ] Páginas públicas de conteúdo (explore + detalhe)
-- [ ] Dashboard de criador MVP
-- [ ] Perfil público de criador ativo
+- [x] Páginas públicas de conteúdo (explore + detalhe)
+- [x] Dashboard de criador MVP (overview + gestão artigos + card config)
+- [x] Perfil público de criador ativo (lista + modal + profile page)
 - [ ] Storage S3 (substituir disco local)
-- [ ] Corrigir bug B1 (crypto market cap)
-- [ ] Corrigir bug B2 (ETF disclaimer)
+- [x] Corrigir bug B1 (crypto market cap)
+- [x] Corrigir bug B2 (ETF disclaimer)
 
 ### 🟡 Importantes para Beta
 - [x] Pesquisa global

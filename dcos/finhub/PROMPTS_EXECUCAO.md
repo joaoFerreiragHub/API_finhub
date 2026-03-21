@@ -968,7 +968,7 @@ FinHub-Vite/src/components/public/CreatorCard.tsx    ← criar ou refatorar
 
 ---
 
-## PROMPT P5.7 — Creator Popup Modal — Wiring + Backend Field
+## PROMPT P5.7 — Creator Popup Modal — Wiring + Backend Field ✅
 
 **Contexto do projeto:**
 - Frontend: `FinHub-Vite/`
@@ -1048,7 +1048,7 @@ FinHub-Vite/src/features/creators/pages/CreatorsListPage.tsx ← integrar wrappe
 
 ---
 
-## PROMPT P5.8 — Creator Welcome Card Configurável ⏳
+## PROMPT P5.8 — Creator Welcome Card Configurável ✅
 
 **Objetivo:** Dar ao criador controlo total sobre o que é mostrado no seu cartão de visita público (modal `CreatorModal`). Em vez de o modal mostrar sempre todos os campos com valores por omissão, o criador configura no seu dashboard quais as secções que quer expor e como.
 
@@ -1156,10 +1156,15 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 14. PROMPT P5.5  → Creator dashboard MVP                ✅
 15. PROMPT P8.3  → Charts gradient + tooltips            ✅
 16. PROMPT P8.4  → Redesign cards conteúdo + criador    ✅
-17. PROMPT P5.7  → Creator popup modal (welcome video + top content) ✅
-18. PROMPT P5.8  → Creator Welcome Card configurável                  ⏳ ← PRÓXIMO
-19. PROMPT B4    → Navegação dos cards (href em cards antigos)
-20. PROMPT P5.6  → Páginas legais + footer funcional
+17. PROMPT P5.7  → Creator popup modal (wiring + backend field)        ✅ (Codex) + fix CI 'website' platform label (Claude)
+18. PROMPT P5.8  → Creator Welcome Card configurável                   ✅ (Codex) + fix lint _review + useMemo (Claude)
+    ── Extras fora de prompt (Claude direto):
+    • Redesign visual CreatorModal (header, tabs, social, courses, layout) ✅
+    • Fix routing @username/+Page.tsx — usePageContext() + fallback regex ✅
+    • Mock seed script seedCreatorCardsMock.ts (4 criadores variados) ✅
+    ──
+19. PROMPT B4    → Navegação dos cards (href em cards antigos)         ⏳ ← PRÓXIMO
+20. PROMPT P5.6  → Páginas legais + footer funcional                   ⏳
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
