@@ -89,6 +89,6 @@ const NotificationSchema = new Schema<INotification>(
 
 NotificationSchema.index({ user: 1, isRead: 1, createdAt: -1 })
 NotificationSchema.index({ user: 1, type: 1 })
-NotificationSchema.index({ createdAt: -1 })
+NotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 })
 
 export const Notification = mongoose.model<INotification>('Notification', NotificationSchema)

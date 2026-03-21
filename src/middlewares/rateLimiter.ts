@@ -22,6 +22,9 @@ type RateLimiterName =
   | 'news'
   | 'search'
   | 'stats'
+  | 'quickAnalysis'
+  | 'marketData'
+  | 'reits'
   | 'admin'
   | 'adminModerationAction'
   | 'adminModerationBulk'
@@ -149,6 +152,33 @@ const limiterDefinitions: LimiterDefinition[] = [
     defaultWindowMs: 5 * 60 * 1000,
     defaultLimit: 50,
     message: 'Muitas requisicoes de estatisticas. Tente novamente em 5 minutos.',
+  },
+  {
+    name: 'quickAnalysis',
+    envKey: 'QUICK_ANALYSIS',
+    keyPrefix: 'quick-analysis',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 10,
+    message: 'Muitas requisicoes de analise rapida. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'marketData',
+    envKey: 'MARKET_DATA',
+    keyPrefix: 'market-data',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 30,
+    message: 'Muitas requisicoes de dados de mercado. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'reits',
+    envKey: 'REITS',
+    keyPrefix: 'reits',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 20,
+    message: 'Muitas requisicoes de REITs. Tente novamente em 1 minuto.',
   },
   {
     name: 'admin',
@@ -489,6 +519,9 @@ export const rateLimiter: Record<RateLimiterName, RateLimitRequestHandler> = {
   news: buildLimiter('news'),
   search: buildLimiter('search'),
   stats: buildLimiter('stats'),
+  quickAnalysis: buildLimiter('quickAnalysis'),
+  marketData: buildLimiter('marketData'),
+  reits: buildLimiter('reits'),
   admin: buildLimiter('admin'),
   adminModerationAction: buildLimiter('adminModerationAction'),
   adminModerationBulk: buildLimiter('adminModerationBulk'),

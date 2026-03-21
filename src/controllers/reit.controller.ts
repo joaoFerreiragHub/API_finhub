@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import axios from 'axios'
+import { cacheService, CacheKeys, CacheStrategies } from '../services/cacheService'
 
 const FMP_API_KEY = process.env.FMP_API_KEY
 const FMP_BASE = 'https://financialmodelingprep.com/stable'
@@ -13,6 +14,13 @@ class ReitUpstreamConfigError extends Error {
     this.name = 'ReitUpstreamConfigError'
     this.code = code
     this.statusCode = statusCode
+  }
+}
+
+class ReitNotFoundError extends Error {
+  constructor(message = 'REIT nao encontrado.') {
+    super(message)
+    this.name = 'ReitNotFoundError'
   }
 }
 
@@ -830,26 +838,51 @@ export const calculateDebtRatios = async (req: Request, res: Response) => {
 }
 
 export const calculateMetrics = async (req: Request, res: Response) => {
-  const { symbol } = req.query
+  const symbol = String(req.query.symbol ?? '')
+    .trim()
+    .toUpperCase()
+
+  if (!symbol) {
+    return res.status(400).json({ error: 'Parametro symbol e obrigatorio.' })
+  }
+
   try {
-    const [profileData, quoteData] = await Promise.all([
-      fmpGet(`/profile?symbol=${symbol}`),
-      fmpGet(`/quote?symbol=${symbol}`),
-    ])
-    if (!profileData?.[0]) return res.status(404).json({ error: 'REIT não encontrado.' })
-    const profile = first(profileData)
-    const quote = first(quoteData)
-    res.json({
-      symbol: String(symbol),
-      name: profile.companyName,
-      price: quote.price || profile.price || 0,
-      dividendYield: profile.lastDividend,
-      beta: profile.beta,
-      marketCap: profile.marketCap,
-      sector: profile.sector,
-      industry: profile.industry,
-    })
+    const cacheKey = CacheKeys.reits.metrics(symbol)
+    const payload = await cacheService.remember(
+      cacheKey,
+      async () => {
+        const [profileData, quoteData] = await Promise.all([
+          fmpGet(`/profile?symbol=${symbol}`),
+          fmpGet(`/quote?symbol=${symbol}`),
+        ])
+
+        if (!profileData?.[0]) {
+          throw new ReitNotFoundError()
+        }
+
+        const profile = first(profileData)
+        const quote = first(quoteData)
+
+        return {
+          symbol,
+          name: profile.companyName,
+          price: quote.price || profile.price || 0,
+          dividendYield: profile.lastDividend,
+          beta: profile.beta,
+          marketCap: profile.marketCap,
+          sector: profile.sector,
+          industry: profile.industry,
+        }
+      },
+      CacheStrategies.REIT_METRICS,
+    )
+
+    return res.json(payload)
   } catch (error: any) {
-    res.status(500).json({ error: 'Erro ao calcular métricas REIT.' })
+    if (error instanceof ReitNotFoundError) {
+      return res.status(404).json({ error: error.message })
+    }
+
+    return res.status(500).json({ error: 'Erro ao calcular metricas REIT.' })
   }
 }

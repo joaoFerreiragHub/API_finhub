@@ -1,0 +1,156 @@
+{
+  "AAPL": {
+    "sector": "Technology",
+    "quickMetricIngestion": { "resolvedSector": "Technology" },
+    "quickMetricSummary": {
+      "coreReady": 18,
+      "coreTotal": 18,
+      "optionalReady": 0,
+      "optionalTotal": 0,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "GOOGL": {
+    "sector": "Communication Services",
+    "quickMetricIngestion": { "resolvedSector": "Communication Services" },
+    "quickMetricSummary": {
+      "coreReady": 18,
+      "coreTotal": 18,
+      "optionalReady": 0,
+      "optionalTotal": 0,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "JNJ": {
+    "sector": "Healthcare",
+    "quickMetricIngestion": { "resolvedSector": "Healthcare" },
+    "quickMetricSummary": {
+      "coreReady": 18,
+      "coreTotal": 18,
+      "optionalReady": 0,
+      "optionalTotal": 0,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "JPM": {
+    "sector": "Financial Services",
+    "quickMetricIngestion": { "resolvedSector": "Financial Services" },
+    "quickMetricSummary": {
+      "coreReady": 10,
+      "coreTotal": 10,
+      "optionalReady": 6,
+      "optionalTotal": 6,
+      "calculated": 5,
+      "nao_aplicavel": 2,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "PLD": {
+    "sector": "Real Estate",
+    "quickMetricIngestion": { "resolvedSector": "Real Estate" },
+    "quickMetricSummary": {
+      "coreReady": 15,
+      "coreTotal": 15,
+      "optionalReady": 3,
+      "optionalTotal": 3,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "CAT": {
+    "sector": "Industrials",
+    "quickMetricIngestion": { "resolvedSector": "Industrials" },
+    "quickMetricSummary": {
+      "coreReady": 18,
+      "coreTotal": 18,
+      "optionalReady": 0,
+      "optionalTotal": 0,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "XOM": {
+    "sector": "Energy",
+    "quickMetricIngestion": { "resolvedSector": "Energy" },
+    "quickMetricSummary": {
+      "coreReady": 17,
+      "coreTotal": 17,
+      "optionalReady": 1,
+      "optionalTotal": 1,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "PG": {
+    "sector": "Consumer Defensive",
+    "quickMetricIngestion": { "resolvedSector": "Consumer Defensive" },
+    "quickMetricSummary": {
+      "coreReady": 18,
+      "coreTotal": 18,
+      "optionalReady": 0,
+      "optionalTotal": 0,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "AMZN": {
+    "sector": "Consumer Cyclical",
+    "quickMetricIngestion": { "resolvedSector": "Consumer Cyclical" },
+    "quickMetricSummary": {
+      "coreReady": 18,
+      "coreTotal": 18,
+      "optionalReady": 0,
+      "optionalTotal": 0,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "LIN": {
+    "sector": "Basic Materials",
+    "quickMetricIngestion": { "resolvedSector": "Basic Materials" },
+    "quickMetricSummary": {
+      "coreReady": 18,
+      "coreTotal": 18,
+      "optionalReady": 0,
+      "optionalTotal": 0,
+      "calculated": 6,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 0,
+      "erro_fonte": 0
+    }
+  },
+  "NFE": {
+    "sector": "Utilities",
+    "quickMetricIngestion": { "resolvedSector": "Utilities" },
+    "quickMetricSummary": {
+      "coreReady": 15,
+      "coreTotal": 16,
+      "optionalReady": 2,
+      "optionalTotal": 2,
+      "calculated": 5,
+      "nao_aplicavel": 0,
+      "sem_dado_atual": 1,
+      "erro_fonte": 0
+    }
+  }
+}

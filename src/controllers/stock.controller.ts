@@ -12,6 +12,7 @@ import {
 import { buildQuickMetricGovernance } from '../utils/quickAnalysisMetrics'
 import { fillDerivedCurrentIndicadores } from '../utils/quickAnalysisDerivedMetrics'
 import { computeDataQualityScore, computeSectorContextScore } from '../utils/quickAnalysisSectorScoring'
+import { cacheService, CacheKeys, CacheStrategies } from '../services/cacheService'
 
 const FMP_API_KEY = process.env.FMP_API_KEY
 const MAX_BATCH_SYMBOLS = 50
@@ -27,12 +28,6 @@ interface BatchQuoteRecord {
   volume?: number
   changePercentage?: number
   changesPercentage?: number
-}
-
-interface BatchProfileRecord {
-  symbol?: string
-  companyName?: string
-  sector?: string
 }
 
 interface BatchSnapshotItem {
@@ -105,8 +100,7 @@ const buildFallbackBatchItems = (symbols: string[]): BatchSnapshotItem[] =>
 
 const buildBatchSnapshotItems = (
   symbols: string[],
-  quotes: BatchQuoteRecord[],
-  profiles: BatchProfileRecord[]
+  quotes: BatchQuoteRecord[]
 ): BatchSnapshotItem[] => {
   const quoteBySymbol = new Map<string, BatchQuoteRecord>()
   for (const quote of quotes) {
@@ -114,24 +108,17 @@ const buildBatchSnapshotItems = (
     if (symbol) quoteBySymbol.set(symbol, quote)
   }
 
-  const profileBySymbol = new Map<string, BatchProfileRecord>()
-  for (const profile of profiles) {
-    const symbol = String(profile.symbol ?? '').toUpperCase()
-    if (symbol) profileBySymbol.set(symbol, profile)
-  }
-
   return symbols.map((symbol) => {
     const quote = quoteBySymbol.get(symbol)
-    const profile = profileBySymbol.get(symbol)
 
     return {
       symbol,
-      name: quote?.name ?? profile?.companyName ?? symbol,
+      name: quote?.name ?? symbol,
       price: toFiniteNumber(quote?.price),
       marketCap: toFiniteNumber(quote?.marketCap),
       volume: toFiniteNumber(quote?.volume),
       change24hPercent: toFiniteNumber(quote?.changePercentage ?? quote?.changesPercentage),
-      sector: profile?.sector ?? null,
+      sector: null,
     }
   })
 }
@@ -202,127 +189,130 @@ function computeFinHubScore(
   return { score, label, coverage: 4 }
 }
 
+const buildQuickAnalysisPayload = async (symbol: string) => {
+  const profile = await fetchProfile(symbol)
+
+  const industry = (profile as any).industry?.toLowerCase() ?? ''
+  const sector = (profile as any).sector?.toLowerCase() ?? ''
+  const companyTypeHint = {
+    isBanco: industry.includes('banks') || industry.includes('banking'),
+    isREIT: industry.includes('reit') || (sector.includes('real estate') && !industry.includes('services')),
+    isPaymentProcessor: industry.includes('credit services') || industry.includes('payment'),
+  }
+
+  const [scores, alerts, radarWithPeers, indicadoresOutput, { peers, quotes }] = await Promise.all([
+    fetchScores(symbol),
+    fetchAlerts(symbol),
+    fetchRadarWithPeers(symbol, companyTypeHint),
+    fetchIndicadores(symbol),
+    fetchPeers(symbol),
+  ])
+
+  const { indicadores, rawForScoring } = indicadoresOutput
+  const derivedCurrent = fillDerivedCurrentIndicadores({
+    indicadores,
+    ratios: scores.ratios ?? rawForScoring.quickFallbackData?.ratios ?? null,
+    metrics: rawForScoring.quickFallbackData?.metrics ?? null,
+    historicalRatios: rawForScoring.quickFallbackData?.historicalRatios ?? [],
+    keyMetricsHistorical: rawForScoring.quickFallbackData?.keyMetricsHistorical ?? [],
+    income: rawForScoring.quickFallbackData?.income ?? null,
+    balance: rawForScoring.quickFallbackData?.balance ?? null,
+    balanceY1: rawForScoring.quickFallbackData?.balanceY1 ?? null,
+    cashflow: rawForScoring.quickFallbackData?.cashflow ?? null,
+    growth: rawForScoring.quickFallbackData?.growth ?? null,
+  })
+
+  const indicadoresEnriched = derivedCurrent.indicadores
+  const benchmarkPack = await fetchBenchmarkComparisons({
+    symbol,
+    sector: profile.sector ?? '',
+    industry: profile.industry ?? '',
+    peers,
+    exchangeShortName: (profile as any).exchangeShortName,
+  })
+
+  const quickMetricGovernance = buildQuickMetricGovernance({
+    sector: profile.sector ?? '',
+    indicadores: indicadoresEnriched,
+    calculatedMetricsByLabel: derivedCurrent.calculatedByLabel,
+    benchmarkComparisons: benchmarkPack.comparisons,
+    benchmarkMetadata: benchmarkPack.metadata,
+    currentDataPeriod: rawForScoring.dataPeriod ?? null,
+    benchmarkAsOf: benchmarkPack.context.asOf,
+    asOf: benchmarkPack.context.asOf,
+  })
+  const dataQualityScore = computeDataQualityScore(quickMetricGovernance)
+
+  const qualityScore = scores.financialScores?.piotroskiScore ?? 0
+  const riskScore = Math.min(scores.financialScores?.altmanZScore ?? 5, 10)
+  const valuationGrade = simplifyRating(scores.rating?.rating || 'C')
+
+  const growthScore = computeGrowthScore(
+    rawForScoring.cagrEps,
+    rawForScoring.revenueGrowth,
+    scores.rating?.ratingDetailsDCFScore,
+  )
+
+  const finHubScore = computeFinHubScore(qualityScore, growthScore, valuationGrade, riskScore)
+  const sectorContextScore = computeSectorContextScore({
+    finHubScore: finHubScore.score,
+    governance: quickMetricGovernance,
+    sector: quickMetricGovernance.ingestion.resolvedSector ?? profile.sector ?? 'Unknown',
+  })
+
+  return {
+    ...profile,
+    qualityScore,
+    growthScore,
+    valuationGrade,
+    valuationRawGrade: scores.rating?.rating || 'C+',
+    riskScore,
+    piotroskiScore: scores.financialScores?.piotroskiScore ?? null,
+    altmanZScore: scores.financialScores?.altmanZScore ?? null,
+    finHubScore: finHubScore.score,
+    finHubLabel: finHubScore.label,
+    finHubCoverage: finHubScore.coverage,
+    sectorContextScore,
+    dataQualityScore,
+    dataPeriod: rawForScoring.dataPeriod ?? 'TTM',
+    alerts,
+    radarData: radarWithPeers.main.radar,
+    radarPeers: radarWithPeers.peers,
+    indicadores: indicadoresEnriched,
+    benchmarkComparisons: benchmarkPack.comparisons,
+    benchmarkMetadata: benchmarkPack.metadata,
+    benchmarkContext: benchmarkPack.context,
+    quickMetricContractVersion: quickMetricGovernance.contractVersion,
+    quickMetricCatalog: quickMetricGovernance.catalog,
+    quickMetricStates: quickMetricGovernance.states,
+    quickMetricIngestion: quickMetricGovernance.ingestion,
+    quickMetricSummary: quickMetricGovernance.summary,
+    peers,
+    peersQuotes: quotes,
+  }
+}
+
 export const getQuickAnalysis = async (req: Request, res: Response) => {
   const symbol = String(req.params.symbol ?? '')
-  console.log(`🎯 getQuickAnalysis chamado com símbolo: "${symbol}"`)
+    .trim()
+    .toUpperCase()
+
+  if (!symbol) {
+    return res.status(400).json({ error: 'Simbolo invalido.' })
+  }
 
   try {
-    // 1. Fetch profile primeiro para obter o tipo de empresa (D1: sector radar)
-    const profile = await fetchProfile(symbol)
-
-    // Detectar tipo de empresa para ceilings do radar
-    const industry = (profile as any).industry?.toLowerCase() ?? ''
-    const sector   = (profile as any).sector?.toLowerCase() ?? ''
-    const companyTypeHint = {
-      isBanco: industry.includes('banks') || industry.includes('banking'),
-      isREIT: industry.includes('reit') || (sector.includes('real estate') && !industry.includes('services')),
-      isPaymentProcessor: industry.includes('credit services') || industry.includes('payment'),
-    }
-
-    // 2. Resto em paralelo, agora com companyTypeHint no radar
-    const [
-      scores,
-      alerts,
-      radarWithPeers,
-      indicadoresOutput,
-      { peers, quotes }
-    ] = await Promise.all([
-      fetchScores(symbol),
-      fetchAlerts(symbol),
-      fetchRadarWithPeers(symbol, companyTypeHint),
-      fetchIndicadores(symbol),
-      fetchPeers(symbol)
-    ])
-
-    const { indicadores, rawForScoring } = indicadoresOutput
-    const derivedCurrent = fillDerivedCurrentIndicadores({
-      indicadores,
-      ratios: scores.ratios ?? rawForScoring.quickFallbackData?.ratios ?? null,
-      metrics: rawForScoring.quickFallbackData?.metrics ?? null,
-      historicalRatios: rawForScoring.quickFallbackData?.historicalRatios ?? [],
-      keyMetricsHistorical: rawForScoring.quickFallbackData?.keyMetricsHistorical ?? [],
-      income: rawForScoring.quickFallbackData?.income ?? null,
-      balance: rawForScoring.quickFallbackData?.balance ?? null,
-      balanceY1: rawForScoring.quickFallbackData?.balanceY1 ?? null,
-      cashflow: rawForScoring.quickFallbackData?.cashflow ?? null,
-      growth: rawForScoring.quickFallbackData?.growth ?? null,
-    })
-    const indicadoresEnriched = derivedCurrent.indicadores
-    const benchmarkPack = await fetchBenchmarkComparisons({
-      symbol,
-      sector: profile.sector ?? '',
-      industry: profile.industry ?? '',
-      peers,
-      exchangeShortName: (profile as any).exchangeShortName,
-    })
-    const quickMetricGovernance = buildQuickMetricGovernance({
-      sector: profile.sector ?? '',
-      indicadores: indicadoresEnriched,
-      calculatedMetricsByLabel: derivedCurrent.calculatedByLabel,
-      benchmarkComparisons: benchmarkPack.comparisons,
-      benchmarkMetadata: benchmarkPack.metadata,
-      currentDataPeriod: rawForScoring.dataPeriod ?? null,
-      benchmarkAsOf: benchmarkPack.context.asOf,
-      asOf: benchmarkPack.context.asOf,
-    })
-    const dataQualityScore = computeDataQualityScore(quickMetricGovernance)
-
-    // B1 — Growth Score melhorado
-    const qualityScore = scores.financialScores?.piotroskiScore ?? 0
-    const riskScore    = Math.min(scores.financialScores?.altmanZScore ?? 5, 10)
-    const valuationGrade = simplifyRating(scores.rating?.rating || 'C')
-
-    const growthScore = computeGrowthScore(
-      rawForScoring.cagrEps,
-      rawForScoring.revenueGrowth,
-      scores.rating?.ratingDetailsDCFScore
+    const cacheKey = CacheKeys.market.fundamentals(symbol)
+    const quickAnalysis = await cacheService.remember(
+      cacheKey,
+      () => buildQuickAnalysisPayload(symbol),
+      CacheStrategies.MARKET_FUNDAMENTALS,
     )
 
-    // B2 — FinHub Score composto
-    const finHubScore = computeFinHubScore(qualityScore, growthScore, valuationGrade, riskScore)
-    const sectorContextScore = computeSectorContextScore({
-      finHubScore: finHubScore.score,
-      governance: quickMetricGovernance,
-      sector: quickMetricGovernance.ingestion.resolvedSector ?? profile.sector ?? 'Unknown',
-    })
-
-    const quickAnalysis = {
-      ...profile,
-      qualityScore,
-      growthScore,
-      valuationGrade,
-      valuationRawGrade: scores.rating?.rating || 'C+',
-      riskScore,
-      piotroskiScore: scores.financialScores?.piotroskiScore ?? null,
-      altmanZScore: scores.financialScores?.altmanZScore ?? null,
-      // B2: FinHub Score
-      finHubScore: finHubScore.score,
-      finHubLabel: finHubScore.label,
-      finHubCoverage: finHubScore.coverage,
-      sectorContextScore,
-      dataQualityScore,
-      // A2: period tag
-      dataPeriod: rawForScoring.dataPeriod ?? 'TTM',
-      alerts,
-      radarData: radarWithPeers.main.radar,
-      radarPeers: radarWithPeers.peers,
-      indicadores: indicadoresEnriched,
-      benchmarkComparisons: benchmarkPack.comparisons,
-      benchmarkMetadata: benchmarkPack.metadata,
-      benchmarkContext: benchmarkPack.context,
-      quickMetricContractVersion: quickMetricGovernance.contractVersion,
-      quickMetricCatalog: quickMetricGovernance.catalog,
-      quickMetricStates: quickMetricGovernance.states,
-      quickMetricIngestion: quickMetricGovernance.ingestion,
-      quickMetricSummary: quickMetricGovernance.summary,
-      peers,
-      peersQuotes: quotes
-    }
-
-    res.json(quickAnalysis)
+    return res.json(quickAnalysis)
   } catch (error) {
     console.error('Erro ao gerar análise rápida:', error)
-    res.status(500).json({ error: 'Erro ao gerar análise rápida' })
+    return res.status(500).json({ error: 'Erro ao gerar análise rápida' })
   }
 }
 
@@ -340,54 +330,9 @@ export const getBatchSnapshot = async (req: Request, res: Response) => {
       })
     }
 
-    const fallbackItems = buildFallbackBatchItems(symbols)
-
-    if (!FMP_API_KEY) {
-      return res.status(200).json({
-        items: fallbackItems,
-        requested: symbols.length,
-        returned: 0,
-        staleTimeSeconds: BATCH_CACHE_HINT_SECONDS,
-        source: 'watchlist_batch_fallback',
-        degraded: true,
-        warning: 'FMP_API_KEY nao configurada.',
-      })
-    }
-
     const joinedSymbols = symbols.join(',')
-
-    let items: BatchSnapshotItem[] = fallbackItems
-    let source = 'fmp_stable_batch_quote'
-    let degraded = false
-    let warning: string | undefined
-
-    try {
-      const [quotesResponse, profilesResponse] = await Promise.all([
-        axios.get(
-          `https://financialmodelingprep.com/stable/batch-quote?symbols=${joinedSymbols}&apikey=${FMP_API_KEY}`,
-          { timeout: BATCH_REQUEST_TIMEOUT_MS }
-        ),
-        axios
-          .get(
-            `https://financialmodelingprep.com/stable/profile?symbol=${joinedSymbols}&apikey=${FMP_API_KEY}`,
-            { timeout: BATCH_REQUEST_TIMEOUT_MS }
-          )
-          .catch(() => ({ data: [] as BatchProfileRecord[] })),
-      ])
-
-      const quotes = normalizeRecords<BatchQuoteRecord>(quotesResponse.data)
-      const profiles = normalizeRecords<BatchProfileRecord>(profilesResponse.data)
-      items = buildBatchSnapshotItems(symbols, quotes, profiles)
-    } catch (batchError: unknown) {
-      const batchErrorMessage =
-        batchError instanceof Error ? batchError.message : String(batchError)
-      console.warn('Watchlist batch snapshot em fallback:', batchErrorMessage)
-      source = 'watchlist_batch_fallback'
-      degraded = true
-      warning = 'Falha no provider externo de mercado; devolvido fallback local por simbolo.'
-    }
-
-    const responseBody: {
+    const cacheKey = CacheKeys.market.batchSnapshot(joinedSymbols)
+    const responseBody = await cacheService.remember<{
       items: BatchSnapshotItem[]
       requested: number
       returned: number
@@ -395,18 +340,74 @@ export const getBatchSnapshot = async (req: Request, res: Response) => {
       source: string
       degraded?: boolean
       warning?: string
-    } = {
-      items,
-      requested: symbols.length,
-      returned: items.filter((item) => item.price > 0 || item.marketCap > 0).length,
-      staleTimeSeconds: BATCH_CACHE_HINT_SECONDS,
-      source,
-    }
+    }>(
+      cacheKey,
+      async () => {
+        const fallbackItems = buildFallbackBatchItems(symbols)
 
-    if (degraded) {
-      responseBody.degraded = true
-      if (warning) responseBody.warning = warning
-    }
+        if (!FMP_API_KEY) {
+          return {
+            items: fallbackItems,
+            requested: symbols.length,
+            returned: 0,
+            staleTimeSeconds: BATCH_CACHE_HINT_SECONDS,
+            source: 'watchlist_batch_fallback',
+            degraded: true,
+            warning: 'FMP_API_KEY nao configurada.',
+          }
+        }
+
+        let items: BatchSnapshotItem[] = fallbackItems
+        let source = 'fmp_v3_quote_batch'
+        let degraded = false
+        let warning: string | undefined
+
+        try {
+          const quotesResponse = await axios.get(
+            `https://financialmodelingprep.com/v3/quote/${joinedSymbols}?apikey=${FMP_API_KEY}`,
+            { timeout: BATCH_REQUEST_TIMEOUT_MS },
+          )
+
+          const quotes = normalizeRecords<BatchQuoteRecord>(quotesResponse.data)
+          items = buildBatchSnapshotItems(symbols, quotes)
+        } catch (batchError: unknown) {
+          const batchErrorMessage =
+            batchError instanceof Error ? batchError.message : String(batchError)
+          console.error(
+            '[watchlist-batch] Falha ao obter batch quote FMP v3 para symbols=%s: %s',
+            joinedSymbols,
+            batchErrorMessage,
+          )
+          source = 'watchlist_batch_fallback'
+          degraded = true
+          warning = 'Falha no provider externo de mercado; devolvido fallback local por simbolo.'
+        }
+
+        const payload: {
+          items: BatchSnapshotItem[]
+          requested: number
+          returned: number
+          staleTimeSeconds: number
+          source: string
+          degraded?: boolean
+          warning?: string
+        } = {
+          items,
+          requested: symbols.length,
+          returned: items.filter((item) => item.price > 0 || item.marketCap > 0).length,
+          staleTimeSeconds: BATCH_CACHE_HINT_SECONDS,
+          source,
+        }
+
+        if (degraded) {
+          payload.degraded = true
+          if (warning) payload.warning = warning
+        }
+
+        return payload
+      },
+      CacheStrategies.WATCHLIST,
+    )
 
     return res.status(200).json(responseBody)
   } catch (error: unknown) {

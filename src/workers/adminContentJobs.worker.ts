@@ -25,7 +25,7 @@ async function shutdown(signal: NodeJS.Signals) {
   logInfo('admin_content_jobs_worker_shutdown_requested', { signal })
 
   try {
-    const gracefulStop = await adminContentJobService.stopWorker()
+    const gracefulStop = await adminContentJobService.stopWorker(null, 'drain')
     if (!gracefulStop) {
       logWarn('admin_content_jobs_worker_force_requeue_on_shutdown')
     }

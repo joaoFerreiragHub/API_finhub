@@ -297,6 +297,17 @@ const QUICK_ANALYSIS_METRICS: QuickMetricDefinitionInternal[] = [
     coreSectors: CORE_ALL_SECTORS,
   },
   {
+    key: 'payout_ratio',
+    label: 'Payout Ratio',
+    category: 'rentabilidade',
+    unit: 'percent',
+    dataPeriod: 'TTM',
+    primarySources: ['fmp.ratios-ttm', 'fmp.key-metrics-ttm'],
+    fallbackSources: ['benchmark.peer_median'],
+    formula: 'abs(dividendsPaid) / abs(netIncome)',
+    coreSectors: CORE_ALL_SECTORS,
+  },
+  {
     key: 'cash_ratio',
     label: 'Cash Ratio',
     category: 'estrutura_capital',

@@ -53,3 +53,34 @@ O Orchestrator DEVE copiar o resumo para o MEMORY.md do agente WhatsApp.
 - TypeScript compila sem erros (`npx tsc --noEmit` = 0 erros nos ficheiros novos)
 - Rotas registadas em `/api/admin/agent-logs` com auth + requireAdmin
 - Decisao: usar `requireAdmin` simples (sem scopes granulares por agora)
+
+---
+
+## AUDITORIA COMPLETA — 20 de Março 2026
+
+Auditoria de **estado global de analytics** concluída por Boyo.  
+Documento: `dcos/agents/orchestrator/2026-03-20_AUDITORIA_ANALYTICS.md`
+
+### Findings principais:
+
+**✅ Subsistemas funcionais:**
+1. Product Analytics (PostHog) — 90% backend, 80% frontend, LIVE
+2. Creator Insights (API) — 100% backend, 70% frontend, LIVE
+3. Agent Dashboard Backend — 85% DONE (frontend 0%)
+
+**⚠️ Subsistemas incompletos:**
+1. P5 KPI Framework — 100% documentado, 5% implementado (BACKLOG)
+2. Sponsorship Scorecard — 100% documentado, 5% implementado (BACKLOG)
+
+### Críticos imediatos:
+- Sem cache em analytics queries (slow at scale)
+- Sem logging automático de agentes (dashboard vazio)
+- PostHog key em .env (security risk)
+- P5 eventos não integrados no código
+
+### Roadmap 6 semanas:
+1. Semana 1-2: Cache + Agent logging + PostHog security
+2. Semana 3-4: P5 Onda A (KPI tree + 21 eventos mínimos)
+3. Semana 5-6: Frontend + relatórios automáticos
+
+Estado: PRONTO PARA APROVAÇÃO

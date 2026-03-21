@@ -92,7 +92,6 @@ const AssistedSessionSchema = new Schema<IAssistedSession>(
     sessionExpiresAt: {
       type: Date,
       default: null,
-      index: true,
     },
     declinedAt: {
       type: Date,
@@ -127,5 +126,6 @@ AssistedSessionSchema.index({ adminUser: 1, createdAt: -1 })
 AssistedSessionSchema.index({ targetUser: 1, createdAt: -1 })
 AssistedSessionSchema.index({ targetUser: 1, status: 1, createdAt: -1 })
 AssistedSessionSchema.index({ adminUser: 1, status: 1, createdAt: -1 })
+AssistedSessionSchema.index({ sessionExpiresAt: 1 }, { expireAfterSeconds: 0 })
 
 export const AssistedSession = mongoose.model<IAssistedSession>('AssistedSession', AssistedSessionSchema)

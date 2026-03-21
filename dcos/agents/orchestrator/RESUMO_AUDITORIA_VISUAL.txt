@@ -1,0 +1,155 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    AUDITORIA DE ANALYTICS — FINHUB
+                           20 de Março de 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+ESTADO GLOBAL
+─────────────────────────────────────────────────────────────────────────────
+
+  ✅ Product Analytics (PostHog)      →  FUNCIONAL (90% backend, 80% frontend)
+  ✅ Creator Insights (API)           →  FUNCIONAL (100% backend)
+  🔧 Agent Dashboard                  →  EM CONSTRUÇÃO (85% backend, 0% frontend)
+  ❌ P5 KPI Framework                 →  NÃO IMPLEMENTADO (100% docs)
+  ❌ Sponsorship Scorecard            →  NÃO IMPLEMENTADO (100% docs)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TOP 3 PROBLEMAS CRÍTICOS
+─────────────────────────────────────────────────────────────────────────────
+
+  1️⃣  P5 NAO IMPLEMENTADO
+      └─ Impacto: Roadmap sem dados, decisões sem tração
+      └─ Causa: Planejado como "post-P4" mas P4 ainda em build
+      └─ Fix: 8-10 dias (3 ondas de implementação)
+
+  2️⃣  SEM CACHE DE QUERIES CREATOR
+      └─ Impacto: /api/admin/creators/analytics demora 2-3 segundos
+      └─ Causa: Agregações MongoDB complexas sem cache
+      └─ Fix: 1-2 dias (Redis + refresh job)
+
+  3️⃣  POSTHOG KEY EM .env
+      └─ Impacto: Security risk se .env vazar em git/infra
+      └─ Causa: Chave privada em plaintext
+      └─ Fix: 4 horas (migrar para secret manager)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ROADMAP 6 SEMANAS — CONSOLIDAÇÃO ANALYTICS
+─────────────────────────────────────────────────────────────────────────────
+
+  SEMANA 1-2: FIX WINS (Cache + Security + Agent Logging)
+  ├─ Cache redis para aggregações creator
+  ├─ PostHog key → secret manager
+  ├─ Webhooks para logging automático de agentes
+  └─ Cookie consent UI visível
+     ⏱️  4 dias de trabalho
+
+  SEMANA 3-4: P5 ONDA A (KPI Tree + Eventos Mínimos)
+  ├─ Event dictionary v1 publicado (21 eventos canonicos)
+  ├─ Instrumentação de eventos em código (onboarding, conteúdo, social)
+  ├─ Dashboard KPI executivo v0
+  └─ Congelar baseline de KPIs
+     ⏱️  6 dias de trabalho
+
+  SEMANA 5-6: FRONTEND + BI OPERACIONAL
+  ├─ Agent Dashboard frontend (Timeline, Scorecard, Burndown)
+  ├─ Cohort analysis (D1/D7/D30 retention)
+  ├─ Relatórios automáticos para sponsores
+  └─ Alertas de queda de KPI críticos
+     ⏱️  6 dias de trabalho
+
+═══════════════════════════════════════════════════════════════════════════════
+
+MATRIZ DE COMPLETUDE ACTUAL
+─────────────────────────────────────────────────────────────────────────────
+
+  Subsistema              Backend  Frontend  Docs   Em Produção
+  ────────────────────────────────────────────────────────────────
+  Product Analytics          90%      80%      95%     ✅ SIM
+  Creator Insights          100%      70%      85%     ✅ SIM
+  Agent Dashboard            85%       0%      90%     ❌ NÃO
+  P5 KPI Framework            5%       0%      95%     ❌ NÃO
+  Sponsorship Scorecard       5%       0%      95%     ❌ NÃO
+  ────────────────────────────────────────────────────────────────
+  GLOBAL                      57%      30%      92%
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DECISÕES NECESSÁRIAS (JOÃO)
+─────────────────────────────────────────────────────────────────────────────
+
+  ❓ Questão 1: P5 é prioridade?
+     └─ Sim  → Iniciar Onda A imediatamente
+     └─ Não  → Deixar em backlog (recomenda-se Sim)
+
+  ❓ Questão 2: Owner de P5 Onda A?
+     └─ Proposto: Product Release + Growth (agentes Groq)
+     └─ CTO: Support com event instrumentação
+
+  ❓ Questão 3: Timeline 6 semanas é aceitável?
+     └─ Sim  → Começar semana proxima
+     └─ Não  → Discutir priorização
+
+═══════════════════════════════════════════════════════════════════════════════
+
+IMPACTO DA IMPLEMENTAÇÃO
+─────────────────────────────────────────────────────────────────────────────
+
+  ANTES (agora):
+  ├─ Decisões baseadas em "feel"
+  ├─ Sponsores vêem ad-hoc reports
+  ├─ Sem visibilidade em agentes
+  ├─ Sem alertas de queda
+  └─ Roadmap sem dados
+
+  DEPOIS (6 semanas):
+  ├─ 12 KPIs officiaise monitorizados
+  ├─ Relatórios automáticos para sponsores
+  ├─ Dashboard de atividade de agentes
+  ├─ Alertas de anomalias automatizados
+  └─ Decisões de roadmap baseadas em dados auditáveis
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DOCUMENTAÇÃO GERADA
+─────────────────────────────────────────────────────────────────────────────
+
+  1. 2026-03-20_AUDITORIA_ANALYTICS.md
+     └─ Relatório completo (18KB)
+     └─ 8 secções com tabelas, fluxos, recomendações
+     └─ Localização: dcos/agents/orchestrator/
+
+  2. HANDOFF_AUDITORIA_ANALYTICS.md
+     └─ Sumário executivo para João (4KB)
+     └─ 3 min read, decisões necessárias
+     └─ Localização: dcos/agents/orchestrator/
+
+  3. STATUS.md (actualizado)
+     └─ Task status + audit findings
+     └─ Localização: dcos/tasks/
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PRÓXIMAS AÇÕES
+─────────────────────────────────────────────────────────────────────────────
+
+  ✅ Auditoria concluída
+  ✅ Documentação preparada
+  ⏳ Aguardando seu feedback em:
+     1. Prioridade P5
+     2. Owner confirmado
+     3. Timeline aprovada
+
+  Quando aprovado:
+  ├─ Criar task packets em dcos/tasks/
+  ├─ Delegar aos agentes (Product Release, CTO)
+  ├─ Iniciar Semana 1 (fix wins)
+  └─ Report semanal de progresso
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Status: ✅ PRONTO PARA SUA DECISÃO
+Data: 20 de março de 2026, 09:45 GMT+0
+Compilado por: Boyo (finhub-orchestrator)
+
+═══════════════════════════════════════════════════════════════════════════════

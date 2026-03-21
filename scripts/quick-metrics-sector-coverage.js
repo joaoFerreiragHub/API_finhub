@@ -32,6 +32,7 @@ function parseArgs(argv) {
   const parsed = {
     apiBase: DEFAULT_API_BASE,
     out: null,
+    fixture: null,
     timeoutMs: 12000,
     interRequestMs: 1200,
     attempts: 4,
@@ -40,6 +41,7 @@ function parseArgs(argv) {
   argv.forEach((arg) => {
     if (arg.startsWith('--api-base=')) parsed.apiBase = arg.slice('--api-base='.length)
     if (arg.startsWith('--out=')) parsed.out = arg.slice('--out='.length)
+    if (arg.startsWith('--fixture=')) parsed.fixture = arg.slice('--fixture='.length)
     if (arg.startsWith('--timeout-ms=')) {
       const value = Number(arg.slice('--timeout-ms='.length))
       if (!Number.isNaN(value) && value > 0) parsed.timeoutMs = value
@@ -53,6 +55,20 @@ function parseArgs(argv) {
       if (!Number.isNaN(value) && value >= 1) parsed.attempts = value
     }
   })
+
+  return parsed
+}
+
+function loadFixtureData(fixturePath) {
+  if (!fixturePath) return null
+
+  const absolutePath = path.resolve(process.cwd(), fixturePath)
+  const content = fs.readFileSync(absolutePath, 'utf8')
+  const parsed = JSON.parse(content)
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`Fixture invalida: esperado object no ficheiro ${absolutePath}`)
+  }
 
   return parsed
 }
@@ -141,16 +157,22 @@ function buildMarkdown(results) {
 
 async function run() {
   const args = parseArgs(process.argv.slice(2))
+  const fixtureData = loadFixtureData(args.fixture)
   const results = []
 
   for (const sample of DEFAULT_SAMPLES) {
     try {
-      const payload = await fetchQuickAnalysisWithRetry(
-        args.apiBase,
-        sample.symbol,
-        args.timeoutMs,
-        args.attempts,
-      )
+      const payload = fixtureData
+        ? fixtureData[sample.symbol]
+        : await fetchQuickAnalysisWithRetry(
+            args.apiBase,
+            sample.symbol,
+            args.timeoutMs,
+            args.attempts,
+          )
+      if (!payload || typeof payload !== 'object') {
+        throw new Error(`fixture sem payload valido para ${sample.symbol}`)
+      }
       const summary = payload.quickMetricSummary || {}
       const ingestion = payload.quickMetricIngestion || {}
       results.push({

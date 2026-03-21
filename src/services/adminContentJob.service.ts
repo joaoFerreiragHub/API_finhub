@@ -177,6 +177,7 @@ class AdminContentJobService {
   private workerScheduled = false
   private workerRunning = false
   private stopRequested = false
+  private stopMode: 'drain' | 'requeue' = 'drain'
   private scheduledTimer: NodeJS.Timeout | null = null
   private heartbeatTimer: NodeJS.Timeout | null = null
   private workerId: string | null = null
@@ -190,6 +191,7 @@ class AdminContentJobService {
 
     this.workerEnabled = true
     this.stopRequested = false
+    this.stopMode = 'drain'
     this.workerId =
       process.env.ADMIN_CONTENT_JOBS_WORKER_ID?.trim() ||
       `admin-content-jobs:${os.hostname()}:${process.pid}:${crypto.randomUUID().slice(0, 8)}`
@@ -221,10 +223,11 @@ class AdminContentJobService {
     this.scheduleWorker()
   }
 
-  async stopWorker(timeoutMs = DEFAULT_STOP_TIMEOUT_MS) {
+  async stopWorker(timeoutMs: number | null = DEFAULT_STOP_TIMEOUT_MS, mode: 'drain' | 'requeue' = 'drain') {
     if (!this.workerEnabled) return true
 
     this.stopRequested = true
+    this.stopMode = mode
     await this.upsertWorkerRuntime({
       status: 'stopping',
       workerId: this.workerId,
@@ -236,16 +239,26 @@ class AdminContentJobService {
       this.workerScheduled = false
     }
 
-    const deadline = Date.now() + timeoutMs
-    while (this.workerRunning && Date.now() < deadline) {
-      await new Promise((resolve) => {
-        setTimeout(resolve, WORKER_STOP_POLL_MS)
-      })
+    if (timeoutMs === null) {
+      while (this.workerRunning) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, WORKER_STOP_POLL_MS)
+        })
+      }
+    } else {
+      const safeTimeoutMs = Math.max(0, timeoutMs)
+      const deadline = Date.now() + safeTimeoutMs
+      while (this.workerRunning && Date.now() < deadline) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, WORKER_STOP_POLL_MS)
+        })
+      }
     }
 
     let gracefulStop = true
     if (this.workerRunning) {
       gracefulStop = false
+      this.stopMode = 'requeue'
       await this.requeueRunningJobs('Job reencaminhado apos paragem controlada do worker.', {
         onlyStale: false,
       })
@@ -259,6 +272,7 @@ class AdminContentJobService {
     this.clearCurrentJobContextLocally()
     this.workerEnabled = false
     this.workerRunning = false
+    this.stopMode = 'drain'
     await this.upsertWorkerRuntime({
       status: 'offline',
       workerId: this.workerId,
@@ -1095,7 +1109,7 @@ class AdminContentJobService {
           continue
         }
 
-        if (this.stopRequested) {
+        if (this.stopRequested && this.stopMode === 'requeue') {
           await this.persistJobState(jobId, {
             items,
             progress,

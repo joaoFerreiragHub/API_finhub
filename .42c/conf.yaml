@@ -1,0 +1,3 @@
+apis:
+  openapi/openapi.json:
+    alias: finhub-api
