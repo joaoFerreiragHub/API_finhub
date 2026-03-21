@@ -15,6 +15,7 @@
 | [DESIGN.md](./DESIGN.md) | Direção visual, referências e plano de execução |
 | [FINHUB_DOCUMENTACAO_CRITICA.md](./FINHUB_DOCUMENTACAO_CRITICA.md) | Arquitetura, stack, endpoints, modelos, env vars |
 | [SSR_VIKE_FIXES.md](./SSR_VIKE_FIXES.md) | Problemas de SSR + Vike resolvidos: hydration, root singleton, React Router bridge, helmet interop |
+| [LAYOUT_NAVIGATION_AUDIT.md](./LAYOUT_NAVIGATION_AUDIT.md) | Auditoria completa de layouts e navegação: inconsistências por tipo de user, headers duplos, sidebars divergentes, proposta de consolidação |
 
 ---
 
@@ -26,9 +27,9 @@
 | P2 — Admin MVP | ✅ Fechado | |
 | P3 — Análise Rápida de stocks | 🔄 Em curso | Gate final em falta |
 | P4 — Editorial CMS + Moderation | 🔄 Em curso | Gate pre-release em falta |
-| P5 — Pré-beta funcional | 🔄 Em curso | P5.1-P5.8 ✅, faltam: criar/editar artigo+vídeo, marcas, B4 cards antigos, B5 footer |
-| P8 — Elevação UI/UX | 🔄 Em curso | Fundações ✅, Cards ✅, CreatorModal redesenhado ✅, faltam: Header, FinHubScore, páginas |
+| P5 — Pré-beta funcional | 🔄 Em curso | P5.1-P5.8 ✅, B4 ✅, B5/P5.6 ✅, faltam: P5.9 artigo, P5.10 vídeo, P5.11 marcas |
+| P8 — Elevação UI/UX | 🔄 Em curso | Fundações ✅, Cards ✅, CreatorModal ✅, faltam: Header, FinHubScore, **consolidação layouts (IC-1→IC-6)** |
 
-**Bugs críticos conhecidos:** 2 abertos (B4 parcial, B5) + 2 corrigidos (B6, B7) — ver TASKS.md → Secção 0
+**Bugs críticos conhecidos:** 0 abertos — B1-B8 todos ✅ — ver TASKS.md → Secção 0
 
-**Última atualização:** 2026-03-22
+**Última atualização:** 2026-03-23
