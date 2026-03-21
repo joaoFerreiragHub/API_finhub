@@ -169,6 +169,16 @@
 | Dados mock para teste visual de cards (4 criadores `@mock-card-test.finhub`) | Não podem ir para produção | Limpar com `npm run seed:cards:clean` antes do deploy |
 | SEO structured data ausente (JSON-LD) | Rich results limitados | Pós-beta imediato |
 | Excesso de bibliotecas UI (PrimeReact + Mantine + shadcn) | Inconsistência visual | Ao redesenhar componentes |
+| IC-1: Header duplo para users auth em páginas públicas | 2 headers empilhados em ~50 páginas | P8.7 — URGENTE |
+| IC-2: Admin Vike sem sidebar nem AdminLayout | Admin navega sem sidebar | P8.9 |
+| IC-3: Creator dashboard com 2 sidebars diferentes | Sidebar muda entre páginas do dashboard | P8.8 |
+| IC-4: PublicLayout stub vazio | Visitantes sem nav em páginas sem HomepageLayout | P8.7 |
+| IC-5: FIRE tool pages sem layout | User fica preso sem nav | P8.7 |
+| IC-6: CreatorProfile vs CreatorsList layout diferente | Transição visual abrupta | P8.7 |
+| `router.tsx` (React Router legacy) provavelmente dead code | Duplicação de rotas, confusão | Cleanup após P8.7-P8.9 |
+| `getRoutesByRole(CREATOR)` não inclui `regularRoutes` nem `creatorContentRoutes` | Sidebar creator incompleta | P8.8 |
+| Rota `/hub/counteudos/` com typo | Typo no filesystem | Cleanup menor |
+| 3 componentes órfãos: DashboardHeader, AdminHeader, AuthLayout (shared) | Dead code | Cleanup |
 
 ---
 
@@ -178,29 +188,27 @@
 
 ```
 CONCLUÍDO
-  ✅ B1, B2, B3 — Bugs críticos de dados
+  ✅ B1–B8 — Todos os bugs críticos resolvidos
   ✅ P3 — Análise rápida (cobertura + badges + gate)
   ✅ P4 — Editorial CMS + Moderation hardening + E2E
   ✅ P8.1–P8.4 — Fundações de design + cards redesenhados
-  ✅ P5.1–P5.5 — Hub conteúdo + Creator dashboard MVP
-  ✅ P5.7 — Creator modal wiring + backend field
-  ✅ P5.8 — Creator Welcome Card configurável
-  ✅ B6, B7 — Routing @username + CI platform label
+  ✅ P5.1–P5.8 — Hub conteúdo + Creator dashboard + modal + card config
+  ✅ P5.6 — Páginas legais + footer funcional
+  ✅ B4 + ROUTING-CHECK — Fix navegação cards + auditoria routing
 
-CONCLUÍDO (cont.)
-  ✅ B4    — Fix navegação cards antigos (Codex) + lint fix BookCard (Claude)
-  ✅ B8    — CommentCard /users → /perfil (ROUTING-CHECK, Claude)
+EM CURSO / PRÓXIMO IMEDIATO (layout consolidation — prioridade máxima)
+  ⏳ P8.7  — PageShell inteligente + fim header duplo (IC-1,4,5,6)
+  ⏳ P8.8  — Creator sidebar unificada (IC-3)
+  ⏳ P8.9  — Admin layout Vike + visibilidade cross-role (IC-2)
 
-PRÓXIMO IMEDIATO
-  ⏳ P5.6  — Páginas legais + footer funcional (B5)
+DEPOIS (features P5)
   ⏳ P5.9  — Creator: criar/editar/publicar artigo
   ⏳ P5.10 — Creator: criar/editar/publicar vídeo
   ⏳ P5.11 — Páginas de marcas/entidades públicas
 
 A SEGUIR
-  ⏳ P3-GATE — Gate final análise rápida (lint+test+build+e2e)
+  ⏳ P3-GATE — Gate final análise rápida
   ⏳ P4-GATE — Gate pre-release editorial + moderation
-  ⏳ P8.5  — Header redesenhado
   ⏳ P8.6  — FinHubScore visual proeminente
 
 MAIS TARDE
@@ -208,4 +216,5 @@ MAIS TARDE
   ⏳ Onboarding utilizador
   ⏳ Recomendações básicas
   ⏳ Analytics de negócio (DAU/MAU)
+  ⏳ Cleanup: router.tsx, componentes órfãos, typo /hub/counteudos
 ```

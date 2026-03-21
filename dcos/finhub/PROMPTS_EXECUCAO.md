@@ -1298,6 +1298,298 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 
 ---
 
+## PROMPT P8.7 — Consolidação de Layouts: PageShell Inteligente + Fim do Header Duplo ⏳
+
+> **Referência obrigatória:** ler `dcos/finhub/LAYOUT_NAVIGATION_AUDIT.md` antes de iniciar.
+> **Corrige:** IC-1 (header duplo), IC-4 (PublicLayout vazio), IC-5 (FIRE sem nav), IC-6 (profile vs list layout)
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/` (React 19 + Vike + Tailwind)
+- Sistema SSR: Vike 0.4.x — páginas em `src/pages/**/+Page.tsx`, renderizadas por `PageShell.tsx`
+- Roles: `visitor | free | premium | creator | brand_manager | admin` (enum `UserRole`)
+
+**PROBLEMA ACTUAL:**
+1. `PageShell.tsx` aplica `UserLayout` (com header) para TODOS os users autenticados, em TODAS as páginas
+2. Páginas públicas (ex: `/mercados`, `/hub/conteudos`) também se envolvem em `HomepageLayout` (com header próprio)
+3. Resultado: users autenticados vêem 2 headers empilhados em ~50 páginas
+4. `PublicLayout` é um stub vazio — visitantes em páginas sem `HomepageLayout` não vêem nav nem footer
+5. Páginas FIRE (`/ferramentas/fire/*`) não têm layout — user fica preso sem navegação
+6. `/creators/@username` usa `SidebarLayout` mas `/creators` usa `HomepageLayout` — transição visual abrupta
+
+**ARQUITECTURA ALVO — O PageShell deve decidir o layout pelo URL path + role:**
+
+```
+PageShell.tsx (wrapper global):
+
+  1. SE path começa com /admin/*        → NÃO aplicar layout (P8.9 trata)
+  2. SE path começa com /creators/dashboard/* OU /creators/definicoes OU /creators/estatisticas OU /creators/progresso → NÃO aplicar layout (P8.8 trata)
+  3. SE path começa com /marcas/portal   → NÃO aplicar layout (futuro)
+  4. PARA TODAS AS OUTRAS PÁGINAS:
+     - SE autenticado (role != visitor):
+       → Renderizar UnifiedTopShell (1 header unificado + footer)
+         - Header mostra: logo, nav principal, search, notificações, avatar/menu user
+         - NAV principal: Home, Educadores, Conteúdos, Notícias, Mercados, Ferramentas
+         - Avatar menu: links contextuais ao role (ver tabela abaixo)
+         - Footer: igual ao actual HomepageLayout footer
+     - SE visitante (não auth):
+       → Renderizar PublicShell (header público + footer)
+         - Header mostra: logo, nav principal, Login, Registar
+         - NAV principal: Home, Educadores, Conteúdos, Notícias, Mercados, Ferramentas
+         - Footer: igual ao actual HomepageLayout footer
+```
+
+**REGRAS DE VISIBILIDADE POR ROLE — Avatar/User Menu:**
+
+| Item no Menu | visitor | free | premium | creator | brand_manager | admin |
+|---|---|---|---|---|---|---|
+| Login / Registar | ✅ (header) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Perfil | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feed | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Favoritos | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| A Seguir | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Notificações | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Creator Dashboard | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Brand Portal | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Admin Panel | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Logout | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**REGRAS DE VISIBILIDADE — NAV PRINCIPAL (mesmo para todos):**
+
+A barra de navegação principal (Home, Educadores, Conteúdos, Notícias, Mercados, Ferramentas) é visível para **todos** os roles incluindo visitantes. O que muda é:
+- Visitante: botões Login/Registar à direita
+- Autenticado: avatar + dropdown menu à direita (conteúdo do menu depende do role acima)
+
+**Ficheiros a criar:**
+```
+FinHub-Vite/src/shared/layouts/UnifiedTopShell.tsx   ← novo: header unificado para users auth
+FinHub-Vite/src/shared/layouts/PublicShell.tsx       ← novo: header público para visitantes (substitui PublicLayout vazio)
+```
+
+**Ficheiros a modificar:**
+```
+FinHub-Vite/src/renderer/PageShell.tsx               ← decidir layout por URL path + role
+FinHub-Vite/src/shared/layouts/PublicLayout.tsx       ← pode ser removido se migrado para PublicShell
+FinHub-Vite/src/shared/layouts/UserLayout.tsx         ← pode ser removido se migrado para UnifiedTopShell
+```
+
+**Ficheiros a NÃO tocar (serão tratados em P8.8 e P8.9):**
+```
+FinHub-Vite/src/shared/layouts/DashboardLayout.tsx    ← P8.8
+FinHub-Vite/src/features/creators/components/sidebar/ ← P8.8
+FinHub-Vite/src/features/admin/layouts/               ← P8.9
+```
+
+**IMPORTANTE — Cada +Page.tsx que usa `HomepageLayout` deve DEIXAR de o fazer:**
+- As ~50 páginas públicas que fazem `<HomepageLayout>...</HomepageLayout>` devem passar a renderizar apenas o seu conteúdo
+- O header/footer vem do `PageShell` → `UnifiedTopShell` ou `PublicShell`
+- O conteúdo do `HomepageLayout` (header glassmorphism + footer) deve ser migrado para `UnifiedTopShell`/`PublicShell`
+- **NÃO apagar `HomepageLayout` ainda** — marcar como deprecated e deixar para cleanup
+
+**SSR — regras obrigatórias:**
+- NÃO usar `useNavigate`, `useParams`, `Link` do react-router-dom
+- NÃO aceder `window.*` ou `localStorage.*` fora de `useEffect` ou guard `typeof window !== 'undefined'`
+- O `PageShell` já tem o padrão de hydration defer (`mounted` state) — mantê-lo
+- Navegação via `<a href>` (não `Link`)
+- O URL path para decisão de layout deve usar `pageContext.urlPathname` (disponível em SSR), NÃO `window.location`
+
+**Critérios de conclusão:**
+- [ ] ZERO páginas com header duplo — verificar visitando qualquer página pública como user autenticado
+- [ ] Visitante em qualquer página vê header público com nav + Login/Registar + footer
+- [ ] User autenticado em qualquer página pública vê UM header com avatar/menu
+- [ ] Menu do avatar mostra items correctos por role (ver tabela)
+- [ ] `/ferramentas/fire/*` tem header+footer (não é bare)
+- [ ] `/creators/@username` e `/creators` usam o mesmo shell exterior
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template acima.**
+
+---
+
+## PROMPT P8.8 — Consolidação do Creator Dashboard: Sidebar Unificada ⏳
+
+> **Referência obrigatória:** ler `dcos/finhub/LAYOUT_NAVIGATION_AUDIT.md` (IC-3)
+> **Depende de:** P8.7 concluído (PageShell já não aplica UserLayout nas rotas /creators/dashboard/*)
+
+**PROBLEMA ACTUAL:**
+1. Páginas de gestão de conteúdo (articles, videos, courses, etc.) usam `DashboardLayout` (shared) — sidebar via `getRoutesByRole()`
+2. Páginas legacy (overview, files, announcements, playlists, reels, welcome-videos, progresso, estatísticas, definições) usam `CreatorSidebar` inline
+3. As duas sidebars têm links DIFERENTES e visual DIFERENTE
+4. `getRoutesByRole(UserRole.CREATOR)` retorna apenas `creatorRoutes` (4 items) e NÃO inclui `creatorContentRoutes` — sidebar não mostra links de artigos, vídeos, cursos
+5. `getRoutesByRole(UserRole.CREATOR)` NÃO inclui `regularRoutes` — creator não vê Home, Notícias, etc.
+
+**ARQUITECTURA ALVO:**
+
+Todas as páginas creator dashboard devem usar UM ÚNICO layout com UMA ÚNICA sidebar:
+
+```
+CreatorDashboardShell
+├── Sidebar (sempre visível, colapsável em mobile)
+│   ├── SECÇÃO: Principal
+│   │   ├── Dashboard (overview)
+│   │   ├── Estatísticas
+│   │   └── Progresso
+│   │
+│   ├── SECÇÃO: Conteúdo
+│   │   ├── Artigos
+│   │   ├── Vídeos
+│   │   ├── Cursos
+│   │   ├── Lives/Eventos
+│   │   ├── Podcasts
+│   │   ├── Livros
+│   │   ├── Playlists
+│   │   ├── Reels/Shorts
+│   │   └── Ficheiros
+│   │
+│   ├── SECÇÃO: Comunicação
+│   │   ├── Anúncios
+│   │   └── Vídeos Boas-Vindas
+│   │
+│   ├── SECÇÃO: Conta
+│   │   ├── Configurações
+│   │   └── Voltar ao site (→ /)
+│   │
+│   └── User info + Logout (fundo)
+│
+└── Main content area (com header minimalista: toggle sidebar + breadcrumb)
+```
+
+**REGRAS DE VISIBILIDADE — Sidebar do Creator:**
+
+| Item | creator | admin |
+|---|---|---|
+| Toda a sidebar acima | ✅ | ✅ |
+| Link "Admin Panel" no fundo | ❌ | ✅ |
+
+Admin vê tudo o que creator vê + link para sair para o painel admin.
+
+**Ficheiros a criar:**
+```
+FinHub-Vite/src/shared/layouts/CreatorDashboardShell.tsx  ← novo: layout unificado creator
+```
+
+**Ficheiros a modificar:**
+```
+FinHub-Vite/src/routes/creator.ts                          ← unificar creatorRoutes + creatorContentRoutes numa estrutura com secções
+FinHub-Vite/src/lib/routing/getRoutesByRole.ts             ← CREATOR deve incluir regularRoutes também
+FinHub-Vite/src/pages/creators/dashboard/*/+Page.tsx       ← todas passam a usar CreatorDashboardShell em vez de DashboardLayout
+FinHub-Vite/src/pages/creators/definicoes/+Page.tsx        ← usar CreatorDashboardShell
+FinHub-Vite/src/pages/creators/estatisticas/+Page.tsx      ← usar CreatorDashboardShell
+FinHub-Vite/src/pages/creators/progresso/+Page.tsx         ← usar CreatorDashboardShell
+```
+
+**Ficheiros a NÃO tocar:**
+```
+FinHub-Vite/src/shared/layouts/DashboardLayout.tsx         ← marcar deprecated, não apagar
+FinHub-Vite/src/features/creators/components/sidebar/      ← marcar deprecated, não apagar
+```
+
+**SSR — regras obrigatórias:** (idem P8.7)
+
+**Critérios de conclusão:**
+- [ ] Todas as 28 páginas creator dashboard usam `CreatorDashboardShell`
+- [ ] Sidebar é IDÊNTICA em todas as páginas (mesmos links, mesma ordem, mesmo visual)
+- [ ] Sidebar tem secções agrupadas (Principal, Conteúdo, Comunicação, Conta)
+- [ ] Admin a visitar dashboard de creator vê link extra "Admin Panel"
+- [ ] Creator NÃO vê links de admin
+- [ ] Sidebar colapsável em mobile
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template acima.**
+
+---
+
+## PROMPT P8.9 — Admin Layout em Vike + Visibilidade por Role ⏳
+
+> **Referência obrigatória:** ler `dcos/finhub/LAYOUT_NAVIGATION_AUDIT.md` (IC-2)
+> **Depende de:** P8.7 concluído (PageShell já não aplica UserLayout nas rotas /admin/*)
+
+**PROBLEMA ACTUAL:**
+1. As 18 páginas admin em Vike não usam `AdminLayout` — renderizam conteúdo bare
+2. `AdminLayout` (com `AdminSidebar` + `AdminCommandPalette`) só existe em `router.tsx` (React Router legacy)
+3. Admin não tem sidebar nem navegação nas páginas Vike
+4. `ProtectedRoute` em dev mode permite acesso a tudo (bypass) — verificar comportamento em prod
+
+**ARQUITECTURA ALVO:**
+
+```
+AdminShell
+├── Sidebar admin (sempre visível, colapsável em mobile)
+│   ├── Dashboard
+│   ├── Utilizadores
+│   ├── Creators
+│   ├── Moderação
+│   ├── Editorial CMS
+│   ├── Suporte
+│   ├── Recursos
+│   ├── Monetização
+│   │   └── Subscrições
+│   ├── Operações
+│   │   ├── Comunicações
+│   │   ├── Anúncios
+│   │   ├── Delegações
+│   │   └── Integrações
+│   ├── Estatísticas
+│   │   └── Ferramentas Financeiras
+│   ├── Auditoria
+│   └── Voltar ao site (→ /)
+│
+├── Command Palette (Ctrl+K) ← migrar de AdminLayout legacy
+│
+└── Main content area (header minimalista + breadcrumb)
+```
+
+**REGRAS DE VISIBILIDADE CROSS-ROLE — Quem vê o quê:**
+
+| Área | visitor | free | premium | creator | brand_manager | admin |
+|---|---|---|---|---|---|---|
+| Páginas públicas (/, /mercados, /hub, etc.) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Páginas sociais (/perfil, /feed, /favoritos) | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Creator Dashboard (/creators/dashboard/*) | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Brand Portal (/marcas/portal) | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Admin Panel (/admin/*) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+**Um user NÃO admin que tente aceder `/admin/*` deve ver "Acesso Restrito" — NUNCA o conteúdo da página.**
+
+**Ficheiros a criar:**
+```
+FinHub-Vite/src/shared/layouts/AdminShell.tsx            ← novo: layout admin para Vike
+```
+
+**Ficheiros a modificar:**
+```
+FinHub-Vite/src/pages/admin/+Page.tsx                    ← usar AdminShell
+FinHub-Vite/src/pages/admin/*/+Page.tsx                  ← todas as 18 páginas admin usam AdminShell
+```
+
+**Ficheiros a migrar conteúdo de (não apagar, marcar deprecated):**
+```
+FinHub-Vite/src/features/admin/layouts/AdminLayout.tsx   ← copiar lógica de sidebar e command palette
+FinHub-Vite/src/features/admin/components/AdminSidebar.tsx ← copiar items de sidebar
+```
+
+**Ficheiros a NÃO tocar:**
+```
+FinHub-Vite/src/router.tsx                               ← dead code legacy, cleanup separado
+```
+
+**SSR — regras obrigatórias:** (idem P8.7)
+
+**Critérios de conclusão:**
+- [ ] Todas as 18 páginas admin usam `AdminShell` com sidebar admin
+- [ ] Sidebar tem todos os items de `adminRoutes` (src/routes/admin.ts) com sub-secções
+- [ ] Command Palette (Ctrl+K) funciona
+- [ ] User não-admin que aceda `/admin/*` vê "Acesso Restrito" (guard real, não bypass)
+- [ ] Admin pode navegar entre todas as sub-páginas via sidebar
+- [ ] Link "Voltar ao site" leva para `/`
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template acima.**
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -1329,16 +1621,19 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
     ──
 19. PROMPT B4    → Navegação dos cards (href em cards antigos)         ✅ (Codex) + lint fix BookCard + B8 CommentCard (Claude)
 20. ROUTING-CHECK → Auditoria completa de navegação (Claude direto)   ✅
-21. PROMPT P5.6  → Páginas legais + footer funcional (B5)             ⏳ ← PRÓXIMO
-22. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳
-23. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳
-24. PROMPT P5.11 → Páginas de marcas/entidades públicas               ⏳
-25. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
-26. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
-27. PROMPT P8.5  → Header redesenhado (nav, search, avatar/menu)      ⏳
-28. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
+21. PROMPT P5.6  → Páginas legais + footer funcional (B5)             ✅ (Codex) + fix Footer Link→<a>, /explorar→/hub/conteudos (Claude)
+    ── Layout consolidation (nova prioridade):
+22. PROMPT P8.7  → PageShell inteligente + fim header duplo (IC-1,4,5,6)  ⏳ ← PRÓXIMO
+23. PROMPT P8.8  → Creator sidebar unificada (IC-3)                        ⏳
+24. PROMPT P8.9  → Admin layout em Vike (IC-2) + visibilidade cross-role   ⏳
+    ──
+25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳
+26. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳
+27. PROMPT P5.11 → Páginas de marcas/entidades públicas               ⏳
+28. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
+29. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
+30. PROMPT P8.5  → Header redesenhado (absorvido por P8.7)            ⏳
+31. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
 ```
-
-> Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
