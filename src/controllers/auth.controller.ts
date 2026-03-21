@@ -1164,6 +1164,7 @@ export const me = async (req: AuthRequest, res: Response) => {
         creatorControls: mapCreatorControls(req.user.creatorControls),
         assistedSession: req.assistedSession,
         welcomeVideoUrl: req.user.welcomeVideoUrl,
+        cardConfig: req.user.cardConfig,
         bio: req.user.bio,
         socialLinks: req.user.socialLinks,
         followers: req.user.followers,

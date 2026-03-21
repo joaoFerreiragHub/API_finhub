@@ -1,5 +1,5 @@
 import { PipelineStage } from 'mongoose'
-import { User } from '../models/User'
+import { ICreatorCardConfig, User } from '../models/User'
 import { Rating } from '../models/Rating'
 
 export type CreatorListSortBy = 'followers' | 'rating' | 'newest' | 'recent'
@@ -90,6 +90,7 @@ export class PublicCreatorService {
     username: string
     avatar?: string
     welcomeVideoUrl?: string
+    cardConfig?: ICreatorCardConfig
     bio?: string
     socialLinks?: {
       website?: string
@@ -111,6 +112,7 @@ export class PublicCreatorService {
       username: item.username,
       avatar: item.avatar ?? null,
       welcomeVideoUrl: item.welcomeVideoUrl ?? null,
+      cardConfig: item.cardConfig ?? undefined,
       welcomeVideo: item.welcomeVideoUrl ? [item.welcomeVideoUrl] : [],
       bio: item.bio ?? null,
       socialLinks: {
@@ -224,6 +226,7 @@ export class PublicCreatorService {
                 username: 1,
                 avatar: 1,
                 welcomeVideoUrl: 1,
+                cardConfig: 1,
                 bio: 1,
                 socialLinks: 1,
                 followers: 1,
@@ -248,6 +251,7 @@ export class PublicCreatorService {
         username: string
         avatar?: string
         welcomeVideoUrl?: string
+        cardConfig?: ICreatorCardConfig
         bio?: string
         socialLinks?: {
           website?: string
@@ -304,7 +308,7 @@ export class PublicCreatorService {
       username: normalizedUsername,
     })
       .select(
-        'name username avatar welcomeVideoUrl bio socialLinks followers following emailVerified createdAt lastActiveAt'
+        'name username avatar welcomeVideoUrl cardConfig bio socialLinks followers following emailVerified createdAt lastActiveAt'
       )
       .lean()
 
@@ -345,6 +349,7 @@ export class PublicCreatorService {
       username: creator.username,
       avatar: creator.avatar ?? undefined,
       welcomeVideoUrl: creator.welcomeVideoUrl ?? undefined,
+      cardConfig: creator.cardConfig ?? undefined,
       bio: creator.bio ?? undefined,
       socialLinks: creator.socialLinks ?? undefined,
       followers: Number(creator.followers ?? 0),

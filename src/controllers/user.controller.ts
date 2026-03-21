@@ -5,7 +5,7 @@ import { CreatorNotificationSubscription } from '../models/CreatorNotificationSu
 import { Favorite } from '../models/Favorite'
 import { Follow } from '../models/Follow'
 import { Notification } from '../models/Notification'
-import { User } from '../models/User'
+import { ICreatorCardConfig, User } from '../models/User'
 import { UserPreferences } from '../models/UserPreferences'
 import { UserSubscription } from '../models/UserSubscription'
 import { AuthRequest } from '../types/auth'
@@ -22,6 +22,109 @@ const SOCIAL_LINK_KEYS: readonly UserSocialLinkKey[] = [
   'linkedin',
   'instagram',
 ]
+type CreatorCardConfigFlagKey =
+  | 'showWelcomeVideo'
+  | 'showBio'
+  | 'showCourses'
+  | 'showArticles'
+  | 'showProducts'
+  | 'showWebsite'
+  | 'showSocialLinks'
+  | 'showRatings'
+
+const CARD_CONFIG_FLAG_KEYS: readonly CreatorCardConfigFlagKey[] = [
+  'showWelcomeVideo',
+  'showBio',
+  'showCourses',
+  'showArticles',
+  'showProducts',
+  'showWebsite',
+  'showSocialLinks',
+  'showRatings',
+]
+
+const normalizeCardConfigInput = (
+  value: unknown
+): { valid: boolean; value?: ICreatorCardConfig; error?: string } => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {
+      valid: false,
+      error: 'Campo cardConfig invalido.',
+    }
+  }
+
+  const payload = value as Record<string, unknown>
+  const allowedKeys = new Set([...CARD_CONFIG_FLAG_KEYS, 'featuredContentIds'])
+  const keys = Object.keys(payload)
+
+  if (keys.length === 0) {
+    return {
+      valid: false,
+      error: 'Campo cardConfig invalido. Informa pelo menos uma opcao.',
+    }
+  }
+
+  for (const key of keys) {
+    if (!allowedKeys.has(key as CreatorCardConfigFlagKey | 'featuredContentIds')) {
+      return {
+        valid: false,
+        error: `Campo cardConfig.${key} nao permitido.`,
+      }
+    }
+  }
+
+  const nextConfig: ICreatorCardConfig = {}
+
+  for (const key of CARD_CONFIG_FLAG_KEYS) {
+    if (!(key in payload)) continue
+
+    if (typeof payload[key] !== 'boolean') {
+      return {
+        valid: false,
+        error: `Campo cardConfig.${key} invalido.`,
+      }
+    }
+
+    nextConfig[key] = payload[key] as boolean
+  }
+
+  if ('featuredContentIds' in payload) {
+    const rawFeaturedContentIds = payload.featuredContentIds
+
+    if (!Array.isArray(rawFeaturedContentIds)) {
+      return {
+        valid: false,
+        error: 'Campo cardConfig.featuredContentIds invalido.',
+      }
+    }
+
+    const normalizedFeaturedContentIds = rawFeaturedContentIds
+      .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+      .filter((entry) => entry.length > 0)
+
+    if (normalizedFeaturedContentIds.length !== rawFeaturedContentIds.length) {
+      return {
+        valid: false,
+        error: 'Campo cardConfig.featuredContentIds invalido.',
+      }
+    }
+
+    const dedupedFeaturedContentIds = Array.from(new Set(normalizedFeaturedContentIds))
+    if (dedupedFeaturedContentIds.length > 3) {
+      return {
+        valid: false,
+        error: 'Campo cardConfig.featuredContentIds suporta no maximo 3 itens.',
+      }
+    }
+
+    nextConfig.featuredContentIds = dedupedFeaturedContentIds
+  }
+
+  return {
+    valid: true,
+    value: nextConfig,
+  }
+}
 
 const normalizeOptionalText = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined
@@ -44,6 +147,7 @@ const mapAuthenticatedUser = (user: NonNullable<AuthRequest['user']>) => ({
   avatar: user.avatar,
   welcomeVideoUrl: user.welcomeVideoUrl,
   bio: user.bio,
+  cardConfig: user.cardConfig,
   socialLinks: user.socialLinks,
   role: user.role,
   accountStatus: user.accountStatus,
@@ -134,6 +238,34 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
         }
 
         req.user.welcomeVideoUrl = welcomeVideoUrl
+        hasChanges = true
+      }
+    }
+
+    if ('cardConfig' in payload) {
+      const cardConfigRaw = payload.cardConfig
+
+      if (cardConfigRaw === null) {
+        req.user.cardConfig = undefined
+        hasChanges = true
+      } else {
+        const normalizedCardConfig = normalizeCardConfigInput(cardConfigRaw)
+        if (!normalizedCardConfig.valid || !normalizedCardConfig.value) {
+          return res.status(400).json({
+            error: normalizedCardConfig.error || 'Campo cardConfig invalido.',
+          })
+        }
+
+        const mergedCardConfig: ICreatorCardConfig = {
+          ...(req.user.cardConfig ?? {}),
+          ...normalizedCardConfig.value,
+        }
+
+        if ('featuredContentIds' in normalizedCardConfig.value) {
+          mergedCardConfig.featuredContentIds = normalizedCardConfig.value.featuredContentIds
+        }
+
+        req.user.cardConfig = mergedCardConfig
         hasChanges = true
       }
     }
@@ -392,6 +524,7 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
     user.avatar = undefined
     user.welcomeVideoUrl = undefined
     user.bio = undefined
+    user.cardConfig = undefined
     user.socialLinks = undefined
     user.role = 'free'
     user.accountStatus = 'suspended'

@@ -1857,7 +1857,14 @@ export const validateUserUpdateMeContract = (
     return
   }
 
-  const allowedFields = new Set(['name', 'avatar', 'bio', 'welcomeVideoUrl', 'socialLinks'])
+  const allowedFields = new Set([
+    'name',
+    'avatar',
+    'bio',
+    'welcomeVideoUrl',
+    'cardConfig',
+    'socialLinks',
+  ])
   const payloadKeys = Object.keys(req.body)
 
   if (payloadKeys.length === 0) {
@@ -1894,6 +1901,70 @@ export const validateUserUpdateMeContract = (
   if (!validateNullableStringField('avatar')) return
   if (!validateNullableStringField('bio')) return
   if (!validateNullableStringField('welcomeVideoUrl')) return
+
+  if ('cardConfig' in req.body) {
+    const cardConfig = req.body.cardConfig
+    if (cardConfig !== null) {
+      if (!isRecord(cardConfig)) {
+        respondValidationError(res, 'Campo cardConfig invalido.')
+        return
+      }
+
+      const allowedCardConfigKeys = new Set([
+        'showWelcomeVideo',
+        'showBio',
+        'showCourses',
+        'showArticles',
+        'showProducts',
+        'showWebsite',
+        'showSocialLinks',
+        'showRatings',
+        'featuredContentIds',
+      ])
+
+      const cardConfigKeys = Object.keys(cardConfig)
+      if (cardConfigKeys.length === 0) {
+        respondValidationError(res, 'Campo cardConfig invalido.')
+        return
+      }
+
+      for (const key of cardConfigKeys) {
+        if (!allowedCardConfigKeys.has(key)) {
+          respondValidationError(res, `Campo cardConfig.${key} nao permitido.`)
+          return
+        }
+
+        if (key === 'featuredContentIds') {
+          const featuredContentIds = cardConfig[key]
+          if (!Array.isArray(featuredContentIds)) {
+            respondValidationError(res, 'Campo cardConfig.featuredContentIds invalido.')
+            return
+          }
+
+          if (featuredContentIds.length > 3) {
+            respondValidationError(
+              res,
+              'Campo cardConfig.featuredContentIds suporta no maximo 3 itens.'
+            )
+            return
+          }
+
+          for (const entry of featuredContentIds) {
+            if (typeof entry !== 'string' || entry.trim().length === 0) {
+              respondValidationError(res, 'Campo cardConfig.featuredContentIds invalido.')
+              return
+            }
+          }
+          continue
+        }
+
+        if (typeof cardConfig[key] !== 'boolean') {
+          respondValidationError(res, `Campo cardConfig.${key} invalido.`)
+          return
+        }
+      }
+    }
+  }
 
   if ('socialLinks' in req.body) {
     const socialLinks = req.body.socialLinks

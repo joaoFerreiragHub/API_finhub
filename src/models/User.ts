@@ -39,6 +39,18 @@ export interface ICookieConsent {
   version?: string | null
 }
 
+export interface ICreatorCardConfig {
+  showWelcomeVideo?: boolean
+  showBio?: boolean
+  showCourses?: boolean
+  showArticles?: boolean
+  showProducts?: boolean
+  showWebsite?: boolean
+  showSocialLinks?: boolean
+  showRatings?: boolean
+  featuredContentIds?: string[]
+}
+
 export interface IUser extends Document {
   email: string
   emailVerified: boolean
@@ -68,6 +80,7 @@ export interface IUser extends Document {
   // Creator specific
   welcomeVideoUrl?: string
   bio?: string
+  cardConfig?: ICreatorCardConfig
   socialLinks?: {
     website?: string
     twitter?: string
@@ -288,6 +301,44 @@ const UserSchema = new Schema<IUser>(
     bio: {
       type: String,
       maxlength: 500,
+    },
+    cardConfig: {
+      showWelcomeVideo: {
+        type: Boolean,
+        default: undefined,
+      },
+      showBio: {
+        type: Boolean,
+        default: undefined,
+      },
+      showCourses: {
+        type: Boolean,
+        default: undefined,
+      },
+      showArticles: {
+        type: Boolean,
+        default: undefined,
+      },
+      showProducts: {
+        type: Boolean,
+        default: undefined,
+      },
+      showWebsite: {
+        type: Boolean,
+        default: undefined,
+      },
+      showSocialLinks: {
+        type: Boolean,
+        default: undefined,
+      },
+      showRatings: {
+        type: Boolean,
+        default: undefined,
+      },
+      featuredContentIds: {
+        type: [String],
+        default: undefined,
+      },
     },
     socialLinks: {
       website: String,
