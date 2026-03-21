@@ -28,7 +28,7 @@
 | P3 — Análise Rápida de stocks | 🔄 Em curso | Gate final em falta |
 | P4 — Editorial CMS + Moderation | 🔄 Em curso | Gate pre-release em falta |
 | P5 — Pré-beta funcional | 🔄 Em curso | P5.1-P5.8 ✅, B4 ✅, B5/P5.6 ✅, faltam: P5.9 artigo, P5.10 vídeo, P5.11 marcas |
-| P8 — Elevação UI/UX | 🔄 Em curso | Fundações ✅, Cards ✅, CreatorModal ✅, faltam: Header, FinHubScore, **consolidação layouts (IC-1→IC-6)** |
+| P8 — Elevação UI/UX | 🔄 Em curso | P8.1-P8.4 ✅, P8.7 ✅ (PageShell + shells), P8.8 ✅ (Creator sidebar), falta: P8.9 Admin layout, P8.6 FinHubScore |
 
 **Bugs críticos conhecidos:** 0 abertos — B1-B8 todos ✅ — ver TASKS.md → Secção 0
 
