@@ -1048,6 +1048,92 @@ FinHub-Vite/src/features/creators/pages/CreatorsListPage.tsx ← integrar wrappe
 
 ---
 
+## PROMPT P5.8 — Creator Welcome Card Configurável ⏳
+
+**Objetivo:** Dar ao criador controlo total sobre o que é mostrado no seu cartão de visita público (modal `CreatorModal`). Em vez de o modal mostrar sempre todos os campos com valores por omissão, o criador configura no seu dashboard quais as secções que quer expor e como.
+
+**Contexto e estado actual:**
+- `CreatorModal` (`src/features/creators/components/modals/CreatorModal.tsx`) já existe e mostra: welcome video, tabs Geral + Avaliação, cursos, social links, ratings
+- O wrapper `Creator.tsx` já gere open/close do modal — **não alterar**
+- O modelo `User` já tem `welcomeVideoUrl?: string`, `bio?: string`, `socialLinks`, `topics`
+- Falta um schema de **preferências de visibilidade** do cartão — o que mostrar/esconder
+
+**O que implementar:**
+
+### Backend
+
+1. **Novo campo `cardConfig` no modelo `User`** (`API_finhub/src/models/User.ts`):
+```ts
+cardConfig?: {
+  showWelcomeVideo?: boolean     // default true se welcomeVideoUrl existir
+  showBio?: boolean              // default true
+  showCourses?: boolean          // default true
+  showArticles?: boolean         // default true
+  showProducts?: boolean         // default false (futuro)
+  showWebsite?: boolean          // default true
+  showSocialLinks?: boolean      // default true
+  showRatings?: boolean          // default true
+  featuredContentIds?: string[]  // IDs de artigos/cursos em destaque (até 3)
+}
+```
+
+2. **Expor `cardConfig` no endpoint público** `GET /api/creators/:username` — o frontend do modal usa-o para saber o que renderizar
+
+3. **Aceitar `cardConfig` no PATCH `/api/users/me`** — validação em `requestContracts.ts` (campos opcionais, booleanos e array de strings)
+
+### Frontend
+
+4. **Creator type** (`src/features/creators/types/creator.ts`): adicionar `cardConfig` ao tipo `Creator`
+
+5. **CreatorModal** (`src/features/creators/components/modals/CreatorModal.tsx`): ler `creator.cardConfig` e renderizar condicionalmente cada secção:
+   - `showWelcomeVideo` → mostrar/esconder bloco de vídeo
+   - `showBio` → mostrar/esconder bio
+   - `showCourses` → mostrar/esconder tab de cursos
+   - `showArticles` → mostrar/esconder tab de artigos
+   - `showSocialLinks` → mostrar/esconder redes sociais
+   - `showRatings` → mostrar/esconder tab de avaliações
+   - Se `cardConfig` for `undefined`, mostrar tudo (retrocompatibilidade)
+
+6. **Dashboard do criador — nova secção "Cartão de Visita"** (criar componente `CreatorCardConfigPanel.tsx` em `src/features/creators/components/dashboard/`):
+   - Formulário com toggles (switches) para cada opção de `cardConfig`
+   - Campo para selecionar artigos/cursos em destaque (até 3) via search/select
+   - Preview ao vivo do modal (`<CreatorModal>` em modo preview, read-only)
+   - Botão "Guardar" → PATCH `/api/users/me` com `{ cardConfig: {...} }`
+   - Integrar no creator dashboard existente (`src/features/creators/pages/` ou dashboard tabs)
+
+**Ficheiros a criar:**
+```
+FinHub-Vite/src/features/creators/components/dashboard/CreatorCardConfigPanel.tsx
+```
+
+**Ficheiros a modificar:**
+```
+API_finhub/src/models/User.ts                        ← adicionar campo cardConfig
+API_finhub/src/services/publicCreator.service.ts     ← expor cardConfig no endpoint público
+API_finhub/src/controllers/user.controller.ts        ← aceitar cardConfig no PATCH /me
+API_finhub/src/middlewares/requestContracts.ts       ← validação do cardConfig
+FinHub-Vite/src/features/creators/types/creator.ts  ← adicionar cardConfig ao tipo Creator
+FinHub-Vite/src/features/creators/services/publicCreatorsService.ts ← mapear cardConfig
+FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render condicional
+```
+
+**SSR — regras obrigatórias:**
+- NÃO usar `useNavigate`, `useParams`, `Link` do react-router-dom
+- NÃO aceder `window.*` ou `localStorage.*` fora de `useEffect`
+- O `CreatorCardConfigPanel` é um componente de dashboard (autenticado, client-only) — pode usar hooks de query normalmente
+
+**Critérios de conclusão:**
+- [ ] `cardConfig` guardado e devolvido pela API
+- [ ] CreatorModal renderiza condicionalmente com base em `cardConfig`
+- [ ] Se `cardConfig` for undefined, modal mostra tudo (retrocompatível)
+- [ ] Dashboard do criador tem secção "Cartão de Visita" com toggles + preview
+- [ ] `npm run typecheck` → PASS (ambos os repos)
+- [ ] `npm run build` → PASS (ambos os repos)
+
+**Produzir relatório no formato do template acima.**
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -1070,9 +1156,10 @@ FinHub-Vite/src/features/creators/pages/CreatorsListPage.tsx ← integrar wrappe
 14. PROMPT P5.5  → Creator dashboard MVP                ✅
 15. PROMPT P8.3  → Charts gradient + tooltips            ✅
 16. PROMPT P8.4  → Redesign cards conteúdo + criador    ✅
-17. PROMPT P5.7  → Creator popup modal (welcome video + top content) ⏳ ← PRÓXIMO
-18. PROMPT B4    → Navegação dos cards (href em cards antigos)
-19. PROMPT P5.6  → Páginas legais + footer funcional
+17. PROMPT P5.7  → Creator popup modal (welcome video + top content) ✅
+18. PROMPT P5.8  → Creator Welcome Card configurável                  ⏳ ← PRÓXIMO
+19. PROMPT B4    → Navegação dos cards (href em cards antigos)
+20. PROMPT P5.6  → Páginas legais + footer funcional
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

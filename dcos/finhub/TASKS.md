@@ -79,8 +79,9 @@
 | Creator dashboard — gestão de artigos (tabela + publicar/despublicar/eliminar) | ✅ | Frontend |
 | Creator dashboard — criar/editar/publicar artigo (flow completo) | ⏳ | Frontend |
 | Creator dashboard — criar/editar/publicar vídeo (flow completo) | ⏳ | Frontend |
-| Creator dashboard — campo welcome video (URL YouTube/Vimeo para introdução pública) | ⏳ | Backend + Frontend |
-| Popup de criador — modal ao clicar em card de criador (welcome video + cursos + conteúdos top) | ⏳ | Frontend |
+| Creator dashboard — campo welcome video (URL YouTube/Vimeo para introdução pública) | ✅ | Backend + Frontend |
+| Popup de criador — modal ao clicar em card de criador (welcome video + cursos + conteúdos top) | ✅ | Frontend |
+| P5.8 — Creator Welcome Card configurável: criador escolhe o que mostra no seu cartão de visita público (dados pessoais, video boas-vindas, cursos, artigos, produtos, website, redes sociais, etc.) | ⏳ | Backend + Frontend |
 | Páginas de marcas/entidades públicas (zero atualmente) | ⏳ | Frontend |
 
 ### 3.2 Importantes para Beta 🟡
