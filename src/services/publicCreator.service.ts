@@ -89,6 +89,7 @@ export class PublicCreatorService {
     name: string
     username: string
     avatar?: string
+    welcomeVideoUrl?: string
     bio?: string
     socialLinks?: {
       website?: string
@@ -109,6 +110,8 @@ export class PublicCreatorService {
       name: item.name,
       username: item.username,
       avatar: item.avatar ?? null,
+      welcomeVideoUrl: item.welcomeVideoUrl ?? null,
+      welcomeVideo: item.welcomeVideoUrl ? [item.welcomeVideoUrl] : [],
       bio: item.bio ?? null,
       socialLinks: {
         website: item.socialLinks?.website ?? null,
@@ -220,6 +223,7 @@ export class PublicCreatorService {
                 name: 1,
                 username: 1,
                 avatar: 1,
+                welcomeVideoUrl: 1,
                 bio: 1,
                 socialLinks: 1,
                 followers: 1,
@@ -243,6 +247,7 @@ export class PublicCreatorService {
         name: string
         username: string
         avatar?: string
+        welcomeVideoUrl?: string
         bio?: string
         socialLinks?: {
           website?: string
@@ -299,7 +304,7 @@ export class PublicCreatorService {
       username: normalizedUsername,
     })
       .select(
-        'name username avatar bio socialLinks followers following emailVerified createdAt lastActiveAt'
+        'name username avatar welcomeVideoUrl bio socialLinks followers following emailVerified createdAt lastActiveAt'
       )
       .lean()
 
@@ -339,6 +344,7 @@ export class PublicCreatorService {
       name: creator.name,
       username: creator.username,
       avatar: creator.avatar ?? undefined,
+      welcomeVideoUrl: creator.welcomeVideoUrl ?? undefined,
       bio: creator.bio ?? undefined,
       socialLinks: creator.socialLinks ?? undefined,
       followers: Number(creator.followers ?? 0),

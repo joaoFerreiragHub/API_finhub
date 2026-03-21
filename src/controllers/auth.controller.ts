@@ -1163,6 +1163,7 @@ export const me = async (req: AuthRequest, res: Response) => {
         cookieConsent: mapCookieConsent(req.user.cookieConsent),
         creatorControls: mapCreatorControls(req.user.creatorControls),
         assistedSession: req.assistedSession,
+        welcomeVideoUrl: req.user.welcomeVideoUrl,
         bio: req.user.bio,
         socialLinks: req.user.socialLinks,
         followers: req.user.followers,

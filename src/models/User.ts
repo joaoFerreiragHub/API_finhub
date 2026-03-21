@@ -66,6 +66,7 @@ export interface IUser extends Document {
   emailVerificationTokenExpiresAt?: Date
 
   // Creator specific
+  welcomeVideoUrl?: string
   bio?: string
   socialLinks?: {
     website?: string
@@ -279,6 +280,11 @@ const UserSchema = new Schema<IUser>(
     },
 
     // Creator specific
+    welcomeVideoUrl: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     bio: {
       type: String,
       maxlength: 500,

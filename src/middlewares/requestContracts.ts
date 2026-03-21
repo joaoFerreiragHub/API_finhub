@@ -1857,7 +1857,7 @@ export const validateUserUpdateMeContract = (
     return
   }
 
-  const allowedFields = new Set(['name', 'avatar', 'bio', 'socialLinks'])
+  const allowedFields = new Set(['name', 'avatar', 'bio', 'welcomeVideoUrl', 'socialLinks'])
   const payloadKeys = Object.keys(req.body)
 
   if (payloadKeys.length === 0) {
@@ -1880,7 +1880,7 @@ export const validateUserUpdateMeContract = (
     }
   }
 
-  const validateNullableStringField = (field: 'avatar' | 'bio') => {
+  const validateNullableStringField = (field: 'avatar' | 'bio' | 'welcomeVideoUrl') => {
     if (!(field in req.body)) return true
     const value = req.body[field]
     if (value === null) return true
@@ -1893,6 +1893,7 @@ export const validateUserUpdateMeContract = (
 
   if (!validateNullableStringField('avatar')) return
   if (!validateNullableStringField('bio')) return
+  if (!validateNullableStringField('welcomeVideoUrl')) return
 
   if ('socialLinks' in req.body) {
     const socialLinks = req.body.socialLinks

@@ -42,6 +42,7 @@ const mapAuthenticatedUser = (user: NonNullable<AuthRequest['user']>) => ({
   name: user.name,
   username: user.username,
   avatar: user.avatar,
+  welcomeVideoUrl: user.welcomeVideoUrl,
   bio: user.bio,
   socialLinks: user.socialLinks,
   role: user.role,
@@ -115,6 +116,24 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
           })
         }
         req.user.bio = bio
+        hasChanges = true
+      }
+    }
+
+    if ('welcomeVideoUrl' in payload) {
+      const welcomeVideoUrlRaw = payload.welcomeVideoUrl
+      if (welcomeVideoUrlRaw === null) {
+        req.user.welcomeVideoUrl = undefined
+        hasChanges = true
+      } else {
+        const welcomeVideoUrl = normalizeOptionalText(welcomeVideoUrlRaw)
+        if (!welcomeVideoUrl) {
+          return res.status(400).json({
+            error: 'Campo welcomeVideoUrl invalido.',
+          })
+        }
+
+        req.user.welcomeVideoUrl = welcomeVideoUrl
         hasChanges = true
       }
     }
@@ -371,6 +390,7 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
     user.name = 'Conta eliminada'
     user.username = `deleted_${anonymizedSuffix}`
     user.avatar = undefined
+    user.welcomeVideoUrl = undefined
     user.bio = undefined
     user.socialLinks = undefined
     user.role = 'free'
