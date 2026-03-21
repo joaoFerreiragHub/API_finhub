@@ -1298,7 +1298,7 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 
 ---
 
-## PROMPT P8.7 — Consolidação de Layouts: PageShell Inteligente + Fim do Header Duplo ⏳
+## PROMPT P8.7 — Consolidação de Layouts: PageShell Inteligente + Fim do Header Duplo ✅
 
 > **Referência obrigatória:** ler `dcos/finhub/LAYOUT_NAVIGATION_AUDIT.md` antes de iniciar.
 > **Corrige:** IC-1 (header duplo), IC-4 (PublicLayout vazio), IC-5 (FIRE sem nav), IC-6 (profile vs list layout)
@@ -1623,8 +1623,8 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
 20. ROUTING-CHECK → Auditoria completa de navegação (Claude direto)   ✅
 21. PROMPT P5.6  → Páginas legais + footer funcional (B5)             ✅ (Codex) + fix Footer Link→<a>, /explorar→/hub/conteudos (Claude)
     ── Layout consolidation (nova prioridade):
-22. PROMPT P8.7  → PageShell inteligente + fim header duplo (IC-1,4,5,6)  ⏳ ← PRÓXIMO
-23. PROMPT P8.8  → Creator sidebar unificada (IC-3)                        ⏳
+22. PROMPT P8.7  → PageShell inteligente + fim header duplo (IC-1,4,5,6)  ✅
+23. PROMPT P8.8  → Creator sidebar unificada (IC-3)                        ⏳ ← PRÓXIMO
 24. PROMPT P8.9  → Admin layout em Vike (IC-2) + visibilidade cross-role   ⏳
     ──
 25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳

@@ -169,12 +169,12 @@
 | Dados mock para teste visual de cards (4 criadores `@mock-card-test.finhub`) | Não podem ir para produção | Limpar com `npm run seed:cards:clean` antes do deploy |
 | SEO structured data ausente (JSON-LD) | Rich results limitados | Pós-beta imediato |
 | Excesso de bibliotecas UI (PrimeReact + Mantine + shadcn) | Inconsistência visual | Ao redesenhar componentes |
-| IC-1: Header duplo para users auth em páginas públicas | 2 headers empilhados em ~50 páginas | P8.7 — URGENTE |
-| IC-2: Admin Vike sem sidebar nem AdminLayout | Admin navega sem sidebar | P8.9 |
-| IC-3: Creator dashboard com 2 sidebars diferentes | Sidebar muda entre páginas do dashboard | P8.8 |
-| IC-4: PublicLayout stub vazio | Visitantes sem nav em páginas sem HomepageLayout | P8.7 |
-| IC-5: FIRE tool pages sem layout | User fica preso sem nav | P8.7 |
-| IC-6: CreatorProfile vs CreatorsList layout diferente | Transição visual abrupta | P8.7 |
+| IC-1: Header duplo para users auth em páginas públicas | 2 headers empilhados em ~50 páginas | ✅ P8.7 |
+| IC-2: Admin Vike sem sidebar nem AdminLayout | Admin navega sem sidebar | ⏳ P8.9 |
+| IC-3: Creator dashboard com 2 sidebars diferentes | Sidebar muda entre páginas do dashboard | ⏳ P8.8 |
+| IC-4: PublicLayout stub vazio | Visitantes sem nav em páginas sem HomepageLayout | ✅ P8.7 |
+| IC-5: FIRE tool pages sem layout | User fica preso sem nav | ✅ P8.7 |
+| IC-6: CreatorProfile vs CreatorsList layout diferente | Transição visual abrupta | ✅ P8.7 |
 | `router.tsx` (React Router legacy) provavelmente dead code | Duplicação de rotas, confusão | Cleanup após P8.7-P8.9 |
 | `getRoutesByRole(CREATOR)` não inclui `regularRoutes` nem `creatorContentRoutes` | Sidebar creator incompleta | P8.8 |
 | Rota `/hub/counteudos/` com typo | Typo no filesystem | Cleanup menor |
@@ -196,9 +196,9 @@ CONCLUÍDO
   ✅ P5.6 — Páginas legais + footer funcional
   ✅ B4 + ROUTING-CHECK — Fix navegação cards + auditoria routing
 
-EM CURSO / PRÓXIMO IMEDIATO (layout consolidation — prioridade máxima)
-  ⏳ P8.7  — PageShell inteligente + fim header duplo (IC-1,4,5,6)
-  ⏳ P8.8  — Creator sidebar unificada (IC-3)
+EM CURSO / PRÓXIMO IMEDIATO (layout consolidation)
+  ✅ P8.7  — PageShell inteligente + fim header duplo (IC-1,4,5,6)
+  ⏳ P8.8  — Creator sidebar unificada (IC-3) ← PRÓXIMO
   ⏳ P8.9  — Admin layout Vike + visibilidade cross-role (IC-2)
 
 DEPOIS (features P5)
