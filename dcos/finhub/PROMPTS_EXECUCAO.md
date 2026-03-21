@@ -1406,7 +1406,7 @@ FinHub-Vite/src/features/admin/layouts/               ← P8.9
 
 ---
 
-## PROMPT P8.8 — Consolidação do Creator Dashboard: Sidebar Unificada ⏳
+## PROMPT P8.8 — Consolidação do Creator Dashboard: Sidebar Unificada ✅
 
 > **Referência obrigatória:** ler `dcos/finhub/LAYOUT_NAVIGATION_AUDIT.md` (IC-3)
 > **Depende de:** P8.7 concluído (PageShell já não aplica UserLayout nas rotas /creators/dashboard/*)
@@ -1624,8 +1624,8 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
 21. PROMPT P5.6  → Páginas legais + footer funcional (B5)             ✅ (Codex) + fix Footer Link→<a>, /explorar→/hub/conteudos (Claude)
     ── Layout consolidation (nova prioridade):
 22. PROMPT P8.7  → PageShell inteligente + fim header duplo (IC-1,4,5,6)  ✅
-23. PROMPT P8.8  → Creator sidebar unificada (IC-3)                        ⏳ ← PRÓXIMO
-24. PROMPT P8.9  → Admin layout em Vike (IC-2) + visibilidade cross-role   ⏳
+23. PROMPT P8.8  → Creator sidebar unificada (IC-3)                        ✅
+24. PROMPT P8.9  → Admin layout em Vike (IC-2) + visibilidade cross-role   ⏳ ← PRÓXIMO
     ──
 25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳
 26. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳

@@ -171,12 +171,12 @@
 | Excesso de bibliotecas UI (PrimeReact + Mantine + shadcn) | Inconsistência visual | Ao redesenhar componentes |
 | IC-1: Header duplo para users auth em páginas públicas | 2 headers empilhados em ~50 páginas | ✅ P8.7 |
 | IC-2: Admin Vike sem sidebar nem AdminLayout | Admin navega sem sidebar | ⏳ P8.9 |
-| IC-3: Creator dashboard com 2 sidebars diferentes | Sidebar muda entre páginas do dashboard | ⏳ P8.8 |
+| IC-3: Creator dashboard com 2 sidebars diferentes | Sidebar muda entre páginas do dashboard | ✅ P8.8 |
 | IC-4: PublicLayout stub vazio | Visitantes sem nav em páginas sem HomepageLayout | ✅ P8.7 |
 | IC-5: FIRE tool pages sem layout | User fica preso sem nav | ✅ P8.7 |
 | IC-6: CreatorProfile vs CreatorsList layout diferente | Transição visual abrupta | ✅ P8.7 |
 | `router.tsx` (React Router legacy) provavelmente dead code | Duplicação de rotas, confusão | Cleanup após P8.7-P8.9 |
-| `getRoutesByRole(CREATOR)` não inclui `regularRoutes` nem `creatorContentRoutes` | Sidebar creator incompleta | P8.8 |
+| `getRoutesByRole(CREATOR)` não inclui `regularRoutes` nem `creatorContentRoutes` | Sidebar creator incompleta | ✅ P8.8 |
 | Rota `/hub/counteudos/` com typo | Typo no filesystem | Cleanup menor |
 | 3 componentes órfãos: DashboardHeader, AdminHeader, AuthLayout (shared) | Dead code | Cleanup |
 
@@ -198,8 +198,8 @@ CONCLUÍDO
 
 EM CURSO / PRÓXIMO IMEDIATO (layout consolidation)
   ✅ P8.7  — PageShell inteligente + fim header duplo (IC-1,4,5,6)
-  ⏳ P8.8  — Creator sidebar unificada (IC-3) ← PRÓXIMO
-  ⏳ P8.9  — Admin layout Vike + visibilidade cross-role (IC-2)
+  ✅ P8.8  — Creator sidebar unificada (IC-3)
+  ⏳ P8.9  — Admin layout Vike + visibilidade cross-role (IC-2) ← PRÓXIMO
 
 DEPOIS (features P5)
   ⏳ P5.9  — Creator: criar/editar/publicar artigo
