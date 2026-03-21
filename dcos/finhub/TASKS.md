@@ -16,10 +16,11 @@
 | B1 | Crypto market cap usa `quoteVolume` em vez de `price × circulatingSupply` | `API_finhub` — crypto service | ✅ |
 | B2 | ETF Overlap: disclaimer ausente (dados simulados apresentados como reais) | `FinHub-Vite` — EtfOverlapPage | ✅ |
 | B3 | Watchlist: N chamadas paralelas ao FMP em vez de batch único | `API_finhub` — watchlist service | ✅ |
-| B4 | Cards de conteúdo e criadores sem navegação — clicar não leva a lado nenhum nos cards antigos (homepage, secções, widgets) | `FinHub-Vite` — cards componentes globais | 🔄 Codex em execução — aguardar report e validação Claude |
-| B5 | Footer: links de páginas legais (Privacidade, Termos, Cookies, Sobre) apontam para rotas inexistentes (404) | `FinHub-Vite` — Footer + páginas legais | ⏳ |
+| B4 | Cards de conteúdo e criadores sem navegação — clicar não leva a lado nenhum nos cards antigos | `FinHub-Vite` — cards componentes globais | ✅ CarouselCreators `/criadores`→`/creators`, CreatorCardMini+ArticlesSection+CoursesSection+BookCard+CommentCard+ContentMeta+RatingCard: Link→`<a href>` |
+| B5 | Footer: links de páginas legais (Privacidade, Termos, Cookies, Sobre) apontam para rotas inexistentes (404) | `FinHub-Vite` — Footer + páginas legais | ⏳ PROMPT P5.6 |
 | B6 | Creator profile page não recebia username — `@username/+Page.tsx` lia `routeParams` dos props (sempre undefined); "Ver perfil" redirecionava para `/creators` | `FinHub-Vite` — `@username/+Page.tsx` + `CreatorProfilePage.tsx` | ✅ Fix: usePageContext() + fallback regex no pathname |
 | B7 | CI P5.7 falhava — `toSocialMediaLinks` mapper usava `'Other'` em vez de `'website'` para platform website | `FinHub-Vite` — `publicCreatorsService.ts` | ✅ |
+| B8 | CommentCard apontava para `/users/:username` (rota inexistente) — deve ser `/perfil/:username` | `CommentCard.tsx` | ✅ ROUTING-CHECK (Claude) |
 
 ---
 
@@ -186,11 +187,11 @@ CONCLUÍDO
   ✅ P5.8 — Creator Welcome Card configurável
   ✅ B6, B7 — Routing @username + CI platform label
 
-EM CURSO AGORA
-  🔄 B4    — Fix navegação cards antigos (Codex em execução)
+CONCLUÍDO (cont.)
+  ✅ B4    — Fix navegação cards antigos (Codex) + lint fix BookCard (Claude)
+  ✅ B8    — CommentCard /users → /perfil (ROUTING-CHECK, Claude)
 
-PRÓXIMO IMEDIATO (após B4 validado)
-  ⏳ ROUTING-CHECK — Auditoria completa de navegação (Claude direto)
+PRÓXIMO IMEDIATO
   ⏳ P5.6  — Páginas legais + footer funcional (B5)
   ⏳ P5.9  — Creator: criar/editar/publicar artigo
   ⏳ P5.10 — Creator: criar/editar/publicar vídeo

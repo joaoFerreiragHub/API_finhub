@@ -1134,7 +1134,7 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 
 ---
 
-## ROUTING-CHECK — Auditoria Completa de Navegação (Claude direto, após B4) ⏳
+## ROUTING-CHECK — Auditoria Completa de Navegação (Claude direto, após B4) ✅
 
 > **Executor: Claude** (não Codex) — tarefa de leitura + fix cirúrgico se curto, ou prompt para Codex se extenso.
 
@@ -1327,10 +1327,9 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
     • Fix routing @username/+Page.tsx — usePageContext() + fallback regex ✅
     • Mock seed script seedCreatorCardsMock.ts (4 criadores variados) ✅
     ──
-19. PROMPT B4    → Navegação dos cards (href em cards antigos)         🔄 (Codex em execução — aguardar report)
-    ── Após validar B4:
-20. ROUTING-CHECK → Auditoria completa de navegação (Claude direto)   ⏳ ← PRÓXIMO APÓS B4
-21. PROMPT P5.6  → Páginas legais + footer funcional (B5)             ⏳
+19. PROMPT B4    → Navegação dos cards (href em cards antigos)         ✅ (Codex) + lint fix BookCard + B8 CommentCard (Claude)
+20. ROUTING-CHECK → Auditoria completa de navegação (Claude direto)   ✅
+21. PROMPT P5.6  → Páginas legais + footer funcional (B5)             ⏳ ← PRÓXIMO
 22. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳
 23. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳
 24. PROMPT P5.11 → Páginas de marcas/entidades públicas               ⏳
