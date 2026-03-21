@@ -33,6 +33,8 @@
     "checking": "npm run typecheck && npm run test:docs:smoke",
     "build": "tsc",
     "seed": "ts-node src/scripts/seed.ts",
+    "seed:cards:mock": "ts-node src/scripts/seedCreatorCardsMock.ts",
+    "seed:cards:clean": "ts-node src/scripts/seedCreatorCardsMock.ts --clean",
     "migrate:brands:directory": "ts-node --transpile-only src/scripts/migrateBrandToDirectory.ts",
     "migrate:ads:brand-targets": "ts-node --transpile-only src/scripts/migrateAdCampaignBrandTargets.ts",
     "test:admin:scopes": "ts-node --transpile-only scripts/test-admin-scope-contract.ts"
