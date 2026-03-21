@@ -1134,6 +1134,170 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 
 ---
 
+## ROUTING-CHECK — Auditoria Completa de Navegação (Claude direto, após B4) ⏳
+
+> **Executor: Claude** (não Codex) — tarefa de leitura + fix cirúrgico se curto, ou prompt para Codex se extenso.
+
+**Contexto:**
+- O botão "Ver perfil" dentro do `CreatorModal` não navegava para a página do criador (`/creators/:username`) — corrigido em P5.7 via `usePageContext()`.
+- O B4 (Codex) corrigiu cards antigos sem `<a href>` — mas pode ter ficado routing incompleto.
+- Existem múltiplas versões de cards (duplicados) que podem ter `href` errado ou ausente.
+
+**Tarefa (Claude executa directamente):**
+
+1. **Auditar todas as rotas de navegação de conteúdo:**
+   - `/hub/articles/:slug` — página de detalhe de artigo
+   - `/hub/courses/:slug` — página de detalhe de curso
+   - `/hub/videos/:slug` — página de detalhe de vídeo
+   - `/creators/:username` — perfil público de criador
+   - `/creators` — lista de criadores
+   - `/explore` — hub de exploração
+
+2. **Verificar cada card/componente que aponta para estas rotas:**
+   - `ArticleCard` (todas as versões em `components/public/`, `components/home/`, `features/hub/`)
+   - `CourseCard` (idem)
+   - `VideoCard` (idem)
+   - `CreatorCard` (feature + public + home)
+   - `ExploreContentCard`
+   - Botão "Ver perfil" no `CreatorModal` e no `CreatorCard` feature
+
+3. **Para cada item verificar:**
+   - Usa `<a href="...">` (não `div` clicável, não React Router `Link`)
+   - O `href` inclui o slug/username correcto (não está hardcoded ou vazio)
+   - O `href` aponta para a rota certa (ex: `/creators/` e não `/creator/`)
+
+4. **Fixes:**
+   - Se o fix for ≤ 5 linhas → Claude corrige directamente
+   - Se for extenso → Claude cria prompt para Codex e adiciona à ordem de execução
+
+**Output esperado:**
+- Tabela de auditoria: Componente | Rota | Estado (✅ / 🔴 / ⚠️)
+- Fixes aplicados ou prompt criado para Codex
+- Update do TASKS.md com B4 ✅ ou bugs residuais como B8, B9…
+
+---
+
+## PROMPT P5.9 — Creator Dashboard: Criar/Editar/Publicar Artigo ⏳
+
+**Contexto do projeto:**
+- Frontend: `FinHub-Vite/` — Creator dashboard já existe em `src/features/creators/`
+- Backend: `API_finhub/` — endpoints de artigos já existem (CRUD)
+- Estado actual: dashboard mostra tabela de artigos com publicar/despublicar/eliminar — **falta o flow de criar e editar**
+
+**IMPORTANTE — O que JÁ EXISTE (NÃO recriar):**
+- Tabela de gestão de artigos no dashboard — `src/features/creators/` (verificar ficheiro exacto)
+- Endpoints backend: `POST /api/articles`, `PUT /api/articles/:id`, `GET /api/articles/:id`
+- Tipos de artigo no frontend (verificar `src/features/hub/articles/types/` ou similar)
+
+**Tarefa:**
+
+### Frontend
+1. **Página/modal de criação de artigo** (`CreateArticlePage.tsx` ou `ArticleEditorModal.tsx` — escolher o que integra melhor):
+   - Campo título (obrigatório)
+   - Editor de texto rico (usar `react-quill` se já instalado, ou `textarea` simples se não houver editor instalado — **NÃO instalar pacotes novos sem verificar primeiro**)
+   - Campo de imagem de cover (URL ou upload — usar o que já existe no projecto)
+   - Campo de tags/tópicos (select múltiplo)
+   - Toggle publicar imediatamente vs guardar como rascunho
+   - Botão "Guardar" → `POST /api/articles`
+   - Botão "Cancelar" → volta à lista
+
+2. **Página/modal de edição** — mesma UI com dados pré-preenchidos:
+   - Carrega via `GET /api/articles/:id`
+   - Botão "Actualizar" → `PUT /api/articles/:id`
+
+3. **Integrar no dashboard** — botão "Novo Artigo" na tabela de gestão leva para o form de criação
+
+**SSR — regras obrigatórias:**
+- NÃO usar `useParams`, `useNavigate`, `Link` do react-router-dom
+- Navegação via `import { navigate } from 'vike/client'`
+- Dashboard é client-only (autenticado) — pode usar hooks normalmente
+
+**Critérios de conclusão:**
+- [ ] Criador consegue criar artigo e ele aparece na lista
+- [ ] Criador consegue editar artigo existente
+- [ ] Rascunho vs publicado funciona
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template acima.**
+
+---
+
+## PROMPT P5.10 — Creator Dashboard: Criar/Editar/Publicar Vídeo ⏳
+
+**Contexto do projeto:**
+- Idêntico ao P5.9 mas para vídeos
+- Backend: endpoints de vídeos já existem (verificar `API_finhub/src/routes/`)
+- Tipos de vídeo no frontend (verificar `src/features/hub/videos/types/`)
+
+**Tarefa:**
+
+### Frontend
+1. **Form de criação/edição de vídeo:**
+   - Campo título (obrigatório)
+   - Campo URL do vídeo (YouTube/Vimeo — validar formato de URL)
+   - Campo descrição (`textarea`)
+   - Campo de thumbnail (URL ou auto-extraída do YouTube via `img.youtube.com/vi/{id}/maxresdefault.jpg`)
+   - Campo de duração (opcional, em minutos)
+   - Campo de tags/tópicos
+   - Toggle publicar vs rascunho
+   - Preview do embed YouTube/Vimeo ao introduzir URL válida
+
+2. **Integrar no dashboard** — botão "Novo Vídeo" na secção de gestão de vídeos
+
+**SSR — regras obrigatórias:** (idem P5.9)
+
+**Critérios de conclusão:**
+- [ ] Criador consegue adicionar vídeo com URL YouTube/Vimeo
+- [ ] Preview do embed visível no form
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template acima.**
+
+---
+
+## PROMPT P5.11 — Páginas de Marcas/Entidades Públicas ⏳
+
+**Contexto do projeto:**
+- Frontend: `FinHub-Vite/`
+- Backend: `API_finhub/` — modelo `Brand` ou `DirectoryEntry` já existe (verificar)
+- Actualmente: zero páginas públicas para corretoras, seguradoras, plataformas de investimento
+
+**IMPORTANTE — Verificar antes de implementar:**
+- Existe `Brand` ou `DirectoryEntry` no backend? (`grep -r "Brand\|DirectoryEntry" API_finhub/src/models/`)
+- Existe alguma página de diretório no frontend? (`find FinHub-Vite/src -name "*brand*" -o -name "*directory*"`)
+
+**Tarefa:**
+
+1. **Página de listagem de marcas** (`/directory` ou `/marcas`):
+   - Grid de cards de marcas com logo, nome, categoria, rating
+   - Filtros: categoria (corretora/seguradora/plataforma/banco), país
+   - Pesquisa por nome
+
+2. **Página de perfil de marca** (`/directory/:slug` ou `/marcas/:slug`):
+   - Header com logo, nome, website, categoria
+   - Descrição/apresentação
+   - Métricas relevantes (fees, produtos disponíveis, etc. — dados do backend)
+   - Reviews/ratings de utilizadores
+   - Conteúdo relacionado (artigos, cursos sobre esta marca)
+
+3. **Cards de marca** para usar em listagens e homepage:
+   - `BrandCard.tsx` com `<a href="/directory/:slug">` (não duplicar se já existir)
+
+**SSR — regras obrigatórias:** (idem P5.9)
+
+**Critérios de conclusão:**
+- [ ] `/directory` lista marcas sem 404
+- [ ] `/directory/:slug` mostra perfil de marca
+- [ ] `BrandCard` com `<a href>` correcto
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template acima.**
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -1157,14 +1321,25 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 15. PROMPT P8.3  → Charts gradient + tooltips            ✅
 16. PROMPT P8.4  → Redesign cards conteúdo + criador    ✅
 17. PROMPT P5.7  → Creator popup modal (wiring + backend field)        ✅ (Codex) + fix CI 'website' platform label (Claude)
-18. PROMPT P5.8  → Creator Welcome Card configurável                   ✅ (Codex) + fix lint _review + useMemo (Claude)
+18. PROMPT P5.8  → Creator Welcome Card configurável                   ✅ (Codex)
     ── Extras fora de prompt (Claude direto):
     • Redesign visual CreatorModal (header, tabs, social, courses, layout) ✅
     • Fix routing @username/+Page.tsx — usePageContext() + fallback regex ✅
     • Mock seed script seedCreatorCardsMock.ts (4 criadores variados) ✅
     ──
-19. PROMPT B4    → Navegação dos cards (href em cards antigos)         ⏳ ← PRÓXIMO
-20. PROMPT P5.6  → Páginas legais + footer funcional                   ⏳
+19. PROMPT B4    → Navegação dos cards (href em cards antigos)         🔄 (Codex em execução — aguardar report)
+    ── Após validar B4:
+20. ROUTING-CHECK → Auditoria completa de navegação (Claude direto)   ⏳ ← PRÓXIMO APÓS B4
+21. PROMPT P5.6  → Páginas legais + footer funcional (B5)             ⏳
+22. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳
+23. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳
+24. PROMPT P5.11 → Páginas de marcas/entidades públicas               ⏳
+25. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
+26. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
+27. PROMPT P8.5  → Header redesenhado (nav, search, avatar/menu)      ⏳
+28. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
 ```
+
+> Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

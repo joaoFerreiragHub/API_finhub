@@ -1,7 +1,7 @@
 # FinHub — Backlog de Tasks
 
 > Fonte de verdade para o que está por fazer.
-> Última atualização: 2026-03-22
+> Última atualização: 2026-03-23
 
 **Legenda:** 🔴 Bloqueador beta | 🟡 Importante | 🟢 Desejável | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
 
@@ -16,7 +16,7 @@
 | B1 | Crypto market cap usa `quoteVolume` em vez de `price × circulatingSupply` | `API_finhub` — crypto service | ✅ |
 | B2 | ETF Overlap: disclaimer ausente (dados simulados apresentados como reais) | `FinHub-Vite` — EtfOverlapPage | ✅ |
 | B3 | Watchlist: N chamadas paralelas ao FMP em vez de batch único | `API_finhub` — watchlist service | ✅ |
-| B4 | Cards de conteúdo e criadores sem navegação — clicar não leva a lado nenhum nos cards antigos (homepage, secções, widgets) | `FinHub-Vite` — cards componentes globais | 🔄 Parcial — ExploreContentCard corrigido (Link→`<a>`), cards de criador agora abrem modal. Faltam widgets/secções antigos |
+| B4 | Cards de conteúdo e criadores sem navegação — clicar não leva a lado nenhum nos cards antigos (homepage, secções, widgets) | `FinHub-Vite` — cards componentes globais | 🔄 Codex em execução — aguardar report e validação Claude |
 | B5 | Footer: links de páginas legais (Privacidade, Termos, Cookies, Sobre) apontam para rotas inexistentes (404) | `FinHub-Vite` — Footer + páginas legais | ⏳ |
 | B6 | Creator profile page não recebia username — `@username/+Page.tsx` lia `routeParams` dos props (sempre undefined); "Ver perfil" redirecionava para `/creators` | `FinHub-Vite` — `@username/+Page.tsx` + `CreatorProfilePage.tsx` | ✅ Fix: usePageContext() + fallback regex no pathname |
 | B7 | CI P5.7 falhava — `toSocialMediaLinks` mapper usava `'Other'` em vez de `'website'` para platform website | `FinHub-Vite` — `publicCreatorsService.ts` | ✅ |
@@ -79,14 +79,15 @@
 | Lista de criadores pública + perfil público de criador | ✅ | Frontend |
 | Creator dashboard — overview com KPIs reais | ✅ | Frontend |
 | Creator dashboard — gestão de artigos (tabela + publicar/despublicar/eliminar) | ✅ | Frontend |
-| Creator dashboard — criar/editar/publicar artigo (flow completo) | ⏳ | Frontend |
-| Creator dashboard — criar/editar/publicar vídeo (flow completo) | ⏳ | Frontend |
+| Creator dashboard — criar/editar/publicar artigo (flow completo) | ⏳ PROMPT P5.9 | Frontend |
+| Creator dashboard — criar/editar/publicar vídeo (flow completo) | ⏳ PROMPT P5.10 | Frontend |
 | Creator dashboard — campo welcome video (URL YouTube/Vimeo para introdução pública) | ✅ | Backend + Frontend |
 | Popup de criador — modal ao clicar em card de criador (welcome video + cursos + conteúdos top) | ✅ | Frontend |
-| P5.8 — Creator Welcome Card configurável: criador escolhe o que mostra no seu cartão de visita público (dados pessoais, video boas-vindas, cursos, artigos, produtos, website, redes sociais, etc.) | ✅ | Backend + Frontend — `ICreatorCardConfig` no User model, `CreatorCardConfigPanel` no dashboard, `CreatorModal` com render condicional + previewMode |
-| Redesign visual do CreatorModal — header com avatar/nome/rating, tabs polidas, social com cores, layout vídeo+bio lado a lado, website como domain pill | ✅ | Frontend — `CreatorHeader`, `CreatorModal`, `CreatorSocial`, `CreatorCourses` redesenhados |
+| P5.8 — Creator Welcome Card configurável: criador escolhe o que mostra no seu cartão de visita público | ✅ | Backend + Frontend — `ICreatorCardConfig`, `CreatorCardConfigPanel`, `CreatorModal` com render condicional + previewMode |
+| Redesign visual do CreatorModal — header com avatar/nome/rating, tabs polidas, social com cores, layout vídeo+bio lado a lado | ✅ | Frontend — `CreatorHeader`, `CreatorModal`, `CreatorSocial`, `CreatorCourses` redesenhados |
 | Creator profile page — navegação "Ver perfil" funcional (rota `@username` + fallback URL path) | ✅ | Frontend |
-| Páginas de marcas/entidades públicas (zero atualmente) | ⏳ | Frontend |
+| Auditoria completa de navegação — todos os cards e botões "Ver perfil" com href correcto | 🔄 Após B4 — ROUTING-CHECK (Claude) | Frontend |
+| Páginas de marcas/entidades públicas | ⏳ PROMPT P5.11 | Frontend |
 
 ### 3.2 Importantes para Beta 🟡
 
@@ -170,25 +171,40 @@
 
 ---
 
-## Sequência de Execução Recomendada
+## Sequência de Execução Actualizada
+
+> Última revisão: 2026-03-23
 
 ```
-AGORA
-  1. Corrigir bugs B1 (crypto market cap) e B2 (ETF disclaimer)
-  2. Fechar P3 — gate final de qualidade
-  3. Fechar P4 — hardening + E2E (Editorial + Moderation)
+CONCLUÍDO
+  ✅ B1, B2, B3 — Bugs críticos de dados
+  ✅ P3 — Análise rápida (cobertura + badges + gate)
+  ✅ P4 — Editorial CMS + Moderation hardening + E2E
+  ✅ P8.1–P8.4 — Fundações de design + cards redesenhados
+  ✅ P5.1–P5.5 — Hub conteúdo + Creator dashboard MVP
+  ✅ P5.7 — Creator modal wiring + backend field
+  ✅ P5.8 — Creator Welcome Card configurável
+  ✅ B6, B7 — Routing @username + CI platform label
 
-DEPOIS (P5 pré-beta)
-  4. Páginas públicas de conteúdo (explore + detalhe)
-  5. Creator dashboard MVP funcional
-  6. Páginas de marcas públicas
+EM CURSO AGORA
+  🔄 B4    — Fix navegação cards antigos (Codex em execução)
 
-EM PARALELO (pode começar a qualquer ponto)
-  7. P8 Fase 1 — Fundações de design (Inter, dark mode, chart colors)
-  8. P8 Fase 2 — Componentes críticos
+PRÓXIMO IMEDIATO (após B4 validado)
+  ⏳ ROUTING-CHECK — Auditoria completa de navegação (Claude direto)
+  ⏳ P5.6  — Páginas legais + footer funcional (B5)
+  ⏳ P5.9  — Creator: criar/editar/publicar artigo
+  ⏳ P5.10 — Creator: criar/editar/publicar vídeo
+  ⏳ P5.11 — Páginas de marcas/entidades públicas
+
+A SEGUIR
+  ⏳ P3-GATE — Gate final análise rápida (lint+test+build+e2e)
+  ⏳ P4-GATE — Gate pre-release editorial + moderation
+  ⏳ P8.5  — Header redesenhado
+  ⏳ P8.6  — FinHubScore visual proeminente
 
 MAIS TARDE
-  9. Pagamentos/subscrições
- 10. P5 analytics de negócio
- 11. Onboarding e recomendações
+  ⏳ Pagamentos/subscrições
+  ⏳ Onboarding utilizador
+  ⏳ Recomendações básicas
+  ⏳ Analytics de negócio (DAU/MAU)
 ```
