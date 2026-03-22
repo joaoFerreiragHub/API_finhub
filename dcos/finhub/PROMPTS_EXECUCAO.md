@@ -2393,7 +2393,7 @@ Verificar manualmente:
 
 ---
 
-## PROMPT P5-OB — Onboarding: First-Time User Experience ⏳
+## PROMPT P5-OB — Onboarding: First-Time User Experience ✅ VALIDADO 2026-03-22
 
 > **Executor: Codex**
 > **Pré-requisito:** P8.5 ✅
@@ -2892,8 +2892,8 @@ Verificar (apenas confirmar que existem — não testar manualmente):
 35. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ✅
 36. PROMPT P5-FIRE  → FIRE timeline chart + progress visual           ✅
 37. PROMPT P8.5     → Header SSR-safe + redesign visual               ✅
-38. PROMPT P5-OB    → Onboarding first-time user                      ⏳ ← PRÓXIMO
-39. PROMPT P5-PRICE → Página de preços/premium                        ⏳
+38. PROMPT P5-OB    → Onboarding first-time user                      ✅
+39. PROMPT P5-PRICE → Página de preços/premium                        ← EM EXECUÇÃO
 40. PROMPT BETA-GATE → Gate final pré-beta                            ⏳
 ```
 
