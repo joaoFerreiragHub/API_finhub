@@ -156,7 +156,7 @@
 |----------|--------|-------|
 | P8.10a — Sistema unificado de cards (ContentCard + CreatorCard) | ✅ | `ContentCard` + `RatingStars` + `cardUtils` criados; 5 public cards → thin wrappers; `ResourceCard` migrado; 4 ficheiros dead-code eliminados; `.netflix-card` CSS removido; 227 testes PASS |
 | P8.10b — Consistência visual entre páginas | ✅ | ContentRow max-w 1400px; PageHero em `/directory`; filtros shadcn (Input+Select) em CreatorsListPage + PublicDirectoryPage; max-w-7xl wrappers; filter-bar__pill nos type pills; SectionHeader criado |
-| P8.10c — Estados visuais reutilizáveis | ⏳ | LoadingSkeleton, EmptyState, ErrorState — substituir 3 patterns inline diferentes |
+| P8.10c — Estados visuais reutilizáveis | ✅ | LoadingSkeleton (spinner/cards), EmptyState (card/bordered), ErrorState criados; 3 consumers actualizados (CreatorsListPage, PublicDirectoryPage, ContentList) |
 
 **Auditoria que fundamenta o P8.10 (2026-03-26):**
 - 57 componentes de card, 15 reutilizáveis, 42 one-off

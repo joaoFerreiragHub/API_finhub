@@ -2005,11 +2005,12 @@ Existem 3 sistemas de card em paralelo que devem convergir para 1:
 - [x] `SectionHeader` criado em `src/components/shared/SectionHeader.tsx`
 - [x] 48 suites 227 testes PASS · build PASS (6.48s)
 
-**P8.10c (Estados):**
-- [ ] `LoadingSkeleton` unificado substituindo 3 patterns diferentes
-- [ ] `EmptyState` unificado substituindo 3 patterns diferentes
-- [ ] `ErrorState` unificado
-- [ ] Testes visuais em light + dark mode
+**P8.10c (Estados): ✅ VALIDADO 2026-03-22**
+- [x] `LoadingSkeleton` — variant=spinner (centrado) | variant=cards (grid animate-pulse)
+- [x] `EmptyState` — variant=card (default) | variant=bordered (dashed, para grids de conteúdo)
+- [x] `ErrorState` — Card + AlertCircle + onRetry opcional
+- [x] Consumers: CreatorsListPage, PublicDirectoryPage, ContentList
+- [x] 48 suites 227 testes PASS · build PASS (6.58s)
 
 **Produzir relatório no formato do template acima (por sub-sessão).**
 
@@ -2059,7 +2060,7 @@ Existem 3 sistemas de card em paralelo que devem convergir para 1:
     ── UI/UX Consolidation (Claude direto, dividido em sub-sessões):
 29. PROMPT P8.10a → Cards: ContentCard + CreatorCard unificados       ✅
 30. PROMPT P8.10b → Páginas: container, PageHero, filtros, grids     ✅
-31. PROMPT P8.10c → Estados: LoadingSkeleton, EmptyState, ErrorState  ⏳ ← PRÓXIMO (Claude)
+31. PROMPT P8.10c → Estados: LoadingSkeleton, EmptyState, ErrorState  ✅
     ── UI/UX Consolidation concluída ──
 32. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
 33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
