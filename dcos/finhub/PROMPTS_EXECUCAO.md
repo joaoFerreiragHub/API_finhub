@@ -1177,7 +1177,7 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 
 ---
 
-## PROMPT P5.9 — Creator Dashboard: Criar/Editar/Publicar Artigo ⏳
+## PROMPT P5.9 — Creator Dashboard: Criar/Editar/Publicar Artigo ✅
 
 **Contexto do projeto:**
 - Frontend: `FinHub-Vite/` — Creator dashboard já existe em `src/features/creators/`
@@ -1627,10 +1627,8 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
 23. PROMPT P8.8  → Creator sidebar unificada (IC-3)                        ✅
 24. PROMPT P8.9  → Admin layout em Vike (IC-2) + visibilidade cross-role   ✅
     ── Layout consolidation concluída (P8.7+P8.8+P8.9) — IC-1 a IC-6 todos resolvidos ──
-25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳ ← PRÓXIMO
-    ──
-25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳
-26. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳
+25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ✅
+26. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳ ← PRÓXIMO
 27. PROMPT P5.11 → Páginas de marcas/entidades públicas               ⏳
 28. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
 29. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
