@@ -27,6 +27,8 @@
 | B12 | `getRelatedLink` fallback aponta para `/explorar/tudo` (rota inexistente) — deve ser `/hub/conteudos` | `BrandDetailPage.tsx` linha 60 | ✅ B-FIX-01 |
 | B13 | Sem alias `/marcas` → `/directory` — URLs de diretório públicas usam `/directory` mas marca-se `/marcas` noutros locais | `src/pages/` — faltam `marcas/+Page.tsx` e `marcas/@slug/+Page.tsx` | ✅ B-FIX-01 |
 | B14 | FIRE landing: `Link`/`NavLink`/`useInRouterContext` de `react-router-dom` — viola SSR rules, links não navegáveis | `FireLandingPage.tsx` + `FireToolNav.tsx` | ✅ Fix: `<a href>` nativo |
+| B15 | `/login` e `/registar` sem `+Page.tsx` Vike — rota não existe, página em branco ao navegar directamente | `src/pages/login/+Page.tsx` + `src/pages/registar/+Page.tsx` | 🟡 Fix criado — requer restart do dev server para activar |
+| B16 | `useAuthStore` em dev mode restaura sempre utilizador fake (`dev-admin-access-token`) — todas as chamadas API autenticadas falham com token inválido | `useAuthStore.ts` — `onRehydrateStorage` + SSR fallback | 🟡 Para resolver com login real via `/login` após B15 activado |
 
 ---
 

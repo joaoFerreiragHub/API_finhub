@@ -20,7 +20,7 @@ import { User } from '../models/User'
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/finhub'
 const MOCK_TAG = '_MOCK_FIRE'
-const TARGET_USER_EMAIL = 'user1@test.com'
+const TARGET_USER_EMAIL = 'admin@finhub.com'
 
 // ─── Portfolio A — ETF Global ────────────────────────────────────────────────
 
