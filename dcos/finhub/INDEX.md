@@ -28,7 +28,7 @@
 | P3 — Análise Rápida de stocks | ✅ Fechado | Gate PASS: lint 0 erros, 48 suites, smoke 3/3 |
 | P4 — Editorial CMS + Moderation | ✅ Fechado | Gate PASS: 16/16 E2E admin + 3/3 smoke |
 | P5 — Pré-beta funcional | ✅ Fechado | P5.1-P5.11 todos ✅ — /directory + BrandCard + BrandDetailPage SSR-safe |
-| P8 — Elevação UI/UX | 🔄 Em curso | P8.1-P8.4 ✅, P8.7 ✅ (PageShell), P8.8 ✅ (Creator sidebar), P8.9 ✅ (Admin layout + guard), P8.10 ⏳ (UI/UX consolidation — cards+páginas+estados), falta: P8.6 FinHubScore |
+| P8 — Elevação UI/UX | 🔄 Em curso | P8.1-P8.4 ✅, P8.7 ✅, P8.8 ✅, P8.9 ✅, P8.10 ✅ (cards+páginas+estados), P8.6 ✅ (FinHubScore snowflake), P8.5 ⏳ (Header redesign) |
 
 **Bugs conhecidos abertos:** todos fechados ✅ — B9/B10/B11/B12/B13 resolvidos em B-FIX-01
 
