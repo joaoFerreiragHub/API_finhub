@@ -2241,7 +2241,7 @@ npx playwright test e2e/smoke.spec.ts --reporter=list
 
 ---
 
-## PROMPT P8.5 — Header Redesenhado: SSR-safe + Visual Clean ⏳
+## PROMPT P8.5 — Header Redesenhado: SSR-safe + Visual Clean ✅ VALIDADO 2026-03-22
 
 > **Executor: Codex**
 > **Pré-requisito:** P5-FIRE ✅
@@ -2363,30 +2363,32 @@ Verificar manualmente:
 ## RELATÓRIO DE EXECUÇÃO
 
 **Prompt ID:** P8.5
-**Data:** [data]
-**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+**Data:** 2026-03-22
+**Estado:** COMPLETO
 
 ### Ficheiros modificados
-- `src/components/layout/Header.tsx` — SSR fix + visual redesign
+- `src/components/layout/Header.tsx` — SSR fix completo + redesign visual
 
 ### Comandos executados e resultado
-- `npm run lint` → PASS / FAIL
-- `npm run typecheck` → PASS / FAIL
-- `npm run build` → PASS / FAIL
-- `npx playwright test e2e/smoke.spec.ts` → PASS / FAIL
+- `npm run lint` → PASS (3 warnings pre-existentes em shellConfig.tsx)
+- `npm run typecheck` → PASS
+- `npm run build` → PASS
+- `npx playwright test e2e/smoke.spec.ts` → PASS (3/3)
 
 ### Decisões tomadas
-- [descrever qualquer desvio ao spec]
+- Usado `Popover` de @/components/ui em vez de `DropdownMenu` (não exportado em ui/index.ts)
+- `navigateTo()` helper com guard `typeof window !== 'undefined'` para toda navegação programática
+- `pathname` via `typeof window !== 'undefined' ? window.location.pathname : ''` — SSR-safe
 
-### Bloqueadores / dívida técnica
-- [se existir]
-
-### O que o Claude deve validar
-- [ ] Sem imports de react-router-dom em Header.tsx
-- [ ] Active state funciona via window.location.pathname
-- [ ] Visual: logo, nav ativa com border-b, backdrop blur
-- [ ] Dropdown avatar renderiza com DropdownMenu shadcn
-- [ ] Build PASS + smoke PASS
+### Validação Claude ✅
+- [x] Zero imports de react-router-dom em Header.tsx
+- [x] Active state via window.location.pathname com guard SSR
+- [x] Logo Fin**Hub** com primary color + sticky + backdrop-blur
+- [x] Nav desktop com border-b-2 no item activo
+- [x] Avatar abre Popover com Dashboard / Perfil / Definicoes / Logout
+- [x] Entrar/Registar como `<a href>` quando não autenticado
+- [x] Mobile menu mantido com mesmo padrão SSR-safe
+- [x] Build PASS + smoke 3/3 PASS
 ```
 
 ---
@@ -2886,11 +2888,11 @@ Verificar (apenas confirmar que existem — não testar manualmente):
     ── UI/UX Consolidation concluída ──
 32. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ✅
 33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ✅
-34. PROMPT P8.5  → Header: SSR fix + visual redesign                  ⏳
+34. PROMPT P8.5  → Header: SSR fix + visual redesign                  ✅
 35. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ✅
 36. PROMPT P5-FIRE  → FIRE timeline chart + progress visual           ✅
-37. PROMPT P8.5     → Header SSR-safe + redesign visual               ⏳ ← PRÓXIMO
-38. PROMPT P5-OB    → Onboarding first-time user                      ⏳
+37. PROMPT P8.5     → Header SSR-safe + redesign visual               ✅
+38. PROMPT P5-OB    → Onboarding first-time user                      ⏳ ← PRÓXIMO
 39. PROMPT P5-PRICE → Página de preços/premium                        ⏳
 40. PROMPT BETA-GATE → Gate final pré-beta                            ⏳
 ```

@@ -92,14 +92,14 @@ Fase 1 — Fundações (sem breaking changes)                     ✅ COMPLETA
   ├─ Chart colors semânticas                                  ✅
   └─ Market colors no Tailwind                                ✅
 
-Fase 2 — Componentes Críticos                                 🔄
-  ├─ Header redesenhado                                       ⏳
+Fase 2 — Componentes Críticos                                 ✅ COMPLETA
+  ├─ Header redesenhado (SSR-safe + blur + border-b ativo)    ✅ P8.5
   ├─ Cards de conteúdo modernizados                           ✅ P8.4
   ├─ Cards de criador modernizados                            ✅ P8.4
   ├─ CreatorModal redesenhado (avatar, tabs, social, layout)  ✅
   ├─ Charts com tooltips ricos + gradient fill                ✅ P8.3
   ├─ MetricCard com badge + tabular-nums                      ✅ P8.2
-  └─ FinHubScore visual proeminente                           ⏳
+  └─ FinHubScore visual proeminente (hero + snowflake radar)  ✅ P8.6
 
 Fase 3 — Páginas
   ├─ Homepage                                                 ⏳

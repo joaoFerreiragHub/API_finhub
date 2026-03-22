@@ -243,8 +243,8 @@ A SEGUIR (sequência completa pré-beta)
   ✅ P4-GATE — Gate editorial + moderation (16/16 E2E + 3/3 smoke)
   ✅ P8.6   — FinHubScore hero treatment + snowflake radar (4 eixos)
   ✅ P5-FIRE — FIRE: timeline chart + progress bar + seed mock (2 portfolios)
-  ⏳ P8.5   — Header SSR-safe + redesign visual ← PRÓXIMO
-  ⏳ P5-OB  — Onboarding first-time user (3 passos, localStorage)
+  ✅ P8.5   — Header SSR-safe + redesign visual (lint 0 · typecheck PASS · build PASS · smoke 3/3)
+  ⏳ P5-OB  — Onboarding first-time user (3 passos, localStorage) ← PRÓXIMO
   ⏳ P5-PRICE — Página de preços/premium (3 planos, FAQ)
   ⏳ BETA-GATE — Gate final pré-beta (lint+test+build+E2E full)
 
