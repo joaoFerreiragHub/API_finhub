@@ -1,7 +1,7 @@
 # FinHub — Backlog de Tasks
 
 > Fonte de verdade para o que está por fazer.
-> Última atualização: 2026-03-23
+> Última atualização: 2026-03-25
 
 **Legenda:** 🔴 Bloqueador beta | 🟡 Importante | 🟢 Desejável | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
 
@@ -21,6 +21,9 @@
 | B6 | Creator profile page não recebia username — `@username/+Page.tsx` lia `routeParams` dos props (sempre undefined); "Ver perfil" redirecionava para `/creators` | `FinHub-Vite` — `@username/+Page.tsx` + `CreatorProfilePage.tsx` | ✅ Fix: usePageContext() + fallback regex no pathname |
 | B7 | CI P5.7 falhava — `toSocialMediaLinks` mapper usava `'Other'` em vez de `'website'` para platform website | `FinHub-Vite` — `publicCreatorsService.ts` | ✅ |
 | B8 | CommentCard apontava para `/users/:username` (rota inexistente) — deve ser `/perfil/:username` | `CommentCard.tsx` | ✅ ROUTING-CHECK (Claude) |
+| B9 | ManageVideos usa `confirm()/alert()` (browser dialogs) em vez de Dialog/Card como ManageArticles — inconsistência UX | `ManageVideos.tsx` linhas 22/26/34 | 🟡 ⏳ |
+| B10 | ManageVideos sem botão "Despublicar" — vídeo publicado não volta a rascunho pelo dashboard (artigos têm `unpublishArticle`) | `ManageVideos.tsx`, `videoService.ts`, `useVideos.ts` | 🟡 ⏳ |
+| B11 | ManageVideos edit link sem `encodeURIComponent` — `href=\`/creators/dashboard/videos/${video.id}/edit\`` (ManageArticles usa encode) | `ManageVideos.tsx` linha 197 | 🟢 ⏳ |
 
 ---
 
