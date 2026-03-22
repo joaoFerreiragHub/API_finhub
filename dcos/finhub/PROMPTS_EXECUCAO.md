@@ -3591,7 +3591,14 @@ npm run build
 
 ---
 
-## PROMPT P9-GATE — Gate Pós-Beta: Qualidade e Funcionalidade ⏳
+## PROMPT P9-GATE — Gate Pós-Beta: Qualidade e Funcionalidade ⚠️ PARCIAL 2026-03-22
+
+> **Nota pós-execução:** Baseline 100% PASS (lint ✅ test 48s/227 ✅ typecheck ✅ build ✅). TS2688 corrigido (removido `"vite/client"` de `tsconfig.json` e `tsconfig.app.json`). Todos os itens do checklist de funcionalidade confirmados. E2E smoke PASS (3/3). E2E completo: 25/50 PASS — 2 bloqueadores reais identificados:
+>
+> 1. **Onboarding overlay (z-[9990])** intercepta cliques em múltiplas suites admin (Suspender, Ocultar, Iniciar, Revogar → timeout). Este é um bug de produção — utilizadores com onboarding activo não conseguem interagir com o resto da UI.
+> 2. **SSR null error**: `TypeError: Cannot read properties of null (reading 'VITE_GTM_ID')` em `platformRuntimeConfigService.ts` → `/login` e `/registar` devolvem 500 em SSR. Bug de produção em ambiente sem variáveis de ambiente GTM.
+>
+> **Veredicto: PARCIAL** — código novo está limpo; os 2 bugs pré-existentes (overlay + SSR null) precisam de fix antes de fechar o gate. Ver **P9-GATE-FIX** abaixo.
 
 > **Executor: Codex**
 > **Pré-requisito:** P9.5 ✅
@@ -3697,10 +3704,110 @@ npx playwright test e2e/ --reporter=list
 
 ---
 
+## PROMPT P9-GATE-FIX — Correcção dos 2 Bloqueadores do Gate ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P9-GATE ⚠️ (relatório acima)
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Princípio:** cirúrgico — resolver exactamente os 2 bugs identificados, sem tocar em mais nada. Baseline (lint/test/typecheck/build) já passa — não quebrar.
+
+**Contexto:** P9-GATE passou tudo excepto E2E completo (25/50). Os 2 bloqueadores são bugs reais de produção, não limitações de sandbox.
+
+---
+
+### Fix 1 — Onboarding overlay intercepta cliques (z-[9990])
+
+**Problema:** o componente de onboarding (provavelmente `OnboardingModal` ou `OnboardingFlow`) tem `z-index: 9990` e não tem condição que o impeça de aparecer quando o utilizador já completou o onboarding. Nas suites E2E, o overlay aparece por cima de todos os elementos admin, causando timeouts em acções como Suspender, Ocultar, Iniciar, Revogar.
+
+**Localizar o componente:**
+```bash
+grep -rn "z-\[9990\]\|z-9990\|onboarding" src/ --include="*.tsx" | grep -v "node_modules"
+grep -rn "OnboardingModal\|OnboardingFlow\|OnboardingOverlay" src/ --include="*.tsx"
+```
+
+**Fix necessário:**
+O componente deve verificar se o onboarding já foi completado ANTES de renderizar. Padrão correcto:
+```tsx
+// Guard no próprio componente de onboarding:
+const [mounted, setMounted] = useState(false)
+useEffect(() => setMounted(true), [])
+
+// Não renderizar em SSR, e não renderizar se já completou
+const isDone = mounted && Boolean(localStorage.getItem('finhub-onboarding-done'))
+if (!mounted || isDone) return null
+```
+
+Se o guard já existe mas não está a funcionar → verificar se a key do localStorage bate certo com a que o onboarding usa para marcar como concluído.
+
+**Importante:** não alterar o z-index, não alterar o design do onboarding — apenas garantir que não aparece quando já foi completado.
+
+---
+
+### Fix 2 — SSR null error em `platformRuntimeConfigService.ts`
+
+**Problema:**
+```
+TypeError: Cannot read properties of null (reading 'VITE_GTM_ID')
+```
+
+Ocorre em SSR quando as variáveis de ambiente VITE_GTM_ID (e provavelmente outras) não estão definidas, resultando em `null` onde se espera um objecto.
+
+**Localizar:**
+```bash
+grep -n "VITE_GTM_ID\|runtimeConfig\|platformRuntimeConfig" src/ -r --include="*.ts" --include="*.tsx"
+```
+
+**Fix necessário:**
+Em `platformRuntimeConfigService.ts`, o acesso a variáveis deve ter fallback para `undefined` ou string vazia:
+
+```ts
+// ANTES (crash se null):
+const gtmId = runtimeConfig.VITE_GTM_ID
+
+// DEPOIS (safe):
+const gtmId = runtimeConfig?.VITE_GTM_ID ?? undefined
+```
+
+Ou, se `runtimeConfig` em si pode ser null:
+```ts
+// Guard no topo da função/classe:
+if (!runtimeConfig) {
+  console.warn('[RuntimeConfig] Config not available — using defaults')
+  return defaultConfig  // objecto com todos os campos vazios/undefined
+}
+```
+
+**Objectivo:** `/login` e `/registar` não devem devolver 500 quando `VITE_GTM_ID` não está definido. GTM é analytics — ausência de variável não deve derrubar a página.
+
+---
+
+### Validação
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npx playwright test e2e/smoke.spec.ts --reporter=list
+npx playwright test e2e/admin.p2.6.spec.ts --reporter=list
+```
+
+**Critérios de conclusão:**
+- [ ] Onboarding overlay não aparece quando `finhub-onboarding-done` está em localStorage
+- [ ] `/login` e `/registar` não devolvem 500 quando VITE_GTM_ID não está definido
+- [ ] `npm run lint` → PASS
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+- [ ] `smoke.spec.ts` → 3/3 PASS
+- [ ] Suites admin sem timeouts por overlay
+
+**Produzir relatório no formato do template.**
+
+---
+
 ## PROMPT CLEANUP-02 — Limpeza Pré-Release (ficheiros e pastas) ⏳
 
 > **Executor: Claude**
-> **Pré-requisito:** P9-GATE ✅
+> **Pré-requisito:** P9-GATE-FIX ✅
 > **Princípio:** só eliminar/mover — zero alterações a código de produção. Se houver dúvida sobre algum ficheiro, anotar e não apagar.
 > **Documento de referência:** `API_finhub/dcos/finhub/AUDIT_FICHEIROS.md` — ler antes de começar.
 
@@ -4368,8 +4475,9 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 47. PROMPT P9.3      → Admin dashboard: métricas reais                ✅ (Codex)
 48. PROMPT P9.4      → User account dashboard (/conta shell)          ✅ (Codex)
 49. PROMPT P9.5      → Audit/fix /perfil para todos os roles          ✅ (Codex)
-50. PROMPT P9-GATE   → Gate pós-beta                                  ⏳ (Codex — fix TS2688 + validação)
-51. PROMPT CLEANUP-02 → Limpeza pré-release (ficheiros/pastas)        ⏳ (Claude — após P9-GATE)
+50. PROMPT P9-GATE      → Gate pós-beta                               ⚠️ PARCIAL (Codex — baseline ✅, 2 bugs E2E)
+50b. PROMPT P9-GATE-FIX → Onboarding overlay + SSR null fix          ⏳ (Codex)
+51. PROMPT CLEANUP-02  → Limpeza pré-release (ficheiros/pastas)       ⏳ (Claude — após P9-GATE-FIX)
     ── v1.0 — Release Pública ──
 52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ⏳ (Codex)
 53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ⏳ (Codex)
