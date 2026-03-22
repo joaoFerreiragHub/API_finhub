@@ -26,6 +26,7 @@
 | B11 | ManageVideos edit link sem `encodeURIComponent` — `href=\`/creators/dashboard/videos/${video.id}/edit\`` (ManageArticles usa encode) | `ManageVideos.tsx` linha 197 | ✅ B-FIX-01 |
 | B12 | `getRelatedLink` fallback aponta para `/explorar/tudo` (rota inexistente) — deve ser `/hub/conteudos` | `BrandDetailPage.tsx` linha 60 | ✅ B-FIX-01 |
 | B13 | Sem alias `/marcas` → `/directory` — URLs de diretório públicas usam `/directory` mas marca-se `/marcas` noutros locais | `src/pages/` — faltam `marcas/+Page.tsx` e `marcas/@slug/+Page.tsx` | ✅ B-FIX-01 |
+| B14 | FIRE landing: `Link`/`NavLink`/`useInRouterContext` de `react-router-dom` — viola SSR rules, links não navegáveis | `FireLandingPage.tsx` + `FireToolNav.tsx` | ✅ Fix: `<a href>` nativo |
 
 ---
 
