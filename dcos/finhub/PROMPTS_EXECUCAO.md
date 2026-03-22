@@ -2896,7 +2896,22 @@ Verificar (apenas confirmar que existem — não testar manualmente):
 
 ---
 
-## PROMPT P9.1 — Perfil Editável (name / bio / avatar) ⏳
+## PROMPT P9.1 — Perfil Editável (name / bio / avatar) ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação (Claude):**
+> Executado directamente por Claude na sessão de 2026-03-22.
+>
+> **useUpdateMyProfile hook** ✅ — Adicionado a `useSocial.ts`; chama `socialService.updateMyProfile` (PATCH `/api/users/me`); em `onSuccess` faz optimistic update ao cache `['social', 'profile', 'me']` + `invalidateQueries`.
+>
+> **UpdateMyProfileInput type** ✅ — Adicionado a `social/types/index.ts` (`{ name: string; bio?: string; avatar?: string }`).
+>
+> **Form inline em UserProfilePage** ✅ — Quando `isOwnProfile && editing`: substitui `UserProfileCard` por form com campos name/bio/avatar. Quando `isOwnProfile && !editing`: mostra `UserProfileCard` + botão "Editar perfil" (bottom-right). Para perfis alheios: apenas `UserProfileCard`, sem botão.
+>
+> **Toast** ✅ — `useToast()` de `@/shared/hooks` (react-toastify wrapper). `toastSuccess` em `onSuccess`, `toastError` no catch.
+>
+> **typecheck** ✅ — PASS.
+>
+> **Nota:** `router.tsx` ainda referenciado — não relacionado com este prompt.
 
 > **Executor: Codex**
 > **Pré-requisito:** BETA-GATE ✅
@@ -3262,14 +3277,312 @@ npm run build
 
 ---
 
-## PROMPT P9-GATE — Gate Pós-Beta: Qualidade e Funcionalidade ⏳
+## PROMPT P9.4 — User Account Dashboard (`/conta`) ⏳
 
 > **Executor: Codex**
 > **Pré-requisito:** P9.3 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** criar área de conta privada para utilizadores autenticados (FREE/PREMIUM). Zero backend work — todos os dados vêm de endpoints já existentes.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/` (React 19 + Vike SSR + Tailwind + shadcn/ui)
+- `AccountSettings` já construído: `src/features/auth/components/settings/AccountSettings.tsx` (tabs: Dados Pessoais, Preferências, Segurança, Social Links) — mas **nunca surfaced numa rota pública de user regular**
+- `CreatorDashboardShell` já existe em `src/shared/layouts/CreatorDashboardShell.tsx` — usar como referência de padrão
+- `shellConfig.tsx` em `src/shared/layouts/shellConfig.tsx` — adicionar entrada de menu `/conta`
+- Auth store: `useAuthStore()` → `user`, `isAuthenticated`
+- Roles: `UserRole.FREE`, `UserRole.PREMIUM` (e `CREATOR`, `ADMIN` que têm os próprios dashboards)
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/shared/layouts/CreatorDashboardShell.tsx  ← padrão a seguir
+FinHub-Vite/src/shared/layouts/shellConfig.tsx            ← adicionar /conta ao menu
+FinHub-Vite/src/features/auth/components/settings/AccountSettings.tsx  ← já existe
+FinHub-Vite/src/features/social/hooks/useSocial.ts        ← useMyProfile()
+FinHub-Vite/src/features/auth/stores/useAuthStore.ts      ← user, isAuthenticated
+FinHub-Vite/src/features/auth/types/index.ts              ← UserRole enum
+```
+
+---
+
+### 1. Criar `UserAccountShell`
+
+**Ficheiro:** `src/shared/layouts/UserAccountShell.tsx`
+
+Shell com sidebar lateral (inspirado em `CreatorDashboardShell`, mas mais simples):
+
+```tsx
+// Sidebar sections:
+//
+// PRINCIPAL
+//   • Visão geral  → /conta           (LayoutDashboard icon)
+//
+// CONTA
+//   • Definições   → /conta/definicoes (Settings icon)
+//   • Notificações → /notificacoes     (Bell icon) — link externo ao shell
+//
+// ATIVIDADE
+//   • Feed         → /feed             (Activity icon) — link externo
+//   • Favoritos    → /favoritos        (Heart icon)    — link externo
+//   • A Seguir     → /seguindo         (Users icon)    — link externo
+//
+// PLANO
+//   • O meu plano  → /conta/plano      (CreditCard icon)
+//
+// Bottom do sidebar:
+//   • Avatar + nome + @username + role badge
+//   • Logout button
+```
+
+**Regras:**
+- Redirigir para `/login` se `!isAuthenticated` (via `useEffect` + `window.location.replace`)
+- Redirigir para `/creators/dashboard` se role === CREATOR
+- Redirigir para `/admin` se role === ADMIN
+- Não usar `Link` nem `useNavigate` do `react-router-dom` — usar `<a href="">` ou `window.location`
+- Links activos highlighted (comparar `window.location.pathname` com o href)
+
+---
+
+### 2. Criar `/conta` — Visão Geral
+
+**Ficheiro:** `src/pages/conta/+Page.tsx`
+
+```tsx
+// Layout: UserAccountShell
+// Conteúdo:
+//   • Avatar circular (80px) + nome + @username + role badge
+//   • Frase de boas-vindas: "Bem-vindo de volta, {name}"
+//   • Stats row: Artigos favoritos | Criadores seguidos
+//     (usar useMyProfile() — campos: favoritesCount, followingCount)
+//   • Botão "Editar perfil" → /perfil (abre o perfil com o botão de edição)
+//   • Se role === FREE: card de upgrade
+//     "Experimenta o Premium" + "Ver planos" → /precos
+//   • Se role === PREMIUM: card "Plano Premium activo" com badge verde
+```
+
+---
+
+### 3. Criar `/conta/definicoes` — Definições de Conta
+
+**Ficheiro:** `src/pages/conta/definicoes/+Page.tsx`
+
+```tsx
+// Layout: UserAccountShell
+// Conteúdo: <AccountSettings /> já existente
+//   (src/features/auth/components/settings/AccountSettings.tsx)
+// Título da página (Helmet): "Definições | FinHub"
+```
+
+---
+
+### 4. Criar `/conta/plano` — O Meu Plano
+
+**Ficheiro:** `src/pages/conta/plano/+Page.tsx`
+
+```tsx
+// Layout: UserAccountShell
+// Conteúdo consoante o role do utilizador:
+//
+// FREE:
+//   • Badge "Plano Free"
+//   • Lista de limitações (ex: "Sem acesso a conteúdo Premium", "Sem FIRE completo")
+//   • CTA prominente "Upgrade para Premium — 9€/mês" → /precos
+//
+// PREMIUM:
+//   • Badge "Plano Premium" (verde)
+//   • "Subscrito desde [createdAt]" (data formatada)
+//   • Lista de benefícios activos
+//   • Botão "Gerir subscrição" → stub (toast "Em breve — contacta support@finhub.pt")
+//
+// Qualquer role:
+//   • Título da página (Helmet): "O meu plano | FinHub"
+```
+
+---
+
+### 5. Adicionar `/conta` ao menu de utilizador
+
+**Ficheiro:** `src/shared/layouts/shellConfig.tsx`
+
+No array de itens de menu para FREE/PREMIUM, adicionar **no topo**:
+```tsx
+{ label: 'A minha conta', href: '/conta', icon: LayoutDashboard }
+```
+Posicionar **antes** de "Perfil".
+
+---
+
+### 6. Validação
+
+```bash
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] `/conta` carrega overview com stats do utilizador
+- [ ] `/conta/definicoes` renderiza `AccountSettings` sem erros
+- [ ] `/conta/plano` mostra plano correcto conforme o role
+- [ ] Sidebar activa o link correcto conforme a rota actual
+- [ ] Utilizador não autenticado é redirigido para `/login`
+- [ ] `/conta` aparece no menu de utilizador (FREE/PREMIUM)
+- [ ] Não usa `react-router-dom` Link/useNavigate
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P9.5 — Audit e Fix `/perfil` (todos os roles) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P9.4 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** auditoria e correcção da página `/perfil` para todos os roles. Baseado em testes manuais que revelaram comportamento incorrecto.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/`
+- Vike SSR — pages renderizam no servidor; `window`/`localStorage` proibidos fora de `useEffect`
+- Auth store: `useAuthStore()` — `user`, `isAuthenticated`
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/pages/perfil/+Page.tsx                          ← rota /perfil (próprio)
+FinHub-Vite/src/pages/perfil/@username/+Page.tsx                ← rota /perfil/@username (público)
+FinHub-Vite/src/features/social/pages/UserProfilePage.tsx       ← lógica principal
+FinHub-Vite/src/features/social/components/UserProfileCard.tsx  ← card de header de perfil
+FinHub-Vite/src/features/social/hooks/useSocial.ts              ← useMyProfile, useUserProfile
+FinHub-Vite/src/features/user/pages/PublicUserProfilePage.tsx   ← perfil público (@username)
+FinHub-Vite/src/features/user/services/publicUserProfileService.ts ← fetch do perfil público
+FinHub-Vite/src/features/auth/types/index.ts                    ← UserRole enum, User interface
+```
+
+---
+
+### 1. Verificar e corrigir `/perfil` (próprio utilizador)
+
+#### a) `UserProfileCard.tsx` — crash potencial em `roleBadges[profile.role]`
+
+```bash
+grep -n "roleBadges" src/features/social/components/UserProfileCard.tsx
+```
+
+O mapa `roleBadges` usa `UserRole` como chave. Se `profile.role` vier do backend como string não reconhecida (ex: `"free"` vs `UserRole.FREE`) → `roleBadges[profile.role]` é `undefined` → crash ao aceder `.label`.
+
+**Fix necessário:**
+```ts
+// Adicionar fallback:
+const roleBadge = roleBadges[profile.role as UserRole] ?? { label: profile.role, variant: 'outline' as const }
+```
+
+#### b) `UserProfileCard.tsx` — `profile.lastName` pode não existir
+
+```bash
+grep -n "lastName" src/features/social/components/UserProfileCard.tsx
+```
+
+Se `profile.lastName` for `undefined`, o JSX `{profile.name} {profile.lastName}` renderiza com espaço extra. Minor mas a corrigir:
+```tsx
+{[profile.name, profile.lastName].filter(Boolean).join(' ')}
+```
+
+#### c) `useMyProfile` hook — verificar o que retorna
+
+Abrir `src/features/social/hooks/useSocial.ts` → `useMyProfile()`:
+- Qual é o `queryKey`?
+- Chama `GET /api/users/me` ou `GET /api/users/profile/me`?
+- O campo `role` na resposta é string ou enum? Verificar alinhamento com `UserRole`.
+- Os campos `followingCount`, `favoritesCount`, `commentsCount`, `ratingsCount` existem na resposta ou são sempre 0?
+
+Se os campos de contagem não existirem na resposta → adicionar fallback `?? 0` no mapeamento.
+
+#### d) `useUserProfile` hook (para ver perfis de outros users)
+
+Abrir e verificar:
+- Chama qual endpoint? `GET /api/users/profile/:username` ou `GET /api/users/:id`?
+- O que acontece se o user não existir → error boundary correcto?
+
+---
+
+### 2. Verificar `/perfil/@username` (perfil público)
+
+#### a) Rota Vike correcta
+
+Confirmar que `src/pages/perfil/@username/+Page.tsx` usa:
+```ts
+export const passToClient = ['routeParams', 'pageProps', 'user']
+export function Page() {
+  const pageContext = usePageContext()
+  const username = pageContext.routeParams?.username ?? ''
+  return <PublicUserProfilePage username={username} />
+}
+```
+(Este fix já foi aplicado em sessão anterior — confirmar que está correcto.)
+
+#### b) `PublicUserProfilePage.tsx` — estados de loading/error
+
+Confirmar que:
+- Loading state existe e renderiza skeleton
+- Error/not-found state renderiza mensagem adequada (não crash)
+- O componente não crashar se `profile` for `null`
+
+---
+
+### 3. Verificar comportamento por role
+
+Para cada role, confirmar que `/perfil` renderiza correctamente:
+
+| Role | Comportamento esperado |
+|------|----------------------|
+| FREE | Perfil próprio com tabs Atividade/Favoritos/Seguindo + "Editar perfil" |
+| PREMIUM | Igual ao FREE (badge "Premium" no card) |
+| CREATOR | Igual ao FREE/PREMIUM mas com badge "Criador" + link "Ver página de criador" |
+| ADMIN | Perfil renderiza (sem crash), badge "Admin" |
+| VISITOR | Redireccionar para `/login` ou mostrar estado vazio adequado |
+
+Verificar o código — não é necessário teste manual.
+
+---
+
+### 4. Verificar `/perfil` no `shellConfig.tsx`
+
+```bash
+grep -n "perfil" src/shared/layouts/shellConfig.tsx
+```
+
+Confirmar que `/perfil` está no menu do utilizador e que o link funciona (href correcto, não react-router-dom).
+
+---
+
+### 5. Validação final
+
+```bash
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] `roleBadges` com fallback para role desconhecido
+- [ ] `profile.lastName` com null-safe join
+- [ ] `useMyProfile` — campos de contagem com fallback `?? 0`
+- [ ] `/perfil/@username` — rota usa `usePageContext()` correctamente
+- [ ] `PublicUserProfilePage` — não crashar com profile null
+- [ ] Todos os roles têm comportamento definido (sem crash paths)
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P9-GATE — Gate Pós-Beta: Qualidade e Funcionalidade ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P9.5 ✅
 > **Princípio:** não alterar código — apenas executar, validar e reportar.
 
 **Contexto:**
-Gate de qualidade após o primeiro ciclo pós-BETA-GATE. Valida que todas as novas features (P9.1–P9.3 + CLEANUP-01) estão integradas sem regressões.
+Gate de qualidade após o primeiro ciclo pós-BETA-GATE. Valida que todas as novas features (P9.1–P9.5 + CLEANUP-01) estão integradas sem regressões.
 
 ---
 
@@ -3293,9 +3606,12 @@ Verificar (apenas confirmar que o código existe — não testar manualmente):
 | Perfil editável | `grep -n "useUpdateMyProfile\|PATCH.*users/me" src/features/social/` |
 | B15 confirmado | `ls src/pages/login/+Page.tsx src/pages/registar/+Page.tsx` |
 | router.tsx removido | `ls src/router.tsx` (deve falhar — ficheiro não deve existir) |
-| Typo corrigido | `ls src/pages/hub/conteudos/+Page.tsx` (deve existir) e `ls src/pages/hub/counteudos/` (deve falhar) |
-| Secção personalizada | `grep -n "PersonalizedSection\|usePersonalizedContent" src/pages/index/` |
+| Typo corrigido | `ls src/pages/hub/conteudos/+Page.tsx` (deve existir) |
+| Secção personalizada | `grep -rn "PersonalizedSection\|usePersonalizedContent" src/` |
 | Admin metrics wired | `grep -n "useAdminMetrics" src/features/admin/pages/AdminDashboardPage.tsx` |
+| User account shell | `ls src/shared/layouts/UserAccountShell.tsx` |
+| /conta rotas | `ls src/pages/conta/+Page.tsx src/pages/conta/definicoes/+Page.tsx src/pages/conta/plano/+Page.tsx` |
+| Perfil role crash fix | `grep -n "roleBadge.*??\|filter(Boolean)" src/features/social/components/UserProfileCard.tsx` |
 
 ---
 
@@ -3326,10 +3642,13 @@ npx playwright test e2e/ --reporter=list
 ### Checklist
 - [ ] Perfil editável — mutation encontrada
 - [ ] B15 confirmado — páginas existem
-- [ ] router.tsx removido
+- [ ] router.tsx removido (ou documentado)
 - [ ] Typo /hub/counteudos corrigido
 - [ ] PersonalizedSection integrada na homepage
 - [ ] AdminDashboard com useAdminMetrics
+- [ ] UserAccountShell criado
+- [ ] /conta + /conta/definicoes + /conta/plano existem
+- [ ] UserProfileCard sem crash em roles desconhecidos
 
 ### E2E
 - smoke.spec.ts → N/N PASS
@@ -3405,11 +3724,13 @@ npx playwright test e2e/ --reporter=list
 41. PROMPT P8.7-PUB   → Perfil público de utilizador                  ✅ (+ fix routeParams Claude)
 42. PROMPT P8.8-FIRE  → FIRE landing page redesign                    ✅
 43. PROMPT BETA-GATE  → Gate final pré-beta                           ✅
-44. PROMPT P9.1      → Perfil editável (name/bio/avatar)              ⏳
+44. PROMPT P9.1      → Perfil editável (name/bio/avatar)              ✅ (Claude direto)
 45. PROMPT CLEANUP-01 → Dívida técnica (B15 + dead code + typo)      ✅ (Claude direto)
 46. PROMPT P9.2      → Homepage "Para Ti" (personalização tópicos)    ⏳
 47. PROMPT P9.3      → Admin dashboard: métricas reais               ⏳
-48. PROMPT P9-GATE   → Gate pós-beta                                  ⏳
+48. PROMPT P9.4      → User account dashboard (/conta shell)          ⏳
+49. PROMPT P9.5      → Audit/fix /perfil para todos os roles          ⏳
+50. PROMPT P9-GATE   → Gate pós-beta                                  ⏳
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

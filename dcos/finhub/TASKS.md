@@ -11,7 +11,7 @@
 
 > Princípio: Beta fecha o ciclo funcional mínimo. v1.0 adiciona monetização e polish. Pós-v1.0 é iterativo contínuo.
 
-### 🔴 Beta Fechado (objectivo actual — prompts 44–48)
+### 🔴 Beta Fechado (objectivo actual — prompts 44–50)
 Plataforma **funcional e estável** para um grupo limitado de utilizadores reais.
 Tudo o que está nesta lista tem de estar completo antes do convite beta.
 
@@ -28,10 +28,12 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | Perfil público de utilizador (/perfil/:username) | ✅ | P8.7-PUB |
 | Análise rápida de stocks (FinHubScore + métricas) | ✅ | P3 |
 | Admin moderation + editorial CMS | ✅ | P4 |
-| **Perfil editável (name/bio/avatar)** | ⏳ | P9.1 |
-| **Cleanup técnico (B15 + dead code + typo)** | ⏳ | CLEANUP-01 |
+| Perfil editável (name/bio/avatar) | ✅ | P9.1 |
+| Cleanup técnico (B15 + dead code + typo) | ✅ | CLEANUP-01 |
 | **Homepage personalizada ("Para Ti")** | ⏳ | P9.2 |
 | **Admin métricas reais (DAU/utilizadores/conteúdo)** | ⏳ | P9.3 |
+| **User account dashboard (/conta com sidebar)** | ⏳ | P9.4 |
+| **Audit e fix /perfil para todos os roles** | ⏳ | P9.5 |
 | **P9-GATE (qualidade pós-beta)** | ⏳ | P9-GATE |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
