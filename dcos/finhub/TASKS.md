@@ -236,14 +236,18 @@ CONCLUÍDO (P5 fechado ✅)
 PRÓXIMO IMEDIATO — bugs backlog
   ⏳ B-FIX-01 — B9+B10+B11+B12+B13 (ManageVideos Dialog/unpublish/encode + BrandDetail route + /marcas alias) ← PRÓXIMO
 
-A SEGUIR (gates + UI)
-  ✅ P3-GATE — Gate final análise rápida (lint+test+build+e2e)
-  ✅ P4-GATE — Gate pre-release editorial + moderation (16/16 E2E + 3/3 smoke PASS)
-  ⏳ P8.6  — FinHubScore visual proeminente ← PRÓXIMO
+A SEGUIR (sequência completa pré-beta)
+  ✅ P3-GATE — Gate final análise rápida
+  ✅ P4-GATE — Gate editorial + moderation (16/16 E2E + 3/3 smoke)
+  ⏳ P8.6   — FinHubScore visual (radar/snowflake) ← EM EXECUÇÃO (Codex)
+  ⏳ P5-FIRE — FIRE: timeline chart multi-cenário + progress bar
+  ⏳ P8.5   — Header SSR-safe + redesign visual
+  ⏳ P5-OB  — Onboarding first-time user (3 passos, localStorage)
+  ⏳ P5-PRICE — Página de preços/premium (3 planos, FAQ)
+  ⏳ BETA-GATE — Gate final pré-beta (lint+test+build+E2E full)
 
-MAIS TARDE
+MAIS TARDE (pós-beta ou paralelo)
   ⏳ Pagamentos/subscrições
-  ⏳ Onboarding utilizador
   ⏳ Recomendações básicas
   ⏳ Analytics de negócio (DAU/MAU)
   ⏳ Cleanup: router.tsx, componentes órfãos, typo /hub/counteudos

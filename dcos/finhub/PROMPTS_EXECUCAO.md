@@ -2125,6 +2125,719 @@ Existem 3 sistemas de card em paralelo que devem convergir para 1:
 
 ---
 
+## PROMPT P5-FIRE — FIRE Frontend: Timeline Chart + Progress Visual ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P4-GATE ✅, P8.6 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** apenas `src/features/fire/` — não tocar noutras features.
+
+**Contexto do projeto:**
+- Frontend: `FinHub-Vite/` (React 19 + Vike SSR + Tailwind + shadcn/ui + Recharts)
+- As páginas FIRE são renderizadas dentro de um contexto React Router (PageShell) — `window.*` pode ser usado em `useEffect` ou com guard `typeof window !== 'undefined'`
+- Diretório de trabalho: `FinHub-Vite/`
+- Toda a lógica (hooks, types, service) está completa — esta tarefa é **apenas visual/UX**
+
+**Estado atual:**
+- `FireSimulatorPage.tsx` — tem Monte Carlo area chart + what-if delta cards + suggestions card. O que falta: a secção "Timeline" mostra uma **tabela de dados** (12 pontos da timeline base) — precisa ser substituída por um **chart multi-cenário**.
+- `FireDashboardPage.tsx` — "Progresso atual" mostra `progress.toFixed(2)%` como texto numa card — falta **visual progress bar**.
+
+---
+
+### Tarefa 1 — `FireSimulatorPage.tsx`: Timeline multi-cenário com chart
+
+Substituir a secção "Timeline (base scenario)" (a tabela HTML com 12 pontos) por um `AreaChart` da Recharts com:
+
+**Dados:**
+```ts
+// Cada cenário tem result.scenarios[i].timeline: FireSimulationTimelinePoint[]
+// Cada ponto: { month, date, portfolioValue, targetValue, progressPct }
+// Combinar os pontos de todos os cenários selecionados num dataset unificado por mês:
+// [{ month, optimistic, base, conservative, bear, targetValue }]
+// Usar apenas 1 em cada 3 pontos (monthly sample) se > 120 pontos (para performance)
+```
+
+**Chart spec:**
+- `<AreaChart>` com `<ResponsiveContainer width="100%" height={320}>`
+- Gradiente semântico por cenário:
+  - `optimistic` → `hsl(var(--chart-2))` (verde)
+  - `base` → `hsl(var(--chart-1))` (azul)
+  - `conservative` → `hsl(var(--chart-3))` (laranja)
+  - `bear` → `hsl(var(--chart-4))` (vermelho)
+- Uma `<Area>` por cenário ativo; uma `<Line>` pontilhada para `targetValue`
+- `<XAxis dataKey="month">` com `tickFormatter={(v) => \`A${Math.round(v / 12)}\``}` (anos)
+- `<YAxis>` com `tickFormatter` em `€/$ k` (dividir por 1000, sufixo `k`)
+- `<Tooltip content={<ChartTooltip .../>}>` (componente existente em `@/components/ui/ChartTooltip`)
+- `<Legend>` simples
+- Card title: "Projeção por cenário" com `<CardDescription>` indicando nº de meses
+
+**Regras de implementação:**
+- Não alterar os hooks ou types existentes
+- A tabela antiga deve ser removida (não apenas ocultada)
+- Só renderizar o chart se `result` não for null
+- Extrair a lógica de transformação de dados para uma função `buildTimelineChartData()` dentro do ficheiro
+
+---
+
+### Tarefa 2 — `FireDashboardPage.tsx`: Progress ring + base simulation timeline
+
+**2a. Progress bar visual no card "Progresso atual":**
+- Substituir o `<p className="text-2xl ...">` com o percentagem em texto por:
+  - Número grande `progress.toFixed(1)%` em `tabular-nums`
+  - Uma `<Progress>` (shadcn — `@/components/ui/progress`) com `value={progress}` abaixo do número
+  - A barra de progresso deve ter cor condicional: verde se ≥ 70%, azul se ≥ 40%, laranja se < 40%
+
+**2b. Mini timeline chart no Dashboard:**
+- Após os 4 KPI cards, adicionar uma `<Card>` com um `<AreaChart>` simples da timeline base:
+  - Usar `baseScenario?.timeline` (já disponível via `baseSimulationQuery`)
+  - Chart area com gradiente azul (`hsl(var(--chart-1))`)
+  - `XAxis` com anos, `YAxis` com formato `k`, `Tooltip` básico com o `ChartTooltip` existente
+  - Altura: 200px
+  - Title da Card: "Trajetória base — próximos X anos" (X = `Math.round(baseScenario.timeline.length / 12)`)
+  - Só renderizar se `baseScenario?.timeline.length > 0`
+
+---
+
+### Validação
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npx playwright test e2e/smoke.spec.ts --reporter=list
+```
+
+---
+
+```
+## RELATÓRIO DE EXECUÇÃO
+
+**Prompt ID:** P5-FIRE
+**Data:** [data]
+**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+
+### Ficheiros modificados
+- `src/features/fire/pages/FireSimulatorPage.tsx` — substituir tabela por chart multi-cenário
+- `src/features/fire/pages/FireDashboardPage.tsx` — progress bar + mini timeline chart
+
+### Comandos executados e resultado
+- `npm run lint` → PASS / FAIL
+- `npm run typecheck` → PASS / FAIL
+- `npm run build` → PASS / FAIL
+- `npx playwright test e2e/smoke.spec.ts` → PASS / FAIL
+
+### Decisões tomadas
+- [descrever qualquer desvio ao spec acima]
+
+### Bloqueadores / dívida técnica
+- [se existir]
+
+### O que o Claude deve validar
+- [ ] Chart multi-cenário renderiza corretamente com os dados reais
+- [ ] Progress bar muda de cor consoante o progresso
+- [ ] Mini timeline aparece no dashboard
+- [ ] Build PASS
+```
+
+---
+
+## PROMPT P8.5 — Header Redesenhado: SSR-safe + Visual Clean ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P5-FIRE ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** apenas `src/components/layout/Header.tsx` — não alterar outros ficheiros salvo se necessário para resolver imports.
+
+**Contexto do projeto:**
+- `Header.tsx` usa `Link`, `useLocation`, `useNavigate` de `react-router-dom`
+- Segundo as **regras SSR do projeto**, `useLocation` e `useNavigate` do `react-router-dom` são **proibidos em componentes renderizados em SSR**
+- A identificação da rota ativa deve usar `typeof window !== 'undefined' ? window.location.pathname : ''`
+- `Link` deve ser substituído por `<a href>` simples (ver padrão usado em `FireToolNav.tsx` — `src/features/fire/components/FireToolNav.tsx`)
+- O header atual funciona estruturalmente mas é **visualmente genérico** — sem identidade
+
+**Estado atual do Header (`src/components/layout/Header.tsx`):**
+```
+imports: Link, useLocation, useNavigate from react-router-dom  ← proibido SSR
+NavItem usa: <Link to={item.to}> ← deve ser <a href={item.to}>
+Active state: useLocation().pathname ← deve ser window.location.pathname
+Logo: texto "FinHub" simples
+Search: GlobalSearchBar já existe
+Mobile: hamburger menu existente
+```
+
+**Referência de design (DESIGN.md):**
+- Fonte Inter, dark mode profissional
+- "Navigation limpa, search proeminente, avatar com menu"
+- Referência: Koyfin (nav limpa) + Revolut (tipografia expressiva)
+
+---
+
+### Tarefa 1 — Remover react-router-dom e corrigir SSR
+
+```tsx
+// ANTES (proibido)
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+const { pathname } = useLocation()
+
+// DEPOIS (correto)
+// Sem imports de react-router-dom
+const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+
+// ANTES
+<Link to={item.to} className={...}>{item.label}</Link>
+
+// DEPOIS
+<a href={item.to} className={...}>{item.label}</a>
+```
+
+Para navegação programática (ex. logout redirect):
+```tsx
+// ANTES
+const navigate = useNavigate()
+navigate('/login')
+
+// DEPOIS
+window.location.href = '/login'  // dentro de handler de evento, não em render
+```
+
+---
+
+### Tarefa 2 — Visual redesign
+
+Manter a estrutura funcional atual (nav items, search, avatar, mobile menu) mas melhorar visualmente:
+
+**Logo:**
+```tsx
+// Substituir texto simples por:
+<a href="/" className="flex items-center gap-2 font-bold text-foreground">
+  <span className="text-xl font-extrabold tracking-tight">
+    Fin<span className="text-primary">Hub</span>
+  </span>
+</a>
+```
+
+**Nav items desktop:**
+- Usar `border-b-2` para o item ativo em vez de `bg-accent`:
+```tsx
+active ? 'border-b-2 border-primary text-foreground font-medium'
+       : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground'
+```
+- Padding: `px-1 py-4` (alinhado com altura do header)
+
+**Layout do header:**
+```tsx
+<header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+  <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
+    {/* Logo — esquerda */}
+    {/* Nav items — centro (hidden mobile) */}
+    {/* Search + notificações + avatar — direita */}
+  </div>
+</header>
+```
+
+**Avatar dropdown:**
+- Usar `<DropdownMenu>` de shadcn (já disponível em `@/components/ui`)
+- Itens: Dashboard, Perfil, Definições, Logout (para user autenticado)
+- Para não-autenticado: botões "Entrar" + "Registar"
+
+---
+
+### Validação
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npx playwright test e2e/smoke.spec.ts --reporter=list
+```
+
+Verificar manualmente:
+- Header sem erros de hidratação SSR
+- Logo clicável → `/`
+- Nav item ativo correto em cada rota
+- Dropdown do avatar funcional
+
+---
+
+```
+## RELATÓRIO DE EXECUÇÃO
+
+**Prompt ID:** P8.5
+**Data:** [data]
+**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+
+### Ficheiros modificados
+- `src/components/layout/Header.tsx` — SSR fix + visual redesign
+
+### Comandos executados e resultado
+- `npm run lint` → PASS / FAIL
+- `npm run typecheck` → PASS / FAIL
+- `npm run build` → PASS / FAIL
+- `npx playwright test e2e/smoke.spec.ts` → PASS / FAIL
+
+### Decisões tomadas
+- [descrever qualquer desvio ao spec]
+
+### Bloqueadores / dívida técnica
+- [se existir]
+
+### O que o Claude deve validar
+- [ ] Sem imports de react-router-dom em Header.tsx
+- [ ] Active state funciona via window.location.pathname
+- [ ] Visual: logo, nav ativa com border-b, backdrop blur
+- [ ] Dropdown avatar renderiza com DropdownMenu shadcn
+- [ ] Build PASS + smoke PASS
+```
+
+---
+
+## PROMPT P5-OB — Onboarding: First-Time User Experience ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P8.5 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** criar `src/features/onboarding/` + integrar no layout público.
+> **Princípio:** não usar backend — tudo baseado em `localStorage`. Simples e funcional.
+
+**Contexto do projeto:**
+- Não existe ainda nenhum flow de onboarding
+- Um utilizador novo regista-se → verifica email → faz login → cai na homepage sem orientação
+- Objetivo: mostrar um dialog de boas-vindas na primeira visita autenticada com 3 passos rápidos
+- Persistência: `localStorage.setItem('finhub_onboarded', '1')` quando completo (ou fechado)
+- Só mostrar para utilizadores com `role: 'user'` (não creators, não admins)
+- Não bloquear a UI — o dialog pode ser fechado a qualquer momento
+
+---
+
+### Tarefa 1 — Criar `OnboardingDialog`
+
+**Ficheiro:** `src/features/onboarding/components/OnboardingDialog.tsx`
+
+```tsx
+// Interface do dialog
+// - Dialog shadcn: <Dialog open={open} onOpenChange={onClose}>
+// - 3 passos (step state: 1 | 2 | 3)
+// - Botões: "Saltar" (fecha) + "Continuar" / "Começar"
+// - Progress indicator: 3 dots/steps no topo
+```
+
+**Passo 1 — Boas-vindas:**
+```
+Título: "Bem-vindo ao FinHub 👋"
+Subtítulo: "A plataforma portuguesa de literacia financeira."
+Pergunta: "O que melhor te descreve?"
+Opções (radio/toggle-group):
+  • "Estou a começar a investir"
+  • "Já invisto há algum tempo"
+  • "Sou investidor experiente"
+```
+
+**Passo 2 — Interesses:**
+```
+Título: "O que te interessa mais?"
+Opções (multi-select, toggle-group, mínimo 1):
+  • Ações nacionais/internacionais
+  • ETFs e fundos
+  • Criptoativos
+  • Imobiliário / REITs
+  • FIRE e independência financeira
+  • Educação e conteúdo
+```
+
+**Passo 3 — Onde começar:**
+```
+Título: "Por onde queres começar?"
+3 cards clicáveis (cada um com <a href>):
+  • "Descobrir conteúdo" → href="/hub/conteudos"
+    ícone: BookOpen, desc: "Artigos, vídeos e cursos de criadores"
+  • "Analisar uma ação" → href="/ferramentas/analise-rapida"
+    ícone: BarChart3, desc: "FinHubScore e análise fundamentalista"
+  • "Simular o meu FIRE" → href="/ferramentas/fire"
+    ícone: Target, desc: "Calculadora de independência financeira"
+Ao clicar num card → marca onboarding completo + navega para a rota
+Botão "Explorar por minha conta" → fecha sem navegar
+```
+
+**Guardar preferências:**
+```ts
+// Ao completar (passo 3) ou fechar (qualquer passo):
+localStorage.setItem('finhub_onboarded', '1')
+// Opcionalmente guardar preferências (não enviadas ao backend nesta fase):
+localStorage.setItem('finhub_onboarding_prefs', JSON.stringify({ level, interests }))
+```
+
+---
+
+### Tarefa 2 — Hook `useOnboarding`
+
+**Ficheiro:** `src/features/onboarding/hooks/useOnboarding.ts`
+
+```ts
+export function useOnboarding() {
+  // Só mostrar se:
+  // 1. utilizador autenticado com role === 'user'
+  // 2. localStorage.getItem('finhub_onboarded') !== '1'
+  // 3. typeof window !== 'undefined' (SSR guard)
+  // Retorna: { shouldShow: boolean, markDone: () => void }
+}
+```
+
+---
+
+### Tarefa 3 — Integrar no PageShell
+
+**Ficheiro:** `src/components/layout/PageShell.tsx` (ou equivalente — o componente de layout público identificado em P8.7)
+
+```tsx
+// Adicionar no final do componente, após o <main>:
+const { shouldShow, markDone } = useOnboarding()
+// <OnboardingDialog open={shouldShow} onClose={markDone} />
+```
+
+**Regra SSR:** o hook deve retornar `shouldShow: false` em SSR (sem acesso a `localStorage`).
+
+---
+
+### Tarefa 4 — Exports
+
+**Ficheiro:** `src/features/onboarding/index.ts`
+```ts
+export { OnboardingDialog } from './components/OnboardingDialog'
+export { useOnboarding } from './hooks/useOnboarding'
+```
+
+---
+
+### Validação
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npx playwright test e2e/smoke.spec.ts --reporter=list
+```
+
+Não é necessário criar testes E2E para o onboarding nesta fase.
+
+---
+
+```
+## RELATÓRIO DE EXECUÇÃO
+
+**Prompt ID:** P5-OB
+**Data:** [data]
+**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+
+### Ficheiros criados
+- `src/features/onboarding/components/OnboardingDialog.tsx`
+- `src/features/onboarding/hooks/useOnboarding.ts`
+- `src/features/onboarding/index.ts`
+
+### Ficheiros modificados
+- `src/components/layout/PageShell.tsx` (ou equivalente) — integração do dialog
+
+### Comandos executados e resultado
+- `npm run lint` → PASS / FAIL
+- `npm run typecheck` → PASS / FAIL
+- `npm run build` → PASS / FAIL
+- `npx playwright test e2e/smoke.spec.ts` → PASS / FAIL
+
+### Decisões tomadas
+- [descrever ficheiro de layout onde integrou o dialog]
+- [se encontrou ficheiro diferente do esperado, descrever]
+
+### Bloqueadores / dívida técnica
+- [se existir]
+
+### O que o Claude deve validar
+- [ ] `useOnboarding` retorna `shouldShow: false` em SSR (guard typeof window)
+- [ ] Dialog fecha e marca localStorage ao clicar "Saltar" ou completar
+- [ ] Só aparece para `role === 'user'` (não creators, não admins)
+- [ ] Os 3 cards do passo 3 têm `<a href>` (não react-router Link)
+- [ ] Build PASS
+```
+
+---
+
+## PROMPT P5-PRICE — Página de Preços / Premium ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P5-OB ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** criar nova página pública em `/precos` + link no footer e header.
+> **Princípio:** página estática (sem chamadas ao backend) — apenas conteúdo e CTAs para registo/upgrade.
+
+**Contexto do projeto:**
+- Não existe página de preços
+- Planos previstos: Free, Premium, Creator
+- O sistema de pagamentos/subscrições não está implementado — os botões "Upgrade" e "Começar" apontam para `/registo` (Free) ou `mailto:hello@finhub.pt` (Premium/Creator — contacto direto por enquanto)
+- A página deve ser **totalmente SSR-safe** (sem `window.*` no nível de módulo)
+- Usar `PageHero` para o topo (componente existente em `@/components/public`)
+
+---
+
+### Tarefa 1 — Criar `+Page.tsx` em `/precos`
+
+**Ficheiro:** `src/pages/precos/+Page.tsx`
+
+```tsx
+// Importar PricingPage do features
+export { default } from '@/features/pricing/pages/PricingPage'
+```
+
+**Ficheiro:** `src/features/pricing/pages/PricingPage.tsx`
+
+---
+
+### Tarefa 2 — Estrutura da página
+
+**Secção 1 — Hero:**
+```tsx
+<PageHero
+  title="Planos e preços"
+  subtitle="Começa grátis. Faz upgrade quando precisares de mais."
+/>
+```
+
+**Secção 2 — Toggle mensal/anual:**
+```tsx
+// Estado local: billingCycle: 'monthly' | 'annual'
+// Quando 'annual': mostrar badge "2 meses grátis" nos planos pagos
+// Toggle com shadcn Switch ou dois botões pill
+```
+
+**Secção 3 — Cards dos planos (grid 3 colunas, col central em destaque):**
+
+| | Free | Premium | Creator |
+|---|---|---|---|
+| Preço mensal | 0€ | 9,90€ | 14,90€ |
+| Preço anual | — | 82€/ano (≈6,83€/mês) | 124€/ano (≈10,33€/mês) |
+| Badge | — | "Mais popular" | "Para criadores" |
+
+**Features por plano:**
+
+Free:
+- Acesso ao hub de conteúdo (artigos, vídeos, cursos)
+- Análise rápida de ações (limitada a 5/dia)
+- Watchlist básica (10 ativos)
+- Perfil público
+- Notificações básicas
+
+Premium:
+- Tudo do Free
+- Análise rápida ilimitada
+- FIRE Simulator completo (portfolios ilimitados)
+- Filtros avançados e exportação
+- ETF Overlap e REIT Toolkit
+- Acesso antecipado a novas features
+
+Creator:
+- Tudo do Premium
+- Publicar artigos, vídeos, cursos
+- Creator Dashboard com analytics
+- Página de perfil personalizada
+- Creator card configurável
+- Suporte prioritário
+
+**CTA por plano:**
+- Free → `<a href="/registo">Começar grátis</a>`
+- Premium → `<a href="/registo?plan=premium">Experimentar 14 dias grátis</a>`
+- Creator → `<a href="/registo?plan=creator">Começar como Creator</a>`
+
+**Notas de design:**
+- Card do plano central (Premium) com `border-primary` + `ring-1 ring-primary/30` + scale ligeiramente maior
+- Feature list com `<Check className="text-primary" />` por item
+- Features "Pro" marcadas com badge `<Badge variant="secondary">Premium</Badge>` no plano Free (para indicar que requer upgrade)
+
+**Secção 4 — FAQ (accordion shadcn):**
+```
+Q: Posso mudar de plano a qualquer altura?
+A: Sim, podes fazer upgrade ou downgrade a qualquer momento.
+
+Q: O que acontece ao meu conteúdo se cancelar o Creator?
+A: O teu conteúdo fica publicado mas não podes criar novo até renovares.
+
+Q: Há períodos de faturação anuais com desconto?
+A: Sim, o plano anual equivale a 2 meses grátis face ao mensal.
+
+Q: Aceitam pagamento por MB Way ou transferência?
+A: Por enquanto aceitamos cartão de crédito/débito. Outros métodos em breve.
+```
+
+---
+
+### Tarefa 3 — Adicionar link no Footer e Header
+
+**Footer** (`src/components/layout/Footer.tsx`): adicionar "Preços" na secção de links da plataforma.
+
+**Header** (`src/components/layout/Header.tsx`): **NÃO adicionar** no nav principal (demasiado items) — apenas no dropdown do avatar se o utilizador não for premium (indicação de upgrade).
+
+---
+
+### Tarefa 4 — Export
+
+**Ficheiro:** `src/features/pricing/index.ts`
+```ts
+export { default as PricingPage } from './pages/PricingPage'
+```
+
+---
+
+### Validação
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npx playwright test e2e/smoke.spec.ts --reporter=list
+```
+
+Verificar que `/precos` responde com HTML em SSR (smoke já cobre rotas públicas).
+
+---
+
+```
+## RELATÓRIO DE EXECUÇÃO
+
+**Prompt ID:** P5-PRICE
+**Data:** [data]
+**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+
+### Ficheiros criados
+- `src/pages/precos/+Page.tsx`
+- `src/features/pricing/pages/PricingPage.tsx`
+- `src/features/pricing/index.ts`
+
+### Ficheiros modificados
+- `src/components/layout/Footer.tsx` — link "Preços" adicionado
+
+### Comandos executados e resultado
+- `npm run lint` → PASS / FAIL
+- `npm run typecheck` → PASS / FAIL
+- `npm run build` → PASS / FAIL
+- `npx playwright test e2e/smoke.spec.ts` → PASS / FAIL
+
+### Decisões tomadas
+- [descrever qualquer desvio ao spec — ex. estrutura de directorias diferente]
+
+### Bloqueadores / dívida técnica
+- CTAs de upgrade apontam para `/registo` — sistema de pagamento não implementado (pós-beta)
+
+### O que o Claude deve validar
+- [ ] Página `/precos` abre sem erro em SSR
+- [ ] Toggle mensal/anual muda os preços
+- [ ] Card Premium destacado visualmente
+- [ ] FAQ accordion funcional
+- [ ] Sem imports de react-router-dom
+- [ ] Build PASS
+```
+
+---
+
+## PROMPT BETA-GATE — Gate Final Pré-Beta ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P5-PRICE ✅ — todos os prompts pré-beta concluídos.
+> **Princípio:** não fazer alterações de código — apenas executar, validar e reportar.
+
+**Contexto:**
+Este é o gate final antes do lançamento beta. Valida que todo o trabalho acumulado desde o P3-GATE se mantém limpo e que as suites E2E completas passam.
+
+---
+
+### 1. Baseline
+
+```bash
+npm run lint
+npm run test -- --runInBand
+npm run typecheck
+npm run build
+```
+
+Reportar resultado de cada comando.
+
+---
+
+### 2. Suites E2E completas
+
+```bash
+npx playwright test e2e/ --reporter=list
+```
+
+Listar todas as suites e resultado (PASS/FAIL/SKIP por suite).
+
+---
+
+### 3. Smoke
+
+```bash
+npx playwright test e2e/smoke.spec.ts --reporter=list
+```
+
+---
+
+### 4. Checklist pré-beta
+
+Verificar (apenas confirmar que existem — não testar manualmente):
+
+| Item | Verificação |
+|------|------------|
+| Página `/precos` existe | `ls src/pages/precos/+Page.tsx` |
+| Onboarding dialog existe | `ls src/features/onboarding/components/OnboardingDialog.tsx` |
+| Header sem react-router-dom | `grep -n "from 'react-router-dom'" src/components/layout/Header.tsx` (deve retornar vazio) |
+| FIRE timeline chart | `grep -n "AreaChart" src/features/fire/pages/FireSimulatorPage.tsx` (deve ter) |
+| FinHubScore radar | `grep -n "RadarChart" src/features/tools/stocks/components/quickAnalysis/FinHubScore.tsx` (deve ter) |
+
+---
+
+### 5. Resultado consolidado
+
+```
+## RELATÓRIO DE EXECUÇÃO
+
+**Prompt ID:** BETA-GATE
+**Data:** [data]
+**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+
+### Baseline
+- `npm run lint`     → PASS / FAIL
+- `npm run test`     → PASS / FAIL (N suites, N testes)
+- `npm run typecheck`→ PASS / FAIL (N erros — pré-existentes aceitáveis se ≤ 300)
+- `npm run build`    → PASS / FAIL
+
+### Suites E2E
+| Suite | Testes | PASS | FAIL | SKIP |
+|-------|--------|------|------|------|
+| smoke | | | | |
+| admin.p2.6 | | | | |
+| admin.editorial.p4 | | | | |
+| admin.moderation-control.p4 | | | | |
+| admin.creator-risk.p4 | | | | |
+| admin.rollback-jobs.p4 | | | | |
+| admin.worker-status.p4 | | | | |
+| (outros se existirem) | | | | |
+
+### Checklist pré-beta
+- [ ] /precos existe
+- [ ] Onboarding dialog existe
+- [ ] Header sem react-router-dom
+- [ ] FIRE timeline chart presente
+- [ ] FinHubScore RadarChart presente
+
+### Falhas detectadas
+- [lista, se existirem]
+
+### Veredicto
+- [ ] BETA-GATE PASS — pronto para lançamento beta
+- [ ] BETA-GATE FAIL — detalhar o que bloqueia
+
+### O que o Claude deve validar
+- [ ] Confirmar que nenhuma suite E2E nova foi ignorada
+- [ ] Confirmar que erros TS são pré-existentes (não introduzidos pela fase)
+```
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -2173,8 +2886,13 @@ Existem 3 sistemas de card em paralelo que devem convergir para 1:
     ── UI/UX Consolidation concluída ──
 32. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ✅
 33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ✅
-34. PROMPT P8.5  → Header redesenhado (absorvido por P8.7)            ⏳
-35. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳ ← PRÓXIMO
+34. PROMPT P8.5  → Header: SSR fix + visual redesign                  ⏳
+35. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳ ← EM EXECUÇÃO (Codex)
+36. PROMPT P5-FIRE  → FIRE timeline chart + progress visual           ⏳
+37. PROMPT P8.5     → Header SSR-safe + redesign visual               ⏳
+38. PROMPT P5-OB    → Onboarding first-time user                      ⏳
+39. PROMPT P5-PRICE → Página de preços/premium                        ⏳
+40. PROMPT BETA-GATE → Gate final pré-beta                            ⏳
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

@@ -32,6 +32,6 @@
 
 **Bugs conhecidos abertos:** todos fechados ✅ — B9/B10/B11/B12/B13 resolvidos em B-FIX-01
 
-**Sequência:** ✅ P8.10a/b/c (UI consolidation) → ✅ P3-GATE → ✅ P4-GATE → **P8.6 ← PRÓXIMO** → S3 storage → beta
+**Sequência:** ✅ P4-GATE → P8.6 (em curso) → P5-FIRE → P8.5 → P5-OB → P5-PRICE → **BETA-GATE → beta**
 
 **Última atualização:** 2026-03-22
