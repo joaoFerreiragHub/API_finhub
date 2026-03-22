@@ -128,7 +128,7 @@ Planeado. Sem data.
 - [x] Páginas públicas de conteúdo (explore + detalhe)
 - [x] Dashboard de criador MVP (overview + gestão artigos + card config)
 - [x] Perfil público de criador ativo (lista + modal + profile page)
-- [ ] Storage S3 (substituir disco local)
+- [ ] Storage S3 (substituir disco local) — **adiado para pre-beta config** (envolve third-parties, configuração infra curada)
 - [x] Corrigir bug B1 (crypto market cap)
 - [x] Corrigir bug B2 (ETF disclaimer)
 

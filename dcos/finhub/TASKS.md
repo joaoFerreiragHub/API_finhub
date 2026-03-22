@@ -189,7 +189,7 @@
 | Mock data disperso no frontend | Mocks esquecidos em produção | Antes do beta — audit |
 | Tipos frontend ↔ backend desalinhados | Runtime errors | Ao implementar cada feature |
 | 2 modelos de marcas (Brand + DirectoryEntry) | Dados duplicados | Fase 2 — unificar |
-| Upload disco local (não S3) | Não escala | Antes do beta |
+| Upload disco local (não S3) | Não escala | Pre-beta config (third-party, fora do fluxo de código) |
 | ~285 erros TS pré-existentes (cresceu de ~175) | Build warnings, não bloqueia `typecheck:p1` | Gradual — isolar |
 | Componentes de cards duplicados (3 versões de CreatorCard, 2 de ArticleCard, 3 de BookCard) | Dificulta manutenção, bugs diferentes por versão | ⏳ P8.10a — consolidar em ContentCard + CreatorCard unificados |
 | Dados mock para teste visual de cards (4 criadores `@mock-card-test.finhub`) | Não podem ir para produção | Limpar com `npm run seed:cards:clean` antes do deploy |

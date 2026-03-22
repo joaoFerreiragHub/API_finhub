@@ -1738,6 +1738,116 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
 
 ---
 
+## PROMPT P4-GATE — Gate Pre-Release: Editorial CMS + Moderation Control Plane ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P3-GATE já passou ✅. Não fazer alterações de código — apenas executar, validar e reportar.
+> **Contexto:** P4 está implementado e hardened. Este gate valida que as suites E2E do P4 passam e que o build continua limpo antes de fechar a fase.
+
+**Contexto do projeto:**
+- Frontend: `FinHub-Vite/` (React 19 + Vike SSR + Tailwind + shadcn/ui)
+- Backend: `API_finhub/` (Express + TypeScript + MongoDB)
+- Diretório de trabalho: `FinHub-Vite/`
+
+---
+
+**Tarefa — executar por ordem, sem alterar código:**
+
+### 1. Confirmação rápida de baseline
+
+```bash
+# Confirmar que o baseline do P3-GATE ainda está verde
+npm run lint
+npm run test -- --runInBand
+npm run build
+```
+
+Reportar resultado de cada comando (PASS / FAIL + detalhes).
+
+---
+
+### 2. Suites E2E do P4 — executar individualmente
+
+Executar cada suite com timeout adequado (60 s por teste):
+
+```bash
+npx playwright test e2e/admin.editorial.p4.spec.ts       --reporter=list
+npx playwright test e2e/admin.moderation-control.p4.spec.ts --reporter=list
+npx playwright test e2e/admin.creator-risk.p4.spec.ts    --reporter=list
+npx playwright test e2e/admin.rollback-jobs.p4.spec.ts   --reporter=list
+npx playwright test e2e/admin.worker-status.p4.spec.ts   --reporter=list
+npx playwright test e2e/admin.p2.6.spec.ts               --reporter=list
+```
+
+Para cada suite reportar:
+- Número de testes PASS / FAIL / SKIP
+- Nome dos testes que falharam (se existirem)
+- Mensagem de erro (primeiras 10 linhas)
+
+---
+
+### 3. Suite de smoke geral (regressão)
+
+```bash
+npx playwright test e2e/smoke.spec.ts --reporter=list
+```
+
+---
+
+### 4. Resultado consolidado
+
+Preencher o relatório abaixo:
+
+```
+## RELATÓRIO DE EXECUÇÃO
+
+**Prompt ID:** P4-GATE
+**Data:** [data]
+**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+
+### Baseline
+- `npm run lint`  → PASS / FAIL (N erros, N warnings)
+- `npm run test`  → PASS / FAIL (N suites, N testes)
+- `npm run build` → PASS / FAIL
+
+### Suites E2E P4
+| Suite | Testes | PASS | FAIL | SKIP | Notas |
+|-------|--------|------|------|------|-------|
+| admin.editorial.p4 | | | | | |
+| admin.moderation-control.p4 | | | | | |
+| admin.creator-risk.p4 | | | | | |
+| admin.rollback-jobs.p4 | | | | | |
+| admin.worker-status.p4 | | | | | |
+| admin.p2.6 | | | | | |
+
+### Smoke geral
+- smoke.spec.ts → N/N PASS
+
+### Falhas detectadas
+- [lista de falhas, se existirem, com stack trace resumido]
+
+### Decisões tomadas
+- [se houve qualquer ajuste de ambiente ou configuração, descrever]
+
+### Veredicto
+- [ ] GATE PASS — todas as suites P4 passaram, baseline limpo
+- [ ] GATE FAIL — detalhar o que falhou para o Claude rever
+
+### O que o Claude deve validar
+- [ ] Confirmar que nenhum teste P4 foi ignorado (skip injustificado)
+- [ ] Confirmar que falhas são de ambiente e não de regressão de código
+```
+
+---
+
+**Notas importantes:**
+- As suites P4 usam mocks Playwright (não requerem backend real em execução)
+- Se um teste falhar por `spawn EPERM` ou similar → é limitação do ambiente sandbox, reportar como ressalva
+- NÃO modificar ficheiros de código ou de teste
+- NÃO ignorar testes silenciosamente — reportar todos os resultados
+
+---
+
 ## PROMPT P8.10 — Consolidação UI/UX: Componentes Reutilizáveis + Consistência Visual ⏳
 
 > **Executor: Claude** (não Codex) — tarefa complexa com decisões visuais e refactoring cross-file.
@@ -2063,7 +2173,7 @@ Existem 3 sistemas de card em paralelo que devem convergir para 1:
 31. PROMPT P8.10c → Estados: LoadingSkeleton, EmptyState, ErrorState  ✅
     ── UI/UX Consolidation concluída ──
 32. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ✅
-33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳ ← PRÓXIMO
+33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳ ← PRÓXIMO (prompt abaixo)
 34. PROMPT P8.5  → Header redesenhado (absorvido por P8.7)            ⏳
 35. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
 ```
