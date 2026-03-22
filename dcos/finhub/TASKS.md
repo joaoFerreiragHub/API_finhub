@@ -102,11 +102,12 @@
 
 | Task | Estado | Área |
 |------|--------|------|
-| FIRE frontend — what-if + Monte Carlo visual completo | 🔄 | Frontend |
-| Onboarding de utilizador regular (1ª vez na plataforma) | ⏳ | Frontend |
+| FIRE frontend — what-if + Monte Carlo visual completo | ✅ | Frontend — P5-FIRE: timeline chart multi-cenário + progress bar |
+| Onboarding de utilizador regular (1ª vez na plataforma) | ✅ | Frontend — P5-OB: OnboardingOverlay 3 passos + localStorage |
+| Perfil público de utilizador (leitura) | ✅ | Frontend — P8.7-PUB: PublicUserProfilePage + fix routeParams (Claude) |
 | Perfil de utilizador editável | ⏳ | Frontend |
 | Recomendações básicas (popular, relacionado) | ⏳ | Frontend |
-| Página de preços/premium | ⏳ | Frontend |
+| Página de preços/premium | ✅ | Frontend — P5-PRICE: 3 planos + toggle anual/mensal + FAQ |
 | Pagamentos/subscrições | ⏳ | Backend + Frontend |
 | Metricas de negócio no admin (DAU/MAU, retenção, conversion) | ⏳ | Backend + Frontend |
 
@@ -144,11 +145,11 @@
 
 | Task | Estado | Componente |
 |------|--------|-----------|
-| Header redesenhado (nav limpa, search, avatar) | ⏳ | `Header.tsx` |
+| Header redesenhado (nav limpa, search, avatar) | ✅ | `Header.tsx` — P8.5: SSR-safe, sem react-router-dom, Popover avatar, sticky+blur |
 | Cards de conteúdo modernizados — imagem grande, rating stars, metadata limpo | ✅ | `ArticleCard`, `CourseCard`, `VideoCard`, `PodcastCard`, `BookCard` |
 | Cards de criador modernizados — imagem/avatar grande, rating stars, contadores | ✅ | `CreatorCard` |
 | Charts financeiros customizados (tooltips ricos, gradient fill) | ✅ | `ChartTooltip`, `ValueCreationChart`, `FireSimulatorPage` |
-| FinHubScore visual proeminente (radar/snowflake) | ⏳ | `QuickAnalysis` |
+| FinHubScore visual proeminente (radar/snowflake) | ✅ | `QuickAnalysis` — P8.6: RadarChart + PerformanceRadarChart |
 | MetricCard com badge de estado e tabular-nums | ✅ | `MetricCard` |
 
 ### 4.3 P8.10 — Consolidação UI/UX (Claude direto)
@@ -235,8 +236,8 @@ CONCLUÍDO (P5 fechado ✅)
   ✅ P5.10 — Creator: criar/editar/publicar vídeo
   ✅ P5.11 — Páginas de marcas/entidades públicas (/directory + /marcas)
 
-PRÓXIMO IMEDIATO — bugs backlog
-  ⏳ B-FIX-01 — B9+B10+B11+B12+B13 (ManageVideos Dialog/unpublish/encode + BrandDetail route + /marcas alias) ← PRÓXIMO
+CONCLUÍDO (bugs backlog)
+  ✅ B-FIX-01 — B9+B10+B11+B12+B13 (ManageVideos Dialog/unpublish/encode + BrandDetail route + /marcas alias)
 
 A SEGUIR (sequência completa pré-beta)
   ✅ P3-GATE — Gate final análise rápida
@@ -245,10 +246,11 @@ A SEGUIR (sequência completa pré-beta)
   ✅ P5-FIRE — FIRE: timeline chart + progress bar + seed mock (2 portfolios)
   ✅ P8.5   — Header SSR-safe + redesign visual (lint 0 · typecheck PASS · build PASS · smoke 3/3)
   ✅ P5-OB  — Onboarding first-time user (3 passos, localStorage · lint 0 · typecheck PASS · smoke 3/3)
-  ← P5-PRICE — Página de preços/premium (3 planos, FAQ) ← EM EXECUÇÃO
-  ⏳ B-FIX-03 — Footer links legais + página /precos no nav
-  ⏳ P8.8   — Perfil de utilizador público (/perfil/:username)
-  ⏳ BETA-GATE — Gate final pré-beta (lint+test+build+E2E full)
+  ✅ P5-PRICE  — Página de preços/premium (3 planos, toggle anual/mensal, FAQ)
+  ✅ B-FIX-03  — ShellFooter: Precos link + todos os links legais funcionais
+  ✅ P8.7-PUB  — Perfil público de utilizador (/perfil/:username) + fix routeParams
+  ✅ P8.8-FIRE — FIRE landing redesign (hero + cards + tabela comparação)
+  ✅ BETA-GATE — Gate final pré-beta PASS (lint ✅ · typecheck ✅ · build ✅ · tests 48/227 ✅)
 
 MAIS TARDE (pós-beta ou paralelo)
   ⏳ Pagamentos/subscrições

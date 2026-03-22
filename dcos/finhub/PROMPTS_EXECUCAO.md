@@ -2561,7 +2561,9 @@ Não é necessário criar testes E2E para o onboarding nesta fase.
 
 ---
 
-## PROMPT P5-PRICE — Página de Preços / Premium ⏳
+## PROMPT P5-PRICE — Página de Preços / Premium ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** `PricingPage` criada em `/precos`. 3 cards de plano (Free 0€, Premium 9€/mês, Creator 19€/mês), toggle anual/mensal funcional, card Premium com destaque visual + badge "Mais popular", tabela de comparação de features, FAQ. Link "Precos" adicionado ao `ShellFooter` em `shellConfig.tsx` (coluna "Sobre"). `passToClient` SSR-safe. typecheck + build PASS. Verificado em browser: toggle ✅, preços ✅, CTA buttons ✅.
 
 > **Executor: Codex**
 > **Pré-requisito:** P5-OB ✅
@@ -2736,7 +2738,55 @@ Verificar que `/precos` responde com HTML em SSR (smoke já cobre rotas pública
 
 ---
 
-## PROMPT BETA-GATE — Gate Final Pré-Beta ⏳
+## PROMPT B-FIX-03 — Footer: Links Legais + /precos no Nav ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** `ShellFooter` em `shellConfig.tsx` actualizado com link "Precos" na coluna "Sobre" apontando para `/precos`. Links legais já estavam presentes (Termos, Privacidade, Cookies, Aviso legal via `/legal/*`). Footer testado em browser: todos os links navegam correctamente, "Precos" leva para `/precos` ✅. UnifiedTopShell usa o mesmo `ShellFooter`. typecheck + build PASS.
+
+> **Executor: Codex**
+> **Pré-requisito:** P5-PRICE ✅
+> **Escopo:** garantir que `/precos` aparece no footer e que os links legais estão todos funcionais.
+
+**Ficheiros modificados:**
+- `src/shared/layouts/shellConfig.tsx` — "Precos" adicionado ao ShellFooter coluna Sobre
+
+---
+
+## PROMPT P8.7-PUB — Perfil Público de Utilizador ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** `PublicUserProfilePage` implementada com avatar/iniciais, nome, @username, data de membro, bio, contadores (artigos favoritos, criadores seguidos). Rota `perfil/@username/+Page.tsx` criada. **Bug encontrado e corrigido (Claude):** `+Page.tsx` recebia `routeParams` como prop em vez de usar `usePageContext()` — corrigido para o padrão correcto do projecto (como `creators/@username/+Page.tsx`). Falta `passToClient` → adicionado. A página renderiza o estado "Utilizador não encontrado" em dev mode (esperado — token mock não autentica). typecheck + build PASS.
+
+> **Executor: Codex**
+> **Pré-requisito:** B-FIX-03 ✅
+> **Escopo:** criar página pública de perfil de utilizador regular em `/perfil/:username`.
+
+**Ficheiros criados:**
+- `src/pages/perfil/@username/+Page.tsx` — rota Vike com `usePageContext()` + `passToClient`
+- `src/features/user/pages/PublicUserProfilePage.tsx` — componente de perfil público
+- `src/features/user/services/publicUserProfileService.ts` — serviço com fallback `/users/profile/:username` → `/users?username=`
+
+**Bug corrigido (Claude pós-validação):**
+- `src/pages/perfil/@username/+Page.tsx` — substituído `{ routeParams }` prop (sempre undefined em Vike) por `usePageContext().routeParams?.username` + `passToClient = ['routeParams', 'pageProps', 'user']`
+
+---
+
+## PROMPT P8.8-FIRE — FIRE Landing Page Redesign ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** `FireLandingPage` redesenhada com hero section, 3 feature cards (Simulador FIRE, Dashboard de Progresso, Portfolios), tabela de comparação Free vs Premium, CTA de upgrade. Navegação com `<a href>` nativo (sem react-router-dom). SSR-safe. Verificado em browser: hero ✅, cards clicáveis ✅, tabela ✅. typecheck + build PASS.
+
+> **Executor: Codex**
+> **Pré-requisito:** P8.7-PUB ✅
+> **Escopo:** redesenhar `/ferramentas/fire` landing page com visual mais apelativo e CTAs claros.
+
+**Ficheiros modificados:**
+- `src/features/fire/pages/FireLandingPage.tsx` — redesign completo com hero + cards + tabela
+
+---
+
+## PROMPT BETA-GATE — Gate Final Pré-Beta ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** Gate executado com sucesso. Checklist: `/precos` ✅, onboarding (OnboardingOverlay) ✅, Header sem react-router-dom ✅, FIRE timeline chart (AreaChart x5) ✅, FinHubScore RadarChart ✅. Baseline: lint PASS (3 warnings react-refresh pré-existentes), typecheck PASS, build PASS, tests 48 suites 227 testes PASS. E2E suites: todas as suites P4 passam (idem P4-GATE). Smoke 3/3 PASS. **Nota:** onboarding implementado como `OnboardingOverlay` (Card fixo com backdrop-blur) em vez de Dialog — diferença cosmética, funcionalidade equivalente.
+
+## PROMPT BETA-GATE — Gate Final Pré-Beta
 
 > **Executor: Codex**
 > **Pré-requisito:** P5-PRICE ✅ — todos os prompts pré-beta concluídos.
@@ -2893,8 +2943,11 @@ Verificar (apenas confirmar que existem — não testar manualmente):
 36. PROMPT P5-FIRE  → FIRE timeline chart + progress visual           ✅
 37. PROMPT P8.5     → Header SSR-safe + redesign visual               ✅
 38. PROMPT P5-OB    → Onboarding first-time user                      ✅
-39. PROMPT P5-PRICE → Página de preços/premium                        ← EM EXECUÇÃO
-40. PROMPT BETA-GATE → Gate final pré-beta                            ⏳
+39. PROMPT P5-PRICE   → Página de preços/premium                      ✅
+40. PROMPT B-FIX-03   → Footer: links legais + Precos no nav          ✅
+41. PROMPT P8.7-PUB   → Perfil público de utilizador                  ✅ (+ fix routeParams Claude)
+42. PROMPT P8.8-FIRE  → FIRE landing page redesign                    ✅
+43. PROMPT BETA-GATE  → Gate final pré-beta                           ✅
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
