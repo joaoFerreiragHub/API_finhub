@@ -81,7 +81,7 @@
 | Creator dashboard — overview com KPIs reais | ✅ | Frontend |
 | Creator dashboard — gestão de artigos (tabela + publicar/despublicar/eliminar) | ✅ | Frontend |
 | Creator dashboard — criar/editar/publicar artigo (flow completo) | ✅ | Frontend — `ArticleForm`, `CreateArticle`, `EditArticle`, `ManageArticles`, `articleService` (PUT+PATCH fallback), Vike routeParams, sem react-router |
-| Creator dashboard — criar/editar/publicar vídeo (flow completo) | ⏳ PROMPT P5.10 | Frontend |
+| Creator dashboard — criar/editar/publicar vídeo (flow completo) | ✅ | Frontend — `VideoForm` (YouTube/Vimeo embed preview, auto-thumbnail), `CreateVideo`, `EditVideo`, `ManageVideos`, `videoService` (PUT+PATCH fallback, /videos/my→/me), Vike routeParams, sem react-router |
 | Creator dashboard — campo welcome video (URL YouTube/Vimeo para introdução pública) | ✅ | Backend + Frontend |
 | Popup de criador — modal ao clicar em card de criador (welcome video + cursos + conteúdos top) | ✅ | Frontend |
 | P5.8 — Creator Welcome Card configurável: criador escolhe o que mostra no seu cartão de visita público | ✅ | Backend + Frontend — `ICreatorCardConfig`, `CreatorCardConfigPanel`, `CreatorModal` com render condicional + previewMode |
@@ -204,8 +204,8 @@ CONCLUÍDO (layout consolidation completa ✅)
 
 PRÓXIMO IMEDIATO (features P5)
   ✅ P5.9  — Creator: criar/editar/publicar artigo
-  ⏳ P5.10 — Creator: criar/editar/publicar vídeo ← PRÓXIMO
-  ⏳ P5.11 — Páginas de marcas/entidades públicas
+  ✅ P5.10 — Creator: criar/editar/publicar vídeo
+  ⏳ P5.11 — Páginas de marcas/entidades públicas ← PRÓXIMO
 
 A SEGUIR
   ⏳ P3-GATE — Gate final análise rápida
