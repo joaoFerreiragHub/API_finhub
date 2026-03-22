@@ -2974,7 +2974,22 @@ Quando em modo edição, substituir o header de perfil por um form com:
 
 ---
 
-## PROMPT CLEANUP-01 — Dívida Técnica Pré-Beta ⏳
+## PROMPT CLEANUP-01 — Dívida Técnica Pré-Beta ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação (Claude):**
+> Executado directamente por Claude (não Codex) na sessão de 2026-03-22.
+>
+> **B15** ✅ — `src/pages/login/+Page.tsx` e `src/pages/registar/+Page.tsx` confirmados com padrão Vike correcto (Helmet + importação da feature page + redirect via useEffect se autenticado).
+>
+> **router.tsx** ⚠️ — Verificado: `App.tsx` importa `router.tsx` via `RouterProvider`; `main.tsx` importa `App`. **Não foi removido** — código activo no setup legacy. Documentado como dívida técnica: remoção requer migrar `App.tsx` para dispensar RouterProvider ou confirmar que nenhuma rota do react-router-dom está activa. Adiado para pós-v1.0.
+>
+> **Typo `/hub/counteudos`** ✅ — O diretório `counteudos` já tem um `+Page.tsx` que redirige automaticamente para `/hub/conteudos` via `window.location.replace`. O directório correcto `/hub/conteudos/` existe e tem sub-rotas completas (`artigos`, `cursos`, `eventos`, `lives`, `livros`, `podcasts`, `reels`, `videos`). Backward compatible — sem acção adicional necessária.
+>
+> **DashboardHeader.tsx + AdminHeader.tsx** ✅ — Confirmados orphaned (zero imports em todo o codebase). Ambos usavam `Link` do `react-router-dom` (legacy). Removidos: `DashboardHeader.tsx`, `DashboardHeader.d.ts`, `AdminHeader.tsx`, `AdminHeader.d.ts`.
+>
+> **AuthLayout.tsx em src/shared/** — Não existe. Nada a fazer.
+>
+> **Nota:** lint/typecheck/build não executados por Claude directamente — a ser validado na próxima run de CI ou P9-GATE.
 
 > **Executor: Codex**
 > **Pré-requisito:** P9.1 ✅
@@ -3391,7 +3406,7 @@ npx playwright test e2e/ --reporter=list
 42. PROMPT P8.8-FIRE  → FIRE landing page redesign                    ✅
 43. PROMPT BETA-GATE  → Gate final pré-beta                           ✅
 44. PROMPT P9.1      → Perfil editável (name/bio/avatar)              ⏳
-45. PROMPT CLEANUP-01 → Dívida técnica (B15 + dead code + typo)      ⏳
+45. PROMPT CLEANUP-01 → Dívida técnica (B15 + dead code + typo)      ✅ (Claude direto)
 46. PROMPT P9.2      → Homepage "Para Ti" (personalização tópicos)    ⏳
 47. PROMPT P9.3      → Admin dashboard: métricas reais               ⏳
 48. PROMPT P9-GATE   → Gate pós-beta                                  ⏳

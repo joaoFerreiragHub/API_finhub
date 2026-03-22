@@ -3,7 +3,68 @@
 > Fonte de verdade para o que está por fazer.
 > Última atualização: 2026-03-22
 
-**Legenda:** 🔴 Bloqueador beta | 🟡 Importante | 🟢 Desejável | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
+**Legenda:** 🔴 Beta obrigatório | 🟡 v1.0 (pós-beta, pré-release pública) | 🟢 Pós-v1.0 (iterativo) | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
+
+---
+
+## RELEASE MAP — O que sai em cada fase
+
+> Princípio: Beta fecha o ciclo funcional mínimo. v1.0 adiciona monetização e polish. Pós-v1.0 é iterativo contínuo.
+
+### 🔴 Beta Fechado (objectivo actual — prompts 44–48)
+Plataforma **funcional e estável** para um grupo limitado de utilizadores reais.
+Tudo o que está nesta lista tem de estar completo antes do convite beta.
+
+| Feature | Estado | Prompt |
+|---------|--------|--------|
+| Hub de conteúdo público completo (artigos, vídeos, cursos, podcasts, livros) | ✅ | P5.1–P5.3 |
+| Lista de criadores + perfil público de criador | ✅ | P5.4 |
+| Creator dashboard (gerir artigos + vídeos) | ✅ | P5.5, P5.9, P5.10 |
+| Onboarding first-time user (3 passos) | ✅ | P5-OB |
+| Página de preços (estática, sem pagamento) | ✅ | P5-PRICE |
+| Footer com todos os links legais | ✅ | B-FIX-03 |
+| Header SSR-safe e redesenhado | ✅ | P8.5 |
+| FIRE simulator completo (timeline + progress bar) | ✅ | P5-FIRE |
+| Perfil público de utilizador (/perfil/:username) | ✅ | P8.7-PUB |
+| Análise rápida de stocks (FinHubScore + métricas) | ✅ | P3 |
+| Admin moderation + editorial CMS | ✅ | P4 |
+| **Perfil editável (name/bio/avatar)** | ⏳ | P9.1 |
+| **Cleanup técnico (B15 + dead code + typo)** | ⏳ | CLEANUP-01 |
+| **Homepage personalizada ("Para Ti")** | ⏳ | P9.2 |
+| **Admin métricas reais (DAU/utilizadores/conteúdo)** | ⏳ | P9.3 |
+| **P9-GATE (qualidade pós-beta)** | ⏳ | P9-GATE |
+
+### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
+Funcionalidades que fazem a diferença para o utilizador final mas **não bloqueiam o beta fechado**.
+Entram na release pública (quando a plataforma abrir ao público geral).
+
+| Feature | Notas |
+|---------|-------|
+| **Pagamentos / subscrições** | Stripe ou LemonSqueezy — botões de upgrade hoje apontam para mailto |
+| **Upload de imagens real (S3 ou Cloudinary)** | Avatar e covers hoje são URL manual |
+| **Notificações real-time (WebSocket)** | Hoje é polling; push melhora muito a experiência |
+| **Perfil editável de criador** (bio longa, redes, temas) | Creator tem dashboard mas não edita o perfil público |
+| **Feed personalizado `/feed` validado** | Página e hooks existem; validar com dados reais |
+| **Estatísticas de criador** (views, followers reais) | `/creators/estatisticas` pode ser stub |
+| **Pesquisa global funcional** | `GlobalSearchBar` existe mas pode não ter backend |
+| **SEO structured data (JSON-LD)** | Artigos, criadores, cursos → rich results |
+
+### 🟢 Pós-v1.0 (iterativo, sem data fixa)
+Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utilizadores pede.
+
+| Feature | Notas |
+|---------|-------|
+| Lighthouse > 80 | Performance optimization, lazy loading, image CDN |
+| Audit de acessibilidade (a11y) | ARIA, focus management, contraste |
+| i18n prep | Só se houver expansão internacional |
+| PWA / offline básico | Service worker + manifest |
+| Newsletter / digest semanal | Notificações por email |
+| Status page externa | Statuspage.io ou Instatus |
+| Widget de feedback | Canny ou form simples |
+| Excesso de libs UI (PrimeReact + Mantine) | Cleanup gradual ao redesenhar |
+| Tipagem TS — ~285 erros pré-existentes | Gradual, não bloqueia build |
+
+---
 
 ---
 
