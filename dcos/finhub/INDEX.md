@@ -28,8 +28,10 @@
 | P3 — Análise Rápida de stocks | 🔄 Em curso | Gate final em falta |
 | P4 — Editorial CMS + Moderation | 🔄 Em curso | Gate pre-release em falta |
 | P5 — Pré-beta funcional | ✅ Fechado | P5.1-P5.11 todos ✅ — /directory + BrandCard + BrandDetailPage SSR-safe |
-| P8 — Elevação UI/UX | 🔄 Em curso | P8.1-P8.4 ✅, P8.7 ✅ (PageShell), P8.8 ✅ (Creator sidebar), P8.9 ✅ (Admin layout + guard), falta: P8.6 FinHubScore |
+| P8 — Elevação UI/UX | 🔄 Em curso | P8.1-P8.4 ✅, P8.7 ✅ (PageShell), P8.8 ✅ (Creator sidebar), P8.9 ✅ (Admin layout + guard), P8.10 ⏳ (UI/UX consolidation — cards+páginas+estados), falta: P8.6 FinHubScore |
 
-**Bugs conhecidos abertos:** B9 🟡 B10 🟡 B11 🟢 B12 🟡 B13 🟢 — agrupados em prompt B-FIX-01 ← PRÓXIMO
+**Bugs conhecidos abertos:** todos fechados ✅ — B9/B10/B11/B12/B13 resolvidos em B-FIX-01
+
+**Sequência:** P8.10a (Claude — cards unificados) ← PRÓXIMO → P8.10b (páginas) → P8.10c (estados) → P3-GATE → P4-GATE → P8.6
 
 **Última atualização:** 2026-03-26

@@ -1298,7 +1298,9 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 
 ---
 
-## PROMPT B-FIX-01 — Backlog de Bugs B9–B13 ⏳
+## PROMPT B-FIX-01 — Backlog de Bugs B9–B13 ✅ VALIDADO 2026-03-26
+
+> **Nota pós-validação:** Executado diretamente no FinHub-Vite (sem Codex). B9+B10+B11: ManageVideos refatorado com Dialog de confirmação + Card de erro + botão Despublicar + encodeURIComponent. B10 service: `unpublishVideo()` com fallback PATCH `{status:'draft'}`. B10 hook: `useUnpublishVideo()` em useVideos.ts. B12: dois fallbacks de `getRelatedLink` corrigidos para `/hub/conteudos`; regex `resolveSlugFromPathname` expandido para incluir prefixo `marcas`. B13: `src/pages/marcas/+Page.tsx` e `src/pages/marcas/@slug/+Page.tsx` criados. Tests: 48 suites 227 testes PASS (requereu `--runInBand` por limitação npm.ps1/spawn EPERM no Windows — comportamento esperado). typecheck ✅ build ✅.
 
 **Corrige:** B9, B10, B11, B12, B13 — todos no frontend `FinHub-Vite/`
 
@@ -1736,6 +1738,281 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
 
 ---
 
+## PROMPT P8.10 — Consolidação UI/UX: Componentes Reutilizáveis + Consistência Visual ⏳
+
+> **Executor: Claude** (não Codex) — tarefa complexa com decisões visuais e refactoring cross-file.
+> **Referência obrigatória:** ler `dcos/finhub/DESIGN.md` antes de iniciar.
+> **Dividir em sub-sessões** se necessário: P8.10a (cards), P8.10b (pages), P8.10c (estados).
+
+**Contexto do projeto:**
+- Frontend: `FinHub-Vite/` (React 19 + Vike SSR + Tailwind + shadcn/ui)
+- Design system definido em `DESIGN.md`: Inter font, market colors, shadcn/Radix, dark mode profissional
+- Regras SSR: nunca `useParams`/`useNavigate` do react-router-dom; `window.*` só em `useEffect` ou guard
+
+**PROBLEMA ACTUAL — Auditoria UI/UX (2026-03-26):**
+
+O site funciona mas falta coesão visual. Existem 57 componentes de card, 3 sistemas de card diferentes, e padrões visuais inconsistentes entre páginas. O resultado é uma experiência fragmentada que não transmite plataforma profissional unificada.
+
+---
+
+### PARTE A — Consolidação do Sistema de Cards
+
+**Diagnóstico:**
+Existem 3 sistemas de card em paralelo que devem convergir para 1:
+
+| Sistema | Onde usado | Estilo | Problema |
+|---------|-----------|--------|---------|
+| Netflix-card (CSS class) | Homepage (`ContentRow`) | `scale(1.06)` hover, overlay gradients, GPU-accel | Único à homepage, não reutilizado |
+| Public cards (custom) | `/hub/*`, `/creators` | `rounded-2xl bg-card/80`, `-translate-y-0.5` hover | Diferente do home e do shadcn |
+| shadcn Card | `/directory`, features | `rounded-xl shadow`, CardHeader/Content/Footer | Mais estruturado mas visualmente diferente |
+
+**Duplicações identificadas (7+ pares):**
+
+| Componente | Localização 1 | Localização 2 | Diferença |
+|-----------|---------------|---------------|-----------|
+| ArticleCard | `components/public/ArticleCard.tsx` | `components/home/cards/ArticleCard.tsx` | Public: 4/3 aspect, info visível. Home: 16/9, netflix overlay |
+| CourseCard | `components/public/CourseCard.tsx` | `components/home/cards/CourseCard.tsx` | Public: clamp width. Home: netflix + price badge dinâmico |
+| BookCard | `components/public/BookCard.tsx` | `components/home/cards/BookCardHome.tsx` | Public: 4/3. Home: 2/3 (portrait), compacto |
+| CreatorCard | `components/public/CreatorCard.tsx` | `features/creators/components/cards/CreatorCard.tsx` | Public: stats grid. Feature: 16/10 cover, follow button, variant prop |
+| XPProgressCard | `features/dashboard/` | `features/gamification/` | Assinaturas diferentes |
+| ContentTrendsCard | `features/dashboard/` | `features/analytics/` | Dados vs estático |
+| CampaignSummaryCard | `features/dashboard/` | `features/marketing/` | Estático vs data-driven |
+
+**Componentes one-off (42 total, key ones para avaliar reuso):**
+- `CreatorCardLarge` — homepage only, devia usar `CreatorCard` com variant
+- `ResourceCard` — homepage only, devia fundir com `BrandCard` ou `ContentCard`
+- `CreatorCardMini` — lista inline, útil manter como variant mini
+
+**TAREFA A — Sistema unificado de cards:**
+
+1. **Criar `ContentCard` base** (`src/components/shared/ContentCard.tsx`):
+   - Variantes via prop `variant`: `'default' | 'compact' | 'featured' | 'horizontal'`
+   - Prop `size`: `'sm' | 'md' | 'lg'`
+   - Sempre `<a href={...}>` wrapper (não div clicável)
+   - Imagem com aspect ratio configurável: `aspect-video` (16/9 default), `aspect-[4/3]`, `aspect-[2/3]`
+   - Placeholder visual quando sem imagem (gradiente + ícone)
+   - Rating stars universal (`market.bull` filled, 35% empty)
+   - Badge de tipo (Artigo | Vídeo | Curso | Podcast | Livro | Marca) top-left
+   - Metadata row: máximo 2-3 items (autor, data/duração, views)
+   - Hover unificado: `-translate-y-0.5 hover:border-primary/40 hover:shadow-lg transition-all duration-200`
+   - `line-clamp-2` no título, `text-sm sm:text-base font-semibold`
+   - Usar shadcn `Card` como base para estrutura (CardHeader/CardContent)
+   - Dark mode: `bg-card` com border sutil
+
+2. **Criar `CreatorCard` unificado** (`src/components/shared/CreatorCard.tsx`):
+   - Variantes: `'card' | 'mini' | 'large'`
+   - Avatar circular (40px mini → 80px card → 96px large)
+   - Nome + `@username`
+   - Contadores: seguidores + publicações
+   - Rating stars
+   - Badges de tipos de conteúdo que produz
+   - Suporte `onOpenModal?: () => void` (para integrar com `Creator` wrapper)
+   - Botão "Ver perfil" com `<a href="/creators/{username}">` + `stopPropagation`
+
+3. **Migrar cada card existente** para usar o sistema unificado:
+   - `components/public/ArticleCard.tsx` → `<ContentCard type="article" variant="default" />`
+   - `components/home/cards/ArticleCard.tsx` → `<ContentCard type="article" variant="featured" />`
+   - `components/public/CourseCard.tsx` → `<ContentCard type="course" variant="default" />`
+   - `components/home/cards/CourseCard.tsx` → `<ContentCard type="course" variant="featured" />`
+   - `components/public/VideoCard.tsx` → `<ContentCard type="video" variant="default" />`
+   - `components/public/BookCard.tsx` → `<ContentCard type="book" variant="default" />`
+   - `components/home/cards/BookCardHome.tsx` → `<ContentCard type="book" variant="compact" aspect="2/3" />`
+   - `components/public/PodcastCard.tsx` → `<ContentCard type="podcast" variant="default" />`
+   - `components/home/cards/CreatorCardLarge.tsx` → `<CreatorCard variant="large" />`
+   - `components/home/cards/ResourceCard.tsx` → avaliar se funde com `BrandCard` ou `ContentCard`
+   - `components/public/CreatorCard.tsx` + `features/creators/components/cards/CreatorCard.tsx` → `<CreatorCard variant="card" />`
+   - `features/creators/components/cards/CreatorCardMini.tsx` → `<CreatorCard variant="mini" />`
+
+4. **Manter ficheiros antigos como re-exports** durante transição:
+   ```ts
+   // components/public/ArticleCard.tsx
+   export { ContentCard as ArticleCard } from '@/components/shared/ContentCard'
+   // ajustar props defaults para manter API compatível
+   ```
+
+5. **Remover classe `.netflix-card` do `index.css`** e substituir pelo hover system unificado
+
+---
+
+### PARTE B — Consistência Visual entre Páginas
+
+**Diagnóstico de inconsistências entre páginas públicas:**
+
+| Aspeto | Homepage | Criadores | Conteúdos | Diretório | Ferramentas |
+|--------|----------|-----------|-----------|-----------|-------------|
+| Max-width | ❌ Nenhum (stretches) | ❌ Inline | max-w-7xl ✅ | max-w-7xl ✅ | Varia |
+| Hero | HeroBanner (50-65vh) | PageHero (30-35vh) | PageHero | ❌ Nenhum | ❌ Nenhum |
+| Grid | Horizontal scroll | 1-2-3 cols | 1-2-3 cols | 2-3 cols | Varia |
+| Filtros | Nenhum | Custom form inputs | — | shadcn Select+Card | — |
+| Loading | Skeleton cards | Spinner central | — | Skeleton grid | — |
+| Empty state | Card dashed inline | Card full-width | — | Card col-span | — |
+| Headings | `<h2>` inline com "Ver tudo" | `<h1>` em PageHero | `<h1>` em PageHero | Badge + `<h1>` plain | Varia |
+
+**TAREFA B — Padrões visuais unificados:**
+
+1. **Container padrão** — todas as páginas de listagem:
+   ```tsx
+   <section className="mx-auto max-w-7xl px-4 sm:px-6 md:px-10 lg:px-12 py-6 sm:py-8">
+   ```
+   - Homepage: aplicar `max-w-[1400px]` ou `max-w-7xl` às content rows
+   - Verificar que o HeroBanner permanece full-width (fora do container)
+
+2. **PageHero em todas as páginas de listagem** — usar `PageHero` (já existe) em:
+   - ✅ `/creators` (já tem)
+   - ❌ `/directory` — adicionar com background image e search integrado
+   - ❌ `/ferramentas` — adicionar com ícone temático
+   - ❌ `/hub/conteudos` — verificar se tem, adicionar se não
+   - ❌ `/hub/noticias` — verificar se tem, adicionar se não
+   - Usar sempre a mesma height: 30-35vh (variant compact para sub-páginas)
+
+3. **Section headings** — padrão unificado para todas as secções:
+   ```tsx
+   <div className="flex items-center justify-between mb-4 sm:mb-6">
+     <h2 className="text-lg sm:text-xl font-bold tracking-tight">{title}</h2>
+     {viewAllHref && (
+       <a href={viewAllHref} className="text-sm text-primary hover:underline">
+         Ver tudo →
+       </a>
+     )}
+   </div>
+   ```
+   Considerar extrair para componente `SectionHeader.tsx`
+
+4. **Filtros unificados** — escolher UM padrão:
+   - shadcn `Select` + `Input` + `Button` dentro de form card
+   - Layout: `grid gap-3 md:grid-cols-2 lg:grid-cols-4`
+   - Aplicar a: `/creators`, `/directory`, `/hub/conteudos`, `/hub/noticias`
+   - Remover inputs nativos customizados do `CreatorsListPage`
+
+5. **Grid padrão para listagens**:
+   ```tsx
+   <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+   ```
+   - 4 colunas em desktop para conteúdo (artigos, vídeos, cursos)
+   - 3 colunas para entidades maiores (criadores, marcas)
+
+---
+
+### PARTE C — Estados Visuais Consistentes
+
+**TAREFA C — Componentes reutilizáveis de estado:**
+
+1. **`LoadingSkeleton` unificado** (`src/components/shared/LoadingSkeleton.tsx`):
+   ```tsx
+   type Props = {
+     variant: 'card' | 'row' | 'detail' | 'table'
+     count?: number  // default 6
+     columns?: number // default from variant
+   }
+   ```
+   - Skeleton cards que match as dimensões do `ContentCard`
+   - `animate-pulse` com `bg-muted` + `rounded-2xl`
+   - Substituir: `LoadingRowState` (homepage), `<LoadingSpinner>` (creators), `<Skeleton>` inline (directory)
+
+2. **`EmptyState` unificado** (`src/components/shared/EmptyState.tsx`):
+   ```tsx
+   type Props = {
+     icon?: LucideIcon  // default: Inbox
+     title: string
+     description?: string
+     action?: { label: string; href: string }
+   }
+   ```
+   - Card centrado com ícone, título, descrição, CTA opcional
+   - `border-dashed border-border bg-card/50 rounded-xl p-8 text-center`
+   - Substituir todos os empty states inline
+
+3. **`ErrorState` unificado** (`src/components/shared/ErrorState.tsx`):
+   - Similar ao `EmptyState` mas com ícone `AlertTriangle` e cor `destructive`
+   - Botão "Tentar novamente" com `onClick` retry
+   - Substituir `<Card variant="destructive">` inline em pages
+
+---
+
+### PARTE D — Ajustes Visuais Específicos por Página
+
+**Baseado na análise visual das páginas actuais:**
+
+1. **Homepage (`+Page.tsx`)**:
+   - Aplicar max-width ao wrapper das content rows
+   - Garantir que o HeroBanner ocupa full width mas as rows respeitam o container
+   - Uniformizar altura dos cards dentro do scroll horizontal
+
+2. **Criadores (`CreatorsListPage.tsx`)**:
+   - Manter PageHero mas com imagem de background (financial/community themed)
+   - Substituir form inputs nativos por shadcn components
+   - Grid 1→2→3 colunas (manter, está correcto)
+
+3. **Conteúdos (`ExploreContentPage.tsx`)**:
+   - Adicionar PageHero se não tem
+   - Tabs de tipo de conteúdo mais visíveis (pill buttons ou shadcn Tabs)
+   - Grid 1→2→3→4 colunas
+
+4. **Notícias**:
+   - PageHero com tema de notícias/mercado
+   - Cards em formato mais compacto (variant horizontal para lista, variant default para grid)
+
+5. **Ferramentas (`ToolsHubPage.tsx`)**:
+   - PageHero com ícone Calculator/Wrench
+   - Grid de tool cards com ícone grande, título, descrição curta
+   - Visual tipo "app launcher" (ícones coloridos, grid 2→3→4)
+
+6. **FIRE sub-páginas**:
+   - Garantir `FireToolNav` visível e consistent
+   - Layout de tool com sidebar nav + main content area
+
+7. **Diretório (`PublicDirectoryPage.tsx`)**:
+   - Adicionar PageHero com search integrado
+   - Manter filtros shadcn (estão bons)
+   - BrandCard: mantém shadcn Card base (está bem estruturado)
+
+---
+
+### REGRAS VISUAIS TRANSVERSAIS
+
+1. **Border radius**: `rounded-2xl` para cards, `rounded-xl` para containers internos, `rounded-lg` para inputs/badges
+2. **Sombra hover**: `-translate-y-0.5 hover:border-primary/40 hover:shadow-lg` — nunca scale()
+3. **Espaçamento vertical entre secções**: `space-y-8 sm:space-y-12`
+4. **Cor de badge**: `variant="secondary"` com `bg-secondary/80 backdrop-blur-sm border-0`
+5. **Texto de metadata**: `text-xs text-muted-foreground` com ícones `h-3.5 w-3.5`
+6. **Números financeiros**: sempre `.tabular-nums`
+7. **Verde/vermelho**: APENAS para performance financeira — nunca para UI states
+8. **Transições**: `transition-all duration-200` — nunca > 300ms
+9. **Imagens**: sempre `object-cover` com fallback gradiente + ícone
+10. **Links**: sempre `<a href>`, nunca `div` clicável, nunca React Router `Link`
+
+---
+
+**SSR — regras obrigatórias:** (idem anteriores — nunca useParams/useNavigate do react-router-dom)
+
+**Critérios de conclusão (por parte):**
+
+**P8.10a (Cards):**
+- [ ] `ContentCard` criado com variants default/compact/featured/horizontal
+- [ ] `CreatorCard` unificado com variants card/mini/large
+- [ ] Cards antigos migrados (re-exports ou substituição directa)
+- [ ] `.netflix-card` CSS removido
+- [ ] Rating stars consistente em todos os cards
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**P8.10b (Páginas):**
+- [ ] Todas as páginas de listagem têm `max-w-7xl` container
+- [ ] PageHero em `/directory`, `/ferramentas`, `/hub/conteudos`, `/hub/noticias`
+- [ ] Filtros uniformizados com shadcn components
+- [ ] Grid responsivo consistente (1→2→3→4 cols)
+- [ ] `SectionHeader` extraído e reutilizado
+
+**P8.10c (Estados):**
+- [ ] `LoadingSkeleton` unificado substituindo 3 patterns diferentes
+- [ ] `EmptyState` unificado substituindo 3 patterns diferentes
+- [ ] `ErrorState` unificado
+- [ ] Testes visuais em light + dark mode
+
+**Produzir relatório no formato do template acima (por sub-sessão).**
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -1776,11 +2053,16 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
 25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ✅
 26. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ✅
 27. PROMPT P5.11  → Páginas de marcas/entidades públicas              ✅
-28. PROMPT B-FIX-01 → Backlog bugs B9–B13 (ManageVideos + routes)    ⏳ ← PRÓXIMO
-29. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
-30. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
-31. PROMPT P8.5  → Header redesenhado (absorvido por P8.7)            ⏳
-32. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
+28. PROMPT B-FIX-01 → Backlog bugs B9–B13 (ManageVideos + routes)    ✅
+    ── UI/UX Consolidation (Claude direto, dividido em sub-sessões):
+29. PROMPT P8.10a → Cards: ContentCard + CreatorCard unificados       ⏳ ← PRÓXIMO (Claude)
+30. PROMPT P8.10b → Páginas: container, PageHero, filtros, grids     ⏳ (Claude)
+31. PROMPT P8.10c → Estados: LoadingSkeleton, EmptyState, ErrorState  ⏳ (Claude)
+    ── UI/UX Consolidation concluída ──
+32. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
+33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
+34. PROMPT P8.5  → Header redesenhado (absorvido por P8.7)            ⏳
+35. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

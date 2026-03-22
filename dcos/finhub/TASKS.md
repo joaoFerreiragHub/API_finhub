@@ -21,11 +21,11 @@
 | B6 | Creator profile page não recebia username — `@username/+Page.tsx` lia `routeParams` dos props (sempre undefined); "Ver perfil" redirecionava para `/creators` | `FinHub-Vite` — `@username/+Page.tsx` + `CreatorProfilePage.tsx` | ✅ Fix: usePageContext() + fallback regex no pathname |
 | B7 | CI P5.7 falhava — `toSocialMediaLinks` mapper usava `'Other'` em vez de `'website'` para platform website | `FinHub-Vite` — `publicCreatorsService.ts` | ✅ |
 | B8 | CommentCard apontava para `/users/:username` (rota inexistente) — deve ser `/perfil/:username` | `CommentCard.tsx` | ✅ ROUTING-CHECK (Claude) |
-| B9 | ManageVideos usa `confirm()/alert()` (browser dialogs) em vez de Dialog/Card como ManageArticles — inconsistência UX | `ManageVideos.tsx` linhas 22/26/34 | 🟡 ⏳ |
-| B10 | ManageVideos sem botão "Despublicar" — vídeo publicado não volta a rascunho pelo dashboard (artigos têm `unpublishArticle`) | `ManageVideos.tsx`, `videoService.ts`, `useVideos.ts` | 🟡 ⏳ |
-| B11 | ManageVideos edit link sem `encodeURIComponent` — `href=\`/creators/dashboard/videos/${video.id}/edit\`` (ManageArticles usa encode) | `ManageVideos.tsx` linha 197 | 🟢 ⏳ |
-| B12 | `getRelatedLink` fallback aponta para `/explorar/tudo` (rota inexistente) — deve ser `/hub/conteudos` | `BrandDetailPage.tsx` linha 60 | 🟡 ⏳ |
-| B13 | Sem alias `/marcas` → `/directory` — URLs de diretório públicas usam `/directory` mas marca-se `/marcas` noutros locais | `src/pages/` — faltam `marcas/+Page.tsx` e `marcas/@slug/+Page.tsx` | 🟢 ⏳ |
+| B9 | ManageVideos usa `confirm()/alert()` (browser dialogs) em vez de Dialog/Card como ManageArticles — inconsistência UX | `ManageVideos.tsx` linhas 22/26/34 | ✅ B-FIX-01 |
+| B10 | ManageVideos sem botão "Despublicar" — vídeo publicado não volta a rascunho pelo dashboard (artigos têm `unpublishArticle`) | `ManageVideos.tsx`, `videoService.ts`, `useVideos.ts` | ✅ B-FIX-01 |
+| B11 | ManageVideos edit link sem `encodeURIComponent` — `href=\`/creators/dashboard/videos/${video.id}/edit\`` (ManageArticles usa encode) | `ManageVideos.tsx` linha 197 | ✅ B-FIX-01 |
+| B12 | `getRelatedLink` fallback aponta para `/explorar/tudo` (rota inexistente) — deve ser `/hub/conteudos` | `BrandDetailPage.tsx` linha 60 | ✅ B-FIX-01 |
+| B13 | Sem alias `/marcas` → `/directory` — URLs de diretório públicas usam `/directory` mas marca-se `/marcas` noutros locais | `src/pages/` — faltam `marcas/+Page.tsx` e `marcas/@slug/+Page.tsx` | ✅ B-FIX-01 |
 
 ---
 
@@ -148,7 +148,27 @@
 | FinHubScore visual proeminente (radar/snowflake) | ⏳ | `QuickAnalysis` |
 | MetricCard com badge de estado e tabular-nums | ✅ | `MetricCard` |
 
-### 4.3 Páginas Prioritárias para Redesign
+### 4.3 P8.10 — Consolidação UI/UX (Claude direto)
+
+> Prompt completo em `PROMPTS_EXECUCAO.md` (PROMPT P8.10). Dividido em 3 sub-sessões.
+
+| Sub-task | Estado | Scope |
+|----------|--------|-------|
+| P8.10a — Sistema unificado de cards (ContentCard + CreatorCard) | ⏳ | 57 cards → ~5 variants: consolidar 7+ duplicações, eliminar `.netflix-card`, criar ContentCard base + CreatorCard unificado |
+| P8.10b — Consistência visual entre páginas | ⏳ | max-w-7xl em todas as páginas, PageHero universal, filtros shadcn, grids padronizados, SectionHeader |
+| P8.10c — Estados visuais reutilizáveis | ⏳ | LoadingSkeleton, EmptyState, ErrorState — substituir 3 patterns inline diferentes |
+
+**Auditoria que fundamenta o P8.10 (2026-03-26):**
+- 57 componentes de card, 15 reutilizáveis, 42 one-off
+- 3 sistemas de card paralelos (netflix-card, public custom, shadcn Card)
+- 7+ pares duplicados (ArticleCard, CourseCard, BookCard, CreatorCard, XPProgress, ContentTrends, CampaignSummary)
+- Homepage sem max-width (stretches em 4K+)
+- Directório e Ferramentas sem PageHero (inconsistente com Criadores/Conteúdos)
+- 3 patterns diferentes de loading (skeleton, spinner, inline)
+- 3 patterns diferentes de empty state (dashed card, full-width card, col-span card)
+- Filtros: CreatorsListPage usa inputs nativos custom, Directory usa shadcn Select
+
+### 4.4 Páginas Prioritárias para Redesign
 
 | Página | Prioridade |
 |--------|-----------|
@@ -170,7 +190,7 @@
 | 2 modelos de marcas (Brand + DirectoryEntry) | Dados duplicados | Fase 2 — unificar |
 | Upload disco local (não S3) | Não escala | Antes do beta |
 | ~285 erros TS pré-existentes (cresceu de ~175) | Build warnings, não bloqueia `typecheck:p1` | Gradual — isolar |
-| Componentes de cards duplicados (3 versões de CreatorCard, 2 de ArticleCard, 3 de BookCard) | Dificulta manutenção, bugs diferentes por versão | Cleanup antes de beta — consolidar na versão `features/` |
+| Componentes de cards duplicados (3 versões de CreatorCard, 2 de ArticleCard, 3 de BookCard) | Dificulta manutenção, bugs diferentes por versão | ⏳ P8.10a — consolidar em ContentCard + CreatorCard unificados |
 | Dados mock para teste visual de cards (4 criadores `@mock-card-test.finhub`) | Não podem ir para produção | Limpar com `npm run seed:cards:clean` antes do deploy |
 | SEO structured data ausente (JSON-LD) | Rich results limitados | Pós-beta imediato |
 | Excesso de bibliotecas UI (PrimeReact + Mantine + shadcn) | Inconsistência visual | Ao redesenhar componentes |
