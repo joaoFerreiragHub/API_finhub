@@ -266,3 +266,31 @@ FinHub-Vite/src/shared/layouts/AdminShell.tsx          ← shell admin
 FinHub-Vite/src/pages/+Page.tsx                        ← homepage (HUB)
 FinHub-Vite/src/pages/conta/+Page.tsx                  ← entrada do espaço privado (P9.4)
 ```
+
+---
+
+## 8. Índice de Sistemas — Documentação Técnica
+
+> Referência rápida para agentes e developers. Cada sistema tem o seu próprio documento de especificação.
+
+| Sistema | Doc | Estado | Descrição |
+|---------|-----|--------|-----------|
+| **Arquitectura de Produto** | `ARCHITECTURE.md` ← este ficheiro | ✅ | HUB vs PRIVADO, roles, navegação, layout tasks |
+| **Motor de Recomendação** | `RECO_ENGINE.md` | ✅ | "Para Ti" feed, taxonomia de tags, sinais, afinidades, R1–R5 |
+| **SEO** | `SEO.md` | ✅ | react-helmet, sitemap, JSON-LD, indexabilidade, SEO-1 a SEO-8 |
+| **Analytics** | `ANALYTICS.md` | ✅ | PostHog, Sentry, GA4/GTM, 4 audiências, funil, AN-1 a AN-13 |
+| **Tasks e Prompts** | `TASKS.md` + `PROMPTS_EXECUCAO.md` | ✅ | Release map, estado de fases, prompts Codex |
+| **Auditoria de Ficheiros** | `AUDIT_FICHEIROS.md` | ✅ | Ficheiros a apagar, arquivar, dívida técnica |
+| **Autenticação** | `AUTH.md` (a criar) | ❌ | JWT, roles, OAuth, guards |
+| **Notificações** | `NOTIFICATIONS.md` (a criar) | ❌ | Sistema de notificações em tempo real |
+| **Pagamentos** | `PAYMENTS.md` (a criar) | ❌ | Subscriptions, Stripe, planos |
+
+### Como usar este índice
+
+Quando um agente começa a trabalhar numa área:
+1. Lê `ARCHITECTURE.md` para entender o modelo mental da plataforma
+2. Lê o doc específico do sistema em que vai trabalhar
+3. Consulta `TASKS.md` para o estado actual e próximas tasks
+4. Consulta `PROMPTS_EXECUCAO.md` para o prompt a executar no Codex
+
+**Nunca implementar sem ler primeiro a documentação — evita duplicações e contradições.**
