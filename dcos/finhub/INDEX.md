@@ -27,9 +27,9 @@
 | P2 — Admin MVP | ✅ Fechado | |
 | P3 — Análise Rápida de stocks | 🔄 Em curso | Gate final em falta |
 | P4 — Editorial CMS + Moderation | 🔄 Em curso | Gate pre-release em falta |
-| P5 — Pré-beta funcional | 🔄 Em curso | P5.1-P5.10 ✅, B4 ✅, B5/P5.6 ✅, falta: P5.11 marcas |
+| P5 — Pré-beta funcional | ✅ Fechado | P5.1-P5.11 todos ✅ — /directory + BrandCard + BrandDetailPage SSR-safe |
 | P8 — Elevação UI/UX | 🔄 Em curso | P8.1-P8.4 ✅, P8.7 ✅ (PageShell), P8.8 ✅ (Creator sidebar), P8.9 ✅ (Admin layout + guard), falta: P8.6 FinHubScore |
 
 **Bugs críticos conhecidos:** 0 abertos — B1-B8 todos ✅ — ver TASKS.md → Secção 0
 
-**Última atualização:** 2026-03-25
+**Última atualização:** 2026-03-26
