@@ -30,27 +30,31 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | Admin moderation + editorial CMS | ✅ | P4 |
 | Perfil editável (name/bio/avatar) | ✅ | P9.1 |
 | Cleanup técnico (B15 + dead code + typo) | ✅ | CLEANUP-01 |
-| **Homepage personalizada ("Para Ti")** | ⏳ | P9.2 |
-| **Admin métricas reais (DAU/utilizadores/conteúdo)** | ⏳ | P9.3 |
-| **User account dashboard (/conta com sidebar)** | ⏳ | P9.4 |
-| **Audit e fix /perfil para todos os roles** | ⏳ | P9.5 |
-| **P9-GATE (qualidade pós-beta)** | ⏳ | P9-GATE |
+| **Homepage personalizada ("Para Ti")** | ✅ | P9.2 |
+| **Admin métricas reais (DAU/utilizadores/conteúdo)** | ✅ | P9.3 |
+| **User account dashboard (/conta com sidebar)** | ✅ | P9.4 |
+| **Audit e fix /perfil para todos os roles** | ✅ | P9.5 |
+| **P9-GATE (qualidade pós-beta)** | ⏳ | P9-GATE — fix TS2688 + validação |
 | **Limpeza pré-release (ficheiros/pastas obsoletos)** | ⏳ | CLEANUP-02 (Claude) |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
 Funcionalidades que fazem a diferença para o utilizador final mas **não bloqueiam o beta fechado**.
 Entram na release pública (quando a plataforma abrir ao público geral).
 
-| Feature | Notas |
-|---------|-------|
-| **Pagamentos / subscrições** | Stripe ou LemonSqueezy — botões de upgrade hoje apontam para mailto |
-| **Upload de imagens real (S3 ou Cloudinary)** | Avatar e covers hoje são URL manual |
-| **Notificações real-time (WebSocket)** | Hoje é polling; push melhora muito a experiência |
-| **Perfil editável de criador** (bio longa, redes, temas) | Creator tem dashboard mas não edita o perfil público |
-| **Feed personalizado `/feed` validado** | Página e hooks existem; validar com dados reais |
-| **Estatísticas de criador** (views, followers reais) | `/creators/estatisticas` pode ser stub |
-| **Pesquisa global funcional** | `GlobalSearchBar` existe mas pode não ter backend |
-| **SEO structured data (JSON-LD)** | Artigos, criadores, cursos → rich results |
+| Feature | Estado | Prompt | Notas |
+|---------|--------|--------|-------|
+| **Nav fix: Mercados/Ferramentas → user menu; Feed → HUB nav** | ⏳ | P10.1 | ARCHITECTURE.md L1+L2 |
+| **Perfil editável de criador** (bio, redes, temas) | ⏳ | P10.2 | Creator tem dashboard mas não edita o perfil público |
+| **SEO structured data (JSON-LD)** | ⏳ | P10.3 | Artigos, criadores, cursos → Google rich results |
+| **Analytics: eventos em falta** | ⏳ | P10.4 | content_completed, onboarding, search, etc. (AN-1) |
+| **Motor de recomendação: foundation** | ⏳ | P10.5 | R1+R2: tags obrigatórias + endpoint recomendação real |
+| **Pagamentos / subscrições** | ⏳ | — | Stripe ou LemonSqueezy — bloqueado (infra externa) |
+| **Upload de imagens real (S3 ou Cloudinary)** | ⏳ | — | Avatar e covers hoje são URL manual |
+| **Notificações real-time (WebSocket)** | ⏳ | — | Hoje é polling; push melhora muito a experiência |
+| **Feed personalizado `/feed` validado** | ⏳ | — | Página e hooks existem; validar com dados reais |
+| **Pesquisa global funcional** | ⏳ | — | `GlobalSearchBar` existe mas pode não ter backend |
+| **SecurityTab wired à API real** | ⏳ | — | Hoje usa mockFormik para alterar palavra-passe |
+| **Sitemap dinâmico (SEO-4)** | ⏳ | — | Endpoint backend + conteúdo publicado (SEO.md) |
 
 ### 🟢 Pós-v1.0 (iterativo, sem data fixa)
 Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utilizadores pede.

@@ -3107,7 +3107,11 @@ npm run build
 
 ---
 
-## PROMPT P9.2 — Homepage: Secção "Para Ti" (Personalização por Tópico) ⏳
+## PROMPT P9.2 — Homepage: Secção "Para Ti" (Personalização por Tópico) ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** Implementado directamente em `src/pages/+Page.tsx` em vez de componentes separados (`PersonalizedSection` + `usePersonalizedContent`) — decisão válida de Codex para manter coesão da homepage. Lê `localStorage.finhub_onboarding_prefs` (com chave legacy `finhub-onboarding-prefs` como fallback), suporta múltiplos tópicos com deduplicação, guard SSR (`mounted` state). Título dinâmico "Para ti" vs "Popular agora". Fallback para artigos por popularidade quando sem prefs. `npm run build` → PASS.
+>
+> **Dívida conhecida (pós-v1.0):** Preferências do onboarding guardadas em localStorage — não sincronizadas com `UserPreferences.tagAffinities` no backend. Motor de recomendação real (R1–R5) depende de sincronização backend (ver RECO_ENGINE.md).
 
 > **Executor: Codex**
 > **Pré-requisito:** CLEANUP-01 ✅
@@ -3203,7 +3207,11 @@ return mounted ? <PersonalizedSection /> : null
 
 ---
 
-## PROMPT P9.3 — Admin Dashboard: Métricas de Negócio Funcionais ⏳
+## PROMPT P9.3 — Admin Dashboard: Métricas de Negócio Funcionais ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** `AdminMetricsOverview` implementado com DAU/WAU/MAU, newUsers (24h/7d/30d), retenção (cohort 30d, activity window 7d), roleDistribution, funnel30d (registered → active30d → premiumOrHigher → creatorOrAdmin), engagement breakdown (follows/favorites/comments/reviews), moderation queue/actions/resolution. `useAdminMetricsOverview()` e `useAdminMetricsDrilldown()` integrados no `AdminDashboardPage.tsx`. `npm run build` → PASS.
+>
+> **Nota sobre MRR/Churn:** métricas de receita (MRR, ARR, churn) **não implementadas** — bloqueadas por pagamentos não estarem activos. A adicionar quando Stripe/LemonSqueezy for integrado (v1.0). Não é um bloqueador de beta.
 
 > **Executor: Codex**
 > **Pré-requisito:** P9.2 ✅
@@ -3277,7 +3285,11 @@ npm run build
 
 ---
 
-## PROMPT P9.4 — User Account Dashboard (`/conta`) ⏳
+## PROMPT P9.4 — User Account Dashboard (`/conta`) ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** `UserAccountShell.tsx` criado (284 linhas) com sidebar responsiva (4 secções: Principal, Conta, Atividade, Plano), mobile overlay, perfil no footer, logout. Rotas criadas: `/conta` (overview com stats de favoritos/seguidos + premium CTA), `/conta/definicoes` (AccountSettings com tabs Dados Pessoais / Preferências / Segurança), `/conta/plano` (plano Free vs Premium com CTA de upgrade). Redirects correctos: CREATOR → `/creators/dashboard`, ADMIN → `/admin`, !authenticated → `/login`. `/conta` disponível no menu de utilizador (shellConfig.tsx). `npm run build` → PASS.
+>
+> **Dívida conhecida:** `SecurityTab` usa `mockFormik` para alterar palavra-passe — não está wired à API real (PATCH /api/users/me para password). A resolver numa task futura de auth.
 
 > **Executor: Codex**
 > **Pré-requisito:** P9.3 ✅
@@ -3433,7 +3445,11 @@ npm run build
 
 ---
 
-## PROMPT P9.5 — Audit e Fix `/perfil` (todos os roles) ⏳
+## PROMPT P9.5 — Audit e Fix `/perfil` (todos os roles) ✅ VALIDADO 2026-03-22
+
+> **Nota pós-validação:** `UserProfileCard.tsx` tem `roleBadges` com fallback (`?? { label: String(profile.role), variant: 'outline' }`), `lastName` com null-safe join (`filter(Boolean).join(' ')`), e link "Ver página de criador" (`/creators/:username`) visível quando `isCreator`. `UserProfilePage.tsx` com tabs Atividade/Favoritos/Seguindo, estados de loading/error, guard de auth para perfil próprio, `FollowButton` para perfis de terceiros. Inline edit form (P9.1) integrado. `npm run build` → PASS.
+>
+> **Observação:** CREATOR role ao ver o seu próprio `/perfil` vê o perfil normal + link "Ver página de criador" no card — aceitável para beta. Para v1.0 considerar redirecionar creator para `/creators/dashboard` quando visita `/perfil` sem username.
 
 > **Executor: Codex**
 > **Pré-requisito:** P9.4 ✅
@@ -3579,7 +3595,20 @@ npm run build
 
 > **Executor: Codex**
 > **Pré-requisito:** P9.5 ✅
-> **Princípio:** não alterar código — apenas executar, validar e reportar.
+> **Princípio:** executar, validar e reportar. Corrigir APENAS o erro de TypeScript abaixo (config — não é código de produto).
+>
+> **⚠️ Erro conhecido a corrigir ANTES do gate:**
+> `npx tsc --noEmit` dá `TS2688: Cannot find type definition file for 'vite/client'`.
+> Não é um erro de código — é um problema de configuração de ambiente. Fix:
+> ```bash
+> # Verificar se vite está em devDependencies
+> cat package.json | grep '"vite"'
+> # Se estiver, limpar cache TypeScript e tentar novamente:
+> rm -rf node_modules/.tmp/tsc-app
+> npx tsc --noEmit 2>&1 | grep "error TS" | grep -v "TS6305"
+> ```
+> Se o único erro restante for `TS2688`, verificar `tsconfig.json` → campo `types` → remover ou corrigir `"vite/client"` para `["vike/types"]` (o projecto usa Vike, não Vite directo).
+> `npm run build` (Vite build) **já passa** — não é um bloqueador de produção.
 
 **Contexto:**
 Gate de qualidade após o primeiro ciclo pós-BETA-GATE. Valida que todas as novas features (P9.1–P9.5 + CLEANUP-01) estão integradas sem regressões.
@@ -3605,7 +3634,7 @@ Verificar (apenas confirmar que o código existe — não testar manualmente):
 |------|------------|
 | Perfil editável | `grep -n "useUpdateMyProfile\|PATCH.*users/me" src/features/social/` |
 | B15 confirmado | `ls src/pages/login/+Page.tsx src/pages/registar/+Page.tsx` |
-| router.tsx removido | `ls src/router.tsx` (deve falhar — ficheiro não deve existir) |
+| router.tsx (dívida documentada) | `ls src/router.tsx` (EXISTE — documentado como dívida pós-v1.0; App.tsx importa-o via RouterProvider, não remover) |
 | Typo corrigido | `ls src/pages/hub/conteudos/+Page.tsx` (deve existir) |
 | Secção personalizada | `grep -rn "PersonalizedSection\|usePersonalizedContent" src/` |
 | Admin metrics wired | `grep -n "useAdminMetrics" src/features/admin/pages/AdminDashboardPage.tsx` |
@@ -3648,7 +3677,8 @@ npx playwright test e2e/ --reporter=list
 - [ ] AdminDashboard com useAdminMetrics
 - [ ] UserAccountShell criado
 - [ ] /conta + /conta/definicoes + /conta/plano existem
-- [ ] UserProfileCard sem crash em roles desconhecidos
+- [ ] UserProfileCard sem crash em roles desconhecidos (roleBadges fallback)
+- [ ] `npx tsc --noEmit` sem erros TS2688 (após fix de config)
 
 ### E2E
 - smoke.spec.ts → N/N PASS
@@ -3659,9 +3689,10 @@ npx playwright test e2e/ --reporter=list
 - [ ] P9-GATE FAIL — detalhar bloqueadores
 
 ### O que o Claude deve validar
-- [ ] Confirmar que nenhum TS error novo foi introduzido pelo bloco P9
-- [ ] Confirmar que router.tsx foi mesmo removido (não só comentado)
+- [ ] Confirmar que nenhum TS error real (código) foi introduzido pelo bloco P9
+- [ ] Confirmar que router.tsx está documentado como dívida (não remover)
 - [ ] Confirmar que /hub/conteudos (sem typo) está a servir conteúdo
+- [ ] Confirmar que SecurityTab mockFormik está registado como dívida técnica
 ```
 
 ---
@@ -3809,6 +3840,470 @@ As pastas `src/features/social/chat/`, `tools/investments/`, etc. **não devem s
 
 ---
 
+# BLOCO 10 — v1.0 Release Pública
+
+> Prompts pós-beta. A plataforma está estável e funcional. Estas tasks adicionam polish, SEO, motor de recomendação e features visíveis ao utilizador final.
+
+---
+
+## PROMPT P10.1 — Navegação: Fix HUB vs Privado (L1+L2) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** CLEANUP-02 ✅
+> **Referência obrigatória:** ler `dcos/finhub/ARCHITECTURE.md` §4 antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** corrigir a navegação principal para reflectir a arquitectura HUB vs PRIVADO — Mercados e Ferramentas são zona privada e não devem aparecer no nav público.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/`
+- Ficheiro: `src/shared/layouts/shellConfig.tsx` — define `MAIN_NAV_LINKS` e o user menu
+- Problema actual: `MAIN_NAV_LINKS` inclui `Mercados` e `Ferramentas` (zona PRIVADA) ao lado de `Home`, `Educadores`, `Conteúdos` (zona HUB)
+- O `Social` (Feed) está enterrado no dropdown do avatar — invisível como pilar do HUB
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/shared/layouts/shellConfig.tsx   ← única alteração necessária
+FinHub-Vite/src/shared/layouts/UnifiedTopShell.tsx ← ver como o nav é renderizado
+```
+
+**Tarefa:**
+
+### 1. Remover Mercados e Ferramentas do nav principal público (L1)
+
+Em `shellConfig.tsx`, no array `MAIN_NAV_LINKS` (ou equivalente):
+- Manter: `Home`, `Educadores` (Criadores), `Conteúdos`, `Notícias`
+- Remover de MAIN_NAV_LINKS: `Mercados`, `Ferramentas`
+
+Mercados e Ferramentas devem aparecer **no user menu** (área privada), **apenas para utilizadores autenticados**. Verificar se já estão no user menu — se não estiverem, adicionar:
+```tsx
+// User menu (FREE/PREMIUM/CREATOR/ADMIN):
+{ label: 'Portfolio & Mercados', href: '/mercados', icon: BarChart2 }
+{ label: 'Ferramentas', href: '/ferramentas', icon: Wrench }
+```
+
+### 2. Adicionar Feed/Social ao nav HUB para autenticados (L2)
+
+Para utilizadores autenticados (FREE/PREMIUM), adicionar no `MAIN_NAV_LINKS` **ou** como link proeminente:
+```tsx
+{ label: 'Feed', href: '/feed', icon: Activity }  // só visível quando authenticated
+```
+
+Lógica: se o componente do nav já condiciona itens por autenticação → usar esse mecanismo. Se não → adicionar a condição.
+
+### 3. Validação
+
+```bash
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] `Mercados` e `Ferramentas` fora do MAIN_NAV_LINKS público
+- [ ] `Mercados` e `Ferramentas` no user menu para autenticados
+- [ ] `Feed` visível no nav para utilizadores autenticados
+- [ ] Nav público (visitor) mostra apenas: Home, Educadores, Conteúdos, Notícias
+- [ ] Nav autenticado mostra Feed + user menu com Mercados/Ferramentas
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P10.2 — Creator Profile Editável (bio, redes, temas) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P10.1 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** permitir que o criador edite o seu perfil público (bio, redes sociais, tópicos, avatar, cover image) a partir do creator dashboard.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/` — Creator dashboard em `src/features/creators/`
+- Backend: `API_finhub/` — modelo `User` tem `bio`, `avatar`, `socialLinks`, `topics`, `welcomeVideoUrl`
+- Endpoint existente: `PATCH /api/users/me` (aceita campos do utilizador)
+- Problema actual: Creator tem dashboard mas **não consegue editar o seu perfil público** (bio, redes, temas) a partir daí
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/features/creators/pages/CreatorDashboardPage.tsx  ← dashboard principal
+FinHub-Vite/src/features/creators/components/dashboard/           ← componentes do dashboard
+FinHub-Vite/src/features/auth/stores/useAuthStore.ts              ← user + updateUser
+FinHub-Vite/src/features/social/hooks/useSocial.ts                ← useUpdateMyProfile (PATCH /users/me)
+API_finhub/src/models/User.ts                                      ← campos disponíveis
+API_finhub/src/middlewares/requestContracts.ts                     ← validação do PATCH /me
+```
+
+**Tarefa:**
+
+### 1. Verificar o que o PATCH /api/users/me aceita
+
+Abrir `API_finhub/src/middlewares/requestContracts.ts` e verificar o schema de validação do `PATCH /users/me`. Confirmar que aceita:
+- `name`, `bio`, `avatar`
+- `socialLinks` (array de `{ platform, url }`)
+- `topics` (array de strings)
+- `welcomeVideoUrl`
+
+Se algum destes não for aceite → **adicionar à validação** no requestContracts.
+
+### 2. Criar `CreatorProfileEditForm.tsx`
+
+**Ficheiro:** `src/features/creators/components/dashboard/CreatorProfileEditForm.tsx`
+
+Formulário com:
+- Campo **Nome** (obrigatório)
+- Campo **Bio** (textarea, max 500 caracteres)
+- Campo **URL do Avatar** (input URL)
+- Campo **URL de Cover Image** (input URL, se existir no modelo)
+- Campo **Welcome Video URL** (input URL, opcional)
+- **Tópicos** (tags/chips seleccionáveis — máx 5 de lista predefinida: Poupança, Investimento, ETFs, Acções, Imobiliário, Cripto, FIRE, Finanças Pessoais, Outros)
+- **Redes Sociais** (lista editável de plataforma+URL):
+  - Twitter/X, LinkedIn, YouTube, Instagram, Website
+  - Adicionar/remover linhas
+- Botão "Guardar" → `PATCH /api/users/me`
+- Botão "Cancelar" → reset ao estado inicial
+- Loading spinner durante save
+- Toast de sucesso/erro
+
+### 3. Integrar no Creator Dashboard
+
+Adicionar secção "Perfil Público" no dashboard do criador, com:
+- Preview do perfil actual (avatar, nome, bio, redes)
+- Botão "Editar" → mostra `CreatorProfileEditForm`
+
+**SSR — regras obrigatórias:**
+- NÃO usar `useParams`, `useNavigate`, `Link` do react-router-dom
+- Dashboard é client-only (autenticado) — pode usar hooks normalmente
+
+**Critérios de conclusão:**
+- [ ] Creator consegue editar nome, bio, avatar via dashboard
+- [ ] Creator consegue adicionar/editar redes sociais
+- [ ] Creator consegue seleccionar tópicos de interesse
+- [ ] Alterações persistem após reload (vindas da API)
+- [ ] Toast de sucesso/erro funcional
+- [ ] `npm run typecheck` → PASS (ambos os repos)
+- [ ] `npm run build` → PASS (ambos os repos)
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P10.3 — SEO: Dados Estruturados JSON-LD ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P10.2 ✅
+> **Referência obrigatória:** ler `dcos/finhub/SEO.md` antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** implementar JSON-LD structured data para rich results no Google (SEO-1 a SEO-3). SEO-4 (sitemap dinâmico) é separado.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/` — SEO base já existe (`react-helmet-async`, `PublicRouteSeo.tsx`)
+- Ficheiros chave: `src/components/seo/PublicRouteSeo.tsx` (260 linhas), `src/renderer/PageShell.tsx`
+- O que falta: JSON-LD structured data (nenhum schema implementado actualmente)
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/components/seo/PublicRouteSeo.tsx           ← SEO por rota (padrão a seguir)
+FinHub-Vite/src/lib/seo.tsx                                 ← componente SEO base
+FinHub-Vite/src/renderer/PageShell.tsx                      ← shell global — adicionar Organization schema
+FinHub-Vite/src/features/hub/articles/pages/ArticleDetailPage.tsx
+FinHub-Vite/src/features/creators/pages/CreatorProfilePage.tsx
+```
+
+**Tarefa:**
+
+### 1. Criar `JsonLd.tsx` — componente base
+
+**Ficheiro:** `src/components/seo/JsonLd.tsx`
+
+```tsx
+// Componente simples que injeta um <script type="application/ld+json"> via Helmet
+// Props: schema (object) — serializado como JSON.stringify(schema, null, 0)
+// Exemplo de uso:
+// <JsonLd schema={{ "@context": "https://schema.org", "@type": "Article", ... }} />
+```
+
+### 2. Organization schema global (SEO-3)
+
+**Ficheiro:** `src/renderer/PageShell.tsx`
+
+Adicionar em todas as páginas (via `PageShell`):
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "FinHub",
+  "url": "https://finhub.pt",
+  "logo": "https://finhub.pt/logo.png",
+  "description": "Plataforma portuguesa de educação financeira"
+}
+```
+Usar `platformRuntimeConfig.seo.siteUrl` e `platformRuntimeConfig.seo.siteName` para os valores dinâmicos.
+
+### 3. Article schema (SEO-1)
+
+**Ficheiro:** `src/features/hub/articles/pages/ArticleDetailPage.tsx`
+
+Adicionar `<JsonLd>` com schema `Article`:
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "{article.title}",
+  "description": "{article.description}",
+  "author": { "@type": "Person", "name": "{creator.name}", "url": "https://finhub.pt/creators/{creator.username}" },
+  "publisher": { "@type": "Organization", "name": "FinHub", "logo": "..." },
+  "datePublished": "{article.createdAt}",
+  "dateModified": "{article.updatedAt}",
+  "image": "{article.coverImage}",
+  "keywords": "{article.tags.join(', ')}",
+  "wordCount": "{article.wordCount}"
+}
+```
+
+### 4. VideoObject schema (SEO-1)
+
+**Ficheiro:** `src/features/hub/videos/pages/VideoDetailPage.tsx`
+
+Schema `VideoObject` com `name`, `description`, `thumbnailUrl`, `uploadDate`, `duration` (ISO 8601).
+
+### 5. Course schema (SEO-1)
+
+**Ficheiro:** `src/features/hub/courses/pages/CourseDetailPage.tsx`
+
+Schema `Course` com `name`, `description`, `provider`, `instructor`, `courseMode`, `educationalLevel`.
+
+### 6. Person schema para criadores (SEO-2)
+
+**Ficheiro:** `src/features/creators/pages/CreatorProfilePage.tsx`
+
+Schema `Person` com `name`, `url`, `image`, `jobTitle`, `description`, `sameAs` (redes sociais do criador).
+
+### 7. Validação
+
+```bash
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] `<JsonLd>` componente criado e funcional
+- [ ] Organization schema em todas as páginas (via PageShell)
+- [ ] Article JSON-LD na página de artigo individual
+- [ ] VideoObject JSON-LD na página de vídeo
+- [ ] Course JSON-LD na página de curso
+- [ ] Person JSON-LD na página de criador
+- [ ] Verificar com Google Rich Results Test URL (opcional, se disponível)
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P10.4 — Analytics: Eventos em Falta (AN-1) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P10.3 ✅
+> **Referência obrigatória:** ler `dcos/finhub/ANALYTICS.md` §4 antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** adicionar os eventos de analytics em falta ao sistema tipado existente e instrumentar os pontos de uso mais importantes (AN-1).
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/`
+- Sistema de analytics já existe: `src/lib/analytics.ts` (eventos tipados) + `src/lib/analyticsProviders.ts` (PostHog)
+- 9 eventos já definidos: `page_view`, `click_button`, `login_success`, `sign_up_success`, `feature_used`, `error_occurred`, `user_role_assigned`, `content_viewed`, `upgrade_to_premium`
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/lib/analytics.ts              ← adicionar novos event types aqui
+FinHub-Vite/src/lib/analyticsProviders.ts     ← PostHog + consent gating (não alterar)
+FinHub-Vite/src/shared/providers/PageTracker.tsx ← tracking automático de page_view
+```
+
+**Tarefa:**
+
+### 1. Adicionar novos event types ao `analytics.ts`
+
+Adicionar ao union type de eventos e às funções de tracking:
+
+```typescript
+// Conteúdo
+'content_completed'      — completou artigo/vídeo/curso (contentId, contentType, completionPercent)
+'content_favorited'      — adicionou favorito (contentId, contentType)
+'content_shared'         — partilhou externamente (contentId, contentType, method: 'link'|'twitter'|'whatsapp')
+'not_interested'         — "não me interessa" (contentId, contentType, reason?: string)
+
+// Onboarding
+'onboarding_step'        — completou passo (step: 1|2|3, stepName: string)
+'onboarding_completed'   — onboarding completo (interestsCount: number)
+'onboarding_skipped'     — ignorou onboarding
+
+// Pesquisa
+'search_performed'       — pesquisa global (query: string, resultCount: number)
+'search_result_clicked'  — clicou em resultado (query: string, resultIndex: number, contentType: string)
+
+// Social
+'creator_followed'       — seguiu criador (creatorId: string, creatorUsername: string)
+'creator_unfollowed'     — deixou de seguir (creatorId: string)
+
+// Ferramentas
+'tool_used'              — ferramenta financeira usada (toolName: 'fire'|'finhubscore'|'mercados'|'raiox')
+'fire_simulation_run'    — correu simulação FIRE (targetAmount: number, timeline: number)
+
+// Funil
+'upgrade_cta_clicked'    — clicou em "Upgrade" sem converter (source: string)
+
+// Ads
+'ad_impression'          — viu anúncio (adId: string, slotId: string)
+'ad_clicked'             — clicou em anúncio (adId: string, slotId: string)
+
+// Algoritmo
+'algo_reset'             — reset do algoritmo de recomendação
+```
+
+### 2. Instrumentar os pontos mais críticos
+
+Adicionar chamadas a `trackEvent` nos seguintes locais (buscar os ficheiros relevantes):
+
+| Onde | Evento | Dados |
+|------|--------|-------|
+| ArticleDetailPage — ao completar leitura (scroll 80%+) | `content_completed` | contentId, 'article', 80 |
+| Botão Like/Favoritar em conteúdo | `content_favorited` | contentId, contentType |
+| Onboarding Step 1/2/3 completo | `onboarding_step` | step, stepName |
+| Onboarding completo (3/3) | `onboarding_completed` | interestsCount |
+| GlobalSearchBar — submit | `search_performed` | query, resultCount |
+| FollowButton — ao seguir | `creator_followed` | creatorId, username |
+| FollowButton — ao deixar de seguir | `creator_unfollowed` | creatorId |
+| Botão "Upgrade" na navbar/CTA | `upgrade_cta_clicked` | source |
+| FIRE simulator — run | `fire_simulation_run` | targetAmount, timeline |
+| Botão "Não me interessa" (quando existir) | `not_interested` | contentId, contentType |
+
+**Nota:** instrumentar APENAS se o componente/botão já existir. Não criar UI nova.
+
+### 3. Validação
+
+```bash
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] Todos os novos event types adicionados ao union type em `analytics.ts`
+- [ ] Funções de tracking com tipos correctos para cada evento
+- [ ] Mínimo 5 pontos de instrumentação adicionados
+- [ ] Nenhuma chamada `trackEvent` em SSR (apenas em handlers/useEffect)
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P10.5 — Motor de Recomendação: Foundation (R1+R2) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P10.4 ✅
+> **Referência obrigatória:** ler `dcos/finhub/RECO_ENGINE.md` COMPLETO antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** implementar R1 (tags como infra obrigatória) + R2 (endpoint de recomendação base). Sem ML — apenas filtragem por afinidades de tags.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/` — `UserPreferences.tagAffinities` já existe no modelo mas não é usado
+- Frontend: `FinHub-Vite/` — "Para Ti" já existe mas usa apenas localStorage (não `tagAffinities`)
+- Taxonomia de 30 tags definida em `RECO_ENGINE.md`: Poupança, Investimento, ETFs, Acções, Imobiliário, Cripto, FIRE, Finanças Pessoais, Pensões, Seguros, etc.
+
+**Ficheiros de referência:**
+```
+API_finhub/src/models/UserPreferences.ts     ← tagAffinities já existe
+API_finhub/src/models/Article.ts             ← adicionar tags field
+API_finhub/src/models/Video.ts               ← adicionar tags field
+API_finhub/src/models/Course.ts              ← adicionar tags field
+API_finhub/src/routes/                       ← novo endpoint /api/recommendations
+dcos/finhub/RECO_ENGINE.md                   ← taxonomia + algoritmo completo
+```
+
+**Tarefa:**
+
+### R1 — Tags obrigatórias em conteúdo
+
+#### Backend
+
+1. **Verificar/adicionar campo `tags` a todos os modelos de conteúdo**:
+   - `Article`, `Video`, `Course`, `Podcast`, `Book`
+   - Campo: `tags: string[]` (default `[]`)
+   - Validar que o endpoint de criação (`POST /api/articles`, etc.) aceita e guarda `tags`
+   - Validar que o endpoint público (`GET /api/articles/:slug`, etc.) devolve `tags`
+
+2. **Validação das tags no backend** (`requestContracts.ts`):
+   - `tags` é array de strings (max 10 tags, max 50 chars por tag)
+   - Tags são normalizadas (trim, lowercase)
+
+#### Frontend
+
+3. **Criação de conteúdo** — garantir que o form de criação de artigos/vídeos/cursos tem campo de tags:
+   - Campo multi-select (ou input com chips) para tags
+   - Sugerir tags da taxonomia (usar lista estática do RECO_ENGINE.md)
+   - Obrigatório: mínimo 1 tag para publicar (aviso, não bloqueio)
+
+### R2 — Endpoint de recomendação base
+
+#### Backend
+
+4. **Novo endpoint**: `GET /api/recommendations?userId=:id&limit=8`
+
+Lógica simplificada (sem ML):
+```
+1. Ler tagAffinities do UserPreferences do utilizador
+2. Ordenar tags por score (descendente)
+3. Buscar artigos/vídeos/cursos recentes (últimos 30 dias) com essas tags
+4. Excluir conteúdo já visto (usar User.viewedContent se existir)
+5. Misturar tipos (max 40% artigos, 30% vídeos, 30% cursos)
+6. Retornar lista paginada de conteúdo com campos: id, type, title, slug, coverImage, creator, tags
+```
+
+Se utilizador não tem `tagAffinities` → retornar conteúdo popular (sort by views, últimos 7 dias).
+
+5. **Novo endpoint de sinal**: `POST /api/user/signals`
+
+```json
+{ "signal": "content_viewed|content_completed|not_interested|content_favorited", "contentId": "...", "contentType": "article|video|course" }
+```
+
+Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RECO_ENGINE.md:
+- `content_viewed`: +0.5
+- `content_completed`: +1.0
+- `content_favorited`: +1.5
+- `not_interested`: -2.0
+
+#### Frontend
+
+6. **Actualizar hook `usePersonalizedContent`** (ou criar `useRecommendations`):
+   - Se utilizador autenticado → chamar `GET /api/recommendations`
+   - Se não autenticado → usar lógica localStorage actual
+   - Actualizar homepage "Para Ti" para usar o endpoint real quando autenticado
+
+7. **Enviar sinal ao backend** quando:
+   - Utilizador faz `content_viewed` (chamar `POST /api/user/signals`)
+   - Utilizador faz `content_favorited`
+   - Utilizador faz `not_interested` (quando botão existir — se não existir, apenas o evento de analytics)
+
+**SSR — regras obrigatórias:**
+- Endpoint `/api/recommendations` requer autenticação — não chamar em SSR
+- `POST /api/user/signals` apenas em handlers (useEffect, onClick) — nunca em render
+
+**Critérios de conclusão:**
+- [ ] Campo `tags` em todos os modelos de conteúdo (Article, Video, Course, Podcast, Book)
+- [ ] Criação de conteúdo aceita e guarda tags
+- [ ] `GET /api/recommendations` retorna conteúdo baseado em tagAffinities
+- [ ] `POST /api/user/signals` actualiza tagAffinities
+- [ ] Homepage "Para Ti" usa endpoint real para utilizadores autenticados
+- [ ] `npm run typecheck` → PASS (ambos os repos)
+- [ ] `npm run build` → PASS (ambos os repos)
+
+**Produzir relatório no formato do template.**
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -3869,12 +4364,18 @@ As pastas `src/features/social/chat/`, `tools/investments/`, etc. **não devem s
 43. PROMPT BETA-GATE  → Gate final pré-beta                           ✅
 44. PROMPT P9.1      → Perfil editável (name/bio/avatar)              ✅ (Claude direto)
 45. PROMPT CLEANUP-01 → Dívida técnica (B15 + dead code + typo)      ✅ (Claude direto)
-46. PROMPT P9.2      → Homepage "Para Ti" (personalização tópicos)    ⏳
-47. PROMPT P9.3      → Admin dashboard: métricas reais               ⏳
-48. PROMPT P9.4      → User account dashboard (/conta shell)          ⏳
-49. PROMPT P9.5      → Audit/fix /perfil para todos os roles          ⏳
-50. PROMPT P9-GATE   → Gate pós-beta                                  ⏳
-51. PROMPT CLEANUP-02 → Limpeza pré-release (ficheiros/pastas)        ⏳ (Claude)
+46. PROMPT P9.2      → Homepage "Para Ti" (personalização tópicos)    ✅ (Codex)
+47. PROMPT P9.3      → Admin dashboard: métricas reais                ✅ (Codex)
+48. PROMPT P9.4      → User account dashboard (/conta shell)          ✅ (Codex)
+49. PROMPT P9.5      → Audit/fix /perfil para todos os roles          ✅ (Codex)
+50. PROMPT P9-GATE   → Gate pós-beta                                  ⏳ (Codex — fix TS2688 + validação)
+51. PROMPT CLEANUP-02 → Limpeza pré-release (ficheiros/pastas)        ⏳ (Claude — após P9-GATE)
+    ── v1.0 — Release Pública ──
+52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ⏳ (Codex)
+53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ⏳ (Codex)
+54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ⏳ (Codex)
+55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ⏳ (Codex)
+56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ⏳ (Codex)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
