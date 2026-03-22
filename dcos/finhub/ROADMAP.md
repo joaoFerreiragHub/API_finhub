@@ -1,6 +1,6 @@
 # FinHub — Roadmap
 
-> Última atualização: 2026-03-22
+> Última atualização: 2026-03-22 (P3 fechado)
 
 ---
 
@@ -36,12 +36,13 @@ Contratos backend/frontend, limpeza de endpoints, homepage sem mocks, pipeline C
 - P2.5 Painel admin unificado (navegação por escopos, guardrails UX)
 - P2.6 Hardening operacional (E2E admin, alertas internos, runbook)
 
-### 🔄 P3 — Análise Rápida de Stocks
+### ✅ P3 — Análise Rápida de Stocks
 - P3.1 Ingestão multi-fonte e normalização temporal ✅
 - P3.2 Motor de cálculo para métricas ausentes (ROE, ROIC, PEG, EBITDA...) ✅
 - P3.3 Regras setoriais e categorias dinâmicas ✅
-- P3.4 UX com badges de estado por métrica ✅ (arranque)
-- P3.5 Validação cruzada e gate de qualidade final ⏳
+- P3.4 UX com badges de estado por métrica ✅
+- P3.5 Validação cruzada e gate de qualidade final ✅
+- P3-GATE: lint 0 erros · 48 suites 227 testes · build · smoke 3/3 ✅
 
 ### 🔄 P4 — Editorial CMS + Moderation Control Plane
 - P4.1 Admin Editorial CMS (backend + frontend) ✅ — hardening/E2E em falta

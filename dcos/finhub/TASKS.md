@@ -1,7 +1,7 @@
 # FinHub — Backlog de Tasks
 
 > Fonte de verdade para o que está por fazer.
-> Última atualização: 2026-03-25
+> Última atualização: 2026-03-22
 
 **Legenda:** 🔴 Bloqueador beta | 🟡 Importante | 🟢 Desejável | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
 
@@ -40,7 +40,7 @@
 | P3.4 — Badges de estado por métrica no UI (Direto / Calculado / N/A / Sem dado / Erro) | ✅ | Arranque técnico concluído |
 | P3.5 — Validação cruzada e gate de qualidade final | ✅ | 11 setores, cobertura mínima 93.75%, payout_ratio adicionado ao contrato |
 | P3.5 — Documentar fonte/fallback/fórmula por métrica | ✅ | `API_finhub/dcos/P3_GATE_FINAL.md` |
-| P3 — Gate final: `lint + test + build + e2e + smoke quick analysis` | ⏳ | Próximo passo |
+| P3 — Gate final: `lint + test + build + e2e + smoke quick analysis` | ✅ | lint 0 erros (3 warns react-refresh não bloqueantes); test 48/227 PASS (--runInBand); build PASS; smoke 3/3 PASS |
 
 ---
 
@@ -237,8 +237,8 @@ PRÓXIMO IMEDIATO — bugs backlog
   ⏳ B-FIX-01 — B9+B10+B11+B12+B13 (ManageVideos Dialog/unpublish/encode + BrandDetail route + /marcas alias) ← PRÓXIMO
 
 A SEGUIR (gates + UI)
-  ⏳ P3-GATE — Gate final análise rápida (lint+test+build+e2e)
-  ⏳ P4-GATE — Gate pre-release editorial + moderation
+  ✅ P3-GATE — Gate final análise rápida (lint+test+build+e2e)
+  ⏳ P4-GATE — Gate pre-release editorial + moderation ← PRÓXIMO
   ⏳ P8.6  — FinHubScore visual proeminente
 
 MAIS TARDE
