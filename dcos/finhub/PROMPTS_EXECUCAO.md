@@ -1500,7 +1500,7 @@ FinHub-Vite/src/features/creators/components/sidebar/      ← marcar deprecated
 
 ---
 
-## PROMPT P8.9 — Admin Layout em Vike + Visibilidade por Role ⏳
+## PROMPT P8.9 — Admin Layout em Vike + Visibilidade por Role ✅
 
 > **Referência obrigatória:** ler `dcos/finhub/LAYOUT_NAVIGATION_AUDIT.md` (IC-2)
 > **Depende de:** P8.7 concluído (PageShell já não aplica UserLayout nas rotas /admin/*)
@@ -1625,7 +1625,9 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
     ── Layout consolidation (nova prioridade):
 22. PROMPT P8.7  → PageShell inteligente + fim header duplo (IC-1,4,5,6)  ✅
 23. PROMPT P8.8  → Creator sidebar unificada (IC-3)                        ✅
-24. PROMPT P8.9  → Admin layout em Vike (IC-2) + visibilidade cross-role   ⏳ ← PRÓXIMO
+24. PROMPT P8.9  → Admin layout em Vike (IC-2) + visibilidade cross-role   ✅
+    ── Layout consolidation concluída (P8.7+P8.8+P8.9) — IC-1 a IC-6 todos resolvidos ──
+25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳ ← PRÓXIMO
     ──
 25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ⏳
 26. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ⏳
