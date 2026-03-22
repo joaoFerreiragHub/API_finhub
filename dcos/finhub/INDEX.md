@@ -30,6 +30,6 @@
 | P5 — Pré-beta funcional | ✅ Fechado | P5.1-P5.11 todos ✅ — /directory + BrandCard + BrandDetailPage SSR-safe |
 | P8 — Elevação UI/UX | 🔄 Em curso | P8.1-P8.4 ✅, P8.7 ✅ (PageShell), P8.8 ✅ (Creator sidebar), P8.9 ✅ (Admin layout + guard), falta: P8.6 FinHubScore |
 
-**Bugs críticos conhecidos:** 0 abertos — B1-B8 todos ✅ — ver TASKS.md → Secção 0
+**Bugs conhecidos abertos:** B9 🟡 B10 🟡 B11 🟢 B12 🟡 B13 🟢 — agrupados em prompt B-FIX-01 ← PRÓXIMO
 
 **Última atualização:** 2026-03-26

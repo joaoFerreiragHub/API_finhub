@@ -1298,6 +1298,152 @@ FinHub-Vite/src/features/creators/components/modals/CreatorModal.tsx ← render 
 
 ---
 
+## PROMPT B-FIX-01 — Backlog de Bugs B9–B13 ⏳
+
+**Corrige:** B9, B10, B11, B12, B13 — todos no frontend `FinHub-Vite/`
+
+**Stack:** React 19 + Vike SSR + Zustand + TanStack Query + shadcn/ui
+**Regra SSR:** nunca `useParams`/`useNavigate` do react-router-dom; navegação via `<a href>`; `window.*` só em `useEffect` ou guard `typeof window !== 'undefined'`.
+
+---
+
+### B9 + B10 + B11 — ManageVideos (3 fixes no mesmo ficheiro)
+
+**Ficheiro:** `src/features/creators/dashboard/videos/pages/ManageVideos.tsx`
+
+**B9 — Substituir `confirm()/alert()` por Dialog/Card (padrão de ManageArticles)**
+
+Actualmente:
+```ts
+const handleDelete = async (id: string) => {
+  if (!confirm('Tens a certeza que queres eliminar este video?')) return
+  try { await deleteVideo.mutateAsync(id) }
+  catch { alert('Erro ao eliminar video') }
+}
+const handlePublish = async (id: string) => {
+  try { await publishVideo.mutateAsync(id) }
+  catch { alert('Erro ao publicar video') }
+}
+```
+
+Deve ficar igual ao padrão de `ManageArticles.tsx`:
+- Estado `videoToDelete: Video | null` em vez de `confirm()`
+- Estado `actionError: string | null` em vez de `alert()`
+- Dialog de confirmação de eliminação com título, descrição do título do vídeo, botões Cancelar + Eliminar (variant destructive)
+- Card de erro acima da lista quando `actionError` não é null
+- Importar `Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle` do `@/components/ui`
+
+**B10 — Adicionar botão Despublicar para vídeos publicados**
+
+Actualmente só existe botão "Publicar" para vídeos em draft. Vídeos publicados não têm opção de voltar a rascunho.
+
+1. **`src/features/hub/videos/services/videoService.ts`** — adicionar método:
+```ts
+unpublishVideo: async (id: string): Promise<Video> => {
+  try {
+    const response = await apiClient.post<Video>(`/videos/${id}/unpublish`)
+    return response.data
+  } catch (error) {
+    if (axios.isAxiosError(error) && [404, 405].includes(error.response?.status ?? 0)) {
+      const fallbackResponse = await apiClient.patch<Video>(`/videos/${id}`, { status: 'draft' })
+      return fallbackResponse.data
+    }
+    throw error
+  }
+},
+```
+
+2. **`src/features/hub/videos/hooks/useVideos.ts`** — adicionar hook:
+```ts
+export function useUnpublishVideo() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => videoService.unpublishVideo(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['video', id] })
+      queryClient.invalidateQueries({ queryKey: ['video-by-id', id] })
+      queryClient.invalidateQueries({ queryKey: ['videos'] })
+      queryClient.invalidateQueries({ queryKey: ['my-videos'] })
+    },
+  })
+}
+```
+
+3. **`ManageVideos.tsx`** — importar `useUnpublishVideo`, adicionar à lista de mutations, e mostrar botão "Despublicar" para vídeos publicados (com ícone `Undo2`) e "Publicar" para rascunhos (ícone `Rocket`) — igual ao padrão de `ManageArticles.tsx`.
+
+**B11 — `encodeURIComponent` no link de edição**
+
+Na linha do botão "Editar":
+```tsx
+// ANTES:
+href={`/creators/dashboard/videos/${video.id}/edit`}
+// DEPOIS:
+href={`/creators/dashboard/videos/${encodeURIComponent(video.id)}/edit`}
+```
+
+---
+
+### B12 — Rota fallback inválida em BrandDetailPage
+
+**Ficheiro:** `src/features/brands/pages/BrandDetailPage.tsx`
+
+Na função `getRelatedLink`, a linha de fallback aponta para `/explorar/tudo` que não existe. Corrigir:
+```ts
+// ANTES (linha ~60):
+return fallbackUrl || '/explorar/tudo'
+// DEPOIS:
+return fallbackUrl || '/hub/conteudos'
+```
+(aparece duas vezes na função — corrigir ambas)
+
+---
+
+### B13 — Alias `/marcas` e `/marcas/:slug` → `/directory`
+
+Criar dois ficheiros Vike novos que delegam para os componentes já existentes:
+
+**`src/pages/marcas/+Page.tsx`:**
+```tsx
+import PublicDirectoryPage from '@/features/brands/pages/PublicDirectoryPage'
+export default { Page: PublicDirectoryPage }
+```
+
+**`src/pages/marcas/@slug/+Page.tsx`:**
+```tsx
+import BrandDetailPage from '@/features/brands/pages/BrandDetailPage'
+import { usePageContext } from '@/renderer/PageShell'
+
+export const passToClient = ['routeParams']
+
+function MarcasDetailRoutePage() {
+  const pageContext = usePageContext()
+  const rawSlug = pageContext.routeParams?.slug
+  const slug = typeof rawSlug === 'string' ? decodeURIComponent(rawSlug) : undefined
+  return <BrandDetailPage slug={slug} />
+}
+
+export default { Page: MarcasDetailRoutePage }
+```
+
+Nota: `BrandDetailPage.resolveSlugFromPathname()` já aceita o prefixo `/marcas/` — confirmar que o regex `/^\/(?:directory|recursos)\/([^/?#]+)/` inclui `marcas`. Se não incluir, actualizar para `/^\/(?:directory|marcas|recursos)\/([^/?#]+)/`.
+
+---
+
+**Critérios de conclusão:**
+- [ ] `ManageVideos` sem `confirm()/alert()` — usa Dialog de confirmação + Card de erro
+- [ ] Botão "Despublicar" visível para vídeos publicados no dashboard
+- [ ] `encodeURIComponent` no link de edição de vídeo
+- [ ] `/hub/conteudos` como fallback em `getRelatedLink` (sem `/explorar/tudo`)
+- [ ] `/marcas` lista marcas (mesmo conteúdo que `/directory`)
+- [ ] `/marcas/:slug` mostra perfil (mesmo que `/directory/:slug`)
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run test` → PASS (227+ testes)
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template acima.**
+
+---
+
 ## PROMPT P8.7 — Consolidação de Layouts: PageShell Inteligente + Fim do Header Duplo ✅
 
 > **Referência obrigatória:** ler `dcos/finhub/LAYOUT_NAVIGATION_AUDIT.md` antes de iniciar.
@@ -1629,11 +1775,12 @@ FinHub-Vite/src/router.tsx                               ← dead code legacy, c
     ── Layout consolidation concluída (P8.7+P8.8+P8.9) — IC-1 a IC-6 todos resolvidos ──
 25. PROMPT P5.9  → Creator dashboard: criar/editar/publicar artigo    ✅
 26. PROMPT P5.10 → Creator dashboard: criar/editar/publicar vídeo     ✅
-27. PROMPT P5.11 → Páginas de marcas/entidades públicas               ✅
-28. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳ ← PRÓXIMO
-29. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
-30. PROMPT P8.5  → Header redesenhado (absorvido por P8.7)            ⏳
-31. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
+27. PROMPT P5.11  → Páginas de marcas/entidades públicas              ✅
+28. PROMPT B-FIX-01 → Backlog bugs B9–B13 (ManageVideos + routes)    ⏳ ← PRÓXIMO
+29. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
+30. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
+31. PROMPT P8.5  → Header redesenhado (absorvido por P8.7)            ⏳
+32. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ⏳
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

@@ -207,13 +207,16 @@ CONCLUÍDO (layout consolidation completa ✅)
   ✅ P8.9  — Admin layout Vike + guard real + CommandPalette (IC-2)
   ── IC-1 a IC-6 todos resolvidos ──
 
-PRÓXIMO IMEDIATO (features P5)
+CONCLUÍDO (P5 fechado ✅)
   ✅ P5.9  — Creator: criar/editar/publicar artigo
   ✅ P5.10 — Creator: criar/editar/publicar vídeo
-  ⏳ P5.11 — Páginas de marcas/entidades públicas ← PRÓXIMO
+  ✅ P5.11 — Páginas de marcas/entidades públicas (/directory + /marcas)
 
-A SEGUIR
-  ⏳ P3-GATE — Gate final análise rápida
+PRÓXIMO IMEDIATO — bugs backlog
+  ⏳ B-FIX-01 — B9+B10+B11+B12+B13 (ManageVideos Dialog/unpublish/encode + BrandDetail route + /marcas alias) ← PRÓXIMO
+
+A SEGUIR (gates + UI)
+  ⏳ P3-GATE — Gate final análise rápida (lint+test+build+e2e)
   ⏳ P4-GATE — Gate pre-release editorial + moderation
   ⏳ P8.6  — FinHubScore visual proeminente
 
