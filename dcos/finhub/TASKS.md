@@ -210,7 +210,7 @@
 
 ## Sequência de Execução Actualizada
 
-> Última revisão: 2026-03-23
+> Última revisão: 2026-03-22
 
 ```
 CONCLUÍDO
@@ -238,8 +238,8 @@ PRÓXIMO IMEDIATO — bugs backlog
 
 A SEGUIR (gates + UI)
   ✅ P3-GATE — Gate final análise rápida (lint+test+build+e2e)
-  ⏳ P4-GATE — Gate pre-release editorial + moderation ← PRÓXIMO
-  ⏳ P8.6  — FinHubScore visual proeminente
+  ✅ P4-GATE — Gate pre-release editorial + moderation (16/16 E2E + 3/3 smoke PASS)
+  ⏳ P8.6  — FinHubScore visual proeminente ← PRÓXIMO
 
 MAIS TARDE
   ⏳ Pagamentos/subscrições

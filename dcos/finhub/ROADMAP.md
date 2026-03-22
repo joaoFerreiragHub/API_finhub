@@ -44,12 +44,13 @@ Contratos backend/frontend, limpeza de endpoints, homepage sem mocks, pipeline C
 - P3.5 Validação cruzada e gate de qualidade final ✅
 - P3-GATE: lint 0 erros · 48 suites 227 testes · build · smoke 3/3 ✅
 
-### 🔄 P4 — Editorial CMS + Moderation Control Plane
-- P4.1 Admin Editorial CMS (backend + frontend) ✅ — hardening/E2E em falta
-- P4.2 Moderation Control Plane (fast hide, bulk, policy engine, trust score) ✅ — runbook + E2E em falta
+### ✅ P4 — Editorial CMS + Moderation Control Plane
+- P4.1 Admin Editorial CMS (backend + frontend) ✅
+- P4.2 Moderation Control Plane (fast hide, bulk, policy engine, trust score) ✅
 - P4.3 Back-office de negócio (monetização, subscrições, apelações, comunicações) ✅
 - P4.4 Analytics de creators + ferramentas financeiras + anúncios ✅
 - P4.5 Delegações de scopes + tema admin ✅
+- P4-GATE: 16/16 E2E admin · 3/3 smoke · lint 0 erros ✅
 
 ### 🔄 P5 — Pré-Beta Funcional
 **Objetivo:** ciclo completo funcional antes do lançamento beta.
