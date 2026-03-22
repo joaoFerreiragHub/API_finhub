@@ -11,7 +11,7 @@
 
 > Princípio: Beta fecha o ciclo funcional mínimo. v1.0 adiciona monetização e polish. Pós-v1.0 é iterativo contínuo.
 
-### 🔴 Beta Fechado (objectivo actual — prompts 44–50)
+### 🔴 Beta Fechado (objectivo actual — prompts 44–51)
 Plataforma **funcional e estável** para um grupo limitado de utilizadores reais.
 Tudo o que está nesta lista tem de estar completo antes do convite beta.
 
@@ -35,6 +35,7 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **User account dashboard (/conta com sidebar)** | ⏳ | P9.4 |
 | **Audit e fix /perfil para todos os roles** | ⏳ | P9.5 |
 | **P9-GATE (qualidade pós-beta)** | ⏳ | P9-GATE |
+| **Limpeza pré-release (ficheiros/pastas obsoletos)** | ⏳ | CLEANUP-02 (Claude) |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
 Funcionalidades que fazem a diferença para o utilizador final mas **não bloqueiam o beta fechado**.

@@ -3666,6 +3666,149 @@ npx playwright test e2e/ --reporter=list
 
 ---
 
+## PROMPT CLEANUP-02 — Limpeza Pré-Release (ficheiros e pastas) ⏳
+
+> **Executor: Claude**
+> **Pré-requisito:** P9-GATE ✅
+> **Princípio:** só eliminar/mover — zero alterações a código de produção. Se houver dúvida sobre algum ficheiro, anotar e não apagar.
+> **Documento de referência:** `API_finhub/dcos/finhub/AUDIT_FICHEIROS.md` — ler antes de começar.
+
+**Escopo:** executar as acções de prioridade Alta e Média identificadas na auditoria de ficheiros de 2026-03-22, em ambos os projectos.
+
+---
+
+### API_finhub
+
+#### 1. Eliminar logs temporários (prioridade Alta)
+
+```bash
+cd API_finhub
+rm debug.log
+rm .tmp-p3-server.err.log
+rm .tmp-p3-server.out.log
+```
+
+#### 2. Arquivar scripts one-time (prioridade Média)
+
+```bash
+mkdir -p dcos/archive/scripts
+mv generate-content-types.js dcos/archive/scripts/
+mv seed-http.js docs/archive/scripts/
+```
+
+> Actualizar `.gitignore` se necessário para não rastrear dcos/archive/.
+
+#### 3. Mover documentação para `dcos/finhub/` (prioridade Média)
+
+```bash
+mv RSS_SETUP.md dcos/finhub/RSS_SETUP.md
+mv SEED_GUIDE.md dcos/finhub/SEED_GUIDE.md
+```
+
+Depois de mover, verificar se há referências internas nos ficheiros que precisem de actualização (ex: links relativos).
+
+#### 4. Rever scripts fase-específicos (prioridade Baixa)
+
+Verificar se os seguintes scripts ainda fazem sentido:
+- `scripts/pre-p1-smoke.ps1`
+- `scripts/moderation-pre-release-smoke.ps1`
+- `scripts/release-e2e-required-flows.ps1`
+- `scripts/o3-final-audit.ps1`
+
+Para cada um: tentar executar `npm run <script>` correspondente. Se falhar ou não existir no `package.json` → mover para `dcos/archive/scripts/`.
+
+---
+
+### FinHub-Vite
+
+#### 5. Eliminar configs duplicados/legacy (prioridade Alta)
+
+```bash
+cd FinHub-Vite
+rm vite.config.js
+rm vite-plugin-ssr.config.js
+```
+
+Após remover, correr `npm run build` para confirmar que não quebra nada.
+
+#### 6. Eliminar logs de dev (prioridade Alta)
+
+```bash
+rm tmp_audit_out.log tmp_audit_err.log
+rm tmp_check_out.log tmp_check_err.log
+rm tmp_ssr_out.log tmp_ssr_err.log
+rm tmp_vike_dev_out.log tmp_vike_dev_err.log
+rm vite-articles-out.log vite-articles-err.log
+rm vite-dashboard-out.log vite-dashboard-err.log
+```
+
+Verificar se algum destes está referenciado em `.gitignore` — se não estiver, adicionar padrão `*.log` ou `tmp_*.log` para evitar futuros commits acidentais.
+
+#### 7. Eliminar pasta vazia (prioridade Alta)
+
+```bash
+rm -rf src/config/
+```
+
+#### 8. Eliminar `.d.ts` órfãos (prioridade Alta)
+
+```bash
+rm src/features/creators/components/contentManagement/announcements/index.page.d.ts
+rm src/features/hub/books/components/CommentSection/Comment.d.ts
+rm src/features/hub/books/components/CommentSection/index.d.ts
+rm src/features/hub/books/components/CommentSection/Reply.d.ts
+```
+
+Correr `npm run typecheck` após eliminar para confirmar que não há referências.
+
+#### 9. Arquivar script de scaffolding (prioridade Média)
+
+```bash
+mkdir -p docs/archive/scripts
+mv create-placeholder-pages.sh dcos/archive/scripts/
+```
+
+#### 10. Adicionar padrões ao `.gitignore` (prioridade Média)
+
+Adicionar ao `.gitignore` do FinHub-Vite:
+```
+# Dev logs (gerados durante desenvolvimento)
+tmp_*.log
+vite-*.log
+*.tmp
+```
+
+---
+
+### Validação final
+
+```bash
+# API_finhub
+cd API_finhub
+npm run build
+
+# FinHub-Vite
+cd FinHub-Vite
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] Logs temporários eliminados (ambos os projectos)
+- [ ] Configs duplicados eliminados (vite.config.js, vite-plugin-ssr.config.js)
+- [ ] Scripts one-time arquivados
+- [ ] `.d.ts` órfãos eliminados
+- [ ] RSS_SETUP.md e SEED_GUIDE.md movidos para dcos/finhub/
+- [ ] `.gitignore` actualizado com padrões de logs
+- [ ] `npm run typecheck` → PASS (FinHub-Vite)
+- [ ] `npm run build` → PASS (ambos)
+- [ ] Commits separados por projecto com mensagem descritiva
+
+**Nota sobre pastas vazias de features futuras:**
+As pastas `src/features/social/chat/`, `tools/investments/`, etc. **não devem ser eliminadas** — são placeholders documentados para features pós-v1.0. Deixar como estão.
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -3731,6 +3874,7 @@ npx playwright test e2e/ --reporter=list
 48. PROMPT P9.4      → User account dashboard (/conta shell)          ⏳
 49. PROMPT P9.5      → Audit/fix /perfil para todos os roles          ⏳
 50. PROMPT P9-GATE   → Gate pós-beta                                  ⏳
+51. PROMPT CLEANUP-02 → Limpeza pré-release (ficheiros/pastas)        ⏳ (Claude)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
