@@ -2888,8 +2888,8 @@ Verificar (apenas confirmar que existem — não testar manualmente):
 33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ✅
 34. PROMPT P8.5  → Header: SSR fix + visual redesign                  ⏳
 35. PROMPT P8.6  → FinHubScore visual (radar/snowflake)               ✅
-36. PROMPT P5-FIRE  → FIRE timeline chart + progress visual           ⏳ ← PRÓXIMO
-37. PROMPT P8.5     → Header SSR-safe + redesign visual               ⏳
+36. PROMPT P5-FIRE  → FIRE timeline chart + progress visual           ✅
+37. PROMPT P8.5     → Header SSR-safe + redesign visual               ⏳ ← PRÓXIMO
 38. PROMPT P5-OB    → Onboarding first-time user                      ⏳
 39. PROMPT P5-PRICE → Página de preços/premium                        ⏳
 40. PROMPT BETA-GATE → Gate final pré-beta                            ⏳
