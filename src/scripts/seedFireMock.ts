@@ -38,6 +38,8 @@ const PORTFOLIO_A = {
   isDefault: true,
 }
 
+// Nota: allocationPercent, dividendYield, dividendCAGR, totalReturnCAGR são decimais (0-1)
+// ex: 50% → 0.50 | 9.2% return → 0.092 | 3.2% yield → 0.032
 const HOLDINGS_A = [
   {
     ticker: 'VWCE',
@@ -45,13 +47,12 @@ const HOLDINGS_A = [
     name: 'Vanguard FTSE All-World UCITS ETF (ACC)',
     shares: 420,
     averageCost: 65.8,
-    totalInvested: 420 * 65.8,
     monthlyAllocation: 450,
-    allocationPercent: 50,
+    allocationPercent: 0.50,
     currentPrice: 97.8,
-    dividendYield: 0.5,
-    dividendCAGR: 3.2,
-    totalReturnCAGR: 9.2,
+    dividendYield: 0.005,   // 0.5% (acc, praticamente nulo)
+    dividendCAGR: 0.032,    // 3.2%
+    totalReturnCAGR: 0.092, // 9.2%
     sector: 'Global Equities',
     notes: 'Posição core. Acumulação — sem distribuição de dividendos. Cobre 3.700+ empresas.',
   },
@@ -61,13 +62,12 @@ const HOLDINGS_A = [
     name: 'iShares Core MSCI World UCITS ETF (ACC)',
     shares: 180,
     averageCost: 58.4,
-    totalInvested: 180 * 58.4,
     monthlyAllocation: 200,
-    allocationPercent: 22,
+    allocationPercent: 0.22,
     currentPrice: 82.15,
-    dividendYield: 1.8,
-    dividendCAGR: 4.1,
-    totalReturnCAGR: 8.5,
+    dividendYield: 0.018,   // 1.8%
+    dividendCAGR: 0.041,    // 4.1%
+    totalReturnCAGR: 0.085, // 8.5%
     sector: 'Developed Markets',
     notes: 'Mercados desenvolvidos. Complementar ao VWCE para tilt em large-caps.',
   },
@@ -77,13 +77,12 @@ const HOLDINGS_A = [
     name: 'iShares Core MSCI Emerging Markets IMI UCITS ETF',
     shares: 600,
     averageCost: 18.9,
-    totalInvested: 600 * 18.9,
     monthlyAllocation: 120,
-    allocationPercent: 13,
+    allocationPercent: 0.13,
     currentPrice: 25.4,
-    dividendYield: 2.1,
-    dividendCAGR: 3.8,
-    totalReturnCAGR: 6.8,
+    dividendYield: 0.021,   // 2.1%
+    dividendCAGR: 0.038,    // 3.8%
+    totalReturnCAGR: 0.068, // 6.8%
     sector: 'Emerging Markets',
     notes: 'Exposição a mercados emergentes: China, India, Brasil, Taiwan.',
   },
@@ -93,13 +92,12 @@ const HOLDINGS_A = [
     name: 'iShares Core Global Aggregate Bond UCITS ETF (EUR Hedged)',
     shares: 1200,
     averageCost: 5.45,
-    totalInvested: 1200 * 5.45,
     monthlyAllocation: 80,
-    allocationPercent: 7,
+    allocationPercent: 0.07,
     currentPrice: 5.03,
-    dividendYield: 3.2,
-    dividendCAGR: 0.8,
-    totalReturnCAGR: 2.1,
+    dividendYield: 0.032,   // 3.2%
+    dividendCAGR: 0.008,    // 0.8%
+    totalReturnCAGR: 0.021, // 2.1%
     sector: 'Global Bonds',
     notes: 'Almofada de volatilidade. Cobertura cambial em EUR. Distribuição mensal.',
   },
@@ -109,13 +107,12 @@ const HOLDINGS_A = [
     name: 'Xtrackers EUR Overnight Rate Swap UCITS ETF',
     shares: 75,
     averageCost: 175.3,
-    totalInvested: 75 * 175.3,
     monthlyAllocation: 50,
-    allocationPercent: 8,
+    allocationPercent: 0.08,
     currentPrice: 191.2,
-    dividendYield: 3.5,
+    dividendYield: 0.035,   // 3.5%
     dividendCAGR: 0,
-    totalReturnCAGR: 3.5,
+    totalReturnCAGR: 0.035, // 3.5%
     sector: 'Money Market',
     notes: 'Equivalente a cash com rendimento. Taxa overnight BCE. Acumulação.',
   },
@@ -144,13 +141,12 @@ const HOLDINGS_B = [
     name: 'Microsoft Corporation',
     shares: 35,
     averageCost: 285.4,
-    totalInvested: 35 * 285.4,
     monthlyAllocation: 200,
-    allocationPercent: 17,
+    allocationPercent: 0.17,
     currentPrice: 415.26,
-    dividendYield: 0.9,
-    dividendCAGR: 10.2,
-    totalReturnCAGR: 18.5,
+    dividendYield: 0.009,   // 0.9%
+    dividendCAGR: 0.102,    // 10.2%
+    totalReturnCAGR: 0.185, // 18.5%
     sector: 'Technology',
     notes: 'Crescimento + dividendo crescente. Azure + AI são catalisadores de longo prazo.',
   },
@@ -160,13 +156,12 @@ const HOLDINGS_B = [
     name: 'Apple Inc.',
     shares: 48,
     averageCost: 152.8,
-    totalInvested: 48 * 152.8,
     monthlyAllocation: 150,
-    allocationPercent: 13,
+    allocationPercent: 0.13,
     currentPrice: 219.86,
-    dividendYield: 0.5,
-    dividendCAGR: 7.8,
-    totalReturnCAGR: 15.2,
+    dividendYield: 0.005,   // 0.5%
+    dividendCAGR: 0.078,    // 7.8%
+    totalReturnCAGR: 0.152, // 15.2%
     sector: 'Technology',
     notes: 'Baixo yield mas recompra agressiva de ações. Ecosistema defensivo.',
   },
@@ -176,13 +171,12 @@ const HOLDINGS_B = [
     name: 'Realty Income Corporation',
     shares: 120,
     averageCost: 51.2,
-    totalInvested: 120 * 51.2,
     monthlyAllocation: 180,
-    allocationPercent: 15,
+    allocationPercent: 0.15,
     currentPrice: 57.84,
-    dividendYield: 5.7,
-    dividendCAGR: 4.2,
-    totalReturnCAGR: 8.4,
+    dividendYield: 0.057,   // 5.7%
+    dividendCAGR: 0.042,    // 4.2%
+    totalReturnCAGR: 0.084, // 8.4%
     sector: 'Real Estate',
     notes: '"The Monthly Dividend Company". +25 anos de crescimento consecutivo do dividendo. NNN leases.',
   },
@@ -192,13 +186,12 @@ const HOLDINGS_B = [
     name: 'Vanguard High Dividend Yield ETF',
     shares: 85,
     averageCost: 108.4,
-    totalInvested: 85 * 108.4,
     monthlyAllocation: 250,
-    allocationPercent: 22,
+    allocationPercent: 0.22,
     currentPrice: 132.5,
-    dividendYield: 3.1,
-    dividendCAGR: 6.5,
-    totalReturnCAGR: 9.3,
+    dividendYield: 0.031,   // 3.1%
+    dividendCAGR: 0.065,    // 6.5%
+    totalReturnCAGR: 0.093, // 9.3%
     sector: 'High Dividend',
     notes: 'ETF diversificado de alto dividendo. 400+ empresas. Ótimo rácio custo/benefício.',
   },
@@ -208,13 +201,12 @@ const HOLDINGS_B = [
     name: 'Repsol S.A.',
     shares: 500,
     averageCost: 12.4,
-    totalInvested: 500 * 12.4,
     monthlyAllocation: 100,
-    allocationPercent: 15,
+    allocationPercent: 0.15,
     currentPrice: 13.85,
-    dividendYield: 5.8,
-    dividendCAGR: 3.1,
-    totalReturnCAGR: 5.2,
+    dividendYield: 0.058,   // 5.8%
+    dividendCAGR: 0.031,    // 3.1%
+    totalReturnCAGR: 0.052, // 5.2%
     sector: 'Energy',
     notes: 'Dividendo elevado e crescente. Exposição ao sector energético europeu com transição renovável.',
   },
@@ -224,13 +216,12 @@ const HOLDINGS_B = [
     name: 'EDP — Energias de Portugal',
     shares: 800,
     averageCost: 4.85,
-    totalInvested: 800 * 4.85,
     monthlyAllocation: 180,
-    allocationPercent: 10,
+    allocationPercent: 0.10,
     currentPrice: 3.42,
-    dividendYield: 4.2,
-    dividendCAGR: 2.8,
-    totalReturnCAGR: 3.1,
+    dividendYield: 0.042,   // 4.2%
+    dividendCAGR: 0.028,    // 2.8%
+    totalReturnCAGR: 0.031, // 3.1%
     sector: 'Utilities',
     notes: 'Elétrica portuguesa com forte presença em renováveis (EDP Renováveis). Dividendo estável.',
   },
@@ -240,13 +231,12 @@ const HOLDINGS_B = [
     name: 'Bitcoin',
     shares: 0.18,
     averageCost: 31500,
-    totalInvested: 0.18 * 31500,
     monthlyAllocation: 140,
-    allocationPercent: 8,
+    allocationPercent: 0.08,
     currentPrice: 84600,
     dividendYield: 0,
     dividendCAGR: 0,
-    totalReturnCAGR: 42.0,
+    totalReturnCAGR: 1.8,   // 180% histórico multi-ano — capped ao max do schema (2.0)
     sector: 'Crypto',
     notes: 'Posição especulativa pequena. Store of value. Máx. 10% da carteira por política pessoal.',
   },
@@ -290,7 +280,7 @@ interface HoldingSeedData {
   name: string
   shares: number
   averageCost: number
-  totalInvested: number
+  totalInvested?: number  // calculado automaticamente pelo pre-validate hook (shares * averageCost)
   monthlyAllocation: number
   allocationPercent: number
   currentPrice?: number
@@ -322,7 +312,7 @@ async function createPortfolioWithHoldings(
     console.log(`    + ${holding.ticker} — ${holding.shares} shares @ €${holding.averageCost} (atual: €${holding.currentPrice})`)
   }
 
-  const totalInvested = holdings.reduce((acc, h) => acc + h.totalInvested, 0)
+  const totalInvested = holdings.reduce((acc, h) => acc + h.shares * h.averageCost, 0)
   const currentValue = holdings.reduce((acc, h) => acc + h.shares * (h.currentPrice ?? h.averageCost), 0)
   const gain = currentValue - totalInvested
   const gainPct = ((gain / totalInvested) * 100).toFixed(1)
