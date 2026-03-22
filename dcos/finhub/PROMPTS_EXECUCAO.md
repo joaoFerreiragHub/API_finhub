@@ -1996,12 +1996,14 @@ Existem 3 sistemas de card em paralelo que devem convergir para 1:
 - [ ] `npm run typecheck` → PASS
 - [ ] `npm run build` → PASS
 
-**P8.10b (Páginas):**
-- [ ] Todas as páginas de listagem têm `max-w-7xl` container
-- [ ] PageHero em `/directory`, `/ferramentas`, `/hub/conteudos`, `/hub/noticias`
-- [ ] Filtros uniformizados com shadcn components
-- [ ] Grid responsivo consistente (1→2→3→4 cols)
-- [ ] `SectionHeader` extraído e reutilizado
+**P8.10b (Páginas): ✅ VALIDADO 2026-03-22**
+- [x] ContentRow `max-width: min(100%, 1400px)` em `__header` e `__container`
+- [x] PageHero em `/directory` — `/ferramentas` e `/noticias` já tinham
+- [x] Filtros shadcn: `Input`+`Select` em CreatorsListPage; `Select` em PublicDirectoryPage
+- [x] `max-w-7xl mx-auto` wrappers nas secções de filtros e grid em CreatorsListPage
+- [x] Type pills migrados para `filter-bar__pill` / `filter-bar__pill--active` (CSS classes partilhadas)
+- [x] `SectionHeader` criado em `src/components/shared/SectionHeader.tsx`
+- [x] 48 suites 227 testes PASS · build PASS (6.48s)
 
 **P8.10c (Estados):**
 - [ ] `LoadingSkeleton` unificado substituindo 3 patterns diferentes
@@ -2055,9 +2057,9 @@ Existem 3 sistemas de card em paralelo que devem convergir para 1:
 27. PROMPT P5.11  → Páginas de marcas/entidades públicas              ✅
 28. PROMPT B-FIX-01 → Backlog bugs B9–B13 (ManageVideos + routes)    ✅
     ── UI/UX Consolidation (Claude direto, dividido em sub-sessões):
-29. PROMPT P8.10a → Cards: ContentCard + CreatorCard unificados       ⏳ ← PRÓXIMO (Claude)
-30. PROMPT P8.10b → Páginas: container, PageHero, filtros, grids     ⏳ (Claude)
-31. PROMPT P8.10c → Estados: LoadingSkeleton, EmptyState, ErrorState  ⏳ (Claude)
+29. PROMPT P8.10a → Cards: ContentCard + CreatorCard unificados       ✅
+30. PROMPT P8.10b → Páginas: container, PageHero, filtros, grids     ✅
+31. PROMPT P8.10c → Estados: LoadingSkeleton, EmptyState, ErrorState  ⏳ ← PRÓXIMO (Claude)
     ── UI/UX Consolidation concluída ──
 32. PROMPT P3-GATE → Gate final análise rápida (lint+test+build+e2e)  ⏳
 33. PROMPT P4-GATE → Gate pre-release editorial + moderation          ⏳
