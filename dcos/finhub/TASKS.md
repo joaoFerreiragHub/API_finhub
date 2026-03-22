@@ -252,9 +252,17 @@ A SEGUIR (sequência completa pré-beta)
   ✅ P8.8-FIRE — FIRE landing redesign (hero + cards + tabela comparação)
   ✅ BETA-GATE — Gate final pré-beta PASS (lint ✅ · typecheck ✅ · build ✅ · tests 48/227 ✅)
 
-MAIS TARDE (pós-beta ou paralelo)
-  ⏳ Pagamentos/subscrições
-  ⏳ Recomendações básicas
-  ⏳ Analytics de negócio (DAU/MAU)
-  ⏳ Cleanup: router.tsx, componentes órfãos, typo /hub/counteudos
+EM CURSO — Bloco P9 (pós-beta)
+  ⏳ 44. P9.1      → Perfil editável (name/bio/avatar)
+  ⏳ 45. CLEANUP-01 → Dívida técnica (B15 + dead code + typo /hub/counteudos)
+  ⏳ 46. P9.2      → Homepage "Para Ti" (personalização por tópicos do onboarding)
+  ⏳ 47. P9.3      → Admin dashboard: métricas reais (ligar adminMetricsService)
+  ⏳ 48. P9-GATE   → Gate pós-beta
+
+MAIS TARDE (pós-P9-GATE)
+  ⏳ Pagamentos/subscrições (Stripe ou integração externa)
+  ⏳ WebSocket notificações real-time
+  ⏳ SEO structured data (JSON-LD)
+  ⏳ Lighthouse > 80
+  ⏳ Audit de acessibilidade
 ```

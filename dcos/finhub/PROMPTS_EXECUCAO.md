@@ -2890,6 +2890,448 @@ Verificar (apenas confirmar que existem — não testar manualmente):
 
 ---
 
+---
+
+# BLOCO 9 — Pós-Beta: Perfil, Cleanup e Recomendações
+
+---
+
+## PROMPT P9.1 — Perfil Editável (name / bio / avatar) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** BETA-GATE ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** adicionar modo de edição à `UserProfilePage` existente. Zero new pages, zero backend work — o endpoint já existe.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/` (React 19 + Vike SSR + Tailwind + shadcn/ui + React Query)
+- Ficheiro alvo: `src/features/social/pages/UserProfilePage.tsx`
+- Hook existente: `useMyProfile()` — já faz `GET /api/users/me`
+- Endpoint backend pronto: `PATCH /api/users/me` — aceita `{ name?, bio?, avatar? }`
+- Diretório de trabalho: `FinHub-Vite/`
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/features/social/pages/UserProfilePage.tsx       ← ficheiro a modificar
+FinHub-Vite/src/features/social/components/UserProfileCard.tsx  ← componente de header de perfil
+FinHub-Vite/src/features/social/hooks/useSocial.ts              ← hooks existentes (useMyProfile)
+FinHub-Vite/src/lib/api/client.ts                               ← apiClient para PATCH
+```
+
+**Tarefa:**
+
+### 1. Mutation `useUpdateMyProfile`
+Adicionar ao ficheiro de hooks (`useSocial.ts` ou novo ficheiro `useUpdateProfile.ts`):
+```ts
+export function useUpdateMyProfile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { name?: string; bio?: string; avatar?: string }) =>
+      apiClient.patch('/users/me', data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] })
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] })
+    },
+  })
+}
+```
+
+### 2. Botão "Editar perfil" em `UserProfilePage`
+- Só aparece quando `isOwnProfile === true`
+- Clique → abre form inline (não modal, não nova página)
+
+### 3. Form inline de edição
+Quando em modo edição, substituir o header de perfil por um form com:
+```tsx
+// Campos:
+<Input placeholder="Nome" defaultValue={profile.name} />
+<Textarea placeholder="Bio (opcional, max 280 chars)" defaultValue={profile.bio} maxLength={280} />
+<Input placeholder="URL da foto de perfil" defaultValue={profile.avatar} />
+
+// Botões:
+<Button onClick={handleSave}>Guardar</Button>
+<Button variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>
+```
+- `handleSave` chama `updateMyProfile.mutateAsync({ name, bio, avatar })`
+- Ao `onSuccess` → sai do modo edição + toast "Perfil actualizado"
+- Ao erro → toast de erro (usar `react-toastify` já instalado)
+- Enquanto a mutation está `isPending` → botão "Guardar" disabled + spinner
+
+### 4. SSR-safe
+- `typeof window !== 'undefined'` não é necessário aqui (componente é client-only — só renderiza para users autenticados)
+- Não usar `useNavigate` nem `Link` de react-router-dom
+
+**Critérios de conclusão:**
+- [ ] Botão "Editar perfil" visível só para o próprio user em `/perfil`
+- [ ] Form inline com campos name, bio, avatar URL
+- [ ] PATCH /api/users/me chamado ao guardar
+- [ ] Toast de sucesso + saída do modo edição
+- [ ] Toast de erro se o PATCH falhar
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT CLEANUP-01 — Dívida Técnica Pré-Beta ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P9.1 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Princípio:** só cleanup — sem novas features. Se alguma remoção quebrar algo, parar e reportar.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/`
+- Backend: `API_finhub/`
+- Diretório de trabalho: `FinHub-Vite/`
+
+---
+
+### 1. Confirmar B15 — `/login` e `/registar` como Vike pages
+
+Verificar se os ficheiros existem:
+```bash
+ls src/pages/login/+Page.tsx
+ls src/pages/registar/+Page.tsx
+```
+
+Se existirem → confirmar que renderizam sem erros (navegar programaticamente não é possível em Codex, mas verificar o código):
+- Deve importar `LoginPage` / `RegisterPage` de `@/features/auth/pages/`
+- Deve ter `<Helmet>` com título
+- Deve redirigir para `/` se `isAuthenticated` via `useEffect`
+
+Se não existirem → criar seguindo o padrão de `src/pages/registar/+Page.tsx` já documentado.
+
+Reportar: ✅ existem / ⚠️ criados agora.
+
+---
+
+### 2. Remover dead code — `src/router.tsx` e componentes órfãos
+
+**Verificar antes de apagar:**
+```bash
+grep -rn "from.*router" src/ --include="*.tsx" --include="*.ts" | grep -v "node_modules" | grep -v "react-router-dom"
+grep -rn "DashboardHeader\|AdminHeader" src/ --include="*.tsx" | grep -v "node_modules"
+```
+
+**Remover apenas se não tiver imports activos:**
+- `src/router.tsx` — React Router legacy (se não tiver nenhum import activo)
+- `src/features/dashboard/components/DashboardHeader.tsx` (se existir e não tiver imports)
+- `src/features/admin/components/AdminHeader.tsx` (se existir e não tiver imports)
+- Qualquer `AuthLayout.tsx` em `src/shared/` (se existir e não tiver imports)
+
+Se algum ficheiro **tiver imports activos** → não apagar, anotar no relatório como "ainda em uso".
+
+---
+
+### 3. Corrigir typo de diretório `/hub/counteudos`
+
+Existe um diretório com typo no filesystem:
+```
+src/pages/hub/counteudos/+Page.tsx   ← typo (falta 'n')
+```
+
+**Fix:**
+1. Renomear o diretório: `counteudos` → `conteudos`
+   (ou criar `src/pages/hub/conteudos/+Page.tsx` com o mesmo conteúdo se renomear não funcionar no Windows)
+2. Verificar se `src/pages/hub/conteudos/+Page.tsx` já existe — se sim, o typo é redundante, apagar o `counteudos`
+3. Confirmar que `/hub/conteudos` funciona após a mudança
+
+---
+
+### 4. Limpar dados mock de criadores de teste
+
+Verificar se o script existe:
+```bash
+ls API_finhub/src/scripts/seedCreatorCardsMock.ts
+```
+
+Se existir → verificar se tem função de cleanup e executar:
+```bash
+cd API_finhub && npx ts-node src/scripts/seedCreatorCardsMock.ts --clean
+```
+
+Se não tiver flag `--clean` → reportar como pendente (não apagar manualmente dados da DB em produção).
+
+---
+
+### 5. Validação final
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] B15: `/login` e `/registar` confirmados com código correcto
+- [ ] `router.tsx` removido (ou documentado como ainda em uso)
+- [ ] Componentes órfãos removidos (ou documentados)
+- [ ] Typo `/hub/counteudos` corrigido
+- [ ] `npm run lint` → PASS
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P9.2 — Homepage: Secção "Para Ti" (Personalização por Tópico) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** CLEANUP-01 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** adicionar secção personalizada à homepage usando preferências do onboarding guardadas em `localStorage`. SSR-safe — só aparece quando `mounted`.
+
+**Contexto do projecto:**
+- Frontend: `FinHub-Vite/`
+- Onboarding: ao completar o P5-OB, as preferências são guardadas em `localStorage.setItem('finhub-onboarding-done', '1')` e os tópicos em `localStorage.setItem('finhub_onboarding_prefs', JSON.stringify({ interests: [...] }))`
+- Os interesses possíveis: `'Investimentos'`, `'Financas Pessoais'`, `'Cripto'`, `'FIRE'`, `'ETFs'`, `'Acoes'`, `'Imobiliario'`
+- Endpoints existentes: `GET /api/articles?topic=ETFs&limit=4`, `GET /api/articles?sort=views&limit=4`
+
+**Ficheiros de referência:**
+```
+FinHub-Vite/src/pages/index/+Page.tsx                 ← página da homepage
+FinHub-Vite/src/features/home/                        ← componentes de homepage existentes
+FinHub-Vite/src/components/shared/SectionHeader.tsx   ← componente de secção
+FinHub-Vite/src/components/shared/ContentCard.tsx     ← card de conteúdo
+FinHub-Vite/src/components/shared/LoadingSkeleton.tsx ← skeleton loading
+FinHub-Vite/src/components/shared/EmptyState.tsx      ← estado vazio
+```
+
+**Tarefa:**
+
+### 1. Hook `usePersonalizedContent`
+
+**Ficheiro:** `src/features/home/hooks/usePersonalizedContent.ts`
+
+```ts
+// Lê localStorage.finhub_onboarding_prefs (com guard SSR)
+// Extrai o primeiro interesse disponível
+// Faz GET /api/articles?topic=<interesse>&limit=4&sort=recent
+// Se não há prefs → GET /api/articles?sort=views&limit=4 (popular)
+// Retorna: { articles, isPersonalized: boolean, topicLabel: string | null, isLoading }
+```
+
+**Mapeamento de interesse → query param topic:**
+```ts
+const TOPIC_MAP: Record<string, string> = {
+  'ETFs': 'ETFs',
+  'Acoes': 'stocks',
+  'Cripto': 'crypto',
+  'FIRE': 'FIRE',
+  'Imobiliario': 'real-estate',
+  'Investimentos': 'investimento',
+  'Financas Pessoais': 'financas-pessoais',
+}
+```
+
+### 2. Componente `PersonalizedSection`
+
+**Ficheiro:** `src/features/home/components/PersonalizedSection.tsx`
+
+```tsx
+// Se isPersonalized:
+//   título: "Para Ti · {topicLabel}" (ex: "Para Ti · ETFs")
+//   subtítulo: "Com base nos teus interesses"
+// Se não (popular):
+//   título: "Popular agora"
+//   subtítulo: "Os conteúdos mais vistos esta semana"
+//
+// Grid 4 colunas (ContentCard existente)
+// Loading: LoadingSkeleton variant="cards" count={4}
+// Empty: EmptyState com link para /hub/conteudos
+```
+
+### 3. Integrar na homepage
+
+**Ficheiro:** `src/pages/index/+Page.tsx` (ou o componente de homepage)
+
+Adicionar `<PersonalizedSection />` **após** o hero e **antes** das secções "Artigos em Tendência" existentes.
+
+**Regra SSR crítica:**
+```tsx
+// Envolver em guard mounted — localStorage não existe em SSR
+const [mounted, setMounted] = useState(false)
+useEffect(() => setMounted(true), [])
+
+return mounted ? <PersonalizedSection /> : null
+```
+
+**Critérios de conclusão:**
+- [ ] Secção aparece na homepage para utilizadores com prefs do onboarding
+- [ ] Título muda para "Popular agora" quando sem prefs
+- [ ] Grid de 4 ContentCards com links funcionais
+- [ ] Loading skeleton enquanto faz fetch
+- [ ] Empty state se não há artigos
+- [ ] Secção não renderiza em SSR (mounted guard)
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P9.3 — Admin Dashboard: Métricas de Negócio Funcionais ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P9.2 ✅
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Nota:** tanto o backend (`GET /api/admin/metrics/overview`) como os ficheiros frontend (`adminMetricsService.ts`, `useAdminMetrics.ts`, `AdminDashboardPage.tsx`) já existem. Esta task valida que estão correctamente ligados e completa o que faltar.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/` — `GET /api/admin/metrics/overview` existe em `admin.routes.ts`
+- Frontend: `FinHub-Vite/src/features/admin/` — `adminMetricsService.ts`, `useAdminMetrics.ts`, `AdminDashboardPage.tsx`, `StatsPage.tsx` já criados
+- Diretório de trabalho: `FinHub-Vite/`
+
+**Ficheiros de referência:**
+```
+API_finhub/src/routes/admin.routes.ts                        ← rota /metrics/overview
+API_finhub/src/controllers/adminMetrics.controller.ts        ← controller de métricas
+FinHub-Vite/src/features/admin/services/adminMetricsService.ts
+FinHub-Vite/src/features/admin/hooks/useAdminMetrics.ts
+FinHub-Vite/src/features/admin/pages/AdminDashboardPage.tsx
+FinHub-Vite/src/features/admin/types/adminMetrics.ts
+FinHub-Vite/src/components/ui/MetricCard.tsx                 ← MetricCard existente
+```
+
+**Tarefa:**
+
+### 1. Verificar e completar o AdminDashboardPage
+
+Abrir `AdminDashboardPage.tsx` e verificar:
+- Usa `useAdminMetrics()` para buscar dados?
+- Mostra KPI cards com valores reais?
+- Tem loading state (skeleton)?
+- Tem error state?
+
+Se qualquer um destes estiver em falta → implementar.
+
+**KPIs mínimos a mostrar (o que o endpoint retornar):**
+- Total de utilizadores
+- Novos utilizadores esta semana
+- Total de criadores
+- Total de artigos publicados
+- Conteúdo total (artigos + vídeos + cursos)
+
+Usar `MetricCard` existente (`src/components/ui/MetricCard.tsx`) para cada KPI.
+
+### 2. Verificar o StatsPage
+
+Abrir `StatsPage.tsx` — se for um stub vazio ou mostrar dados mock → ligar ao `useAdminMetrics()` ou a um endpoint específico de analytics que exista.
+
+### 3. Verificar o controller backend
+
+Abrir `API_finhub/src/controllers/adminMetrics.controller.ts`:
+- O que retorna `getAdminMetricsOverview`?
+- Os campos coincidem com os tipos em `adminMetrics.ts` no frontend?
+- Se houver desalinhamento de tipos → corrigir o tipo no frontend para bater certo com o backend.
+
+### 4. Validação
+
+```bash
+npm run typecheck
+npm run build
+```
+
+**Critérios de conclusão:**
+- [ ] `AdminDashboardPage` mostra KPIs reais (não mock)
+- [ ] Loading skeleton enquanto carrega
+- [ ] Error state se o endpoint falhar
+- [ ] Tipos frontend ↔ backend alinhados
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P9-GATE — Gate Pós-Beta: Qualidade e Funcionalidade ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P9.3 ✅
+> **Princípio:** não alterar código — apenas executar, validar e reportar.
+
+**Contexto:**
+Gate de qualidade após o primeiro ciclo pós-BETA-GATE. Valida que todas as novas features (P9.1–P9.3 + CLEANUP-01) estão integradas sem regressões.
+
+---
+
+### 1. Baseline
+
+```bash
+npm run lint
+npm run test -- --runInBand
+npm run typecheck
+npm run build
+```
+
+---
+
+### 2. Checklist de funcionalidade
+
+Verificar (apenas confirmar que o código existe — não testar manualmente):
+
+| Item | Verificação |
+|------|------------|
+| Perfil editável | `grep -n "useUpdateMyProfile\|PATCH.*users/me" src/features/social/` |
+| B15 confirmado | `ls src/pages/login/+Page.tsx src/pages/registar/+Page.tsx` |
+| router.tsx removido | `ls src/router.tsx` (deve falhar — ficheiro não deve existir) |
+| Typo corrigido | `ls src/pages/hub/conteudos/+Page.tsx` (deve existir) e `ls src/pages/hub/counteudos/` (deve falhar) |
+| Secção personalizada | `grep -n "PersonalizedSection\|usePersonalizedContent" src/pages/index/` |
+| Admin metrics wired | `grep -n "useAdminMetrics" src/features/admin/pages/AdminDashboardPage.tsx` |
+
+---
+
+### 3. Suites E2E
+
+```bash
+npx playwright test e2e/smoke.spec.ts --reporter=list
+npx playwright test e2e/ --reporter=list
+```
+
+---
+
+### 4. Resultado consolidado
+
+```
+## RELATÓRIO DE EXECUÇÃO
+
+**Prompt ID:** P9-GATE
+**Data:** [data]
+**Estado:** COMPLETO | PARCIAL | BLOQUEADO
+
+### Baseline
+- `npm run lint`     → PASS / FAIL
+- `npm run test`     → PASS / FAIL (N suites, N testes)
+- `npm run typecheck`→ PASS / FAIL
+- `npm run build`    → PASS / FAIL
+
+### Checklist
+- [ ] Perfil editável — mutation encontrada
+- [ ] B15 confirmado — páginas existem
+- [ ] router.tsx removido
+- [ ] Typo /hub/counteudos corrigido
+- [ ] PersonalizedSection integrada na homepage
+- [ ] AdminDashboard com useAdminMetrics
+
+### E2E
+- smoke.spec.ts → N/N PASS
+- Restantes suites → N/N PASS
+
+### Veredicto
+- [ ] P9-GATE PASS
+- [ ] P9-GATE FAIL — detalhar bloqueadores
+
+### O que o Claude deve validar
+- [ ] Confirmar que nenhum TS error novo foi introduzido pelo bloco P9
+- [ ] Confirmar que router.tsx foi mesmo removido (não só comentado)
+- [ ] Confirmar que /hub/conteudos (sem typo) está a servir conteúdo
+```
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -2948,6 +3390,11 @@ Verificar (apenas confirmar que existem — não testar manualmente):
 41. PROMPT P8.7-PUB   → Perfil público de utilizador                  ✅ (+ fix routeParams Claude)
 42. PROMPT P8.8-FIRE  → FIRE landing page redesign                    ✅
 43. PROMPT BETA-GATE  → Gate final pré-beta                           ✅
+44. PROMPT P9.1      → Perfil editável (name/bio/avatar)              ⏳
+45. PROMPT CLEANUP-01 → Dívida técnica (B15 + dead code + typo)      ⏳
+46. PROMPT P9.2      → Homepage "Para Ti" (personalização tópicos)    ⏳
+47. PROMPT P9.3      → Admin dashboard: métricas reais               ⏳
+48. PROMPT P9-GATE   → Gate pós-beta                                  ⏳
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
