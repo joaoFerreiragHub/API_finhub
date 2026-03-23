@@ -1862,6 +1862,7 @@ export const validateUserUpdateMeContract = (
     'avatar',
     'bio',
     'welcomeVideoUrl',
+    'topics',
     'cardConfig',
     'socialLinks',
   ])
@@ -1969,24 +1970,73 @@ export const validateUserUpdateMeContract = (
   if ('socialLinks' in req.body) {
     const socialLinks = req.body.socialLinks
     if (socialLinks !== null) {
-      if (!isRecord(socialLinks)) {
-        respondValidationError(res, 'Campo socialLinks invalido.')
-        return
-      }
-
-      const allowedSocialLinks = new Set(['website', 'twitter', 'linkedin', 'instagram'])
-      const socialKeys = Object.keys(socialLinks)
-
-      for (const key of socialKeys) {
-        if (!allowedSocialLinks.has(key)) {
-          respondValidationError(res, `Campo socialLinks.${key} nao permitido.`)
+      const allowedSocialLinks = new Set(['website', 'twitter', 'linkedin', 'instagram', 'youtube'])
+      if (Array.isArray(socialLinks)) {
+        if (socialLinks.length > 5) {
+          respondValidationError(res, 'Campo socialLinks suporta no maximo 5 itens.')
           return
         }
 
-        const value = socialLinks[key]
-        if (value === null) continue
-        if (typeof value !== 'string' || value.trim().length === 0) {
-          respondValidationError(res, `Campo socialLinks.${key} invalido.`)
+        for (const entry of socialLinks) {
+          if (!isRecord(entry)) {
+            respondValidationError(res, 'Campo socialLinks invalido.')
+            return
+          }
+
+          const platform =
+            typeof entry.platform === 'string' ? entry.platform.trim().toLowerCase() : ''
+          const url = entry.url
+
+          if (!platform || !allowedSocialLinks.has(platform)) {
+            respondValidationError(res, 'Campo socialLinks.platform invalido.')
+            return
+          }
+
+          if (typeof url !== 'string' || url.trim().length === 0) {
+            respondValidationError(res, `Campo socialLinks.${platform} invalido.`)
+            return
+          }
+        }
+      } else if (isRecord(socialLinks)) {
+        const socialKeys = Object.keys(socialLinks)
+
+        for (const key of socialKeys) {
+          if (!allowedSocialLinks.has(key)) {
+            respondValidationError(res, `Campo socialLinks.${key} nao permitido.`)
+            return
+          }
+
+          const value = socialLinks[key]
+          if (value === null) continue
+          if (typeof value !== 'string' || value.trim().length === 0) {
+            respondValidationError(res, `Campo socialLinks.${key} invalido.`)
+            return
+          }
+        }
+      } else {
+        respondValidationError(res, 'Campo socialLinks invalido.')
+        return
+      }
+    }
+  }
+
+  if ('topics' in req.body) {
+    const topics = req.body.topics
+
+    if (topics !== null) {
+      if (!Array.isArray(topics)) {
+        respondValidationError(res, 'Campo topics invalido.')
+        return
+      }
+
+      if (topics.length > 5) {
+        respondValidationError(res, 'Campo topics suporta no maximo 5 itens.')
+        return
+      }
+
+      for (const entry of topics) {
+        if (typeof entry !== 'string' || entry.trim().length === 0) {
+          respondValidationError(res, 'Campo topics invalido.')
           return
         }
       }

@@ -78,6 +78,7 @@ export interface IUser extends Document {
   emailVerificationTokenExpiresAt?: Date
 
   // Creator specific
+  topics?: string[]
   welcomeVideoUrl?: string
   bio?: string
   cardConfig?: ICreatorCardConfig
@@ -86,6 +87,7 @@ export interface IUser extends Document {
     twitter?: string
     linkedin?: string
     instagram?: string
+    youtube?: string
   }
 
   // Premium
@@ -293,6 +295,10 @@ const UserSchema = new Schema<IUser>(
     },
 
     // Creator specific
+    topics: {
+      type: [String],
+      default: undefined,
+    },
     welcomeVideoUrl: {
       type: String,
       default: null,
@@ -345,6 +351,7 @@ const UserSchema = new Schema<IUser>(
       twitter: String,
       linkedin: String,
       instagram: String,
+      youtube: String,
     },
 
     // Premium

@@ -104,6 +104,7 @@ const mapAuthResponseUser = (user: {
   cookieConsent?: AuthResponse['user']['cookieConsent']
   creatorControls?: AuthResponse['user']['creatorControls']
   assistedSession?: AuthResponse['user']['assistedSession']
+  favoriteTopics?: string[]
 }): AuthResponse['user'] => ({
   id: user.id,
   email: user.email,
@@ -119,6 +120,7 @@ const mapAuthResponseUser = (user: {
   cookieConsent: mapCookieConsent(user.cookieConsent),
   creatorControls: user.creatorControls ?? mapCreatorControls(undefined),
   assistedSession: user.assistedSession,
+  favoriteTopics: Array.isArray(user.favoriteTopics) ? user.favoriteTopics : [],
 })
 
 const buildAccountStatusError = (status: Exclude<UserAccountStatus, 'active'>) => ({
@@ -434,6 +436,7 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
         legalAcceptance: mapLegalAcceptance(user.legalAcceptance),
         cookieConsent: mapCookieConsent(user.cookieConsent),
         creatorControls: mapCreatorControls(user.creatorControls),
+        favoriteTopics: user.topics ?? [],
       }),
       tokens,
     }
@@ -1036,6 +1039,7 @@ export const login = async (req: Request<{}, {}, LoginDTO>, res: Response) => {
         legalAcceptance: mapLegalAcceptance(user.legalAcceptance),
         cookieConsent: mapCookieConsent(user.cookieConsent),
         creatorControls: mapCreatorControls(user.creatorControls),
+        favoriteTopics: user.topics ?? [],
       }),
       tokens,
     }
@@ -1167,6 +1171,7 @@ export const me = async (req: AuthRequest, res: Response) => {
         cardConfig: req.user.cardConfig,
         bio: req.user.bio,
         socialLinks: req.user.socialLinks,
+        favoriteTopics: req.user.topics ?? [],
         followers: req.user.followers,
         following: req.user.following,
         lastLoginAt: req.user.lastLoginAt,

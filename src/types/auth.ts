@@ -76,6 +76,7 @@ export interface AuthResponse {
     }
     creatorControls: AuthCreatorControlsResponse
     assistedSession?: AssistedSessionTokenPayload
+    favoriteTopics?: string[]
   }
   tokens: {
     accessToken: string

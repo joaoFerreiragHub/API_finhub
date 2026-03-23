@@ -14,13 +14,14 @@ import { logControllerError } from '../utils/domainLogger'
 const CONTROLLER_DOMAIN = 'user_controller'
 const DELETE_ACCOUNT_CONFIRMATION_TEXT = 'ELIMINAR'
 
-type UserSocialLinkKey = 'website' | 'twitter' | 'linkedin' | 'instagram'
+type UserSocialLinkKey = 'website' | 'twitter' | 'linkedin' | 'instagram' | 'youtube'
 
 const SOCIAL_LINK_KEYS: readonly UserSocialLinkKey[] = [
   'website',
   'twitter',
   'linkedin',
   'instagram',
+  'youtube',
 ]
 type CreatorCardConfigFlagKey =
   | 'showWelcomeVideo'
@@ -147,6 +148,7 @@ const mapAuthenticatedUser = (user: NonNullable<AuthRequest['user']>) => ({
   avatar: user.avatar,
   welcomeVideoUrl: user.welcomeVideoUrl,
   bio: user.bio,
+  favoriteTopics: user.topics ?? [],
   cardConfig: user.cardConfig,
   socialLinks: user.socialLinks,
   role: user.role,
@@ -276,6 +278,55 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
       if (socialLinksRaw === null) {
         req.user.socialLinks = undefined
         hasChanges = true
+      } else if (Array.isArray(socialLinksRaw)) {
+        if (socialLinksRaw.length === 0) {
+          req.user.socialLinks = undefined
+          hasChanges = true
+        } else {
+          const nextSocialLinks: {
+            website?: string
+            twitter?: string
+            linkedin?: string
+            instagram?: string
+            youtube?: string
+          } = {
+            website: undefined,
+            twitter: undefined,
+            linkedin: undefined,
+            instagram: undefined,
+            youtube: undefined,
+          }
+
+          for (const entry of socialLinksRaw) {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+              return res.status(400).json({
+                error: 'Campo socialLinks invalido.',
+              })
+            }
+
+            const row = entry as Record<string, unknown>
+            const platformRaw = normalizeOptionalText(row.platform)
+            const urlRaw = normalizeOptionalText(row.url)
+
+            if (!platformRaw || !urlRaw) {
+              return res.status(400).json({
+                error: 'Campo socialLinks invalido.',
+              })
+            }
+
+            const platform = platformRaw.toLowerCase() as UserSocialLinkKey
+            if (!SOCIAL_LINK_KEYS.includes(platform)) {
+              return res.status(400).json({
+                error: `Campo socialLinks.${platformRaw} nao permitido.`,
+              })
+            }
+
+            nextSocialLinks[platform] = urlRaw
+          }
+
+          req.user.socialLinks = nextSocialLinks
+          hasChanges = true
+        }
       } else if (socialLinksRaw && typeof socialLinksRaw === 'object' && !Array.isArray(socialLinksRaw)) {
         const socialLinksPayload = socialLinksRaw as Record<string, unknown>
         const nextSocialLinks: {
@@ -283,11 +334,13 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
           twitter?: string
           linkedin?: string
           instagram?: string
+          youtube?: string
         } = {
           website: req.user.socialLinks?.website,
           twitter: req.user.socialLinks?.twitter,
           linkedin: req.user.socialLinks?.linkedin,
           instagram: req.user.socialLinks?.instagram,
+          youtube: req.user.socialLinks?.youtube,
         }
 
         let changedInsideSocialLinks = false
@@ -319,6 +372,38 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
       } else {
         return res.status(400).json({
           error: 'Campo socialLinks invalido.',
+        })
+      }
+    }
+
+    if ('topics' in payload) {
+      const topicsRaw = payload.topics
+      if (topicsRaw === null) {
+        req.user.topics = undefined
+        hasChanges = true
+      } else if (Array.isArray(topicsRaw)) {
+        const normalizedTopics = topicsRaw
+          .map((entry) => normalizeOptionalText(entry))
+          .filter((entry): entry is string => Boolean(entry))
+
+        if (normalizedTopics.length !== topicsRaw.length) {
+          return res.status(400).json({
+            error: 'Campo topics invalido.',
+          })
+        }
+
+        const dedupedTopics = Array.from(new Set(normalizedTopics))
+        if (dedupedTopics.length > 5) {
+          return res.status(400).json({
+            error: 'Campo topics suporta no maximo 5 itens.',
+          })
+        }
+
+        req.user.topics = dedupedTopics
+        hasChanges = true
+      } else {
+        return res.status(400).json({
+          error: 'Campo topics invalido.',
         })
       }
     }
@@ -524,6 +609,7 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
     user.avatar = undefined
     user.welcomeVideoUrl = undefined
     user.bio = undefined
+    user.topics = undefined
     user.cardConfig = undefined
     user.socialLinks = undefined
     user.role = 'free'

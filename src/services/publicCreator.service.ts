@@ -97,7 +97,9 @@ export class PublicCreatorService {
       twitter?: string
       linkedin?: string
       instagram?: string
+      youtube?: string
     }
+    topics?: string[]
     followers: number
     following: number
     emailVerified: boolean
@@ -120,7 +122,9 @@ export class PublicCreatorService {
         twitter: item.socialLinks?.twitter ?? null,
         linkedin: item.socialLinks?.linkedin ?? null,
         instagram: item.socialLinks?.instagram ?? null,
+        youtube: item.socialLinks?.youtube ?? null,
       },
+      topics: Array.isArray(item.topics) ? item.topics.filter((topic) => typeof topic === 'string') : [],
       followers: Number(item.followers ?? 0),
       following: Number(item.following ?? 0),
       emailVerified: Boolean(item.emailVerified),
@@ -229,6 +233,7 @@ export class PublicCreatorService {
                 cardConfig: 1,
                 bio: 1,
                 socialLinks: 1,
+                topics: 1,
                 followers: 1,
                 following: 1,
                 emailVerified: 1,
@@ -258,7 +263,9 @@ export class PublicCreatorService {
           twitter?: string
           linkedin?: string
           instagram?: string
+          youtube?: string
         }
+        topics?: string[]
         followers: number
         following: number
         emailVerified: boolean
@@ -308,7 +315,7 @@ export class PublicCreatorService {
       username: normalizedUsername,
     })
       .select(
-        'name username avatar welcomeVideoUrl cardConfig bio socialLinks followers following emailVerified createdAt lastActiveAt'
+        'name username avatar welcomeVideoUrl cardConfig bio socialLinks topics followers following emailVerified createdAt lastActiveAt'
       )
       .lean()
 
@@ -352,6 +359,7 @@ export class PublicCreatorService {
       cardConfig: creator.cardConfig ?? undefined,
       bio: creator.bio ?? undefined,
       socialLinks: creator.socialLinks ?? undefined,
+      topics: creator.topics ?? [],
       followers: Number(creator.followers ?? 0),
       following: Number(creator.following ?? 0),
       emailVerified: Boolean(creator.emailVerified),
