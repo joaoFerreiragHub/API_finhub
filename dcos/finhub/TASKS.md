@@ -71,7 +71,7 @@ Funcionalidades que fazem a diferença para o utilizador final. Entram na releas
 |---------|--------|--------|-------|
 | **Nav fix: Mercados/Ferramentas → user menu; Feed → HUB nav** | ✅ | P10.1 | shellConfig + UnifiedTopShell |
 | **Perfil editável de criador** (bio, redes, temas) | ✅ | P10.2 | CreatorProfileEditForm + definicoes/+Page + backend topics/youtube |
-| **SEO structured data (JSON-LD)** | ⏳ | P10.3 | Artigos, criadores, cursos → Google rich results |
+| **SEO structured data (JSON-LD)** | ✅ | P10.3 | JsonLd.tsx + Organization/Article/VideoObject/Course/Person schemas |
 | **Analytics: eventos em falta** | ⏳ | P10.4 | content_completed, onboarding, search, etc. (AN-1) |
 | **Motor de recomendação: foundation** | ⏳ | P10.5 | R1+R2: tags obrigatórias + endpoint recomendação real |
 

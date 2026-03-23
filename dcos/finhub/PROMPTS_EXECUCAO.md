@@ -4103,7 +4103,7 @@ Adicionar secção "Perfil Público" no dashboard do criador, com:
 
 ---
 
-## PROMPT P10.3 — SEO: Dados Estruturados JSON-LD ⏳
+## PROMPT P10.3 — SEO: Dados Estruturados JSON-LD ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P10.2 ✅
@@ -4490,7 +4490,7 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
     ── v1.0 — Release Pública ──
 52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ✅ (Codex — 2026-03-23)
 53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ✅ (Codex — 2026-03-23)
-54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ⏳ (Codex)
+54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ✅ (Codex — 2026-03-23)
 55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ⏳ (Codex)
 56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ⏳ (Codex)
 57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ⏳ (Codex — escrever prompt)
