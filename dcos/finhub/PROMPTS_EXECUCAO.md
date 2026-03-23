@@ -3962,7 +3962,7 @@ As pastas `src/features/social/chat/`, `tools/investments/`, etc. **não devem s
 
 ---
 
-## PROMPT P10.1 — Navegação: Fix HUB vs Privado (L1+L2) ⏳
+## PROMPT P10.1 — Navegação: Fix HUB vs Privado (L1+L2) ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** CLEANUP-02 ✅
@@ -4026,7 +4026,7 @@ npm run build
 
 ---
 
-## PROMPT P10.2 — Creator Profile Editável (bio, redes, temas) ⏳
+## PROMPT P10.2 — Creator Profile Editável (bio, redes, temas) ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P10.1 ✅
@@ -4488,11 +4488,16 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 50b. PROMPT P9-GATE-FIX → Onboarding overlay + SSR null fix          ✅ (Claude directo)
 51. PROMPT CLEANUP-02  → Limpeza pré-release (ficheiros/pastas)       ✅ (Claude directo)
     ── v1.0 — Release Pública ──
-52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ⏳ (Codex)
-53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ⏳ (Codex)
+52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ✅ (Codex — 2026-03-23)
+53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ✅ (Codex — 2026-03-23)
 54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ⏳ (Codex)
 55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ⏳ (Codex)
 56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ⏳ (Codex)
+57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ⏳ (Codex — escrever prompt)
+58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ⏳ (Codex — escrever prompt)
+59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ⏳ (Codex — escrever prompt)
+60. PROMPT P11.4    → Comunidade: níveis e badges (display no perfil)  ⏳ (Codex — escrever prompt)
+61. PROMPT P11.5    → Comunidade: leaderboard semanal + HUB            ⏳ (Codex — escrever prompt)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
