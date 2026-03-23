@@ -131,6 +131,34 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Níveis e badges: display no perfil e posts** | ✅ | P11.4 | checkAndAwardBadges + pills Nv.X nos posts + conquistas no perfil + /conta |
 | **Leaderboard semanal + integração HUB** | ✅ | P11.5 | Top 10 + rank próprio + reset dominical + badge top_da_semana + LeaderboardWidget |
 
+#### 🔴 Bugs Comunidade — Detectados em teste manual 2026-03-23
+
+> Detectados pelo fundador ao testar a funcionalidade em local. Bloqueiam experiência real da comunidade.
+
+| # | Bug | Área | Estado | Prompt | Notas |
+|---|-----|------|--------|--------|-------|
+| BC1 | **Comunidade sem entrada no menu de navegação** — nenhum link para `/comunidade` no top nav ou user menu | `shellConfig.tsx` | ⏳ | COMMUNITY-FIX-01 | Adicionar "Comunidade" com ícone `Users` aos `MAIN_NAV_LINKS` (autenticados) ou como menu item; todos os roles autenticados devem ver |
+| BC2 | **Clicar num post não abre a página de detalhe** — link `href=/comunidade/post/:id` existe no HTML mas navegação não funciona | `CommunityRoomDetailPage.tsx`, Vike routing | ⏳ | COMMUNITY-FIX-01 | Possível conflito de routing Vike entre `/comunidade/@slug/` e `/comunidade/post/@id/`; investigar e confirmar que a rota `/comunidade/post/:id` é reconhecida correctamente em SPA navigation |
+| BC3 | **Posts não suportam imagens** — formulário de criação de post só aceita texto plain; sem upload ou embed de imagem | `CommunityRoomDetailPage.tsx` form | ⏳ | COMMUNITY-FIX-02 | Adicionar campo de URL de imagem (fase 1 simples); upload real (S3/Cloudinary) fica para após v1.0 |
+| BC4 | **Posts sem editor rich text / markdown** — utilizador escreve texto plain sem formatação; o resultado final é renderizado como markdown mas a escrita é em raw | `CommunityRoomDetailPage.tsx` form | ⏳ | COMMUNITY-FIX-02 | Adicionar toolbar simples de markdown (negrito, itálico, link, código) ou preview ao lado; não necessita de WYSIWYG completo |
+
+#### 🟢 Features Comunidade — Inspiradas em Reddit/Discord (pós-v1.0)
+
+> Identificadas em teste manual 2026-03-23. Não bloqueiam lançamento mas fazem diferença na experiência.
+
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| **Partilhar post** — botão share com URL copiado para clipboard + partilha nativa Web Share API | ⏳ | Reddit pattern — link para `/comunidade/post/:id` copiado |
+| **Guardar / bookmarks de posts** | ⏳ | Ver posts guardados em `/conta` ou `/favoritos` |
+| **Mencionar utilizadores** `@username` nos posts/replies | ⏳ | Autocomplete de utilizadores + notificação ao mencionado |
+| **Tags/flair nos posts** | ⏳ | Categorização dentro de sala (ex: "Análise", "Questão", "Discussão") |
+| **Moderação de sala** — creator da sala pode fixar/remover posts | ⏳ | Papel de "moderador de sala" |
+| **Notificações de resposta** — ser notificado quando alguém responde ao teu post | ⏳ | Integrar com sistema de notificações existente |
+| **Crosspost entre salas** | ⏳ | Partilhar post de uma sala para outra |
+| **Feed da comunidade** (todos os posts de todas as salas seguidas) | ⏳ | Versão comunidade do `/feed` — posts recentes de salas onde participas |
+| **Dark mode no editor de posts** — contrast baixo no textarea em dark mode | ⏳ | CSS fix pontual |
+| **Reações aos posts** (além de upvote/downvote) | ⏳ | 🔥 ❤️ 💡 — tipo Discord reactions |
+
 #### 🟡 Tech Debt — Detectado em Revisão P11 (resolver antes da release)
 
 > Issues identificados durante revisão de código P11.1–P11.5. Nenhum é bloqueador funcional mas todos devem ser resolvidos antes da release pública para garantir qualidade top-level.

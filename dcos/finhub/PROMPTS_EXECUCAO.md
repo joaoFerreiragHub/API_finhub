@@ -4825,6 +4825,113 @@ dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
 
 ---
 
+## PROMPT COMMUNITY-FIX-01 — Comunidade: Navegação + Bug Clicar Post ⏳
+
+> **Executor: Codex**
+> **Prioridade: 🔴** — detectado em teste manual; bloqueia experiência básica
+> **Pré-requisito:** P11.2 ✅
+> **Repo:** `FinHub-Vite/` apenas
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** 2 bugs de comunidade detectados em teste manual 2026-03-23 (BC1 + BC2).
+
+**Bugs a corrigir (ambos obrigatórios):**
+
+### BC1 — Comunidade sem entrada no menu de navegação
+
+**Problema:** Não existe nenhum link para `/comunidade` no top nav nem no user menu. O utilizador não consegue encontrar a comunidade a não ser que saiba o URL de memória.
+
+**Ficheiro:** `src/shared/layouts/shellConfig.tsx`
+
+**Fix:**
+1. Adicionar `'comunidade'` como key no tipo `UserMenuItem` (entre `'following'` e `'notifications'` é boa posição)
+2. Adicionar à `MENU_ITEM_DEFINITIONS`: `comunidade: { label: 'Comunidade', href: '/comunidade', icon: Users }` (importar `Users` de lucide-react)
+3. Adicionar `'comunidade'` ao array de `UserRole.FREE`, `UserRole.PREMIUM`, `UserRole.CREATOR`, `UserRole.ADMIN`
+
+**Alternativa preferida:** Adicionar directamente aos `AUTHENTICATED_MAIN_NAV_LINKS` em vez do dropdown — assim fica visível na barra de topo para todos os utilizadores autenticados:
+```typescript
+const AUTHENTICATED_MAIN_NAV_LINKS: MainNavLink[] = [
+  { label: 'Feed', icon: Activity, path: '/feed', matchPaths: ['/feed'] },
+  { label: 'Comunidade', icon: Users, path: '/comunidade', matchPaths: ['/comunidade'] },
+]
+```
+
+### BC2 — Clicar num post não abre a página de detalhe
+
+**Problema:** Na página `/comunidade/:slug` (sala), os posts têm `href=/comunidade/post/:id` mas ao clicar a navegação não funciona ou abre página errada.
+
+**Causa provável:** Conflito de routing Vike entre `/comunidade/@slug/+Page.tsx` e `/comunidade/post/@id/+Page.tsx`. Vike pode estar a interpretar o segmento `post` como um slug de sala em vez de literal, redirecionando para a sala com slug "post" (que não existe).
+
+**Investigação e Fix:**
+1. Confirmar qual rota é activada ao navegar para `/comunidade/post/ABC123` — adicionar `console.log` temporário no `+Page.tsx` de ambas as rotas para ver qual é renderizado
+2. Se houver conflito, criar `src/pages/comunidade/post/@id/+route.ts` com rota explícita:
+   ```typescript
+   export default '/comunidade/post/@id'
+   ```
+3. Se o problema for que o Vike não trata o segmento literal `post` antes do dinâmico `@id`, considerar renomear a pasta para evitar ambiguidade: `post` → manter mas adicionar `+route.ts` explícito
+4. Verificar que `passToClient = ['routeParams']` está correctamente declarado e que `routeParams.id` chega ao `CommunityPostDetailPage`
+5. Adicionar tratamento de `postId` undefined: se `postId` for undefined/vazio, mostrar mensagem "Post não encontrado" em vez de erro
+
+**Nota importante:** O ficheiro `shellConfig.tsx` tem o nome errado (devia ser `.ts` — ver CI-FIX-01). Se CI-FIX-01 ainda não foi feito, renomear para `.ts` neste prompt também.
+
+**Critérios de conclusão:**
+- [ ] Link "Comunidade" visível no nav para utilizadores autenticados
+- [ ] Clicar num post em `/comunidade/:slug` abre `/comunidade/post/:id` correctamente
+- [ ] Página de detalhe do post mostra conteúdo (título, corpo, autor, replies)
+- [ ] `yarn lint` → PASS
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT COMMUNITY-FIX-02 — Comunidade: Editor Markdown + Suporte a Imagens ⏳
+
+> **Executor: Codex**
+> **Prioridade: 🟡**
+> **Pré-requisito:** COMMUNITY-FIX-01 ✅
+> **Repo:** `FinHub-Vite/` apenas
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** melhorar o formulário de criação de posts com toolbar de markdown e suporte a imagem por URL (BC3 + BC4).
+
+**Bugs/melhorias a implementar:**
+
+### BC3 — Suporte a imagens nos posts
+
+**Problema:** O formulário de post só tem `<textarea>` de texto. Não é possível partilhar imagens.
+
+**Fix (fase 1 — MVP sem upload):**
+- Adicionar campo opcional "URL da imagem" (`imageUrl?: string`) no formulário de criação de post
+- Enviar `imageUrl` no body do `POST /api/community/rooms/:slug/posts`
+- Backend: adicionar `imageUrl?: string` ao modelo `CommunityPost` e ao `requestContracts` do create post
+- Frontend: na listagem de posts e no detalhe, se `imageUrl` existir, mostrar `<img>` com `loading="lazy"` e `max-h-64 object-cover rounded`
+
+**Nota:** Upload real (S3/Cloudinary) fica para pós-v1.0. Por agora URL directa é suficiente.
+
+### BC4 — Toolbar de markdown no editor de posts
+
+**Problema:** O utilizador escreve texto plain sem saber que o resultado é renderizado como markdown. Sem feedback visual nem atalhos de formatação.
+
+**Fix:**
+- Criar componente `MarkdownEditor.tsx` em `src/features/community/components/` com:
+  - Toolbar simples com botões: **B** (negrito), *I* (itálico), `código`, link, preview toggle
+  - Cada botão insere/envolve o texto seleccionado com a sintaxe markdown correspondente
+  - Toggle "Editar / Preview" que mostra `renderCommunityMarkdown()` em tempo real
+- Substituir o `<textarea>` simples do formulário de post pelo `MarkdownEditor`
+- Manter `<textarea>` simples nas replies (YAGNI — replies são curtas)
+
+**Critérios de conclusão:**
+- [ ] Campo `imageUrl` no form → enviado ao backend → guardado no modelo → exibido na listagem e detalhe
+- [ ] `MarkdownEditor` com toolbar B/I/código/link/preview funcional
+- [ ] Preview renderiza igual ao `renderCommunityMarkdown()` da página de detalhe
+- [ ] `yarn lint` → PASS
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
 ## PROMPT TECH-DEBT-01 — Backend Quality: Vote Atomicity + TypeScript + Leaderboard Rank ⏳
 
 > **Executor: Codex**
@@ -5322,7 +5429,10 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ✅ (Codex — 2026-03-23)
 55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ✅ (Codex — 2026-03-23)
 56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ✅ (Codex — 2026-03-23)
-56b. PROMPT CI-FIX-01   → CI lint + GitHub Actions v5 + Dependabot        ⏳ (Claude directo — 🔴 urgente)
+56b. PROMPT CI-FIX-01       → CI lint + GitHub Actions v5 + Dependabot    ⏳ (Claude directo — 🔴 urgente)
+    ── Bugs Comunidade (teste manual 2026-03-23) ──
+61b. PROMPT COMMUNITY-FIX-01 → Comunidade: nav + bug clicar post (BC1+BC2) ⏳ (Codex — 🔴 urgente)
+61c. PROMPT COMMUNITY-FIX-02 → Comunidade: markdown editor + imagens (BC3+BC4) ⏳ (Codex)
 57. PROMPT P11.1     → Comunidade: salas (CommunityRoom model + API)      ✅ (Codex — 2026-03-23)
 58. PROMPT P11.2     → Comunidade: posts e threads (criar, votar)         ✅ (Codex — 2026-03-23)
 59. PROMPT P11.3     → Comunidade: sistema XP (eventos, cálculo)          ✅ (Codex — 2026-03-23)
