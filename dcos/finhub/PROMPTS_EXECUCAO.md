@@ -4472,7 +4472,7 @@ Aplicar em TODOS os jobs (validate, e2e-critical, docker-smoke) e no `deploy.yml
 
 ---
 
-## PROMPT P11.1 — Comunidade: Salas (CommunityRoom model + API) ⏳
+## PROMPT P11.1 — Comunidade: Salas (CommunityRoom model + API) ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P10.5 ✅
@@ -4540,7 +4540,7 @@ dcos/finhub/COMMUNITY.md §2.1 + §7 ← spec de salas + campos do modelo
 
 ---
 
-## PROMPT P11.2 — Comunidade: Posts e Threads (criar, votar) ⏳
+## PROMPT P11.2 — Comunidade: Posts e Threads (criar, votar) ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P11.1 ✅
@@ -4899,8 +4899,8 @@ dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
 55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ✅ (Codex — 2026-03-23)
 56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ✅ (Codex — 2026-03-23)
 56b. PROMPT CI-FIX-01 → CI lint + GitHub Actions v5 + Dependabot      ⏳ (Claude directo — 🔴 urgente)
-57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ⏳ (Codex)
-58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ⏳ (Codex)
+57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ✅ (Codex — 2026-03-23)
+58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ✅ (Codex — 2026-03-23)
 59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ⏳ (Codex)
 60. PROMPT P11.4    → Comunidade: níveis e badges (display no perfil)  ⏳ (Codex)
 61. PROMPT P11.5    → Comunidade: leaderboard semanal + HUB            ⏳ (Codex)

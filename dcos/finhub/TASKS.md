@@ -125,8 +125,8 @@ Ver especificação completa em `COMMUNITY.md`.
 
 | Feature | Estado | Prompt | Notas |
 |---------|--------|--------|-------|
-| **Salas: modelos, API, listagem** | ⏳ | P11.1 | CommunityRoom model + routes + listagem frontend |
-| **Posts e threads: criar, votar, responder** | ⏳ | P11.2 | CommunityPost + CommunityReply + voting |
+| **Salas: modelos, API, listagem** | ✅ | P11.1 | CommunityRoom model + routes + listagem frontend + seed 8 salas públicas |
+| **Posts e threads: criar, votar, responder** | ✅ | P11.2 | CommunityPost + CommunityReply + CommunityVote + voto idempotente + thread UI |
 | **Sistema XP: eventos, cálculo, persistência** | ⏳ | P11.3 | UserXP model + XP events + cálculo de nível |
 | **Níveis e badges: display no perfil e posts** | ⏳ | P11.4 | Badge component + nível no perfil + posts da comunidade |
 | **Leaderboard semanal + integração HUB** | ⏳ | P11.5 | Top 10 semanal + link artigos ↔ posts |
