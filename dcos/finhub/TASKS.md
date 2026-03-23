@@ -69,7 +69,7 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 
 | Task | Repo | Estado | Causa | Notas |
 |------|------|--------|-------|-------|
-| **`shellConfig.tsx` → renomear para `.ts`** | FinHub-Vite | ⏳ | `yarn lint` falha no CI — ESLint Fast Refresh proíbe exports não-componentes em `.tsx` (linhas 41, 125, 132, 140) | Fix: renomear para `.ts` + actualizar imports |
+| **`shellConfig.tsx` → separar em dois ficheiros** | FinHub-Vite | ⏳ | `yarn lint` falha no CI — ESLint Fast Refresh proíbe misturar componente React (`ShellFooter`) + constants/functions no mesmo ficheiro | Fix: `shellConfig.ts` (types/constants/funcs) + `ShellFooter.tsx` (componente isolado) |
 | **GitHub Actions: upgrade Node.js 20 → 22** | FinHub-Vite | ⏳ | `actions/checkout@v4` + `actions/setup-node@v4` deprecated no Node.js 20; warning no CI | Actualizar `.github/workflows/ci.yml` e `deploy.yml` para `@v5` / `node-version: 22` |
 | **Dependabot: 17 vulns reportadas** | FinHub-Vite | ⏳ | Discrepância entre `npm audit` local (0 vulns após `--legacy-peer-deps`) e análise Dependabot (17 vulns) | Investigar cada vuln Dependabot; resolver com `npm audit fix` directo ou upgrade de deps |
 
@@ -137,10 +137,10 @@ Ver especificação completa em `COMMUNITY.md`.
 
 | # | Bug | Área | Estado | Prompt | Notas |
 |---|-----|------|--------|--------|-------|
-| BC1 | **Comunidade sem entrada no menu de navegação** — nenhum link para `/comunidade` no top nav ou user menu | `shellConfig.tsx` | ⏳ | COMMUNITY-FIX-01 | Adicionar "Comunidade" com ícone `Users` aos `MAIN_NAV_LINKS` (autenticados) ou como menu item; todos os roles autenticados devem ver |
-| BC2 | **Clicar num post não abre a página de detalhe** — link `href=/comunidade/post/:id` existe no HTML mas navegação não funciona | `CommunityRoomDetailPage.tsx`, Vike routing | ⏳ | COMMUNITY-FIX-01 | Possível conflito de routing Vike entre `/comunidade/@slug/` e `/comunidade/post/@id/`; investigar e confirmar que a rota `/comunidade/post/:id` é reconhecida correctamente em SPA navigation |
-| BC3 | **Posts não suportam imagens** — formulário de criação de post só aceita texto plain; sem upload ou embed de imagem | `CommunityRoomDetailPage.tsx` form | ⏳ | COMMUNITY-FIX-02 | Adicionar campo de URL de imagem (fase 1 simples); upload real (S3/Cloudinary) fica para após v1.0 |
-| BC4 | **Posts sem editor rich text / markdown** — utilizador escreve texto plain sem formatação; o resultado final é renderizado como markdown mas a escrita é em raw | `CommunityRoomDetailPage.tsx` form | ⏳ | COMMUNITY-FIX-02 | Adicionar toolbar simples de markdown (negrito, itálico, link, código) ou preview ao lado; não necessita de WYSIWYG completo |
+| BC1 | **Comunidade sem entrada no menu de navegação** — nenhum link para `/comunidade` no top nav ou user menu | `shellConfig.tsx` | ✅ | COMMUNITY-FIX-01 | Adicionado "Comunidade" ao `AUTHENTICATED_MAIN_NAV_LINKS` + UserMenuItem para todos os roles autenticados |
+| BC2 | **Clicar num post não abre a página de detalhe** — link `href=/comunidade/post/:id` existe no HTML mas navegação não funciona | `CommunityRoomDetailPage.tsx`, Vike routing | ✅ | COMMUNITY-FIX-01 | Corrigido com `+route.ts` explícito em `post/@id` e `@slug` para eliminar colisão de routing Vike |
+| BC3 | **Posts não suportam imagens** — formulário de criação de post só aceita texto plain; sem upload ou embed de imagem | `CommunityRoomDetailPage.tsx` form | ✅ | COMMUNITY-FIX-02 | Campo imageUrl (http/https, max 2048) em form + modelo + contract + service; imagem visível em listagem e detalhe |
+| BC4 | **Posts sem editor rich text / markdown** — utilizador escreve texto plain sem formatação; o resultado final é renderizado como markdown mas a escrita é em raw | `CommunityRoomDetailPage.tsx` form | ✅ | COMMUNITY-FIX-02 | `MarkdownEditor.tsx` com toolbar (B, I, code, link) + toggle Editar/Preview usando `renderCommunityMarkdown()` |
 
 #### 🟢 Features Comunidade — Inspiradas em Reddit/Discord (pós-v1.0)
 

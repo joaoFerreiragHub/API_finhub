@@ -4431,14 +4431,17 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 
 **3 problemas a resolver:**
 
-### 1. `shellConfig.tsx` → renomear para `shellConfig.ts`
+### 1. `shellConfig.tsx` → separar em dois ficheiros
 
-**Causa:** ESLint regra `react-refresh/only-export-components` proíbe exports não-componentes em ficheiros `.tsx`. O ficheiro não tem nenhum componente React nem JSX — apenas tipos, constantes e funções helper. Extension `.tsx` é errada.
+**Causa:** ESLint regra `react-refresh/only-export-components` proíbe misturar um componente React com exports não-componentes (constants/functions) no mesmo ficheiro. `shellConfig.tsx` exporta `ShellFooter` (componente) + `getUserMenuItems`, `getMainNavLinks`, `isMainNavActive`, `MAIN_NAV_LINKS`, etc. (não-componentes). O ficheiro é `.tsx` correctamente porque tem JSX — mas a mistura é o problema.
+
+> **Diagnóstico corrigido (2026-03-23):** O Codex confirmou que `shellConfig.tsx` contém `ShellFooter`, portanto a extensão `.tsx` é correcta. O problema é a mistura de exports.
 
 **Fix:**
-- Renomear `src/shared/layouts/shellConfig.tsx` → `src/shared/layouts/shellConfig.ts`
-- Actualizar todos os imports (são 2-3 ficheiros — `UnifiedTopShell.tsx` e outros)
-- Verificar com `yarn lint` localmente antes de commitar
+- Criar `src/shared/layouts/shellConfig.ts` — mover todos os types, constants e funções helper (sem JSX)
+- Criar/manter `src/shared/layouts/ShellFooter.tsx` — apenas o componente `ShellFooter`
+- Actualizar todos os imports nos ficheiros que usam o `shellConfig.tsx` (2-3 ficheiros)
+- Verificar com `yarn lint` localmente — warnings Fast Refresh devem desaparecer
 
 ### 2. GitHub Actions: actualizar para Node.js 22 + actions v5
 
@@ -4825,7 +4828,7 @@ dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
 
 ---
 
-## PROMPT COMMUNITY-FIX-01 — Comunidade: Navegação + Bug Clicar Post ⏳
+## PROMPT COMMUNITY-FIX-01 — Comunidade: Navegação + Bug Clicar Post ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Prioridade: 🔴** — detectado em teste manual; bloqueia experiência básica
@@ -4885,7 +4888,7 @@ const AUTHENTICATED_MAIN_NAV_LINKS: MainNavLink[] = [
 
 ---
 
-## PROMPT COMMUNITY-FIX-02 — Comunidade: Editor Markdown + Suporte a Imagens ⏳
+## PROMPT COMMUNITY-FIX-02 — Comunidade: Editor Markdown + Suporte a Imagens ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Prioridade: 🟡**
@@ -5438,8 +5441,8 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 61. PROMPT P11.5         → Comunidade: leaderboard semanal + HUB               ✅ (Codex — 2026-03-23)
     ── Bugs + Melhorias Comunidade (teste manual 2026-03-23) ──
 62. PROMPT CI-FIX-01     → CI lint + GitHub Actions v5 + Dependabot            ⏳ (Claude directo — 🔴)
-63. PROMPT COMMUNITY-FIX-01 → Comunidade: nav + bug clicar post (BC1+BC2)     ⏳ (Codex — 🔴 urgente)
-64. PROMPT COMMUNITY-FIX-02 → Comunidade: markdown editor + imagens (BC3+BC4) ⏳ (Codex)
+63. PROMPT COMMUNITY-FIX-01 → Comunidade: nav + bug clicar post (BC1+BC2)     ✅ (Codex — 2026-03-23)
+64. PROMPT COMMUNITY-FIX-02 → Comunidade: markdown editor + imagens (BC3+BC4) ✅ (Codex — 2026-03-23)
     ── Tech Debt + Security Gate + GDPR ──
 65. PROMPT TECH-DEBT-01  → Backend: vote atomicity + as any + rank             ⏳ (Codex)
 66. PROMPT TECH-DEBT-02  → Frontend: Vike navigate + react-day-picker@9        ⏳ (Codex)
