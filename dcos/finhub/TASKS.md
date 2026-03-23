@@ -62,6 +62,17 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **Auditoria e fix de dependências — API_finhub** | Backend | 1 critical, 4 high, 3 moderate, 4 low | ✅ | multer/morgan/qs patched — `npm audit: 0 vulns` — build+typecheck PASS — merged 2026-03-23 |
 | **Auditoria e fix de dependências — FinHub-Vite** | Frontend | 1 high | ✅ | flatted ReDoS patched (via eslint dep) — `npm audit: 0 vulns` — build PASS — merged 2026-03-23 |
 
+#### 🔴 CI/DevOps — Bloqueador Activo (FinHub-Vite)
+
+> **Detectado:** 2026-03-23 após push do commit `678c409`
+> **Prompt:** CI-FIX-01 (ver PROMPTS_EXECUCAO.md)
+
+| Task | Repo | Estado | Causa | Notas |
+|------|------|--------|-------|-------|
+| **`shellConfig.tsx` → renomear para `.ts`** | FinHub-Vite | ⏳ | `yarn lint` falha no CI — ESLint Fast Refresh proíbe exports não-componentes em `.tsx` (linhas 41, 125, 132, 140) | Fix: renomear para `.ts` + actualizar imports |
+| **GitHub Actions: upgrade Node.js 20 → 22** | FinHub-Vite | ⏳ | `actions/checkout@v4` + `actions/setup-node@v4` deprecated no Node.js 20; warning no CI | Actualizar `.github/workflows/ci.yml` e `deploy.yml` para `@v5` / `node-version: 22` |
+| **Dependabot: 17 vulns reportadas** | FinHub-Vite | ⏳ | Discrepância entre `npm audit` local (0 vulns após `--legacy-peer-deps`) e análise Dependabot (17 vulns) | Investigar cada vuln Dependabot; resolver com `npm audit fix` directo ou upgrade de deps |
+
 **Contexto:**
 - `API_finhub`: `multer` (3× DoS), `on-headers` (HTTP header manipulation via `morgan`), `qs` (2× DoS) — total 12 vulns
 - `FinHub-Vite`: `minimatch` ReDoS via `matchOne()` com múltiplos GLOBSTAR não-adjacentes (CVE-2026-27903, High)

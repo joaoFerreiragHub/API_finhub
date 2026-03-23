@@ -4420,6 +4420,58 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 
 ---
 
+## PROMPT CI-FIX-01 — CI/DevOps: Lint + GitHub Actions + Dependabot ⏳
+
+> **Executor: Claude directo** (não Codex — mudanças cirúrgicas em 3 ficheiros)
+> **Prioridade: 🔴 URGENTE** — CI está a falhar em todos os pushes desde `678c409` (2026-03-23)
+> **Pré-requisito:** Nenhum — pode ser feito a qualquer momento
+> **Repo:** `FinHub-Vite/` apenas
+
+**Problema:** CI falha no job `validate` com exit code 1. Causa: `yarn lint` falha. Downstream: `docker-smoke` e `e2e-critical` ficam skipped.
+
+**3 problemas a resolver:**
+
+### 1. `shellConfig.tsx` → renomear para `shellConfig.ts`
+
+**Causa:** ESLint regra `react-refresh/only-export-components` proíbe exports não-componentes em ficheiros `.tsx`. O ficheiro não tem nenhum componente React nem JSX — apenas tipos, constantes e funções helper. Extension `.tsx` é errada.
+
+**Fix:**
+- Renomear `src/shared/layouts/shellConfig.tsx` → `src/shared/layouts/shellConfig.ts`
+- Actualizar todos os imports (são 2-3 ficheiros — `UnifiedTopShell.tsx` e outros)
+- Verificar com `yarn lint` localmente antes de commitar
+
+### 2. GitHub Actions: actualizar para Node.js 22 + actions v5
+
+**Causa:** `actions/checkout@v4` e `actions/setup-node@v4` correm em Node.js 20 que está deprecated.
+
+**Fix em `.github/workflows/ci.yml` e `deploy.yml`:**
+```yaml
+# Antes:           → Depois:
+actions/checkout@v4  → actions/checkout@v5
+actions/setup-node@v4 → actions/setup-node@v5
+node-version: 20     → node-version: 22
+```
+Aplicar em TODOS os jobs (validate, e2e-critical, docker-smoke) e no `deploy.yml`.
+
+### 3. Dependabot: investigar e resolver 17 vulns
+
+**Causa:** `npm audit` local = 0 vulns (com `--legacy-peer-deps`), Dependabot = 17 (11 high, 4 moderate, 2 low).
+
+**Fix:**
+1. `npm audit --json` para listar todas as vulns com detalhe
+2. `npm audit fix` (sem `--legacy-peer-deps` primeiro); se falhar por peer conflict → `npm audit fix --legacy-peer-deps`
+3. Para cada vuln não-fixável: avaliar se é false positive de transitive dep ou se precisa de upgrade manual
+4. Correr `yarn audit` para confirmar via yarn também
+
+**Critérios de conclusão:**
+- [ ] `yarn lint` → PASS (0 errors)
+- [ ] `yarn build` → PASS
+- [ ] CI job `validate` → ✅ verde no GitHub
+- [ ] `ci.yml` + `deploy.yml` usam `actions/*@v5` + `node-version: 22`
+- [ ] Dependabot vulnerabilidades reduzidas ou documentadas como false positives
+
+---
+
 ## PROMPT P11.1 — Comunidade: Salas (CommunityRoom model + API) ⏳
 
 > **Executor: Codex**
@@ -4846,6 +4898,7 @@ dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
 54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ✅ (Codex — 2026-03-23)
 55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ✅ (Codex — 2026-03-23)
 56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ✅ (Codex — 2026-03-23)
+56b. PROMPT CI-FIX-01 → CI lint + GitHub Actions v5 + Dependabot      ⏳ (Claude directo — 🔴 urgente)
 57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ⏳ (Codex)
 58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ⏳ (Codex)
 59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ⏳ (Codex)
