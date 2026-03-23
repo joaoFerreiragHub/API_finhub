@@ -52,6 +52,40 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **Limpeza pré-release (ficheiros/pastas obsoletos)** | ✅ | CLEANUP-02 (Claude) |
 | **Documentação sistemas (AUTH, NOTIF, PAYMENTS, MOD, COMMUNITY)** | ✅ | Claude — AUTH.md, NOTIFICATIONS.md, PAYMENTS.md, MODERATION.md, COMMUNITY.md |
 
+#### 🔴 Segurança — Vulnerabilidades de Dependências (Beta Obrigatório)
+
+> **Processo:** criar branch `security/audit-fix` → correr `npm audit fix` → testar build+typecheck → merge se PASS.
+> Nunca correr `npm audit fix --force` (pode fazer breaking changes). Ver `P6_SECURITY_CHECKLIST.md`.
+
+| Task | Repo | Severidade | Estado | Notas |
+|------|------|-----------|--------|-------|
+| **Auditoria e fix de dependências — API_finhub** | Backend | 1 critical, 4 high, 3 moderate, 4 low | ✅ | multer/morgan/qs patched — `npm audit: 0 vulns` — build+typecheck PASS — merged 2026-03-23 |
+| **Auditoria e fix de dependências — FinHub-Vite** | Frontend | 1 high | ✅ | flatted ReDoS patched (via eslint dep) — `npm audit: 0 vulns` — build PASS — merged 2026-03-23 |
+
+**Contexto:**
+- `API_finhub`: `multer` (3× DoS), `on-headers` (HTTP header manipulation via `morgan`), `qs` (2× DoS) — total 12 vulns
+- `FinHub-Vite`: `minimatch` ReDoS via `matchOne()` com múltiplos GLOBSTAR não-adjacentes (CVE-2026-27903, High)
+
+**Procedimento (ambos os repos, em separado):**
+```bash
+# 1. criar branch dedicado
+git checkout -b security/audit-fix
+
+# 2. ver o que vai mudar ANTES de aplicar
+npm audit
+npm audit fix --dry-run
+
+# 3. aplicar apenas fixes não-breaking
+npm audit fix          # NÃO usar --force
+
+# 4. validar
+npm run typecheck      # ou typecheck:p1 no frontend
+npm run build
+
+# 5. se PASS → merge para main/master
+# 6. se FAIL → investigar qual pacote quebrou e fixar manualmente ou aguardar patch
+```
+
 #### 🔴 GDPR / Legal — Beta Obrigatório
 Items identificados em `dcos/agents/legal-compliance/GAPS_E_TIMELINE.md`. Bloqueiam beta público.
 
