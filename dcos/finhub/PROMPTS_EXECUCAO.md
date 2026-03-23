@@ -5424,26 +5424,28 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 50b. PROMPT P9-GATE-FIX → Onboarding overlay + SSR null fix          ✅ (Claude directo)
 51. PROMPT CLEANUP-02  → Limpeza pré-release (ficheiros/pastas)       ✅ (Claude directo)
     ── v1.0 — Release Pública ──
-52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ✅ (Codex — 2026-03-23)
-53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ✅ (Codex — 2026-03-23)
-54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ✅ (Codex — 2026-03-23)
-55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ✅ (Codex — 2026-03-23)
-56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ✅ (Codex — 2026-03-23)
-56b. PROMPT CI-FIX-01       → CI lint + GitHub Actions v5 + Dependabot    ⏳ (Claude directo — 🔴 urgente)
-    ── Bugs Comunidade (teste manual 2026-03-23) ──
-61b. PROMPT COMMUNITY-FIX-01 → Comunidade: nav + bug clicar post (BC1+BC2) ⏳ (Codex — 🔴 urgente)
-61c. PROMPT COMMUNITY-FIX-02 → Comunidade: markdown editor + imagens (BC3+BC4) ⏳ (Codex)
-57. PROMPT P11.1     → Comunidade: salas (CommunityRoom model + API)      ✅ (Codex — 2026-03-23)
-58. PROMPT P11.2     → Comunidade: posts e threads (criar, votar)         ✅ (Codex — 2026-03-23)
-59. PROMPT P11.3     → Comunidade: sistema XP (eventos, cálculo)          ✅ (Codex — 2026-03-23)
-60. PROMPT P11.4     → Comunidade: níveis e badges (display no perfil)    ✅ (Codex — 2026-03-23)
-61. PROMPT P11.5     → Comunidade: leaderboard semanal + HUB              ✅ (Codex — 2026-03-23)
+    ── v1.0 — Polish + Recomendação ──
+52. PROMPT P10.1         → Nav fix: mover Mercados/Ferramentas + Feed          ✅ (Codex — 2026-03-23)
+53. PROMPT P10.2         → Creator profile editável (bio, redes, temas)        ✅ (Codex — 2026-03-23)
+54. PROMPT P10.3         → SEO: JSON-LD para conteúdo + criadores              ✅ (Codex — 2026-03-23)
+55. PROMPT P10.4         → Analytics: eventos em falta (AN-1)                  ✅ (Codex — 2026-03-23)
+56. PROMPT P10.5         → Motor de recomendação: foundation (R1+R2)           ✅ (Codex — 2026-03-23)
+    ── Comunidade + Gamificação ──
+57. PROMPT P11.1         → Comunidade: salas (CommunityRoom model + API)       ✅ (Codex — 2026-03-23)
+58. PROMPT P11.2         → Comunidade: posts e threads (criar, votar)          ✅ (Codex — 2026-03-23)
+59. PROMPT P11.3         → Comunidade: sistema XP (eventos, cálculo)           ✅ (Codex — 2026-03-23)
+60. PROMPT P11.4         → Comunidade: níveis e badges (display no perfil)     ✅ (Codex — 2026-03-23)
+61. PROMPT P11.5         → Comunidade: leaderboard semanal + HUB               ✅ (Codex — 2026-03-23)
+    ── Bugs + Melhorias Comunidade (teste manual 2026-03-23) ──
+62. PROMPT CI-FIX-01     → CI lint + GitHub Actions v5 + Dependabot            ⏳ (Claude directo — 🔴)
+63. PROMPT COMMUNITY-FIX-01 → Comunidade: nav + bug clicar post (BC1+BC2)     ⏳ (Codex — 🔴 urgente)
+64. PROMPT COMMUNITY-FIX-02 → Comunidade: markdown editor + imagens (BC3+BC4) ⏳ (Codex)
     ── Tech Debt + Security Gate + GDPR ──
-62. PROMPT TECH-DEBT-01 → Backend: vote atomicity + as any + rank         ⏳ (Codex)
-63. PROMPT TECH-DEBT-02 → Frontend: Vike navigate + react-day-picker@9   ⏳ (Codex)
-64. PROMPT SEC-01    → Security backend: Helmet, CORS, JWT, logging       ⏳ (Codex)
-65. PROMPT SEC-02    → Security frontend: VITE_, CSP, audit, infra        ⏳ (Codex)
-66. PROMPT GDPR-01   → GDPR: cookie consent + opt-out + data export       ⏳ (Codex)
+65. PROMPT TECH-DEBT-01  → Backend: vote atomicity + as any + rank             ⏳ (Codex)
+66. PROMPT TECH-DEBT-02  → Frontend: Vike navigate + react-day-picker@9        ⏳ (Codex)
+67. PROMPT SEC-01        → Security backend: Helmet, CORS, JWT, logging        ⏳ (Codex)
+68. PROMPT SEC-02        → Security frontend: VITE_, CSP, audit, infra         ⏳ (Codex)
+69. PROMPT GDPR-01       → GDPR: cookie consent + opt-out + data export        ⏳ (Codex)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
