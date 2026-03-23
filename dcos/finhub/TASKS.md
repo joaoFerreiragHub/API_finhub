@@ -34,8 +34,7 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **Admin métricas reais (DAU/utilizadores/conteúdo)** | ✅ | P9.3 |
 | **User account dashboard (/conta com sidebar)** | ✅ | P9.4 |
 | **Audit e fix /perfil para todos os roles** | ✅ | P9.5 |
-| **P9-GATE (qualidade pós-beta)** | ⚠️ | P9-GATE — baseline ✅, 2 bugs E2E identificados |
-| **P9-GATE-FIX (onboarding overlay + SSR null)** | ⏳ | P9-GATE-FIX |
+| **P9-GATE (qualidade pós-beta)** | ✅ | P9-GATE + P9-GATE-FIX — overlay fix + SSR null fix |
 | **Limpeza pré-release (ficheiros/pastas obsoletos)** | ⏳ | CLEANUP-02 (Claude) |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)

@@ -3704,9 +3704,16 @@ npx playwright test e2e/ --reporter=list
 
 ---
 
-## PROMPT P9-GATE-FIX — Correcção dos 2 Bloqueadores do Gate ⏳
+## PROMPT P9-GATE-FIX — Correcção dos 2 Bloqueadores do Gate ✅ VALIDADO 2026-03-23
 
-> **Executor: Codex**
+> **Nota pós-validação (Claude directo):** Ambos os fixes aplicados e validados.
+> - `useOnboarding.ts`: começa `true` (safe default), só mostra após verificar localStorage (ambas as keys). Não autenticado → oculto sempre. **admin.p2.6 → 5/5 PASS** (estava 0/5 por timeout de overlay).
+> - `platformRuntimeConfigService.ts`: interface com todos os campos opcionais — elimina crash quando `VITE_GTM_ID` ausente.
+> - `tsconfig` — `"vite/client"` removido, TS2688 resolvido.
+> - `smoke.spec.ts` → 3/3 PASS. Falhos residuais (`comments.smoke`, `release.flows.o3`) requerem backend real com seed data — não são bugs de código.
+> - Typecheck ✅ · Lint 0 erros ✅ · Build ✅ · commit `4bb9049` pushed.
+
+> **Executor: Codex** (executado por Claude)
 > **Pré-requisito:** P9-GATE ⚠️ (relatório acima)
 > **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
 > **Princípio:** cirúrgico — resolver exactamente os 2 bugs identificados, sem tocar em mais nada. Baseline (lint/test/typecheck/build) já passa — não quebrar.
@@ -4476,7 +4483,7 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 48. PROMPT P9.4      → User account dashboard (/conta shell)          ✅ (Codex)
 49. PROMPT P9.5      → Audit/fix /perfil para todos os roles          ✅ (Codex)
 50. PROMPT P9-GATE      → Gate pós-beta                               ⚠️ PARCIAL (Codex — baseline ✅, 2 bugs E2E)
-50b. PROMPT P9-GATE-FIX → Onboarding overlay + SSR null fix          ⏳ (Codex)
+50b. PROMPT P9-GATE-FIX → Onboarding overlay + SSR null fix          ✅ (Claude directo)
 51. PROMPT CLEANUP-02  → Limpeza pré-release (ficheiros/pastas)       ⏳ (Claude — após P9-GATE-FIX)
     ── v1.0 — Release Pública ──
 52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ⏳ (Codex)
