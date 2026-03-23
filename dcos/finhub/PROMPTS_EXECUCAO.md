@@ -3811,7 +3811,9 @@ npx playwright test e2e/admin.p2.6.spec.ts --reporter=list
 
 ---
 
-## PROMPT CLEANUP-02 — Limpeza Pré-Release (ficheiros e pastas) ⏳
+## PROMPT CLEANUP-02 — Limpeza Pré-Release (ficheiros e pastas) ✅ VALIDADO 2026-03-23
+
+> **Nota pós-validação:** Executado directamente por Claude. API_finhub: scripts one-time arquivados (`generate-content-types.js`, `seed-http.js` → `dcos/archive/scripts/`), docs movidos (`RSS_SETUP.md`, `SEED_GUIDE.md` → `dcos/finhub/`), logs eliminados. FinHub-Vite: configs legacy eliminados (`vite.config.js`, `vite-plugin-ssr.config.js`), script de scaffolding arquivado, 12 ficheiros de log eliminados, pasta `src/config/` vazia removida, 4 ficheiros `.d.ts` órfãos removidos, 12 pastas de features completamente vazias removidas. typecheck ✅ build ✅ ambos os repos pushed.
 
 > **Executor: Claude**
 > **Pré-requisito:** P9-GATE-FIX ✅
@@ -4484,7 +4486,7 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 49. PROMPT P9.5      → Audit/fix /perfil para todos os roles          ✅ (Codex)
 50. PROMPT P9-GATE      → Gate pós-beta                               ⚠️ PARCIAL (Codex — baseline ✅, 2 bugs E2E)
 50b. PROMPT P9-GATE-FIX → Onboarding overlay + SSR null fix          ✅ (Claude directo)
-51. PROMPT CLEANUP-02  → Limpeza pré-release (ficheiros/pastas)       ⏳ (Claude — após P9-GATE-FIX)
+51. PROMPT CLEANUP-02  → Limpeza pré-release (ficheiros/pastas)       ✅ (Claude directo)
     ── v1.0 — Release Pública ──
 52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ⏳ (Codex)
 53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ⏳ (Codex)

@@ -35,7 +35,7 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **User account dashboard (/conta com sidebar)** | ✅ | P9.4 |
 | **Audit e fix /perfil para todos os roles** | ✅ | P9.5 |
 | **P9-GATE (qualidade pós-beta)** | ✅ | P9-GATE + P9-GATE-FIX — overlay fix + SSR null fix |
-| **Limpeza pré-release (ficheiros/pastas obsoletos)** | ⏳ | CLEANUP-02 (Claude) |
+| **Limpeza pré-release (ficheiros/pastas obsoletos)** | ✅ | CLEANUP-02 (Claude) |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
 Funcionalidades que fazem a diferença para o utilizador final mas **não bloqueiam o beta fechado**.
