@@ -14,6 +14,7 @@ import {
 import { authenticate } from '../middlewares/auth'
 import { enforceCreatorOperationalControl } from '../middlewares/creatorOperationalControl'
 import { requireCreator, requireVerifiedEmail } from '../middlewares/roleGuard'
+import { validateContentTagsContract } from '../middlewares/requestContracts'
 
 const router = Router()
 
@@ -59,14 +60,22 @@ router.get('/stats', authenticate, requireCreator, getMyStats)
  * @desc    Criar novo artigo
  * @access  Private (Creator/Admin)
  */
-router.post('/', authenticate, requireCreator, requireVerifiedEmail, enforceCreatorOperationalControl('create'), createArticle)
+router.post(
+  '/',
+  authenticate,
+  requireCreator,
+  requireVerifiedEmail,
+  validateContentTagsContract,
+  enforceCreatorOperationalControl('create'),
+  createArticle
+)
 
 /**
  * @route   PATCH /api/articles/:id
  * @desc    Atualizar artigo
  * @access  Private (Owner/Admin)
  */
-router.patch('/:id', authenticate, requireCreator, updateArticle)
+router.patch('/:id', authenticate, requireCreator, validateContentTagsContract, updateArticle)
 
 /**
  * @route   DELETE /api/articles/:id

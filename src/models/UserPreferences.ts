@@ -14,6 +14,10 @@ export type InteractionType =
   | 'comment'
   | 'reply'
   | 'content_published'
+  | 'content_viewed'
+  | 'content_completed'
+  | 'content_favorited'
+  | 'not_interested'
 
 export interface IInteractionSignal {
   interactionType: InteractionType

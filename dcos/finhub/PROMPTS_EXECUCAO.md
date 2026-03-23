@@ -4216,7 +4216,7 @@ npm run build
 
 ---
 
-## PROMPT P10.4 — Analytics: Eventos em Falta (AN-1) ⏳
+## PROMPT P10.4 — Analytics: Eventos em Falta (AN-1) ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P10.3 ✅
@@ -4315,7 +4315,7 @@ npm run build
 
 ---
 
-## PROMPT P10.5 — Motor de Recomendação: Foundation (R1+R2) ⏳
+## PROMPT P10.5 — Motor de Recomendação: Foundation (R1+R2) ✅
 
 > **Executor: Codex**
 > **Pré-requisito:** P10.4 ✅
@@ -4420,6 +4420,359 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 
 ---
 
+## PROMPT P11.1 — Comunidade: Salas (CommunityRoom model + API) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P10.5 ✅
+> **Referência obrigatória:** ler `dcos/finhub/COMMUNITY.md` COMPLETO antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** criar a estrutura base da Comunidade — modelo `CommunityRoom`, API de salas e página pública `/comunidade` com listagem de salas.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/`
+- Frontend: `FinHub-Vite/` — Vike SSR. Sem `useNavigate` (usar `<a href>` ou `navigate` do Vike). Params via `usePageContext()`. `window.*` apenas em `useEffect`/handlers.
+- 8 salas predefinidas conforme `COMMUNITY.md §2.1` — seed no arranque se não existirem
+
+**Ficheiros de referência:**
+```
+API_finhub/src/models/            ← criar CommunityRoom.ts
+API_finhub/src/routes/            ← criar community.routes.ts (GET /api/community/rooms, GET /api/community/rooms/:slug)
+API_finhub/src/middlewares/requestContracts.ts ← adicionar validação
+dcos/finhub/COMMUNITY.md §2.1 + §7 ← spec de salas + campos do modelo
+```
+
+**Tarefa:**
+
+### Backend
+
+1. **Modelo `CommunityRoom`** (`src/models/CommunityRoom.ts`):
+   - Campos: `slug`, `name`, `description`, `icon` (emoji), `category` (enum), `isPublic: Boolean`, `requiredRole` (enum UserRole, default `'visitor'`), `moderators: ObjectId[]`, `postCount: Number`, `memberCount: Number`, `isPremium: Boolean`, `sortOrder: Number`
+   - Index: `slug` (unique)
+
+2. **Seed das 8 salas públicas** + 3 salas premium (conforme `COMMUNITY.md §2.1`) — criar função `seedCommunityRooms()` chamada no startup se `count === 0`
+
+3. **Endpoints** (`GET /api/community/rooms`, `GET /api/community/rooms/:slug`):
+   - Lista paginada de salas públicas (sem autenticação obrigatória)
+   - Detalhe de sala por slug
+   - Sala premium: visível mas conteúdo bloqueado para FREE
+
+### Frontend
+
+4. **Rota `/comunidade`** (`src/pages/comunidade/+Page.tsx`):
+   - Grid de salas com icon, nome, descrição, badge "PREMIUM" se `requiredRole === 'premium'`
+   - Clicar numa sala → `/comunidade/:slug`
+   - SSR-safe: fetch via `useQuery` (não em render SSR)
+
+5. **Rota `/comunidade/:slug`** (`src/pages/comunidade/[slug]/+Page.tsx`):
+   - Header da sala (icon, nome, descrição, memberCount)
+   - Placeholder "Sem posts ainda" (posts virão no P11.2)
+   - Botão "Criar post" (disabled sem auth + redireciona para login)
+   - Sala premium: mostrar `PaywallComponent` para utilizadores FREE
+
+**SSR — regras obrigatórias:**
+- Fetch de salas: pode ser feito server-side (endpoint público)
+- Verificação de `requiredRole` para premium: fazer no componente após hidratação
+
+**Critérios de conclusão:**
+- [ ] `CommunityRoom` model criado com todos os campos
+- [ ] 8 salas públicas + 3 premium seedadas no arranque
+- [ ] `GET /api/community/rooms` → lista salas
+- [ ] `GET /api/community/rooms/:slug` → detalhe sala
+- [ ] Página `/comunidade` lista salas com grid responsivo
+- [ ] Página `/comunidade/:slug` mostra header + placeholder posts
+- [ ] Salas premium mostram paywall para FREE
+- [ ] `npm run typecheck:p1` → PASS (FinHub-Vite)
+- [ ] `npm run build` → PASS (ambos os repos)
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P11.2 — Comunidade: Posts e Threads (criar, votar) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P11.1 ✅
+> **Referência obrigatória:** ler `dcos/finhub/COMMUNITY.md` COMPLETO antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** sistema completo de posts + respostas + votação na comunidade.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/`
+- Frontend: `FinHub-Vite/` — Vike SSR. `window.*` apenas em `useEffect`/handlers. Params via `usePageContext()`.
+
+**Ficheiros de referência:**
+```
+API_finhub/src/models/CommunityRoom.ts    ← criado em P11.1
+API_finhub/src/routes/community.routes.ts ← expandir com posts/replies/vote
+dcos/finhub/COMMUNITY.md §2.2 + §7       ← spec de posts, threads, vote
+```
+
+**Tarefa:**
+
+### Backend
+
+1. **Modelo `CommunityPost`** (`src/models/CommunityPost.ts`):
+   - Campos: `room: ObjectId`, `author: ObjectId`, `title: String` (max 200), `content: String` (markdown, max 10000), `upvotes: Number`, `downvotes: Number`, `replyCount: Number`, `isPinned: Boolean`, `isLocked: Boolean`, `moderationStatus` (enum: `'visible'|'hidden'|'restricted'`), `hubContentRef?: { contentType: String, contentId: ObjectId }`, `createdAt`, `updatedAt`
+   - Index: `room`, `author`, `createdAt`
+
+2. **Modelo `CommunityReply`** (`src/models/CommunityReply.ts`):
+   - Campos: `post: ObjectId`, `parentReply?: ObjectId`, `author: ObjectId`, `content: String` (max 5000), `upvotes: Number`, `downvotes: Number`, `isMarkedHelpful: Boolean`, `moderationStatus`, `createdAt`, `updatedAt`
+
+3. **Endpoints** (`community.routes.ts`):
+   ```
+   GET  /api/community/rooms/:slug/posts       — lista posts (paginação cursor)
+   POST /api/community/rooms/:slug/posts       — criar post (auth obrigatória)
+   GET  /api/community/posts/:id               — detalhe post + replies
+   POST /api/community/posts/:id/replies       — responder (auth)
+   POST /api/community/posts/:id/vote          — votar { direction: 'up'|'down' } (auth)
+   POST /api/community/replies/:id/vote        — votar em reply (auth)
+   ```
+   - Votação: idempotente — segundo voto no mesmo sentido cancela; inverso troca
+
+### Frontend
+
+4. **Lista de posts** em `/comunidade/:slug` (substituir placeholder de P11.1):
+   - Card por post: título, autor (avatar + username), upvotes, replyCount, `createdAt` (relativo)
+   - Ordenação: Recentes | Popular
+   - Scroll infinito ou "Carregar mais"
+
+5. **Formulário de criação de post** (modal ou página inline):
+   - Campo título + textarea markdown
+   - Submeter via `useMutation` → `POST /api/community/rooms/:slug/posts`
+   - Invalidar query de posts ao sucesso
+
+6. **Página de detalhe de post** (`/comunidade/post/:id`):
+   - Conteúdo do post com markdown renderizado
+   - Botões vote (▲/▼) com contagem
+   - Lista de replies (aninhamento 1 nível)
+   - Formulário de resposta inline
+
+**SSR — regras obrigatórias:**
+- Lista de posts e detalhe: podem ser SSR (dados públicos)
+- Formulários de criação/voto: apenas client-side (auth required)
+
+**Critérios de conclusão:**
+- [ ] `CommunityPost` + `CommunityReply` models criados
+- [ ] Todos os endpoints de posts/replies/vote funcionais
+- [ ] Votação idempotente (segundo voto cancela)
+- [ ] Lista de posts em `/comunidade/:slug` com paginação
+- [ ] Criação de post funcional (auth)
+- [ ] Página detalhe com replies e votação
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P11.3 — Comunidade: Sistema XP (eventos, cálculo) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P11.2 ✅
+> **Referência obrigatória:** ler `dcos/finhub/COMMUNITY.md §3` COMPLETO antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** modelo `UserXP`, serviço de atribuição de XP, integração com eventos da comunidade e do HUB.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/`
+- Frontend: `FinHub-Vite/` — display de XP no `/conta` e no perfil público. SSR-safe.
+
+**Ficheiros de referência:**
+```
+API_finhub/src/models/            ← criar UserXP.ts
+dcos/finhub/COMMUNITY.md §3       ← tabela de XP por acção + níveis
+```
+
+**Tarefa:**
+
+### Backend
+
+1. **Modelo `UserXP`** (`src/models/UserXP.ts`):
+   - Campos: `user: ObjectId` (unique), `totalXp: Number` (default 0), `level: Number` (default 1, calculado), `weeklyXp: Number` (default 0), `weeklyResetAt: Date`, `badges: Array<{ id: String, unlockedAt: Date }>`, `history: Array<{ action: String, xp: Number, createdAt: Date }>` (max 100 entradas)
+   - `level` calculado automaticamente via método `calculateLevel()` com a tabela de `COMMUNITY.md §3.3`
+
+2. **Serviço `xp.service.ts`**:
+   - `awardXp(userId, action, xp)` — idempotente por `action+contentId` quando aplicável; actualiza `totalXp`, `weeklyXp`, `level`, `history`
+   - `getXpForAction(action: XpAction): number` — lookup da tabela de `COMMUNITY.md §3.1`
+   - Tabela de XP como constante: `post_created: 10`, `reply_created: 5`, `upvote_received: 2`, `article_completed: 15`, `course_completed: 100`, `onboarding_completed: 25`, `daily_streak: 5`, `first_room_post: 20`, `helpful_answer: 30`, `content_saved_by_others: 10`, `profile_completed: 50`
+   - Penalizações: `post_spam: -20`, `content_hidden: -50`
+
+3. **Integrar XP nos eventos**:
+   - `POST /api/community/rooms/:slug/posts` → `awardXp(author, 'post_created', 10)` + `awardXp(author, 'first_room_post', 20)` se for o primeiro post na sala
+   - `POST /api/community/posts/:id/replies` → `awardXp(author, 'reply_created', 5)`
+   - `POST /api/community/posts/:id/vote` (upvote) → `awardXp(postAuthor, 'upvote_received', 2)`
+   - `POST /api/user/signals` (content_completed) → `awardXp(user, 'article_completed', 15)` ou `course_completed: 100`
+   - `POST /api/users/me` (onboarding) → `awardXp(user, 'onboarding_completed', 25)` se flag `onboardingCompleted` passar de false para true
+
+4. **Endpoint**: `GET /api/community/me/xp` (auth) → retorna `{ totalXp, level, weeklyXp, badges, history: [...últimas 10] }`
+
+### Frontend
+
+5. **Display de XP no `/conta`**:
+   - Card "O teu progresso": nível actual, nome do nível, XP total, barra de progresso para o próximo nível
+   - Usar `useQuery(['my-xp'])` → `GET /api/community/me/xp`
+   - SSR-safe: `enabled: isAuthenticated`
+
+**SSR — regras obrigatórias:**
+- `GET /api/community/me/xp` requer auth — não chamar em SSR; usar `enabled: isAuthenticated` na query
+
+**Critérios de conclusão:**
+- [ ] `UserXP` model criado com todos os campos
+- [ ] `xp.service.ts` implementado com tabela completa
+- [ ] XP atribuído nos eventos de comunidade e HUB
+- [ ] `GET /api/community/me/xp` funcional
+- [ ] Card de XP visível em `/conta` para utilizadores autenticados
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P11.4 — Comunidade: Níveis e Badges (display no perfil) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P11.3 ✅
+> **Referência obrigatória:** ler `dcos/finhub/COMMUNITY.md §3 + §4` antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** lógica de desbloqueio de badges + display de nível/badges no perfil público e em posts da comunidade.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/` — expandir `xp.service.ts` com `checkAndAwardBadges()`
+- Frontend: `FinHub-Vite/` — perfil público `/perfil/:username` + posts + `/conta`
+
+**Ficheiros de referência:**
+```
+API_finhub/src/services/xp.service.ts     ← criado em P11.3
+API_finhub/src/models/UserXP.ts           ← badges array
+dcos/finhub/COMMUNITY.md §3.3 + §4       ← tabela de níveis + badges
+```
+
+**Tarefa:**
+
+### Backend
+
+1. **`checkAndAwardBadges(userId)`** em `xp.service.ts`:
+   - Chamar após cada `awardXp()`
+   - Badges a verificar (conforme `COMMUNITY.md §4`):
+     - `primeiros_passos`: onboarding_completed = true
+     - `leitor_dedicado`: `article_completed` count ≥ 10 (usar history)
+     - `estudante`: `course_completed` count ≥ 1
+     - `sociavel`: reply_created count ≥ 50
+     - `contribuidor`: upvote_received count ≥ 10
+     - `em_chama`: daily_streak ≥ 7 (sequencial — verificar datas no history)
+     - `top_da_semana`: atribuído pelo leaderboard (P11.5)
+     - `premium`: verificar `user.role === 'premium'` → atribuir/revogar dinamicamente
+     - `fire_master`: `level >= 7`
+   - Não atribuir badge já atribuído (verificar `badges.find(b => b.id === badgeId)`)
+
+2. **Incluir nível + badges no `mapAuthenticatedUser`**:
+   - Ao fazer `GET /api/users/me` → incluir `{ level, levelName, totalXp, badges }` se `UserXP` existir
+
+3. **Incluir nível no perfil público** (`GET /api/users/:username/public`):
+   - Retornar `{ level, levelName, badges }` no perfil público
+
+### Frontend
+
+4. **Badge display no perfil público** (`/perfil/:username`):
+   - Secção "Conquistas" com grid de badges desbloqueados (emoji + nome + data)
+   - Badges não desbloqueados: mostrar como cinzento/bloqueado com dica "Como desbloquear"
+   - Pill de nível junto ao nome: e.g. "Nível 3 · Investidor"
+
+5. **Pill de nível nos posts da comunidade**:
+   - Junto ao nome do autor em cada post/reply: `[Nv.3]` ou badge de nível
+   - Dados incluídos no populate do author no endpoint de posts
+
+6. **Card de badges no `/conta`**:
+   - Lista de badges desbloqueados + próximos badges a desbloquear
+
+**SSR — regras obrigatórias:**
+- Perfil público: pode ser SSR (dados públicos após populate)
+- `/conta`: apenas client-side (auth required)
+
+**Critérios de conclusão:**
+- [ ] `checkAndAwardBadges()` implementado com todos os badges de `COMMUNITY.md §4`
+- [ ] Nível + badges incluídos em `/api/users/me` e no perfil público
+- [ ] Secção de badges no perfil público (desbloqueados + bloqueados)
+- [ ] Pill de nível nos posts da comunidade
+- [ ] Card de badges no `/conta`
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT P11.5 — Comunidade: Leaderboard Semanal + HUB ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P11.4 ✅
+> **Referência obrigatória:** ler `dcos/finhub/COMMUNITY.md §5` antes de iniciar.
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** leaderboard semanal de XP + reset automático + widget na sidebar da comunidade + menção na homepage.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/` — endpoint de leaderboard + cron de reset semanal
+- Frontend: `FinHub-Vite/` — sidebar widget + homepage section. SSR-safe.
+
+**Ficheiros de referência:**
+```
+API_finhub/src/models/UserXP.ts           ← weeklyXp + weeklyResetAt
+API_finhub/src/services/xp.service.ts     ← resetWeeklyXp() + awardTopWeekBadge()
+dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
+```
+
+**Tarefa:**
+
+### Backend
+
+1. **Endpoint `GET /api/community/leaderboard`** (público):
+   - Top 10 utilizadores ordenados por `weeklyXp` (decrescente)
+   - Campos: `rank`, `username`, `avatar`, `level`, `levelName`, `weeklyXp`, `badges` (apenas `top_da_semana` e `fire_master`)
+   - Incluir posição do utilizador autenticado se não estiver no top 10 (campo `me?: { rank, weeklyXp }`)
+
+2. **Reset semanal** — `resetWeeklyXp()` em `xp.service.ts`:
+   - Atribuir badge `top_da_semana` ao top 3 da semana antes de fazer reset
+   - Zerar `weeklyXp` em todos os `UserXP`
+   - Actualizar `weeklyResetAt = new Date()`
+   - Registar no histórico: `{ action: 'weekly_reset', xp: 0, createdAt: now }`
+   - Chamar via **cron** todo domingo às 23:59 (usar `node-cron` ou `agenda` já existente no projecto — verificar o que está em uso)
+
+3. **`awardTopWeekBadge(userIds)`**: atribuir badge `top_da_semana` (com `unlockedAt = now`) ao top 3 — substituir o anterior se já tiver (actualizar `unlockedAt`)
+
+### Frontend
+
+4. **Widget `LeaderboardWidget`** (`src/features/community/components/LeaderboardWidget.tsx`):
+   - Lista os top 10 com rank, avatar, username, `weeklyXp`, pill de nível
+   - Mostrar "A tua posição" no final se autenticado e fora do top 10
+   - Usar `useQuery(['community-leaderboard'])` → `GET /api/community/leaderboard`
+   - Colocar na sidebar das páginas de comunidade (`/comunidade`, `/comunidade/:slug`)
+
+5. **Secção na homepage** (`src/pages/+Page.tsx`):
+   - Bloco "Top da Semana" com top 3 utilizadores (avatar, username, weeklyXp)
+   - Apenas visível se dados existirem (fallback: não renderizar a secção)
+   - SSR-safe: `useQuery` com `staleTime: 300_000` (5 min)
+
+6. **Display `top_da_semana` badge** no perfil público:
+   - Se `badges.includes('top_da_semana')`: mostrar trofeu junto ao nome
+
+**SSR — regras obrigatórias:**
+- Leaderboard: pode ser SSR (dados públicos)
+- Posição do utilizador autenticado: apenas client-side
+
+**Critérios de conclusão:**
+- [ ] `GET /api/community/leaderboard` retorna top 10 + posição do utilizador auth
+- [ ] Reset semanal via cron atribui badge top 3 antes de zerar
+- [ ] `LeaderboardWidget` na sidebar das páginas de comunidade
+- [ ] Secção "Top da Semana" na homepage (top 3)
+- [ ] Badge `top_da_semana` visível no perfil
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -4491,13 +4844,13 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 52. PROMPT P10.1    → Nav fix: mover Mercados/Ferramentas + Feed       ✅ (Codex — 2026-03-23)
 53. PROMPT P10.2    → Creator profile editável (bio, redes, temas)     ✅ (Codex — 2026-03-23)
 54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ✅ (Codex — 2026-03-23)
-55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ⏳ (Codex)
-56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ⏳ (Codex)
-57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ⏳ (Codex — escrever prompt)
-58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ⏳ (Codex — escrever prompt)
-59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ⏳ (Codex — escrever prompt)
-60. PROMPT P11.4    → Comunidade: níveis e badges (display no perfil)  ⏳ (Codex — escrever prompt)
-61. PROMPT P11.5    → Comunidade: leaderboard semanal + HUB            ⏳ (Codex — escrever prompt)
+55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ✅ (Codex — 2026-03-23)
+56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ✅ (Codex — 2026-03-23)
+57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ⏳ (Codex)
+58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ⏳ (Codex)
+59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ⏳ (Codex)
+60. PROMPT P11.4    → Comunidade: níveis e badges (display no perfil)  ⏳ (Codex)
+61. PROMPT P11.5    → Comunidade: leaderboard semanal + HUB            ⏳ (Codex)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

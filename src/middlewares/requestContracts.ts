@@ -1,4 +1,9 @@
 import { NextFunction, Request, Response } from 'express'
+import {
+  MAX_CONTENT_TAGS,
+  MAX_CONTENT_TAG_LENGTH,
+  normalizeAndValidateTags,
+} from '../utils/contentTags'
 
 type RecordLike = Record<string, unknown>
 type DashboardPreset = 'operations' | 'moderation' | 'monetization' | 'custom'
@@ -82,6 +87,12 @@ type PublicDirectoryVerticalType =
   | 'other'
 type PublicDirectoryVerificationStatus = 'unverified' | 'pending' | 'verified'
 type PublicDirectorySortBy = 'featured' | 'popular' | 'rating' | 'recent' | 'name'
+type RecommendationSignal =
+  | 'content_viewed'
+  | 'content_completed'
+  | 'content_favorited'
+  | 'not_interested'
+type RecommendationContentType = 'article' | 'video' | 'course'
 
 const CONTENT_ACCESS_POLICY_CONTENT_TYPES: readonly ContentAccessPolicyContentType[] = [
   'article',
@@ -223,6 +234,18 @@ const PUBLIC_DIRECTORY_VERTICAL_TYPES: readonly PublicDirectoryVerticalType[] = 
   'newsletter',
   'other',
 ]
+const RECOMMENDATION_SIGNALS: readonly RecommendationSignal[] = [
+  'content_viewed',
+  'content_completed',
+  'content_favorited',
+  'not_interested',
+]
+const RECOMMENDATION_CONTENT_TYPES: readonly RecommendationContentType[] = [
+  'article',
+  'video',
+  'course',
+]
+const MAX_RECOMMENDATION_QUERY_LIMIT = 24
 const PUBLIC_DIRECTORY_VERIFICATION_STATUSES: readonly PublicDirectoryVerificationStatus[] = [
   'unverified',
   'pending',
@@ -485,6 +508,30 @@ const validateOptionalStringArray = (
   }
 
   return { valid: true, value: parsed }
+}
+
+const validateOptionalContentTags = (
+  payload: RecordLike,
+  field: string
+): { valid: boolean; hasValue: boolean; value?: string[] } => {
+  if (!(field in payload) || payload[field] === undefined || payload[field] === null) {
+    return { valid: true, hasValue: false }
+  }
+
+  const normalized = normalizeAndValidateTags(payload[field], {
+    maxTags: MAX_CONTENT_TAGS,
+    maxTagLength: MAX_CONTENT_TAG_LENGTH,
+  })
+
+  if (!normalized.valid) {
+    return { valid: false, hasValue: true }
+  }
+
+  return {
+    valid: true,
+    hasValue: true,
+    value: normalized.value || [],
+  }
 }
 
 const validateOptionalEnumArray = <T extends string>(
@@ -2085,6 +2132,115 @@ export const validateUserDeleteMeContract = (
     respondValidationError(res, 'Campo reason invalido. Usa pelo menos 5 caracteres.')
     return
   }
+
+  next()
+}
+
+export const validateContentTagsContract = (req: Request, res: Response, next: NextFunction) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de conteudo invalido.')
+    return
+  }
+
+  const tags = validateOptionalContentTags(req.body, 'tags')
+  if (!tags.valid) {
+    respondValidationError(
+      res,
+      `Campo tags invalido. Usa array de strings (max ${MAX_CONTENT_TAGS} tags, ${MAX_CONTENT_TAG_LENGTH} caracteres por tag).`
+    )
+    return
+  }
+
+  if (tags.hasValue) {
+    req.body.tags = tags.value ?? []
+  }
+
+  next()
+}
+
+export const validateRecommendationsQueryContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['userId', 'limit'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const userId = readSingleQueryValue(req.query.userId)
+  if (userId.present && (!userId.valid || !userId.value)) {
+    respondValidationError(res, 'Parametro query userId invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid) {
+    respondValidationError(
+      res,
+      `Parametro query limit invalido. Usa inteiro entre 1 e ${MAX_RECOMMENDATION_QUERY_LIMIT}.`
+    )
+    return
+  }
+
+  if (limit.present && (limit.value || 0) > MAX_RECOMMENDATION_QUERY_LIMIT) {
+    respondValidationError(
+      res,
+      `Parametro query limit invalido. Usa inteiro entre 1 e ${MAX_RECOMMENDATION_QUERY_LIMIT}.`
+    )
+    return
+  }
+
+  next()
+}
+
+export const validateUserSignalContract = (req: Request, res: Response, next: NextFunction) => {
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de sinal de utilizador invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['signal', 'contentId', 'contentType'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo nao permitido: ${key}.`)
+      return
+    }
+  }
+
+  const signalRaw = validateRequiredNonEmptyString(req.body, 'signal')
+  const contentId = validateRequiredNonEmptyString(req.body, 'contentId')
+  const contentTypeRaw = validateRequiredNonEmptyString(req.body, 'contentType')
+  if (!signalRaw || !contentId || !contentTypeRaw) {
+    respondValidationError(res, 'Campos obrigatorios em falta: signal, contentId, contentType.')
+    return
+  }
+
+  const signal = signalRaw.toLowerCase() as RecommendationSignal
+  const contentType = contentTypeRaw.toLowerCase() as RecommendationContentType
+
+  if (!RECOMMENDATION_SIGNALS.includes(signal)) {
+    respondValidationError(
+      res,
+      `Campo signal invalido. Valores suportados: ${RECOMMENDATION_SIGNALS.join(', ')}.`
+    )
+    return
+  }
+
+  if (!RECOMMENDATION_CONTENT_TYPES.includes(contentType)) {
+    respondValidationError(
+      res,
+      `Campo contentType invalido. Valores suportados: ${RECOMMENDATION_CONTENT_TYPES.join(', ')}.`
+    )
+    return
+  }
+
+  req.body.signal = signal
+  req.body.contentId = contentId
+  req.body.contentType = contentType
 
   next()
 }

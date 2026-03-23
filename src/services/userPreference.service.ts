@@ -11,6 +11,7 @@ import {
 } from '../models/CreatorNotificationSubscription'
 import { Follow } from '../models/Follow'
 import { User } from '../models/User'
+import { normalizeTags } from '../utils/contentTags'
 
 const MAX_INTERACTION_HISTORY = 300
 const DEFAULT_TAG_WEIGHT = 1
@@ -378,7 +379,7 @@ export class UserPreferenceService {
   async trackInteraction(input: TrackInteractionInput) {
     const { userId, interactionType, targetType, targetId } = input
     const weight = input.weight ?? DEFAULT_TAG_WEIGHT
-    const tags = Array.isArray(input.tags) ? input.tags.filter(Boolean) : []
+    const tags = Array.isArray(input.tags) ? normalizeTags(input.tags) : []
 
     const preferences = await this.ensureUserPreferences(userId)
 
