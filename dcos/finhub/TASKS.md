@@ -131,6 +131,19 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Níveis e badges: display no perfil e posts** | ✅ | P11.4 | checkAndAwardBadges + pills Nv.X nos posts + conquistas no perfil + /conta |
 | **Leaderboard semanal + integração HUB** | ✅ | P11.5 | Top 10 + rank próprio + reset dominical + badge top_da_semana + LeaderboardWidget |
 
+#### 🟡 Tech Debt — Detectado em Revisão P11 (resolver antes da release)
+
+> Issues identificados durante revisão de código P11.1–P11.5. Nenhum é bloqueador funcional mas todos devem ser resolvidos antes da release pública para garantir qualidade top-level.
+
+| Issue | Ficheiro(s) | Tipo | Estado | Prompt | Notas |
+|-------|------------|------|--------|--------|-------|
+| **Vote counter: leitura após update tem janela de timing** | `communityThread.service.ts` | Backend atomicidade | ⏳ | TECH-DEBT-01 | `readVoteCounters()` corre APÓS `updateVoteCounters()` em operações separadas — outra request pode votar entre as duas; fix: usar `findOneAndUpdate({ new: true })` para obter doc já actualizado |
+| **Vote: criação de CommunityVote + `$inc` no Post sem transacção** | `communityThread.service.ts`, `CommunityVote` | Backend atomicidade | ⏳ | TECH-DEBT-01 | Se a operação falhar a meio, o vote fica criado mas o contador não actualizado (ou vice-versa); fix: MongoDB session transaction |
+| **`as any` cast em pipeline de agregação MongoDB** | `xp.service.ts` linha 565 | TypeScript | ⏳ | TECH-DEBT-01 | Pipeline de `updateMany` com array de stages tipado como `as any`; fix: tipo explícito com `PipelineStage[]` do mongoose |
+| **Leaderboard rank off-by-1 em empate de `weeklyXp`** | `xp.service.ts` — `getWeeklyLeaderboard` | Lógica | ⏳ | TECH-DEBT-01 | `countActiveUsersAheadOfWeeklyXp` conta `weeklyXp >` mas sort usa desempate por `totalXp` e `_id`; rank pode estar errado em empate exacto; fix: usar aggregation com `$rank` ou incluir totalXp no count |
+| **`window.location.href` em handlers nas páginas de comunidade** | `CommunityRoomDetailPage.tsx`, `CommunityPostDetailPage.tsx` | Frontend / Vike | ⏳ | TECH-DEBT-02 | Padrão imperativo `window.location.href = loginRedirect` em handlers; padrão Vike correcto: renderizar `<a href={loginRedirect}>` condicional (declarativo) ou usar `navigate()` de `vike/client/router` |
+| **`react-day-picker@8` incompatível com `date-fns@4`** | `FinHub-Vite/package.json` | Peer dep | ⏳ | TECH-DEBT-02 | Peer dep pré-existente detectada 2026-03-23; `react-day-picker@8` suporta apenas `date-fns ^2\|\|^3`; `date-fns@4` instalada; fix: upgrade para `react-day-picker@9+` que suporta oficialmente `date-fns@4` |
+
 #### Features v1.0 sem prompt Codex definido
 | Feature | Estado | Notas |
 |---------|--------|-------|

@@ -4825,6 +4825,430 @@ dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
 
 ---
 
+## PROMPT TECH-DEBT-01 — Backend Quality: Vote Atomicity + TypeScript + Leaderboard Rank ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** P11.5 ✅
+> **Repo:** `API_finhub/` apenas
+> **Escopo:** corrigir 4 issues de qualidade detectados em revisão de código P11.2/P11.3/P11.5 — nenhum é bloqueador funcional mas todos devem estar top-level antes da release.
+
+**Contexto do projecto:**
+- Backend: `API_finhub/`
+- Framework: Express + Mongoose + MongoDB
+- Transacções MongoDB disponíveis se MongoDB estiver em replica set (Atlas: sim; local standalone: pode necessitar `--replSet`)
+
+**Issues a resolver (todos obrigatórios):**
+
+### 1. Vote atomicity — janela de timing entre update e read
+
+**Ficheiro:** `src/services/communityThread.service.ts` — método `updateVoteCounters` (ou equivalente)
+
+**Problema:** Após `$inc` no upvotes/downvotes do `CommunityPost`, é feita uma leitura separada `readVoteCounters()` para devolver os contadores actualizados. Entre as duas operações, outro utilizador pode votar, fazendo a leitura devolver valores que não correspondem ao estado após o nosso update.
+
+**Fix:** Usar `findOneAndUpdate(..., { new: true })` que devolve o documento **já com os novos valores** numa única operação atómica, eliminando a necessidade de leitura separada.
+
+### 2. Vote atomicity — criação de CommunityVote + counter update sem transacção
+
+**Ficheiro:** `src/services/communityThread.service.ts` — método de voto (create/toggle/swap)
+
+**Problema:** A operação de voto envolve 2 writes separados:
+1. Criar/actualizar/apagar documento `CommunityVote`
+2. `$inc` upvotes/downvotes em `CommunityPost`
+
+Se o processo falhar entre os dois, os dados ficam inconsistentes (vote sem counter actualizado, ou counter actualizado sem vote registado).
+
+**Fix:** Encapsular os dois writes numa transacção MongoDB:
+```typescript
+const session = await mongoose.startSession()
+try {
+  await session.withTransaction(async () => {
+    // write 1: CommunityVote upsert/delete
+    // write 2: CommunityPost $inc
+  })
+} finally {
+  await session.endSession()
+}
+```
+Confirmar que o ambiente suporta transacções; se não suportar (standalone sem replSet), documentar no código com comentário `// NOTE: requires replica set` e usar operação sequencial com rollback manual como fallback.
+
+### 3. `as any` cast no pipeline de updateMany — `xp.service.ts`
+
+**Ficheiro:** `src/services/xp.service.ts` linha ~565
+
+**Problema:** O pipeline de `updateMany` (array de stages para reset semanal) está tipado como `as any`, ignorando verificação de tipos do TypeScript.
+
+**Fix:** Usar o tipo correcto do Mongoose:
+```typescript
+import type { PipelineStage } from 'mongoose'
+const pipeline: PipelineStage[] = [
+  { $set: { weeklyXp: 0, weeklyResetAt: now } }
+]
+await UserXP.updateMany({}, pipeline)
+```
+Se o Mongoose não aceitar `PipelineStage[]` directamente no `updateMany`, usar o overload correcto do tipo ou cast para `Parameters<typeof UserXP.updateMany>[1]`.
+
+### 4. Leaderboard rank off-by-1 em empate de `weeklyXp`
+
+**Ficheiro:** `src/services/xp.service.ts` — `getWeeklyLeaderboard` / `countActiveUsersAheadOfWeeklyXp`
+
+**Problema:** O rank do utilizador (quando fora do top 10) é calculado contando utilizadores com `weeklyXp > viewerWeeklyXp`. Mas o sort do leaderboard usa desempate por `totalXp DESC, _id ASC`. Em caso de empate de `weeklyXp`, o rank calculado pode diferir do rank real no leaderboard (off-by-1 ou mais).
+
+**Fix:** Incluir o desempate na contagem:
+```typescript
+// Contar utilizadores que estão à frente no sort real:
+{ weeklyXp: { $gt: viewerWeeklyXp } }
+// OU (mesmo weeklyXp mas mais totalXp)
+{ weeklyXp: viewerWeeklyXp, totalXp: { $gt: viewerTotalXp } }
+// OU (mesmo weeklyXp, mesmo totalXp mas _id menor — sort ASC)
+{ weeklyXp: viewerWeeklyXp, totalXp: viewerTotalXp, _id: { $lt: viewerId } }
+```
+Combinar as 3 condições com `$or`.
+
+**Critérios de conclusão:**
+- [ ] `findOneAndUpdate({ new: true })` usado para leitura de contadores após vote
+- [ ] Transacção MongoDB no fluxo de voto (com comentário de fallback se standalone)
+- [ ] `as any` em xp.service removido — tipo explícito com `PipelineStage[]` ou equivalente
+- [ ] `countActiveUsersAheadOfWeeklyXp` inclui desempate por `totalXp` e `_id`
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT TECH-DEBT-02 — Frontend Quality: Vike Navigation + react-day-picker@9 ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** TECH-DEBT-01 ✅ (ou pode correr em paralelo — repos diferentes)
+> **Repo:** `FinHub-Vite/` apenas
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** 2 issues de qualidade frontend detectados em revisão P11 + 1 peer dep pré-existente.
+
+**Issues a resolver (todos obrigatórios):**
+
+### 1. `window.location.href` em handlers → padrão Vike declarativo
+
+**Ficheiros:** `src/features/community/pages/CommunityRoomDetailPage.tsx`, `src/features/community/pages/CommunityPostDetailPage.tsx`
+
+**Problema:** Ambas as páginas têm handlers que fazem redirect imperativo para login quando o utilizador não está autenticado e tenta criar post/reply:
+```typescript
+if (typeof window !== 'undefined') {
+  window.location.href = loginRedirect
+}
+```
+Este padrão, embora funcione (é guarded por `typeof window`), é imperativo e viola o padrão Vike de SSR. O padrão correcto é declarativo.
+
+**Fix:** Substituir por padrão declarativo — renderizar condicionalmente um link de login em vez de redireccionar imperativmente:
+```tsx
+// Antes (imperativo):
+const handleCreatePost = () => {
+  if (!isAuthenticated) {
+    if (typeof window !== 'undefined') window.location.href = loginRedirect
+    return
+  }
+  // ...
+}
+
+// Depois (declarativo):
+// No JSX, mostrar botão diferente se não autenticado:
+{isAuthenticated ? (
+  <Button onClick={handleCreatePost}>Criar Post</Button>
+) : (
+  <a href={loginRedirect} className="...">Login para criar post</a>
+)}
+```
+Remover todo o código de redirect imperativo. A lógica de construção do `loginRedirect` URL pode manter-se como `useMemo`.
+
+### 2. `react-day-picker@8` → upgrade para `@9+`
+
+**Ficheiros:** `FinHub-Vite/package.json`, qualquer componente que importe de `react-day-picker`
+
+**Problema:** `react-day-picker@8` declara peer dep `"date-fns": "^2 || ^3"`. O projecto usa `date-fns@4.x`. Peer dep incompatível pré-existente — contornada com `--legacy-peer-deps` mas continua a aparecer no Dependabot.
+
+**Fix:**
+1. Identificar todos os usos de `react-day-picker` no projecto (grep por `react-day-picker` e `DayPicker`)
+2. Verificar se a API usada mudou entre v8 e v9 (principalmente: `selected`, `onSelect`, `mode`)
+3. Fazer upgrade: `npm install react-day-picker@^9 --legacy-peer-deps` (legacy ainda necessário até date-fns consolidar)
+4. Ajustar imports/props se necessário (v9 tem quebras de API pontuais — consultar CHANGELOG oficial)
+5. Validar que os componentes de calendário/datepicker funcionam correctamente
+
+**Critérios de conclusão:**
+- [ ] `window.location.href` removido das 2 páginas de comunidade; substituído por renderização condicional declarativa
+- [ ] `typeof window !== 'undefined'` guards removidos dos handlers de navegação
+- [ ] `react-day-picker@9+` instalado; imports/props actualizados
+- [ ] `yarn lint` → PASS (sem novos warnings Fast Refresh)
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT SEC-01 — Security Gate: Backend (Helmet, CORS, JWT, Logging, Env) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** TECH-DEBT-01 ✅
+> **Repo:** `API_finhub/` apenas
+> **Escopo:** implementar e verificar todos os itens da 🟡 Security Gate pré-release — lado backend. Não criar features novas. Auditar e configurar.
+
+**Referência:** `dcos/finhub/TASKS.md` secção `🟡 Segurança — Gate Pré-Release Pública — Backend`.
+
+**Tarefas obrigatórias:**
+
+### 1. Helmet.js — verificar/configurar headers de segurança
+
+Confirmar que `helmet()` está activo no `app.ts`/`server.ts`. Se não estiver, instalar e configurar:
+```typescript
+import helmet from 'helmet'
+app.use(helmet({
+  contentSecurityPolicy: false, // configurar separadamente se necessário
+  crossOriginEmbedderPolicy: false,
+}))
+```
+Verificar que os seguintes headers são enviados em todas as respostas: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `X-XSS-Protection: 0` (valor correcto moderno), `Strict-Transport-Security` (HSTS), `Referrer-Policy`.
+
+### 2. CORS — whitelist explícita para produção
+
+Verificar configuração CORS no `app.ts`. Em produção, `origin` **não pode ser `'*'`** — deve ser apenas o domínio FinHub:
+```typescript
+cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') ?? ['https://finhub.pt'],
+  credentials: true,
+})
+```
+Adicionar `ALLOWED_ORIGINS` ao `.env.example`. Confirmar que em dev permite `localhost:3000` (ou equivalente).
+
+### 3. Rate limiting — verificar limites em endpoints críticos
+
+Confirmar que `express-rate-limit` (ou similar) está configurado em:
+- `POST /api/auth/login` — máx 10 req/min por IP
+- `POST /api/auth/register` — máx 5 req/min por IP
+- `POST /api/auth/refresh` — máx 20 req/min por IP
+- `PATCH /api/users/me` — máx 30 req/min por user
+- `POST /api/community/posts` — máx 10 req/min por user
+- `POST /api/community/posts/:id/vote` — máx 60 req/min por user
+
+Se limites não existirem, criar middleware de rate limit com `express-rate-limit`.
+
+### 4. JWT secrets — confirmar sem fallback hardcoded
+
+Grep em todo o código por `JWT_SECRET`, `JWT_REFRESH_SECRET`, `'secret'`, `"secret"`. Confirmar que:
+- Nenhum fallback tipo `process.env.JWT_SECRET ?? 'secret'`
+- Se não estiver definido, o servidor deve falhar no startup com erro explícito: `if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is required')`
+
+### 5. Logging — confirmar sem dados sensíveis em logs
+
+Grep por `console.log`, `logger.info/debug` em auth controllers e middleware. Confirmar que nenhum log inclui:
+- `req.body.password` ou `req.body.*` em auth routes
+- `Authorization` header
+- JWT tokens completos
+- Campos `password`, `passwordHash`, `token`, `secret`
+
+Se encontrados, remover ou mascarar: `logger.info({ userId: req.user.id })` em vez de `logger.info(req.body)`.
+
+### 6. `.env` — confirmar não committed + exemplo actualizado
+
+- Verificar `.gitignore` cobre `.env`, `.env.local`, `.env.production`
+- Correr `git log --all -- .env` — se aparecer histórico, documentar necessidade de remoção com `git filter-repo`
+- Actualizar `.env.example` com todas as variáveis usadas actualmente (incluindo `ALLOWED_ORIGINS`, variáveis de P10/P11)
+
+### 7. Stack traces em produção
+
+Confirmar que o error handler global em `app.ts`/`server.ts` tem comportamento diferente por ambiente:
+```typescript
+app.use((err, req, res, next) => {
+  const isDev = process.env.NODE_ENV !== 'production'
+  res.status(err.status ?? 500).json({
+    error: isDev ? err.message : 'Erro interno do servidor',
+    ...(isDev && { stack: err.stack }),
+  })
+})
+```
+
+**Critérios de conclusão:**
+- [ ] Helmet activo — verificado em resposta HTTP real (curl ou teste)
+- [ ] CORS usa whitelist explícita + variável de ambiente
+- [ ] Rate limit em todos os 6 endpoints listados
+- [ ] JWT sem fallback hardcoded — startup falha explicitamente se não configurado
+- [ ] Nenhum dado sensível em logs
+- [ ] `.env.example` actualizado, `.gitignore` correcto
+- [ ] Error handler esconde stack trace em produção
+- [ ] `npm run typecheck` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT SEC-02 — Security Gate: Frontend + Infra (VITE_, CSP, Audit, Env Prod) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** TECH-DEBT-02 ✅ (ou paralelo com SEC-01 — repos diferentes)
+> **Repo:** `FinHub-Vite/` principalmente; verificações de infra em ambos
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** auditar segurança frontend + confirmar checklist de infra pré-release.
+
+**Referência:** `dcos/finhub/TASKS.md` secção `🟡 Segurança — Gate Pré-Release Pública — Frontend + Infra`.
+
+**Tarefas obrigatórias:**
+
+### 1. Audit de variáveis `VITE_*` — sem secrets no bundle
+
+Listar todas as variáveis `VITE_*` usadas no código (`grep -r "import.meta.env.VITE_"`). Para cada uma, confirmar que é uma key **pública** (PostHog project key, Sentry DSN, URL base da API). **Nunca deve conter:**
+- Stripe secret key (só public key `pk_*` é OK)
+- JWT secrets
+- MongoDB URI
+- Qualquer credencial privada
+
+Se encontrado, mover para variável de ambiente do servidor e expor via endpoint seguro.
+
+### 2. Audit de `dangerouslySetInnerHTML` — DOMPurify em todos os usos
+
+Grep por `dangerouslySetInnerHTML` em todo o frontend. Para cada uso confirmar que o HTML vem de:
+1. `DOMPurify.sanitize()` — seguro ✅
+2. Conteúdo interno controlado (não vem de user input) — documentar com comentário
+3. User-generated content sem sanitização — **adicionar DOMPurify** imediatamente
+
+Confirmar que `renderCommunityMarkdown()` continua a usar DOMPurify (P11.2).
+
+### 3. Content Security Policy — configurar no servidor Vike
+
+Adicionar CSP como header HTTP no servidor de produção (Vike SSR server). Configuração base recomendada:
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';   // unsafe-inline necessário para JSON-LD scripts
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: https:;
+  connect-src 'self' https://api.posthog.com https://<api-domain>;
+  frame-ancestors 'none';
+```
+Ajustar `connect-src` para incluir domínio real da API em produção. Documentar qualquer excepção com comentário de justificação.
+
+### 4. Dependências — `npm outdated` + final audit
+
+1. Correr `npm outdated` — listar packages com major update disponível; documentar no relatório (não actualizar automaticamente, apenas inventariar)
+2. Correr `npm audit` — confirmar 0 vulnerabilidades high/critical. Se existirem novas, tentar fix com `npm audit fix --legacy-peer-deps`
+3. Confirmar que `react-day-picker@9` foi instalado em TECH-DEBT-02 (ou instalar agora se ainda não foi feito)
+
+### 5. Verificações de infra pré-release (documentar, não implementar)
+
+Correr os seguintes checks e documentar resultado no relatório:
+
+```bash
+# .env não committed
+git log --all --oneline -- .env .env.production .env.local
+
+# Variáveis de ambiente necessárias para prod (inventário)
+grep -r "process.env\." src/ | grep -v "NODE_ENV" | sort -u
+
+# imports react-router-dom residuais (violação SSR)
+grep -r "from 'react-router-dom'" src/ --include="*.tsx" --include="*.ts"
+
+# window.* fora de useEffect/guards residuais
+grep -rn "window\." src/ --include="*.tsx" | grep -v "useEffect\|typeof window\|// "
+```
+
+Para cada resultado anómalo: corrigir ou documentar justificação.
+
+**Critérios de conclusão:**
+- [ ] Nenhuma variável `VITE_*` privada — lista documentada no relatório
+- [ ] Todos os `dangerouslySetInnerHTML` auditados — DOMPurify confirmado
+- [ ] CSP header configurado no servidor Vike
+- [ ] `npm audit` → 0 high/critical vulns
+- [ ] `npm outdated` → lista documentada (sem obrigação de actualizar)
+- [ ] Nenhum import `react-router-dom` residual
+- [ ] `npm run typecheck:p1` → PASS
+- [ ] `npm run build` → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT GDPR-01 — GDPR: Cookie Consent, Analytics Opt-out, Data Export ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** SEC-01 ✅ e SEC-02 ✅
+> **Repos:** `FinHub-Vite/` (cookie banner, opt-out UI) + `API_finhub/` (data export endpoint)
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Referência:** `dcos/finhub/TASKS.md` secção `🔴 GDPR / Legal — Beta Obrigatório`.
+> **Escopo:** implementar os itens RGPD que têm impacto técnico directo. DPIA e BRP são documentos — não são código.
+
+**Contexto legal:**
+- RGPD Art 7 — consentimento explícito para analytics/cookies de tracking
+- RGPD Art 20 — portabilidade de dados (export)
+- RGPD Art 21 — direito de oposição (opt-out de analytics)
+- PostHog: deve ser inicializado APENAS após consentimento do utilizador
+
+**Tarefas obrigatórias:**
+
+### 1. Cookie banner com consentimento PostHog — RGPD Art 7
+
+**Ficheiros:** criar `src/components/consent/CookieBanner.tsx`, actualizar `src/lib/analyticsProviders.ts` e `src/renderer/PageShell.tsx`
+
+**Requisitos:**
+- Banner aparece na primeira visita (antes de qualquer scroll) para utilizadores não autenticados e autenticados sem preferência guardada
+- Dois botões: "Aceitar" e "Recusar" (sem botão "Fechar" sem escolha)
+- Preferência guardada em `localStorage` com chave `finhub_cookie_consent` = `'accepted' | 'rejected'`
+- PostHog **só é inicializado** após `'accepted'`. Se `'rejected'`, PostHog não inicializa — verificar em `analyticsProviders.ts`
+- Se consentimento ainda não foi dado (`null`/`undefined`), PostHog não inicializa
+- Banner não aparece se já existe preferência guardada
+
+**Implementação PostHog condicional:**
+```typescript
+// analyticsProviders.ts
+export function initAnalytics() {
+  if (typeof window === 'undefined') return
+  const consent = window.localStorage.getItem('finhub_cookie_consent')
+  if (consent !== 'accepted') return  // não inicializar sem consentimento
+  posthog.init(POSTHOG_KEY, { ... })
+}
+```
+Banner chama `initAnalytics()` após o utilizador aceitar.
+
+### 2. Analytics opt-out toggle — RGPD Art 21
+
+**Ficheiros:** `src/pages/conta/definicoes/+Page.tsx` (ou equivalente), `API_finhub/src/models/User.ts`
+
+**Requisitos:**
+- Toggle "Permitir analytics" em `/conta/definicoes` (ou `/conta` se não existir página de definições separada)
+- Campo `allowAnalytics: boolean` no modelo `User` (default: `true` para utilizadores existentes, `false` para novos até dar consentimento)
+- `PATCH /api/users/me` aceita campo `allowAnalytics`
+- Quando `allowAnalytics === false`, `trackEvent()` em `analytics.ts` retorna imediatamente sem chamar PostHog
+- Sincronizar com preferência de cookie: se utilizador recusar no banner, `allowAnalytics = false` também
+
+### 3. Data export endpoint — RGPD Art 20
+
+**Ficheiros:** `API_finhub/src/controllers/user.controller.ts`, `API_finhub/src/routes/user.routes.ts`
+
+**Endpoint:** `GET /api/account/export` (autenticado)
+
+**Resposta:** JSON com todos os dados do utilizador:
+```json
+{
+  "profile": { "name", "email", "bio", "avatar", "topics", "socialLinks", "createdAt" },
+  "content": { "articles": [...ids], "courses": [...ids], "videos": [...ids] },
+  "community": { "posts": [...ids], "replies": [...ids], "xp": { level, totalXp, badges } },
+  "analytics": { "allowAnalytics" },
+  "exportedAt": "ISO date"
+}
+```
+- Rate limit: máx 1 export por utilizador por 7 dias (usar Redis ou campo `lastExportAt` no User model)
+- Resposta inline (Content-Type: application/json) — não necessita de email para MVP
+
+**Critérios de conclusão:**
+- [ ] Cookie banner aparece na primeira visita; preferência guardada em localStorage
+- [ ] PostHog não inicializa sem `'accepted'` — verificar em Network tab (nenhum request PostHog sem consentimento)
+- [ ] Toggle opt-out em `/conta` funciona — `trackEvent()` retorna sem chamar PostHog se `allowAnalytics = false`
+- [ ] `GET /api/account/export` devolve JSON com dados do utilizador; rate limit activo
+- [ ] `npm run typecheck:p1` (front) → PASS
+- [ ] `npm run typecheck` (back) → PASS
+- [ ] `npm run build` (ambos) → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
 ## Ordem de Execução Recomendada
 
 ```
@@ -4898,12 +5322,18 @@ dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
 54. PROMPT P10.3    → SEO: JSON-LD para conteúdo + criadores           ✅ (Codex — 2026-03-23)
 55. PROMPT P10.4    → Analytics: eventos em falta (AN-1)               ✅ (Codex — 2026-03-23)
 56. PROMPT P10.5    → Motor de recomendação: foundation (R1+R2)        ✅ (Codex — 2026-03-23)
-56b. PROMPT CI-FIX-01 → CI lint + GitHub Actions v5 + Dependabot      ⏳ (Claude directo — 🔴 urgente)
-57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ✅ (Codex — 2026-03-23)
-58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ✅ (Codex — 2026-03-23)
-59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ✅ (Codex — 2026-03-23)
-60. PROMPT P11.4    → Comunidade: níveis e badges (display no perfil)  ✅ (Codex — 2026-03-23)
-61. PROMPT P11.5    → Comunidade: leaderboard semanal + HUB            ✅ (Codex — 2026-03-23)
+56b. PROMPT CI-FIX-01   → CI lint + GitHub Actions v5 + Dependabot        ⏳ (Claude directo — 🔴 urgente)
+57. PROMPT P11.1     → Comunidade: salas (CommunityRoom model + API)      ✅ (Codex — 2026-03-23)
+58. PROMPT P11.2     → Comunidade: posts e threads (criar, votar)         ✅ (Codex — 2026-03-23)
+59. PROMPT P11.3     → Comunidade: sistema XP (eventos, cálculo)          ✅ (Codex — 2026-03-23)
+60. PROMPT P11.4     → Comunidade: níveis e badges (display no perfil)    ✅ (Codex — 2026-03-23)
+61. PROMPT P11.5     → Comunidade: leaderboard semanal + HUB              ✅ (Codex — 2026-03-23)
+    ── Tech Debt + Security Gate + GDPR ──
+62. PROMPT TECH-DEBT-01 → Backend: vote atomicity + as any + rank         ⏳ (Codex)
+63. PROMPT TECH-DEBT-02 → Frontend: Vike navigate + react-day-picker@9   ⏳ (Codex)
+64. PROMPT SEC-01    → Security backend: Helmet, CORS, JWT, logging       ⏳ (Codex)
+65. PROMPT SEC-02    → Security frontend: VITE_, CSP, audit, infra        ⏳ (Codex)
+66. PROMPT GDPR-01   → GDPR: cookie consent + opt-out + data export       ⏳ (Codex)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
