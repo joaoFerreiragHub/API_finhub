@@ -4617,7 +4617,7 @@ dcos/finhub/COMMUNITY.md §2.2 + §7       ← spec de posts, threads, vote
 
 ---
 
-## PROMPT P11.3 — Comunidade: Sistema XP (eventos, cálculo) ⏳
+## PROMPT P11.3 — Comunidade: Sistema XP (eventos, cálculo) ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P11.2 ✅
@@ -4681,7 +4681,7 @@ dcos/finhub/COMMUNITY.md §3       ← tabela de XP por acção + níveis
 
 ---
 
-## PROMPT P11.4 — Comunidade: Níveis e Badges (display no perfil) ⏳
+## PROMPT P11.4 — Comunidade: Níveis e Badges (display no perfil) ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P11.3 ✅
@@ -4755,7 +4755,7 @@ dcos/finhub/COMMUNITY.md §3.3 + §4       ← tabela de níveis + badges
 
 ---
 
-## PROMPT P11.5 — Comunidade: Leaderboard Semanal + HUB ⏳
+## PROMPT P11.5 — Comunidade: Leaderboard Semanal + HUB ✅ VALIDADO 2026-03-23
 
 > **Executor: Codex**
 > **Pré-requisito:** P11.4 ✅
@@ -4901,9 +4901,9 @@ dcos/finhub/COMMUNITY.md §5              ← spec de leaderboard
 56b. PROMPT CI-FIX-01 → CI lint + GitHub Actions v5 + Dependabot      ⏳ (Claude directo — 🔴 urgente)
 57. PROMPT P11.1    → Comunidade: salas (CommunityRoom model + API)    ✅ (Codex — 2026-03-23)
 58. PROMPT P11.2    → Comunidade: posts e threads (criar, votar)       ✅ (Codex — 2026-03-23)
-59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ⏳ (Codex)
-60. PROMPT P11.4    → Comunidade: níveis e badges (display no perfil)  ⏳ (Codex)
-61. PROMPT P11.5    → Comunidade: leaderboard semanal + HUB            ⏳ (Codex)
+59. PROMPT P11.3    → Comunidade: sistema XP (eventos, cálculo)        ✅ (Codex — 2026-03-23)
+60. PROMPT P11.4    → Comunidade: níveis e badges (display no perfil)  ✅ (Codex — 2026-03-23)
+61. PROMPT P11.5    → Comunidade: leaderboard semanal + HUB            ✅ (Codex — 2026-03-23)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

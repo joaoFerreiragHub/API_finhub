@@ -127,9 +127,9 @@ Ver especificação completa em `COMMUNITY.md`.
 |---------|--------|--------|-------|
 | **Salas: modelos, API, listagem** | ✅ | P11.1 | CommunityRoom model + routes + listagem frontend + seed 8 salas públicas |
 | **Posts e threads: criar, votar, responder** | ✅ | P11.2 | CommunityPost + CommunityReply + CommunityVote + voto idempotente + thread UI |
-| **Sistema XP: eventos, cálculo, persistência** | ⏳ | P11.3 | UserXP model + XP events + cálculo de nível |
-| **Níveis e badges: display no perfil e posts** | ⏳ | P11.4 | Badge component + nível no perfil + posts da comunidade |
-| **Leaderboard semanal + integração HUB** | ⏳ | P11.5 | Top 10 semanal + link artigos ↔ posts |
+| **Sistema XP: eventos, cálculo, persistência** | ✅ | P11.3 | UserXP model + xp.service (idempotente) + integração comunidade/conteúdo/onboarding |
+| **Níveis e badges: display no perfil e posts** | ✅ | P11.4 | checkAndAwardBadges + pills Nv.X nos posts + conquistas no perfil + /conta |
+| **Leaderboard semanal + integração HUB** | ✅ | P11.5 | Top 10 + rank próprio + reset dominical + badge top_da_semana + LeaderboardWidget |
 
 #### Features v1.0 sem prompt Codex definido
 | Feature | Estado | Notas |
