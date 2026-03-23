@@ -69,8 +69,8 @@ Funcionalidades que fazem a diferença para o utilizador final. Entram na releas
 #### P10.x — Polish e Fix (Codex)
 | Feature | Estado | Prompt | Notas |
 |---------|--------|--------|-------|
-| **Nav fix: Mercados/Ferramentas → user menu; Feed → HUB nav** | ⏳ | P10.1 | ARCHITECTURE.md L1+L2 |
-| **Perfil editável de criador** (bio, redes, temas) | ⏳ | P10.2 | Creator tem dashboard mas não edita o perfil público |
+| **Nav fix: Mercados/Ferramentas → user menu; Feed → HUB nav** | ✅ | P10.1 | shellConfig + UnifiedTopShell |
+| **Perfil editável de criador** (bio, redes, temas) | ✅ | P10.2 | CreatorProfileEditForm + definicoes/+Page + backend topics/youtube |
 | **SEO structured data (JSON-LD)** | ⏳ | P10.3 | Artigos, criadores, cursos → Google rich results |
 | **Analytics: eventos em falta** | ⏳ | P10.4 | content_completed, onboarding, search, etc. (AN-1) |
 | **Motor de recomendação: foundation** | ⏳ | P10.5 | R1+R2: tags obrigatórias + endpoint recomendação real |
