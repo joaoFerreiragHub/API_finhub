@@ -134,6 +134,46 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Analytics opt-out toggle** | ⏳ | UI em /conta/definicoes + flag `allowAnalytics` no User model (RGPD Art 21) |
 | **MongoDB field encryption audit** | ⏳ | Confirmar se field-level encryption está activo; RGPD Art 32 |
 
+#### 🟡 Segurança — Gate Pré-Release Pública
+
+> Executar **depois das features fechadas e antes do lançamento público**. Com o projecto praticamente fechado, rever calma e sistematicamente. Cada item tem um responsável claro: backend (API_finhub) ou frontend (FinHub-Vite).
+
+##### Dependências
+| Item | Repo | Estado | Notas |
+|------|------|--------|-------|
+| `npm audit` limpo na release | Ambos | ⏳ | Correr de novo em T-1 do lançamento — novas vulns podem surgir entretanto |
+| **Actualizar `react-day-picker@8` → `@9+`** | Frontend | ⏳ | Resolve peer dep pré-existente `date-fns@4` / `react-day-picker@8` (suporta apenas `^2\|\|^3`) — upgrade não breaking se API de calendário não for usada extensivamente |
+
+##### Backend — API_finhub
+| Item | Estado | Notas |
+|------|--------|-------|
+| **Helmet.js activo e configurado** | ⏳ | Verificar headers: `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, `X-XSS-Protection` |
+| **CORS — whitelist explícita** | ⏳ | Confirmar que `origin` não está a `*` em produção — deve ser domínio FinHub apenas |
+| **Rate limiting em endpoints críticos** | ⏳ | `/api/auth/*`, `/api/users/me`, `/api/portfolio/*` — confirmar limites ajustados para prod |
+| **JWT secrets em variáveis de ambiente** | ⏳ | Confirmar `JWT_SECRET` e `JWT_REFRESH_SECRET` não têm fallback hardcoded no código |
+| **`.env` não committed** | ⏳ | Verificar `.gitignore` cobre `.env*` — confirmar histórico git limpo |
+| **Senhas/tokens não logados** | ⏳ | Audit rápido nos `console.log` e logger — sem `req.body.password`, `Authorization`, tokens em logs |
+| **Input validation em endpoints novos** | ⏳ | P10.x + P11.x — confirmar que todos os endpoints novos têm `requestContracts` aplicados |
+| **MongoDB não exposto publicamente** | ⏳ | `MONGODB_URI` deve ligar a instância com auth — não `localhost` sem password em prod |
+
+##### Frontend — FinHub-Vite
+| Item | Estado | Notas |
+|------|--------|-------|
+| **VITE_* vars — sem secrets no bundle** | ⏳ | Confirmar que nenhuma key privada (Stripe secret, DB uri, JWT secret) está em `VITE_*` — só keys públicas |
+| **`dangerouslySetInnerHTML` auditado** | ⏳ | Grep no código — qualquer uso deve ter sanitização (DOMPurify ou similar) |
+| **Content Security Policy** | ⏳ | Adicionar CSP header no servidor (ou meta tag) — bloquear inline scripts não autorizados |
+| **Dependências desactualizadas (major)** | ⏳ | `npm outdated` — identificar packages com major update pendente antes do lançamento |
+
+##### Infra / Deploy
+| Item | Estado | Notas |
+|------|--------|-------|
+| **HTTPS enforced** | ⏳ | Redirect HTTP → HTTPS; HSTS activo |
+| **Variáveis de ambiente em prod configuradas** | ⏳ | Checklist no `RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md` |
+| **Backups MongoDB automatizados** | ⏳ | Confirmar snapshot policy antes de abrir ao público |
+| **Logs de erro em prod não expõem stack traces ao cliente** | ⏳ | Express error handler em prod deve devolver mensagem genérica, não `err.stack` |
+
+---
+
 ### 🟢 Pós-v1.0 (iterativo, sem data fixa)
 Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utilizadores pede.
 
