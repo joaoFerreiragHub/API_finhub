@@ -1,8 +1,9 @@
 # FinHub — Índice de Sistemas
 
-> **Data:** 2026-03-22
+> **Data:** 2026-03-23
 > **Propósito:** Ponto de entrada único para agentes e developers.
 > Antes de trabalhar em qualquer área da plataforma, lê este documento.
+> Para o panorama completo do projecto, consulta `MASTER_CONTEXT.md`.
 
 ---
 
@@ -10,13 +11,26 @@
 
 ```
 dcos/finhub/
-├── SYSTEMS_INDEX.md         ← COMEÇA AQUI
+├── MASTER_CONTEXT.md        ← CONTEXTO COMPLETO (começa aqui para panorama geral)
+├── SYSTEMS_INDEX.md         ← ÍNDICE DE SISTEMAS (este ficheiro)
 ├── ARCHITECTURE.md          ← modelo mental HUB vs PRIVADO, roles, nav
 ├── TASKS.md                 ← release map, estado de fases, prioridades
 ├── PROMPTS_EXECUCAO.md      ← prompts Codex (não executar sem ler TASKS primeiro)
+│
+├── AUTH.md                  ← JWT, OAuth, roles, guards, refresh flow
+├── NOTIFICATIONS.md         ← notificações, eventos, preferências, delivery
+├── PAYMENTS.md              ← subscrições, Stripe (futuro), operações admin
+├── MODERATION.md            ← reportes, auto-moderação, fila admin, apelos
+├── COMMUNITY.md             ← fóruns, salas, gamificação XP/níveis, roadmap
+│
 ├── RECO_ENGINE.md           ← motor de recomendação "Para Ti"
 ├── SEO.md                   ← SEO técnico e de conteúdo
 ├── ANALYTICS.md             ← analytics de plataforma, criadores, ads, produto
+│
+├── DESIGN.md                ← design system, componentes, Tailwind
+├── SSR_VIKE_FIXES.md        ← regras SSR obrigatórias, anti-patterns
+├── LAYOUT_NAVIGATION_AUDIT.md ← auditoria de nav, problemas, tarefas
+│
 └── AUDIT_FICHEIROS.md       ← auditoria de ficheiros — o que apagar / arquivar
 ```
 
@@ -27,8 +41,8 @@ dcos/finhub/
 | Camada | Tecnologia |
 |--------|-----------|
 | **Frontend** | React + Vite + TypeScript, Vike (SSR), TanStack Query, Tailwind CSS |
-| **Backend** | Node.js + Express + TypeScript, Prisma ORM, PostgreSQL |
-| **Auth** | JWT (access + refresh tokens), Google OAuth, roles: VISITOR / FREE / PREMIUM / CREATOR / ADMIN |
+| **Backend** | Node.js + Express + TypeScript, Mongoose, MongoDB |
+| **Auth** | JWT (access 7d + refresh 30d), Google OAuth, roles: VISITOR / FREE / PREMIUM / CREATOR / BRAND_MANAGER / ADMIN |
 | **Analytics** | PostHog (eventos + sessions), Sentry (errors + performance) |
 | **Infra** | GA4/GTM/Meta Pixel (infraestrutura preparada, não activada) |
 
@@ -37,59 +51,81 @@ dcos/finhub/
 ## Sistemas Core da Plataforma
 
 ### 1. Arquitectura de Produto (`ARCHITECTURE.md`)
-A plataforma tem **duas zonas distintas**:
+A plataforma tem **três zonas**:
 - **HUB** — espaço público e social: conteúdo, criadores, social, ads
+- **COMUNIDADE** — fóruns, salas, gamificação (nova zona — ver `COMMUNITY.md`)
 - **PRIVADO** — espaço pessoal: portfolio, finanças pessoais, ferramentas
 - **Ponte** — educação contextual: o PRIVADO puxa conteúdo relevante do HUB
 
-**Problema de nav actual:** Mercados e Ferramentas (PRIVADO) estão no nav público. Task L1 resolve isto.
+**Problema de nav actual:** Mercados e Ferramentas (PRIVADO) estão no nav público. Task P10.1 resolve isto.
 
-### 2. Motor de Recomendação (`RECO_ENGINE.md`)
-Sistema "Para Ti" — feed personalizado baseado em:
-- Taxonomia de 30 tags (Poupança, Investimento, FIRE, Imobiliário, etc.)
-- Sinais de actividade (view, complete, favorite, not_interested, share, follow)
-- Perfil de afinidades por tag (`UserPreferences.tagAffinities` — já existe no backend)
-- Pesos: `not_interested: -2.0`, `share: +2.0`, `favorite: +1.5`, `complete: +1.0`
+### 2. Autenticação & Roles (`AUTH.md`) 🔴
+JWT + Google OAuth. Roles: visitor → free → premium → creator → brand_manager → admin.
+Token rotation, email verification, password reset, admin impersonation (sessões assistidas).
 
-**Prompts de implementação:** R1–R5 em `RECO_ENGINE.md`
+### 3. Notificações (`NOTIFICATIONS.md`) 🟡
+8 tipos. Entrega actual via polling (React Query). WebSocket planeado para v1.0.
+Preferências globais + subscrições por criador. TTL automático de 90 dias.
 
-### 3. SEO (`SEO.md`)
-Base sólida já existe (react-helmet-async, sitemap.xml, robots.txt, OG tags, Twitter Cards).
-**Maior gap:** JSON-LD structured data e sitemap dinâmico com conteúdo de criadores.
+### 4. Pagamentos & Subscrições (`PAYMENTS.md`) 🟡
+Hoje: gestão manual por admin. Stripe preparado mas não activo.
+UserSubscription model com histórico de alterações. Premium = `entitlementActive: true`.
 
-**Tasks pendentes:** SEO-1 a SEO-8 (ver `SEO.md`)
+### 5. Moderação de Conteúdo (`MODERATION.md`) 🟡
+4 camadas: reportes → políticas → auto-hide → fila admin → apelos.
+Auto-hide com 3 reporters únicos de alto risco (scam/hate/sexual/violence). SLA de 48h nos apelos.
 
-### 4. Analytics (`ANALYTICS.md`)
-Quatro audiências: Admin, Criadores, Ads, Produto.
-PostHog e Sentry activos. GA4/GTM/Meta Pixel com infraestrutura mas não activados.
+### 6. Comunidade + Gamificação (`COMMUNITY.md`) 🟡
+**Nova feature — a implementar antes da full release.**
+Mix Reddit (threads) + Discord (salas). XP + 7 níveis + badges por literacia financeira.
+Salas públicas (FREE) e salas premium. Integração com HUB e PRIVADO.
 
-**Tasks pendentes:** AN-1 a AN-13 (ver `ANALYTICS.md`)
+### 7. Motor de Recomendação (`RECO_ENGINE.md`)
+Sistema "Para Ti" — 30 tags, sinais de actividade, afinidades por tag.
+Prompts R1–R5 em `RECO_ENGINE.md`. Foundation a implementar em P10.5.
+
+### 8. SEO (`SEO.md`)
+Base sólida (react-helmet-async, sitemap.xml, robots.txt, OG tags, Twitter Cards).
+Maior gap: JSON-LD structured data (P10.3) e sitemap dinâmico.
+
+### 9. Analytics (`ANALYTICS.md`)
+PostHog e Sentry activos. GA4/GTM/Meta Pixel preparados.
+Eventos em falta a implementar em P10.4.
 
 ---
 
-## Estado das Fases de Desenvolvimento
+## Estado de Desenvolvimento
 
 | Fase | Descrição | Estado |
 |------|-----------|--------|
-| P1–P7 | Core da plataforma (auth, conteúdo, social, admin) | ✅ Completo |
-| P8 | Performance, SEO base, testes | ✅ Completo |
-| P9.1 | Inline profile edit no UserProfilePage | ✅ Completo |
-| P9.2 | Motor de recomendação base (beta MVP) | 🔲 Próximo Codex |
-| P9.3 | Admin dashboard métricas de negócio (DAU, MRR, churn) | 🔲 Codex |
-| P9.4 | `/conta` — UserAccountShell com sidebar de navegação | 🔲 Codex |
-| P9.5 | Auditoria e fix do `/perfil` para todos os roles | 🔲 Codex |
-| P9-GATE | Gate de qualidade pré-beta | 🔲 Após P9.5 |
-| CLEANUP-02 | Limpeza de ficheiros pré-release | 🔲 Claude (após P9-GATE) |
+| P1–P8 | Core da plataforma + performance + SEO base | ✅ Completo |
+| P9.1–P9.5 | Profile edit, homepage "Para Ti", admin métricas, /conta, /perfil | ✅ Completo |
+| P9-GATE | Gate de qualidade + fixes overlay + SSR null | ✅ Completo |
+| CLEANUP-02 | Limpeza de ficheiros/pastas obsoletos | ✅ Completo |
+| Documentação sistemas | AUTH, NOTIFICATIONS, PAYMENTS, MODERATION, COMMUNITY | ✅ Completo |
+| **P10.1–P10.5** | Nav fix, creator profile, SEO JSON-LD, analytics, reco engine | ⏳ Próximos |
+| **P11.x** | Comunidade + Gamificação | ⏳ Após P10 |
+| **Beta Testing** | Grupo fechado de utilizadores reais | ⏳ Após P11 |
+| **Full Release** | Abertura pública + Stripe | ⏳ Após beta |
+| **Android / iOS** | App móvel | ⏳ Pós-release |
+
+---
+
+## ⚠️ SCOPE FREEZE (2026-03-23)
+
+> **Nenhuma nova feature será adicionada até à full release pública**, excepto se for crítica para o negócio.
+> O foco é **arredondar** o que existe, **implementar** o planeado (P10+P11+Comunidade) e **lançar**.
 
 ---
 
 ## Regras para Agentes
 
 ### Antes de implementar qualquer coisa:
-1. **Lê `ARCHITECTURE.md`** — entende as zonas HUB vs PRIVADO e o role system
-2. **Lê o doc do sistema** específico onde vais trabalhar
-3. **Verifica `AUDIT_FICHEIROS.md`** — não recriar ficheiros que foram intencionalmente apagados
-4. **Consulta `TASKS.md`** — confirma que a task está no backlog e com a prioridade correcta
+1. **Lê `MASTER_CONTEXT.md`** — panorama completo do projecto
+2. **Lê `ARCHITECTURE.md`** — entende as zonas HUB/COMUNIDADE/PRIVADO e o role system
+3. **Lê o doc do sistema** específico onde vais trabalhar
+4. **Verifica `AUDIT_FICHEIROS.md`** — não recriar ficheiros que foram intencionalmente apagados
+5. **Consulta `TASKS.md`** — confirma que a task está no backlog e com a prioridade correcta
 
 ### Regras SSR (obrigatórias no frontend):
 - **NUNCA** usar `window`, `document`, `localStorage` directamente no render
@@ -102,21 +138,6 @@ PostHog e Sentry activos. GA4/GTM/Meta Pixel com infraestrutura mas não activad
 - Dark mode suportado via `dark:` prefix
 
 ### Executores:
-- **Claude** executa: documentação, análise, limpeza de ficheiros, CLEANUP tasks
+- **Claude** executa: documentação, análise, limpeza de ficheiros, CLEANUP tasks, planning
 - **Codex** executa: todos os prompts em `PROMPTS_EXECUCAO.md` com label "Executor: Codex"
 - **Nunca** executar prompts Codex sem ler o prompt completo primeiro
-
----
-
-## Sistemas Documentados em Falta
-
-Os seguintes sistemas existem na plataforma mas ainda não têm documento de especificação próprio:
-
-| Sistema | Localização no código | Prioridade de documentar |
-|---------|----------------------|--------------------------|
-| **Autenticação & Roles** | `src/features/auth/` | 🔴 Alta |
-| **Notificações em tempo real** | `src/features/notifications/` | 🟡 Média |
-| **Sistema de Pagamentos** | `src/features/payments/` | 🟡 Média (quando activo) |
-| **Moderação de Conteúdo** | `src/features/admin/` + `src/services/` | 🟡 Média |
-| **Affiliate Tracking** | `src/services/affiliateTracking.service.ts` | 🟢 Baixa |
-| **Cookie Consent & GDPR** | `src/features/auth/components/CookieConsentBanner.tsx` | 🟢 Baixa |

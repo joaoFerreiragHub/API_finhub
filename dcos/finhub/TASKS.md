@@ -1,15 +1,29 @@
 # FinHub — Backlog de Tasks
 
 > Fonte de verdade para o que está por fazer.
-> Última atualização: 2026-03-22
+> Última atualização: 2026-03-23
 
 **Legenda:** 🔴 Beta obrigatório | 🟡 v1.0 (pós-beta, pré-release pública) | 🟢 Pós-v1.0 (iterativo) | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
 
 ---
 
+## ⚠️ SCOPE FREEZE — Decisão de 2026-03-23
+
+> **Nenhuma nova feature será adicionada até à full release pública**, excepto se for crítica para o negócio.
+> O foco é arredondar o que existe, implementar o planeado (P10.x + P11.x Comunidade) e lançar.
+>
+> **Fluxo de release:**
+> 1. 🔨 Desenvolver features planeadas (P10.x polish + P11.x Comunidade + features v1.0)
+> 2. 🧪 Beta Testing — grupo fechado, recolher feedback, corrigir bugs reais
+> 3. ✨ Melhorias sugeridas pelo beta — implementar feedback crítico
+> 4. 🚀 Full Release Pública — abertura geral + activação Stripe
+> 5. 📱 Versão Android e iOS
+
+---
+
 ## RELEASE MAP — O que sai em cada fase
 
-> Princípio: Beta fecha o ciclo funcional mínimo. v1.0 adiciona monetização e polish. Pós-v1.0 é iterativo contínuo.
+> Princípio: Beta fecha o ciclo funcional mínimo. v1.0 adiciona polish e Comunidade. Full Release é o lançamento público.
 
 ### 🔴 Beta Fechado (objectivo actual — prompts 44–51)
 Plataforma **funcional e estável** para um grupo limitado de utilizadores reais.
@@ -38,9 +52,10 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **Limpeza pré-release (ficheiros/pastas obsoletos)** | ✅ | CLEANUP-02 (Claude) |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
-Funcionalidades que fazem a diferença para o utilizador final mas **não bloqueiam o beta fechado**.
-Entram na release pública (quando a plataforma abrir ao público geral).
+Funcionalidades que fazem a diferença para o utilizador final. Entram na release pública.
+**Inclui P10.x (polish) + P11.x (Comunidade + Gamificação) — última feature grande antes do lançamento.**
 
+#### P10.x — Polish e Fix (Codex)
 | Feature | Estado | Prompt | Notas |
 |---------|--------|--------|-------|
 | **Nav fix: Mercados/Ferramentas → user menu; Feed → HUB nav** | ⏳ | P10.1 | ARCHITECTURE.md L1+L2 |
@@ -48,13 +63,28 @@ Entram na release pública (quando a plataforma abrir ao público geral).
 | **SEO structured data (JSON-LD)** | ⏳ | P10.3 | Artigos, criadores, cursos → Google rich results |
 | **Analytics: eventos em falta** | ⏳ | P10.4 | content_completed, onboarding, search, etc. (AN-1) |
 | **Motor de recomendação: foundation** | ⏳ | P10.5 | R1+R2: tags obrigatórias + endpoint recomendação real |
-| **Pagamentos / subscrições** | ⏳ | — | Stripe ou LemonSqueezy — bloqueado (infra externa) |
-| **Upload de imagens real (S3 ou Cloudinary)** | ⏳ | — | Avatar e covers hoje são URL manual |
-| **Notificações real-time (WebSocket)** | ⏳ | — | Hoje é polling; push melhora muito a experiência |
-| **Feed personalizado `/feed` validado** | ⏳ | — | Página e hooks existem; validar com dados reais |
-| **Pesquisa global funcional** | ⏳ | — | `GlobalSearchBar` existe mas pode não ter backend |
-| **SecurityTab wired à API real** | ⏳ | — | Hoje usa mockFormik para alterar palavra-passe |
-| **Sitemap dinâmico (SEO-4)** | ⏳ | — | Endpoint backend + conteúdo publicado (SEO.md) |
+
+#### P11.x — Comunidade + Gamificação (Codex — após P10)
+Ver especificação completa em `COMMUNITY.md`.
+
+| Feature | Estado | Prompt | Notas |
+|---------|--------|--------|-------|
+| **Salas: modelos, API, listagem** | ⏳ | P11.1 | CommunityRoom model + routes + listagem frontend |
+| **Posts e threads: criar, votar, responder** | ⏳ | P11.2 | CommunityPost + CommunityReply + voting |
+| **Sistema XP: eventos, cálculo, persistência** | ⏳ | P11.3 | UserXP model + XP events + cálculo de nível |
+| **Níveis e badges: display no perfil e posts** | ⏳ | P11.4 | Badge component + nível no perfil + posts da comunidade |
+| **Leaderboard semanal + integração HUB** | ⏳ | P11.5 | Top 10 semanal + link artigos ↔ posts |
+
+#### Features v1.0 sem prompt Codex definido
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| **Pagamentos / subscrições** | ⏳ | Stripe — bloqueado (infra externa) |
+| **Upload de imagens real (S3 ou Cloudinary)** | ⏳ | Avatar e covers hoje são URL manual |
+| **Notificações real-time (WebSocket)** | ⏳ | Hoje é polling; push melhora a experiência |
+| **Feed personalizado `/feed` validado** | ⏳ | Página e hooks existem; validar com dados reais |
+| **Pesquisa global funcional** | ⏳ | `GlobalSearchBar` existe mas pode não ter backend |
+| **SecurityTab wired à API real** | ⏳ | Hoje usa mockFormik para alterar palavra-passe |
+| **Sitemap dinâmico (SEO-4)** | ⏳ | Endpoint backend + conteúdo publicado (SEO.md) |
 
 ### 🟢 Pós-v1.0 (iterativo, sem data fixa)
 Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utilizadores pede.
