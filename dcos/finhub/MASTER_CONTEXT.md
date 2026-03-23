@@ -113,6 +113,7 @@ A plataforma organiza-se em **três zonas**:
 | SSR/Vike — Regras e Fixes | `SSR_VIKE_FIXES.md` | ✅ |
 | Design System | `DESIGN.md` | ✅ |
 | Layout & Navegação (Auditoria) | `LAYOUT_NAVIGATION_AUDIT.md` | ✅ |
+| Standard de Documentação | `DOC_STANDARD.md` | ✅ |
 
 ---
 
@@ -267,7 +268,8 @@ dcos/finhub/                  ← FONTE DE VERDADE
 ├── LAYOUT_NAVIGATION_AUDIT.md ← auditoria de nav, problemas, fixes
 ├── AUDIT_FICHEIROS.md        ← o que apagar / arquivar
 ├── SEED_GUIDE.md             ← como fazer seed da base de dados
-└── RSS_SETUP.md              ← configuração do feed RSS
+├── RSS_SETUP.md              ← configuração do feed RSS
+└── DOC_STANDARD.md           ← standard de documentação (formato, naming, templates)
 │
 │  RUNBOOKS & REGRAS
 ├── RUNBOOK_MODERATION_CONTROL_PLANE.md  ← kill switches, bulk rollback

@@ -39,6 +39,7 @@ dcos/
 │   ├── AUDIT_FICHEIROS.md       ← auditoria de ficheiros
 │   ├── SEED_GUIDE.md            ← como fazer seed da base de dados
 │   ├── RSS_SETUP.md             ← configuração feed RSS
+│   ├── DOC_STANDARD.md          ← standard de documentação (formato, naming, templates)
 │   │
 │   │  OPERATIONAL RUNBOOKS & RULES
 │   ├── RUNBOOK_MODERATION_CONTROL_PLANE.md  ← kill switches, bulk rollback, false positives

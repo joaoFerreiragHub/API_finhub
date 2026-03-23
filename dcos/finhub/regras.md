@@ -1,6 +1,6 @@
 ﻿# Regras de Colaboracao para Agentes (API_finhub)
 
-Data: 2026-03-06
+Data: 2026-03-23
 Escopo: backend `API_finhub` + frontend `FinHub-Vite` quando aplicavel.
 
 ## MUST READ (OBRIGATORIO PARA TODOS OS AGENTES)
@@ -10,8 +10,8 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 1. Nao fechar ponto sem os 3 artefactos: implementacao + docs + commit.
 2. Nao deixar alteracoes pendentes ao terminar um ponto (working tree limpo).
 3. Quando um ponto fica concluido, mover o ficheiro respetivo para `dcos/done/` no mesmo ciclo (regra valida para `API_finhub` e `FinHub-Vite`).
-4. Manter na raiz de `dcos/` apenas ficheiros ativos.
-5. Atualizar `dcos/audiotira_04.md` no mesmo ciclo de fecho.
+4. Manter em `dcos/finhub/` apenas documentacao activa e relevante (fonte de verdade).
+5. Atualizar `dcos/finhub/TASKS.md` no mesmo ciclo de fecho — marcar tasks concluidas e registar novas pendencias.
 6. Validar sempre o minimo tecnico:
    - backend: `npm run typecheck`;
    - frontend: `npm run typecheck:p1` (quando houver alteracoes frontend).
@@ -23,34 +23,21 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 
 ## Checkpoint de Retoma (ATUALIZAR EM TODO O FECHO)
 
-Ultima atualizacao: 2026-03-15
+Ultima atualizacao: 2026-03-23
 
-- Estado git: `API_finhub/main` em fecho documental do ciclo P5-FIRE frontend visual (what-if + Monte Carlo); `FinHub-Vite/master` com simulador FIRE atualizado em `/ferramentas/fire/simulador` e push concluido.
-- Ultimo commit backend funcional (API_finhub/main): `bbca1f5` (`feat(p5-fire): add historical calibration to portfolio simulation`).
-- Ultimo commit frontend funcional (FinHub-Vite/master): `241abc3` (`feat(p5-fire): add whatIf and Monte Carlo visual to FIRE frontend`).
-- Commit documental deste ciclo (API_finhub/main): `0cced85` (`docs(p5-fire): record frontend whatif and montecarlo visual rollout`).
+- Estado git: `API_finhub/main` — ciclo de documentacao e reorganizacao da dcos/ concluido.
 - Onde ficamos:
-  - monitorizacao externa manteve baseline com diagnostico explicito no Actions (validacao de URL, HTTP status, curl exit code, resumo em `GITHUB_STEP_SUMMARY`, reasons no webhook);
-  - se `UPTIME_API_URL` faltar em pre-release, o workflow faz `skip` com `notice` (nao bloqueia); em modo estrito (`UPTIME_MONITOR_ENFORCE=true`) volta a falhar por config em falta;
-  - control plane de integracoes agora inclui health-check operacional por integracao (`ok|warning|error` + issues) no backend e UI admin;
-  - rollback da ultima versao por integracao entregue com endpoint dedicado (`POST /api/admin/platform/integrations/:integrationKey/rollback`) e historico circular;
-  - painel admin de integracoes ganhou editor estruturado para SEO/analytics/captcha com opcao de JSON avancado e toggle para mostrar/ocultar IDs/chaves;
-  - dashboard de alertas internos agora sinaliza integracoes degradadas (`platform_integration_health_degraded`) quando o health estiver em `warning`/`error`;
-  - gates e checklist de `release`/`pre-release` foram consolidados num ficheiro unico (`dcos/RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`) para execucao T-1/T-0 e Go/No-Go final;
-  - `audiotira_04` foi simplificada para backlog tecnico de desenvolvimento e manteve rastreio de P4/P5 sem gates live no corpo principal;
-  - P5-FIRE backend agora calibra retorno/yield/volatilidade por ativo no `POST /api/portfolio/:id/simulate` com parametros `useHistoricalCalibration` e `historicalLookbackMonths`;
-  - o simulador devolve rastreabilidade de calibracao em `assumptions.historicalCalibration` (source, contagem de holdings calibrados, itens e motivos de fallback);
-  - `POST /api/portfolio/:id/simulate` agora aceita `whatIf` (`contributionDelta`, `annualReturnShock`, `inflationShock`, `scenario`) e devolve comparativo `baseline` vs `adjusted` com `delta`;
-  - `POST /api/portfolio/:id/simulate` agora aceita `monteCarlo` (`enabled`, `scenario`, `simulations`) e devolve `successProbabilityPct`, percentis e curva anual de probabilidade por horizonte;
-  - Monte Carlo no backend foi endurecido com cache in-memory de curta duracao para pedidos identicos e execucao cooperativa (yield periodico ao event loop) para reduzir bloqueio em corridas maiores;
-  - frontend FIRE ganhou comparacao visual `whatIf` (baseline vs ajustado) e painel Monte Carlo com curva de probabilidade por horizonte + percentis `P10/P50/P90`;
-  - runbook consolidado de pre-release recebeu pendencia explicita para saneamento do `tsconfig.app.json` no frontend (gate T-1/T-0);
-  - validacoes executadas neste ciclo: backend `npm run typecheck`, backend `npm run test:docs:smoke`, frontend `npx tsc --noEmit --project tsconfig.app.json`;
-  - o `tsc` do frontend continua com falhas pre-existentes fora do escopo FIRE (admin/auth e configuracao de includes), sem novos erros no ficheiro FIRE alterado.
+  - Fases P1–P9 totalmente concluidas (auth, conteudo, social, admin, layout, P9.x polish).
+  - Documentacao reorganizada: `dcos/finhub/` e a fonte de verdade activa; `dcos/done/` tem 25+ ficheiros arquivados de fases passadas (P3–P8).
+  - Sistemas documentados: AUTH.md, NOTIFICATIONS.md, PAYMENTS.md, MODERATION.md, COMMUNITY.md, MASTER_CONTEXT.md, SYSTEMS_INDEX.md, DOC_STANDARD.md criados/actualizados neste ciclo.
+  - SCOPE FREEZE declarado: nenhuma nova feature ate a full release publica (2026-03-23).
+  - Fluxo de release: Desenvolver P10.x + P11.x → Beta Testing → Melhorias → Full Release → Android/iOS.
+  - IC-1 a IC-6 (layout inconsistencies) todos resolvidos em P8.7–P8.9.
+  - GDPR tasks criticas adicionadas ao TASKS.md (cookie banner, DPIA, breach response plan, retencao de dados).
 - Proximo passo recomendado:
-  - validar latencia do simulador FIRE com portfolios maiores e decidir eventual migracao de Monte Carlo para worker/queue dedicado;
-  - avaliar extensao do simulador FIRE com cenarios guardados/import-export para analise recorrente;
-  - seguir para os bugs P2 pendentes (`crypto market cap`, `ETF overlap disclaimer`, `watchlist batching`) apos validacao final deste ciclo.
+  - Executar P10.1 (nav fix: Mercados/Ferramentas → user menu) via Codex.
+  - Resolver GDPR tasks beta-criticas antes de abrir beta (cookie banner + DPIA + breach response).
+  - Apos P10.x completo, iniciar P11.x (Comunidade + Gamificacao).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.
@@ -73,8 +60,8 @@ Garantir execucao consistente entre agentes: qualidade tecnica, rastreabilidade 
 5. Em caso de hotfix (ex: erro SSR/hydration/runtime), registar o incidente e a correcao nos docs.
 6. Organizacao de ficheiros e obrigatoria no fecho de cada ponto:
    - mover imediatamente para `dcos/done/` o que ficou concluido;
-   - manter na raiz de `dcos/` apenas o que esta ativo;
-   - atualizar `dcos/audiotira_04.md` no mesmo ciclo de fecho.
+   - manter em `dcos/finhub/` apenas documentacao activa;
+   - atualizar `dcos/finhub/TASKS.md` no mesmo ciclo de fecho.
 7. Tudo o que so pode ser validado em ambiente live deve ser marcado como pre-release:
    - executar na janela T-1/T-0 do dia de live beta testing;
    - registar explicitamente como pendente durante desenvolvimento normal;
@@ -100,12 +87,13 @@ Garantir execucao consistente entre agentes: qualidade tecnica, rastreabilidade 
 
 ## 5) Politica de documentacao
 
-1. `dcos` e fonte de verdade operacional.
+1. `dcos/finhub/` e a fonte de verdade activa — ver estrutura completa em `SYSTEMS_INDEX.md`.
 2. Ao fechar ponto:
-   - atualizar estado;
-   - listar alteracoes principais;
+   - atualizar o doc do sistema afectado (ex: AUTH.md, COMMUNITY.md);
+   - marcar ✅ em `TASKS.md` o que foi concluido;
    - listar validacoes executadas.
-3. Riscos de pre-release devem ficar anotados explicitamente em docs.
+3. Riscos de pre-release devem ficar anotados explicitamente em `TASKS.md` e no doc relevante.
+4. Novos sistemas ou guias devem seguir o standard em `DOC_STANDARD.md`.
 
 ## 6) Gestao de ficheiros sujos
 
@@ -139,29 +127,27 @@ No fecho de cada ponto, o agente deve reportar:
 4. hash do commit;
 5. proximo ponto recomendado.
 
-## 10) Ciclo de vida dos ficheiros de P's (obrigatorio)
+## 10) Ciclo de vida dos documentos de trabalho (obrigatorio)
 
-Para manter contexto maximo entre agentes, os P's devem estar sempre separados em 3 estados:
+Para manter contexto maximo entre agentes, os documentos devem estar sempre no estado correcto:
 
 1. Feito (o que ja fizemos):
-   - quando um P fica concluido, o ficheiro deve ser movido para `dcos/done/`;
+   - quando um P/fase fica concluido, o ficheiro deve ser movido para `dcos/done/`;
    - o movimento deve ser feito no mesmo ciclo de fecho + commit.
-2. Em curso (o que estamos a fazer):
-   - ficam na raiz de `dcos/` apenas os P's ativos.
+2. Em curso e planeado (fonte de verdade activa):
+   - `dcos/finhub/` contem toda a documentacao activa;
+   - `TASKS.md` e o backlog centralizado — todas as tasks pendentes e em curso;
+   - `MASTER_CONTEXT.md` e o panorama completo do projecto.
 3. Futuro (o que vamos fazer):
-   - qualquer ideia de novo P deve ser registada em `dcos/audiotira_04.md` (secao backlog consolidado).
-
-Lista central de pendentes:
-1. `dcos/audiotira_04.md` deve conter:
-   - pendentes em curso (com ficheiro ativo em `dcos/`, estado `em_curso` ou `planeado`);
-   - backlog futuro (estado `proposto`).
+   - qualquer ideia de nova feature ou task deve ser registada em `dcos/finhub/TASKS.md` (secao adequada: 🔴 Beta / 🟡 v1.0 / 🟢 Pos-v1.0).
 
 Regra de ouro:
-1. Nao misturar no mesmo sitio P's fechados, ativos e ideias futuras.
+1. Nao misturar em `dcos/finhub/` docs de fases ja concluidas — devem ir para `dcos/done/`.
+2. `dcos/finhub/TASKS.md` e a unica fonte de verdade para o backlog.
 
 Checklist obrigatoria de fecho (executar sempre):
 1. ponto implementado e validado;
-2. docs atualizadas;
+2. docs actualizadas (sistema relevante + TASKS.md);
 3. ficheiro do ponto movido para `dcos/done/` quando concluido;
-4. `audiotira_04.md` sincronizada com o novo estado;
+4. `TASKS.md` sincronizado com o novo estado (marcar ✅ o que fechou);
 5. commit realizado sem deixar pendencias.
