@@ -10,28 +10,55 @@
 ## Como navegar esta documentação
 
 ```
-dcos/finhub/
-├── MASTER_CONTEXT.md        ← CONTEXTO COMPLETO (começa aqui para panorama geral)
-├── SYSTEMS_INDEX.md         ← ÍNDICE DE SISTEMAS (este ficheiro)
-├── ARCHITECTURE.md          ← modelo mental HUB vs PRIVADO, roles, nav
-├── TASKS.md                 ← release map, estado de fases, prioridades
-├── PROMPTS_EXECUCAO.md      ← prompts Codex (não executar sem ler TASKS primeiro)
+dcos/
+├── finhub/                  ← FONTE DE VERDADE (tudo começa aqui)
+│   │
+│   │  CONTEXTO & PLANNING
+│   ├── MASTER_CONTEXT.md        ← panorama completo (lê primeiro)
+│   ├── SYSTEMS_INDEX.md         ← este ficheiro
+│   ├── ARCHITECTURE.md          ← modelo HUB/COMUNIDADE/PRIVADO, roles, nav
+│   ├── TASKS.md                 ← release map, backlog priorizado
+│   ├── PROMPTS_EXECUCAO.md      ← prompts Codex prontos a executar
+│   ├── ROADMAP.md               ← histórico de fases P0–P9
+│   │
+│   │  SISTEMAS DOCUMENTADOS
+│   ├── AUTH.md                  ← JWT, OAuth, roles, guards, refresh flow
+│   ├── NOTIFICATIONS.md         ← notificações, eventos, preferências
+│   ├── PAYMENTS.md              ← subscrições, Stripe (futuro), ops admin
+│   ├── MODERATION.md            ← reportes, auto-hide, fila, apelos
+│   ├── COMMUNITY.md             ← fóruns, salas, gamificação XP/níveis
+│   ├── RECO_ENGINE.md           ← motor "Para Ti", tags, afinidades
+│   ├── SEO.md                   ← structured data, sitemap, OG, técnico
+│   ├── ANALYTICS.md             ← PostHog, Sentry, GA4, eventos
+│   │
+│   │  TECHNICAL REFERENCE
+│   ├── FINHUB_DOCUMENTACAO_CRITICA.md  ← stack, env vars, endpoints, modelos
+│   ├── DESIGN.md                ← design system, shadcn/ui, Tailwind
+│   ├── SSR_VIKE_FIXES.md        ← regras SSR obrigatórias, anti-patterns
+│   ├── LAYOUT_NAVIGATION_AUDIT.md ← auditoria de nav, problemas
+│   ├── AUDIT_FICHEIROS.md       ← auditoria de ficheiros
+│   ├── SEED_GUIDE.md            ← como fazer seed da base de dados
+│   ├── RSS_SETUP.md             ← configuração feed RSS
+│   │
+│   │  OPERATIONAL RUNBOOKS & RULES
+│   ├── RUNBOOK_MODERATION_CONTROL_PLANE.md  ← kill switches, bulk rollback, false positives
+│   ├── RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md  ← gate checklist de release
+│   ├── FINHUB_OPERATING_SYSTEM.md  ← context da empresa, missões dos agentes
+│   ├── P6_LOG_EVENT_CATALOG.md  ← convenções de logging (domain_action_suffix)
+│   ├── P6_SECURITY_CHECKLIST.md ← validações de segurança para deploy
+│   └── regras.md                ← regras de colaboração Claude/Codex
 │
-├── AUTH.md                  ← JWT, OAuth, roles, guards, refresh flow
-├── NOTIFICATIONS.md         ← notificações, eventos, preferências, delivery
-├── PAYMENTS.md              ← subscrições, Stripe (futuro), operações admin
-├── MODERATION.md            ← reportes, auto-moderação, fila admin, apelos
-├── COMMUNITY.md             ← fóruns, salas, gamificação XP/níveis, roadmap
+├── done/                    ← TRABALHO CONCLUÍDO (arquivo histórico)
+│   └── (P3-P8 planning docs, sprints, masterplans, etc.)
 │
-├── RECO_ENGINE.md           ← motor de recomendação "Para Ti"
-├── SEO.md                   ← SEO técnico e de conteúdo
-├── ANALYTICS.md             ← analytics de plataforma, criadores, ads, produto
+├── agents/                  ← OUTPUTS DE AGENTES ESPECIALIZADOS
+│   ├── data-quality/        ← auditoria FMP/AlphaVantage
+│   ├── legal-compliance/    ← auditoria GDPR 2026 + gaps e timeline
+│   ├── orchestrator/        ← auditoria analytics + task packets
+│   ├── product-release/     ← beta roadmap, go/no-go criteria
+│   └── task-architect/      ← FIRE endpoints task decomposition
 │
-├── DESIGN.md                ← design system, componentes, Tailwind
-├── SSR_VIKE_FIXES.md        ← regras SSR obrigatórias, anti-patterns
-├── LAYOUT_NAVIGATION_AUDIT.md ← auditoria de nav, problemas, tarefas
-│
-└── AUDIT_FICHEIROS.md       ← auditoria de ficheiros — o que apagar / arquivar
+└── OPENCLAW_GATEWAY_SETUP.md  ← config operacional do gateway OpenClaw
 ```
 
 ---

@@ -240,30 +240,43 @@ AGORA
 ## 11. Directório de Documentação
 
 ```
-dcos/finhub/
+dcos/finhub/                  ← FONTE DE VERDADE
+│
+│  CONTEXTO & PLANNING
 ├── MASTER_CONTEXT.md         ← ESTE FICHEIRO — panorama completo
 ├── SYSTEMS_INDEX.md          ← índice de sistemas e navegação
 ├── ARCHITECTURE.md           ← modelo HUB/COMUNIDADE/PRIVADO, roles, nav
-├── TASKS.md                  ← backlog completo, release map, prioridades
+├── TASKS.md                  ← backlog completo, release map, GDPR, prioridades
 ├── PROMPTS_EXECUCAO.md       ← prompts Codex para execução
+├── ROADMAP.md                ← histórico de fases P0–P9
 │
+│  SISTEMAS
 ├── AUTH.md                   ← JWT, OAuth, roles, guards, refresh flow
 ├── NOTIFICATIONS.md          ← notificações, preferências, delivery
 ├── PAYMENTS.md               ← subscrições, Stripe (futuro), admin ops
 ├── MODERATION.md             ← reportes, auto-moderação, fila, apelos
 ├── COMMUNITY.md              ← fóruns, salas, gamificação, XP, níveis
-│
 ├── RECO_ENGINE.md            ← motor "Para Ti", tags, afinidades
 ├── SEO.md                    ← structured data, sitemap, OG, técnico
 ├── ANALYTICS.md              ← PostHog, Sentry, GA4, eventos, criadores
 │
+│  REFERÊNCIA TÉCNICA
+├── FINHUB_DOCUMENTACAO_CRITICA.md  ← stack, env vars, endpoints, modelos, deploy
 ├── DESIGN.md                 ← design system, shadcn/ui, Tailwind
 ├── SSR_VIKE_FIXES.md         ← regras SSR, fixes comuns, anti-patterns
 ├── LAYOUT_NAVIGATION_AUDIT.md ← auditoria de nav, problemas, fixes
-│
 ├── AUDIT_FICHEIROS.md        ← o que apagar / arquivar
-├── ROADMAP.md                ← roadmap de produto de alto nível
-├── INDEX.md                  ← índice geral (legado, ver SYSTEMS_INDEX.md)
 ├── SEED_GUIDE.md             ← como fazer seed da base de dados
 └── RSS_SETUP.md              ← configuração do feed RSS
+│
+│  RUNBOOKS & REGRAS
+├── RUNBOOK_MODERATION_CONTROL_PLANE.md  ← kill switches, bulk rollback
+├── RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md  ← gate checklist de release
+├── FINHUB_OPERATING_SYSTEM.md  ← context empresa, missões de agentes
+├── P6_LOG_EVENT_CATALOG.md   ← convenções de logging (domain_action_suffix)
+├── P6_SECURITY_CHECKLIST.md  ← validações de segurança para deploy
+└── regras.md                 ← regras de colaboração Claude/Codex
+
+dcos/done/    ← arquivo histórico (P3–P8 planning, sprints, masterplans)
+dcos/agents/  ← outputs de agentes (legal/GDPR, analytics, data-quality, etc.)
 ```

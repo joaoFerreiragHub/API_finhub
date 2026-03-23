@@ -50,6 +50,17 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **Audit e fix /perfil para todos os roles** | ✅ | P9.5 |
 | **P9-GATE (qualidade pós-beta)** | ✅ | P9-GATE + P9-GATE-FIX — overlay fix + SSR null fix |
 | **Limpeza pré-release (ficheiros/pastas obsoletos)** | ✅ | CLEANUP-02 (Claude) |
+| **Documentação sistemas (AUTH, NOTIF, PAYMENTS, MOD, COMMUNITY)** | ✅ | Claude — AUTH.md, NOTIFICATIONS.md, PAYMENTS.md, MODERATION.md, COMMUNITY.md |
+
+#### 🔴 GDPR / Legal — Beta Obrigatório
+Items identificados em `dcos/agents/legal-compliance/GAPS_E_TIMELINE.md`. Bloqueiam beta público.
+
+| Task | Estado | Esforço | Notas |
+|------|--------|---------|-------|
+| **Cookie banner: validar comportamento real + PostHog conditional init** | ⏳ | 4-6h | PostHog pode estar activo sem consentimento — VIOLAÇÃO RGPD Art 7 |
+| **DPIA documento (Data Protection Impact Assessment)** | ⏳ | 4-6h | RGPD Art 35 — document + aprovação fundador |
+| **Política de retenção de dados** (documento em `dcos/finhub/`) | ⏳ | 2-3h | RGPD Art 5(1)(e) — logs moderação 2a, acesso 1a, analytics 12m |
+| **Breach Response Plan** (documento + contatos CNPD) | ⏳ | 2-3h | RGPD Art 33 — notificação obrigatória 72h |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
 Funcionalidades que fazem a diferença para o utilizador final. Entram na release pública.
@@ -85,6 +96,9 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Pesquisa global funcional** | ⏳ | `GlobalSearchBar` existe mas pode não ter backend |
 | **SecurityTab wired à API real** | ⏳ | Hoje usa mockFormik para alterar palavra-passe |
 | **Sitemap dinâmico (SEO-4)** | ⏳ | Endpoint backend + conteúdo publicado (SEO.md) |
+| **Export de dados (RGPD Art 20)** | ⏳ | GET /api/account/export → JSON/ZIP via email; rate limit 1x/7 dias |
+| **Analytics opt-out toggle** | ⏳ | UI em /conta/definicoes + flag `allowAnalytics` no User model (RGPD Art 21) |
+| **MongoDB field encryption audit** | ⏳ | Confirmar se field-level encryption está activo; RGPD Art 32 |
 
 ### 🟢 Pós-v1.0 (iterativo, sem data fixa)
 Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utilizadores pede.
@@ -100,6 +114,10 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 | Widget de feedback | Canny ou form simples |
 | Excesso de libs UI (PrimeReact + Mantine) | Cleanup gradual ao redesenhar |
 | Tipagem TS — ~285 erros pré-existentes | Gradual, não bloqueia build |
+| **UI/UX elevação** (Inter font, dark mode tokens, DataTable, KPI cards) | Spec em dcos/done/P8_UI_UX_IMPLEMENTACAO_TECNICA.md + P8_ADMIN_UI_PILOT.md |
+| **Agent Dashboard frontend** (/admin/agent-dashboard) | Backend 85% done (Sprint S0A); frontend 0% — 7 tasks (Timeline, Scorecard, Burndown views) |
+| **Directory pública `/recursos/*`** (9 páginas de marcas/entidades) | Backend done; 9 placeholder pages por implementar |
+| **Disclaimers por ferramenta auditados** | FIRE, Watchlist, REIT, ETF, Crypto — RGPD/Lei 34/88 |
 
 ---
 
