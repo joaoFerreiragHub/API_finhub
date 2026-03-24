@@ -5449,6 +5449,277 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 67. PROMPT SEC-01        → Security backend: Helmet, CORS, JWT, logging        ✅ (Codex — 2026-03-24)
 68. PROMPT SEC-02        → Security frontend: VITE_, CSP, audit, infra         ✅ (Codex — 2026-03-24)
 69. PROMPT GDPR-01       → GDPR: cookie consent + opt-out + data export        ✅ (Codex — 2026-03-24)
+    ── v1.0 Features — Pré-Release Pública ──
+70. PROMPT V1.1          → SecurityTab: alterar palavra-passe real                ⏳
+71. PROMPT V1.2          → Feed + Pesquisa global: validar end-to-end             ⏳
+72. PROMPT V1.3          → Sitemap dinâmico (backend XML + Vike middleware)       ⏳
+73. PROMPT V1.4          → Avatar upload real (Cloudinary)                        ⏳
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
+
+
+---
+
+## PROMPT V1.1 — SecurityTab: Alterar palavra-passe real ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** GDPR-01 ✅
+> **Repos:** `FinHub-Vite/` apenas
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** Substituir o `mockFormik` em `SecurityTab.tsx` por um form real ligado a `authService.changePassword()`.
+
+**Contexto:**
+- `SecurityTab.tsx` em `src/features/auth/components/settings/SecurityTab.tsx` usa `mockFormik` — o botão "Guardar" não faz nada
+- `authService.changePassword(currentPassword, newPassword)` já existe em `src/features/auth/services/authService.ts` (chama `POST /api/auth/change-password`)
+- `POST /api/auth/change-password` já existe no backend (`src/routes/auth.routes.ts`, `src/controllers/auth.controller.ts`)
+- `StepPassword` recebe `FormikProps<FormValues>` — não é adequado aqui; deve ser substituído por inputs simples controlados
+
+**Tarefas obrigatórias:**
+
+### 1. Substituir mock por form real em `SecurityTab.tsx`
+
+**Requisitos:**
+- Remover imports de `mockFormik`, `StepPassword`, `FormikProps`, `FormValues`
+- Criar form com 3 campos: "Palavra-passe actual", "Nova palavra-passe", "Confirmar nova palavra-passe"
+- Todos os campos `type="password"` com toggle show/hide (ícone `Eye`/`EyeOff` do lucide-react)
+- Validação client-side: nova >= 8 caracteres; confirmação == nova
+- On submit: chamar `authService.changePassword(currentPassword, newPassword)`
+- Loading state no botão durante o pedido (`useMutation` ou `useState` + try/catch)
+- Sucesso: mensagem de confirmação verde + reset dos 3 campos
+- Erro: mostrar `getErrorMessage(error)` em texto vermelho abaixo do form
+- Usar componentes existentes: `Input`, `Button`, `Label` de `@/components/ui`
+
+**Critérios de conclusão:**
+- [ ] Form em `/conta` com 3 campos reais, sem mockFormik
+- [ ] Submit chama `POST /api/auth/change-password` (verificável no Network tab)
+- [ ] Erro da API (senha actual errada) visível ao utilizador
+- [ ] Sucesso limpa os campos e mostra confirmação
+- [ ] `npm run typecheck:p1` (front) → PASS
+- [ ] `npm run build` (front) → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT V1.2 — Feed + Pesquisa global: validar end-to-end ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** V1.1 ✅
+> **Repos:** `FinHub-Vite/` + `API_finhub/`
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** Auditar e corrigir o feed `/feed` e a pesquisa global para garantir funcionamento com dados reais de MongoDB.
+
+**Contexto:**
+
+**Feed:**
+- Backend: `GET /api/feed` existe (`feed.routes.ts` → `feed.controller.ts` → `feed.service.ts`)
+- Frontend: `useActivityFeed()` → `socialService.getActivityFeed({ following, page, limit })` → `/feed`
+- Página: `src/features/user/pages/FollowingFeedPage.tsx` com `useInfiniteQuery`
+
+**Pesquisa:**
+- Backend: `GET /api/search` existe (`search.routes.ts` → `search.controller.ts` → `search.service.ts`) — faz queries reais ao MongoDB
+- Frontend: `GlobalSearchBar.tsx` → `useGlobalSearch()` → `socialService.search(query)` → `/search`
+
+**Tarefas obrigatórias:**
+
+### 1. Auditar e corrigir o Feed
+
+**Verificar e corrigir:**
+- Shape do backend: `{ items: [...], pagination: { page, pages, total } }` compatível com `mapFeedResponse`
+- Cada item tem: `id`, `type`, `title`, `slug`, `coverImage`, `creator.username`, `createdAt`
+- Empty state visível quando não há items (utilizador sem follows) — não pode ficar em loading infinito
+- Erro de API mostrado ao utilizador (não silencioso)
+- Paginação infinita (`fetchNextPage`) funciona
+
+### 2. Auditar e corrigir a Pesquisa global
+
+**Verificar e corrigir:**
+- Shape do backend: `{ results: [...], total, query }` compatível com o frontend
+- Cada resultado tem: `id`, `type`, `title`, `description`, `url`, `coverImage`
+- `url` é válido e navegável (ex: `/artigos/:slug`, `/criadores/:username`)
+- Pesquisa com 0 resultados mostra "Sem resultados" (não loading infinito)
+- Clicar num resultado navega correctamente
+
+**Critérios de conclusão:**
+- [ ] `/feed` carrega conteúdo real ou mostra empty state correcto
+- [ ] Pesquisa com query >= 2 chars devolve resultados reais
+- [ ] Clicar num resultado navega para a página correcta
+- [ ] Sem `console.error` silencioso em feed ou pesquisa
+- [ ] `npm run typecheck:p1` (front) → PASS
+- [ ] `npm run typecheck` (back) → PASS
+- [ ] `npm run build` (ambos) → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT V1.3 — Sitemap dinâmico ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** V1.2 ✅
+> **Repos:** `FinHub-Vite/` + `API_finhub/`
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** Substituir `public/sitemap.xml` estático por sitemap gerado dinamicamente com slugs reais de MongoDB.
+
+**Contexto:**
+- `public/sitemap.xml` é estático (só URLs hardcoded)
+- Backend tem modelos com slugs: `Article`, `Course`, `Video`, `Podcast`, `Book`, `User` (criadores), `DirectoryEntry`
+- Vike usa `server/index.mjs` — adicionar middleware para `/sitemap.xml` ANTES do handler Vike
+- `SITE_URL` e `API_BASE_URL` lidos de variáveis de ambiente
+
+**Tarefas obrigatórias:**
+
+### 1. Backend: `GET /api/sitemap` (dados JSON)
+
+**Ficheiros:** `src/routes/sitemap.routes.ts` + `src/controllers/sitemap.controller.ts`
+
+**Resposta JSON:**
+```json
+{
+  "articles":  [{ "slug": "...", "updatedAt": "ISO" }],
+  "courses":   [{ "slug": "...", "updatedAt": "ISO" }],
+  "videos":    [{ "slug": "...", "updatedAt": "ISO" }],
+  "podcasts":  [{ "slug": "...", "updatedAt": "ISO" }],
+  "books":     [{ "slug": "...", "updatedAt": "ISO" }],
+  "creators":  [{ "username": "...", "updatedAt": "ISO" }],
+  "brands":    [{ "slug": "...", "updatedAt": "ISO" }]
+}
+```
+- Apenas conteúdo com `status: 'published'` (ou campo equivalente no modelo)
+- Acesso público, sem autenticação
+- Registar em `src/routes/index.ts`: `router.use('/sitemap', sitemapRoutes)`
+
+### 2. Middleware `/sitemap.xml` no servidor Vike
+
+**Ficheiro:** `server/index.mjs`
+
+- Adicionar rota `app.get('/sitemap.xml', ...)` ANTES do handler Vike
+- Buscar dados de `GET /api/sitemap`
+- Gerar XML válido: `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">...</urlset>`
+- Cada entrada: `<url><loc>URL</loc><lastmod>ISO</lastmod></url>`
+- URLs estáticas sempre incluídas: `/`, `/hub/conteudos`, `/criadores`, `/recursos`, `/ferramentas/fire`, `/precos`, `/comunidade`
+- URLs dinâmicas: `/artigos/:slug`, `/cursos/:slug`, `/videos/:slug`, `/criadores/:username`, etc.
+- Header: `Content-Type: application/xml`, `Cache-Control: public, max-age=3600`
+- Fallback: se API falhar, servir `public/sitemap.xml` estático
+
+### 3. Actualizar `public/sitemap.xml`
+
+Manter como fallback mínimo com só URLs estáticas + comentário: `<!-- fallback estático — sitemap dinâmico em server/index.mjs -->`.
+
+**Critérios de conclusão:**
+- [ ] `GET /sitemap.xml` devolve XML válido com URLs estáticas
+- [ ] Slugs de artigos publicados aparecem no sitemap
+- [ ] XML sem erros de parse
+- [ ] Fallback para estático se API falhar
+- [ ] `npm run typecheck` (back) → PASS
+- [ ] `npm run build` (ambos) → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT V1.4 — Avatar upload real (Cloudinary) ⏳
+
+> **Executor: Codex**
+> **Pré-requisito:** V1.3 ✅
+> **Repos:** `FinHub-Vite/` + `API_finhub/`
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** Substituir o campo de URL manual de avatar por upload real de ficheiro via Cloudinary (free tier).
+
+**Contexto:**
+- Hoje `User.avatar` é uma string URL guardada manualmente (input de texto)
+- Cloudinary free tier: 25GB storage, 25GB bandwidth/mês — suficiente para MVP
+- Variáveis de ambiente necessárias no backend: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- O frontend envia o ficheiro para o backend; o backend faz upload para Cloudinary e devolve a URL segura
+- **NUNCA** expor as credenciais Cloudinary no frontend (não usar `VITE_CLOUDINARY_*`)
+
+**Dependências a instalar (API_finhub):**
+```bash
+npm install cloudinary multer @types/multer
+```
+
+**Tarefas obrigatórias:**
+
+### 1. Backend: endpoint `POST /api/users/me/avatar`
+
+**Ficheiros novos:** `src/lib/cloudinary.ts`, `src/middlewares/upload.ts`
+**Ficheiros a alterar:** `src/routes/user.routes.ts`, `src/controllers/user.controller.ts`
+
+**`src/lib/cloudinary.ts`:**
+```typescript
+import { v2 as cloudinary } from 'cloudinary'
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+export { cloudinary }
+```
+
+**`src/middlewares/upload.ts` (multer memoryStorage):**
+```typescript
+import multer from 'multer'
+export const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (allowed.includes(file.mimetype)) cb(null, true)
+    else cb(new Error('Formato inválido. Usa JPEG, PNG ou WebP.'))
+  },
+})
+```
+
+**Controller `uploadMyAvatar`:**
+- Se `CLOUDINARY_CLOUD_NAME` ausente: devolver 503 `{ error: 'Upload de avatar não configurado neste ambiente.' }`
+- Upload com `cloudinary.uploader.upload_stream`: `folder: 'finhub/avatars'`, `public_id: req.user.id`, `overwrite: true`, `transformation: [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }]`
+- Guardar `secure_url` em `req.user.avatar` + `await req.user.save()`
+- Responder `200 { avatar: secure_url }`
+
+**Rota:**
+```typescript
+router.post('/me/avatar', authenticate, avatarUpload.single('avatar'), uploadMyAvatar)
+```
+
+**Adicionar ao `.env.example`:**
+```
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+```
+
+### 2. Frontend: file picker no form de edição de perfil
+
+**Localizar** o componente com o campo de URL de avatar (provavelmente `AccountSettings.tsx`).
+
+**Substituir** o `<Input type="text" placeholder="URL do avatar" />` por:
+- Mostrar avatar actual (ou placeholder) com botão "Alterar foto" em overlay
+- `<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" />`
+- On change: validar tamanho <= 5MB client-side, depois chamar `authService.uploadAvatar(file)`
+- Loading state: overlay spinner no avatar durante upload
+- On success: `updateUser({ avatar: result.avatar })` via `useAuthStore`
+- On error: mostrar mensagem de erro abaixo
+
+**`authService.uploadAvatar` (novo método):**
+```typescript
+uploadAvatar: async (file: File): Promise<{ avatar: string }> => {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  const response = await apiClient.post<{ avatar: string }>('/users/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+```
+
+**Critérios de conclusão:**
+- [ ] Upload de ficheiro em `/conta` actualiza o avatar visível no header
+- [ ] Ficheiros > 5MB ou formato inválido são rejeitados com mensagem clara
+- [ ] Se `CLOUDINARY_*` não estiver configurado, endpoint devolve 503 (não crash)
+- [ ] `User.avatar` actualizado no MongoDB com URL Cloudinary
+- [ ] `npm run typecheck:p1` (front) → PASS
+- [ ] `npm run typecheck` (back) → PASS
+- [ ] `npm run build` (ambos) → PASS
+
+**Produzir relatório no formato do template.**
