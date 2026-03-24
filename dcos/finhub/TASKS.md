@@ -470,8 +470,8 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 
 | Task | Estado | Notas |
 |------|--------|-------|
-| **Instalar Impeccable no ambiente Claude Code** | ⏳ | `npx skills add pbakaus/impeccable` — 1 minuto |
-| **Correr `/teach-impeccable`** | ⏳ | Setup inicial: o comando recolhe contexto de design do projecto e grava em config. Fazer uma vez. |
+| **Instalar Impeccable no ambiente Claude Code** | ✅ | Instalado 2026-03-24 — 21 skills em `.agents/skills/`. Disponível em Claude Code, Codex, Cursor, Windsurf. Ver `dcos/finhub/IMPECCABLE.md` |
+| **Correr `/teach-impeccable`** | ⏳ | Setup inicial: o comando recolhe contexto de design do projecto e grava em config. Fazer uma vez. **PRÓXIMA sessão de frontend.** |
 | **Aplicar `/audit` ao FIRE Simulator** | ⏳ | A11y, responsivo, edge cases — antes da release |
 | **Aplicar `/distill` à página de detalhes de post da Comunidade** | ⏳ | Remover complexidade visual desnecessária |
 | **Aplicar `/harden` aos formulários de criação de post e perfil** | ⏳ | Error handling, i18n, edge cases nos formulários — fintech precisa de robustez |
