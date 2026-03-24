@@ -34,18 +34,18 @@ Enquanto existir item aberto, o guia nao pode ser marcado como fechado.
 
 | Bloco | Ficheiro | Estado atual | Obrigatorio para release final |
 |---|---|---|---|
-| P4.2 | dcos/P4_MODERATION_CONTROL_PLANE.md | em_curso | Sim |
+| P4.2 | dcos/done/P4_MODERATION_CONTROL_PLANE.md | concluido | Sim |
 | P4.3-4.5 | dcos/done/P4_3_4_5_BACKOFFICE_NEGOCIO.md | concluido | Sim |
-| P5 pre-beta | dcos/P5_PRE_BETA_PLATAFORMA.md | em_curso | Sim |
-| P5 marcas | dcos/P5_MARCAS_ENTIDADES.md | em_curso | Sim |
-| P5 criadores | dcos/P5_CRIADORES_CONTEUDO.md | proposto | Sim |
-| P5 ferramentas | dcos/P5_FERRAMENTAS_AUDIT_E_NOVAS.md | proposto | Sim |
-| P5 FIRE | dcos/P5_FIRE_PORTFOLIO_SIMULATOR.md | em_curso | Sim |
-| P5 hub pessoal | dcos/P5_VISAO_HUB_FINANCEIRO_PESSOAL.md | proposto | Sim |
-| P5 educacao | dcos/P5_EDUCACAO_LITERACIA.md | proposto | Sim |
-| P5 comunidade | dcos/P5_COMUNIDADE_SOCIAL.md | proposto | Sim |
-| P5 contexto | dcos/P5_CONTEXTO_MERCADO.md | proposto | Sim |
-| P5 accountability | dcos/P5_ACCOUNTABILITY_GAMIFICACAO.md | proposto | Sim |
+| P5 pre-beta | dcos/done/P5_PRE_BETA_PLATAFORMA.md | concluido | Sim |
+| P5 marcas | dcos/done/P5_MARCAS_ENTIDADES.md | concluido | Sim |
+| P5 criadores | dcos/done/P5_CRIADORES_CONTEUDO.md | concluido | Sim |
+| P5 ferramentas | dcos/done/P5_FERRAMENTAS_AUDIT_E_NOVAS.md | concluido | Sim |
+| P5 FIRE | dcos/done/P5_FIRE_PORTFOLIO_SIMULATOR.md | concluido | Sim |
+| P5 hub pessoal | dcos/done/P5_VISAO_HUB_FINANCEIRO_PESSOAL.md | concluido | Sim |
+| P5 educacao | dcos/done/P5_EDUCACAO_LITERACIA.md | concluido | Sim |
+| P5 comunidade | dcos/done/P5_COMUNIDADE_SOCIAL.md | concluido | Sim |
+| P5 contexto | dcos/done/P5_CONTEXTO_MERCADO.md | concluido | Sim |
+| P5 accountability | dcos/done/P5_ACCOUNTABILITY_GAMIFICACAO.md | concluido | Sim |
 
 ## 5) Ordem de execucao daqui para a frente
 

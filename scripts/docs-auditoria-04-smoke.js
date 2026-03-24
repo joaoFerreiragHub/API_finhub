@@ -2,7 +2,7 @@ const fs = require('fs')
 const path = require('path')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
-const AUDIT_DOC = path.join(REPO_ROOT, 'dcos', 'audiotira_04.md')
+const AUDIT_DOC = path.join(REPO_ROOT, 'dcos', 'done', 'audiotira_04.md')
 const PACKAGE_JSON = path.join(REPO_ROOT, 'package.json')
 const STRICT_RELEASE = process.argv.includes('--strict-release')
 
