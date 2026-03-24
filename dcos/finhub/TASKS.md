@@ -182,8 +182,8 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Pesquisa global funcional** | ⏳ | `GlobalSearchBar` existe mas pode não ter backend |
 | **SecurityTab wired à API real** | ⏳ | Hoje usa mockFormik para alterar palavra-passe |
 | **Sitemap dinâmico (SEO-4)** | ⏳ | Endpoint backend + conteúdo publicado (SEO.md) |
-| **Export de dados (RGPD Art 20)** | ⏳ | GET /api/account/export → JSON/ZIP via email; rate limit 1x/7 dias |
-| **Analytics opt-out toggle** | ⏳ | UI em /conta/definicoes + flag `allowAnalytics` no User model (RGPD Art 21) |
+| **Export de dados (RGPD Art 20)** | ✅ | GET /api/account/export → JSON inline; rate limit 7 dias — GDPR-01 2026-03-24 |
+| **Analytics opt-out toggle** | ✅ | Toggle em /conta/definicoes + `allowAnalytics` no User model — GDPR-01 2026-03-24 |
 | **MongoDB field encryption audit** | ⏳ | Confirmar se field-level encryption está activo; RGPD Art 32 |
 
 #### 🟡 Segurança — Gate Pré-Release Pública
