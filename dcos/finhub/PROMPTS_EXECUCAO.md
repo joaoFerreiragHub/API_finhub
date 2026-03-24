@@ -4420,7 +4420,7 @@ Lógica: actualizar `UserPreferences.tagAffinities` com os pesos definidos em RE
 
 ---
 
-## PROMPT CI-FIX-01 — CI/DevOps: Lint + GitHub Actions + Dependabot ⏳
+## PROMPT CI-FIX-01 — CI/DevOps: Lint + GitHub Actions + Dependabot ✅ RESOLVIDO 2026-03-24
 
 > **Executor: Claude directo** (não Codex — mudanças cirúrgicas em 3 ficheiros)
 > **Prioridade: 🔴 URGENTE** — CI está a falhar em todos os pushes desde `678c409` (2026-03-23)
@@ -5440,7 +5440,7 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 60. PROMPT P11.4         → Comunidade: níveis e badges (display no perfil)     ✅ (Codex — 2026-03-23)
 61. PROMPT P11.5         → Comunidade: leaderboard semanal + HUB               ✅ (Codex — 2026-03-23)
     ── Bugs + Melhorias Comunidade (teste manual 2026-03-23) ──
-62. PROMPT CI-FIX-01     → CI lint + GitHub Actions v5 + Dependabot            ⏳ (Claude directo — 🔴)
+62. PROMPT CI-FIX-01     → CI lint + GitHub Actions v5 + Dependabot            ✅ (Claude directo — 2026-03-24)
 63. PROMPT COMMUNITY-FIX-01 → Comunidade: nav + bug clicar post (BC1+BC2)     ✅ (Codex — 2026-03-23)
 64. PROMPT COMMUNITY-FIX-02 → Comunidade: markdown editor + imagens (BC3+BC4) ✅ (Codex — 2026-03-23)
     ── Tech Debt + Security Gate + GDPR ──

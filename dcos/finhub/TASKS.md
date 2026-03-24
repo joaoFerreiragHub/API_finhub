@@ -62,16 +62,16 @@ Tudo o que está nesta lista tem de estar completo antes do convite beta.
 | **Auditoria e fix de dependências — API_finhub** | Backend | 1 critical, 4 high, 3 moderate, 4 low | ✅ | multer/morgan/qs patched — `npm audit: 0 vulns` — build+typecheck PASS — merged 2026-03-23 |
 | **Auditoria e fix de dependências — FinHub-Vite** | Frontend | 1 high | ✅ | flatted ReDoS patched (via eslint dep) — `npm audit: 0 vulns` — build PASS — merged 2026-03-23 |
 
-#### 🔴 CI/DevOps — Bloqueador Activo (FinHub-Vite)
+#### ✅ CI/DevOps — Resolvido (2026-03-24)
 
 > **Detectado:** 2026-03-23 após push do commit `678c409`
-> **Prompt:** CI-FIX-01 (ver PROMPTS_EXECUCAO.md)
+> **Resolvido:** 2026-03-24 commit `d0ef0f5` (CI-FIX-01)
 
-| Task | Repo | Estado | Causa | Notas |
-|------|------|--------|-------|-------|
-| **`shellConfig.tsx` → separar em dois ficheiros** | FinHub-Vite | ⏳ | `yarn lint` falha no CI — ESLint Fast Refresh proíbe misturar componente React (`ShellFooter`) + constants/functions no mesmo ficheiro | Fix: `shellConfig.ts` (types/constants/funcs) + `ShellFooter.tsx` (componente isolado) |
-| **GitHub Actions: upgrade Node.js 20 → 22** | FinHub-Vite | ⏳ | `actions/checkout@v4` + `actions/setup-node@v4` deprecated no Node.js 20; warning no CI | Actualizar `.github/workflows/ci.yml` e `deploy.yml` para `@v5` / `node-version: 22` |
-| **Dependabot: 17 vulns reportadas** | FinHub-Vite | ⏳ | Discrepância entre `npm audit` local (0 vulns após `--legacy-peer-deps`) e análise Dependabot (17 vulns) | Investigar cada vuln Dependabot; resolver com `npm audit fix` directo ou upgrade de deps |
+| Task | Repo | Estado | Notas |
+|------|------|--------|-------|
+| **`shellConfig.tsx` → separar em `shellConfig.ts` + `ShellFooter.tsx`** | FinHub-Vite | ✅ | `shellConfig.ts` (types/constants/funcs), `ShellFooter.tsx` (componente isolado), imports actualizados em UnifiedTopShell + PublicShell. `yarn lint` PASS. |
+| **GitHub Actions: upgrade Node.js 20 → 22** | FinHub-Vite | ✅ | `ci.yml` + `deploy.yml`: `actions/checkout@v5`, `actions/setup-node@v5`, `node-version: 22` |
+| **Dependabot: 17 vulns reportadas** | FinHub-Vite | ✅ | Diagnosticado: `npm audit` = 0 vulns; `yarn audit` = 1 low (test dep `@tootallnate/once` via `jest-environment-jsdom`, não afecta produção). As 17 do Dependabot são da GitHub Advisory Database (mais agressiva que npm/yarn registry). Risco de produção: nulo. |
 
 **Contexto:**
 - `API_finhub`: `multer` (3× DoS), `on-headers` (HTTP header manipulation via `morgan`), `qs` (2× DoS) — total 12 vulns
