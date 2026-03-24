@@ -93,6 +93,18 @@ type RecommendationSignal =
   | 'content_favorited'
   | 'not_interested'
 type RecommendationContentType = 'article' | 'video' | 'course'
+type CommunityRoomCategory =
+  | 'general'
+  | 'budgeting'
+  | 'investing'
+  | 'real_estate'
+  | 'fire'
+  | 'credit'
+  | 'expat'
+  | 'beginners'
+  | 'premium'
+type CommunityPostSort = 'recent' | 'popular'
+type CommunityVoteDirection = 'up' | 'down'
 
 const CONTENT_ACCESS_POLICY_CONTENT_TYPES: readonly ContentAccessPolicyContentType[] = [
   'article',
@@ -246,6 +258,22 @@ const RECOMMENDATION_CONTENT_TYPES: readonly RecommendationContentType[] = [
   'course',
 ]
 const MAX_RECOMMENDATION_QUERY_LIMIT = 24
+const COMMUNITY_ROOM_CATEGORIES: readonly CommunityRoomCategory[] = [
+  'general',
+  'budgeting',
+  'investing',
+  'real_estate',
+  'fire',
+  'credit',
+  'expat',
+  'beginners',
+  'premium',
+]
+const COMMUNITY_POST_SORT_OPTIONS: readonly CommunityPostSort[] = ['recent', 'popular']
+const COMMUNITY_VOTE_DIRECTIONS: readonly CommunityVoteDirection[] = ['up', 'down']
+const MAX_COMMUNITY_ROOMS_QUERY_LIMIT = 50
+const MAX_COMMUNITY_POSTS_QUERY_LIMIT = 40
+const MAX_COMMUNITY_POST_IMAGE_URL_LENGTH = 2048
 const PUBLIC_DIRECTORY_VERIFICATION_STATUSES: readonly PublicDirectoryVerificationStatus[] = [
   'unverified',
   'pending',
@@ -587,6 +615,8 @@ const validateRequiredRouteParam = (
   }
   return value
 }
+
+const isObjectIdLike = (value: string): boolean => /^[a-fA-F0-9]{24}$/.test(value)
 
 const readHeaderString = (req: Request, headerName: string): string | undefined => {
   const value = req.headers[headerName]
@@ -1912,6 +1942,8 @@ export const validateUserUpdateMeContract = (
     'topics',
     'cardConfig',
     'socialLinks',
+    'onboardingCompleted',
+    'allowAnalytics',
   ])
   const payloadKeys = Object.keys(req.body)
 
@@ -2090,6 +2122,20 @@ export const validateUserUpdateMeContract = (
     }
   }
 
+  if ('onboardingCompleted' in req.body) {
+    if (typeof req.body.onboardingCompleted !== 'boolean') {
+      respondValidationError(res, 'Campo onboardingCompleted invalido.')
+      return
+    }
+  }
+
+  if ('allowAnalytics' in req.body) {
+    if (typeof req.body.allowAnalytics !== 'boolean') {
+      respondValidationError(res, 'Campo allowAnalytics invalido.')
+      return
+    }
+  }
+
   next()
 }
 
@@ -2242,6 +2288,356 @@ export const validateUserSignalContract = (req: Request, res: Response, next: Ne
   req.body.contentId = contentId
   req.body.contentType = contentType
 
+  next()
+}
+
+export const validateCommunityRoomsListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const allowedKeys = new Set(['page', 'limit', 'category'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const page = parseOptionalPositiveIntegerQuery(req.query.page)
+  if (!page.valid) {
+    respondValidationError(res, 'Parametro query page invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (!limit.valid || (limit.present && (limit.value || 0) > MAX_COMMUNITY_ROOMS_QUERY_LIMIT)) {
+    respondValidationError(
+      res,
+      `Parametro query limit invalido. Usa inteiro entre 1 e ${MAX_COMMUNITY_ROOMS_QUERY_LIMIT}.`
+    )
+    return
+  }
+
+  const category = readSingleQueryValue(req.query.category)
+  if (
+    category.present &&
+    (!category.valid ||
+      !category.value ||
+      !(COMMUNITY_ROOM_CATEGORIES as readonly string[]).includes(category.value))
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query category invalido. Valores: ${COMMUNITY_ROOM_CATEGORIES.join(', ')}.`
+    )
+    return
+  }
+
+  next()
+}
+
+export const validateCommunityRoomSlugContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const slug = validateRequiredRouteParam(req, res, 'slug')
+  if (!slug) return
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    respondValidationError(res, 'Parametro slug invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateCommunityRoomPostsListContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const slug = validateRequiredRouteParam(req, res, 'slug')
+  if (!slug) return
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    respondValidationError(res, 'Parametro slug invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['cursor', 'limit', 'sort'])
+  for (const key of Object.keys(req.query)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Parametro query ${key} nao suportado.`)
+      return
+    }
+  }
+
+  const cursor = readSingleQueryValue(req.query.cursor)
+  if (cursor.present && (!cursor.valid || !cursor.value)) {
+    respondValidationError(res, 'Parametro query cursor invalido.')
+    return
+  }
+
+  const limit = parseOptionalPositiveIntegerQuery(req.query.limit)
+  if (
+    !limit.valid ||
+    (limit.present && (limit.value || 0) > MAX_COMMUNITY_POSTS_QUERY_LIMIT)
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query limit invalido. Usa inteiro entre 1 e ${MAX_COMMUNITY_POSTS_QUERY_LIMIT}.`
+    )
+    return
+  }
+
+  const sort = readSingleQueryValue(req.query.sort)
+  if (
+    sort.present &&
+    (!sort.valid ||
+      !sort.value ||
+      !(COMMUNITY_POST_SORT_OPTIONS as readonly string[]).includes(sort.value))
+  ) {
+    respondValidationError(
+      res,
+      `Parametro query sort invalido. Valores: ${COMMUNITY_POST_SORT_OPTIONS.join(', ')}.`
+    )
+    return
+  }
+
+  next()
+}
+
+export const validateCommunityCreatePostContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const slug = validateRequiredRouteParam(req, res, 'slug')
+  if (!slug) return
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    respondValidationError(res, 'Parametro slug invalido.')
+    return
+  }
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de criacao de post invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['title', 'content', 'hubContentRef', 'imageUrl'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no post.`)
+      return
+    }
+  }
+
+  const title = validateRequiredNonEmptyString(req.body, 'title')
+  const content = validateRequiredNonEmptyString(req.body, 'content')
+  if (!title || !content) {
+    respondValidationError(res, 'Campos obrigatorios em falta: title, content.')
+    return
+  }
+
+  if (title.length > 200) {
+    respondValidationError(res, 'Campo title excede 200 caracteres.')
+    return
+  }
+
+  if (content.length > 10000) {
+    respondValidationError(res, 'Campo content excede 10000 caracteres.')
+    return
+  }
+
+  const hubContentRef = validateOptionalObjectField(req.body, 'hubContentRef')
+  if (!hubContentRef.valid) {
+    respondValidationError(res, 'Campo hubContentRef invalido.')
+    return
+  }
+
+  const imageUrl = validateOptionalString(req.body, 'imageUrl')
+  if (!imageUrl.valid) {
+    respondValidationError(res, 'Campo imageUrl invalido.')
+    return
+  }
+  if (imageUrl.value) {
+    if (imageUrl.value.length > MAX_COMMUNITY_POST_IMAGE_URL_LENGTH) {
+      respondValidationError(
+        res,
+        `Campo imageUrl excede ${MAX_COMMUNITY_POST_IMAGE_URL_LENGTH} caracteres.`
+      )
+      return
+    }
+
+    if (!/^https?:\/\/\S+$/i.test(imageUrl.value)) {
+      respondValidationError(
+        res,
+        'Campo imageUrl invalido. Usa URL absoluta iniciada por http:// ou https://.'
+      )
+      return
+    }
+  }
+
+  if (hubContentRef.hasValue && hubContentRef.value) {
+    const refPayload = hubContentRef.value
+    const allowedRefKeys = new Set(['contentType', 'contentId'])
+    for (const key of Object.keys(refPayload)) {
+      if (!allowedRefKeys.has(key)) {
+        respondValidationError(res, `Campo hubContentRef.${key} nao suportado.`)
+        return
+      }
+    }
+
+    const contentType = validateRequiredNonEmptyString(refPayload, 'contentType')
+    const contentId = validateRequiredNonEmptyString(refPayload, 'contentId')
+    if (!contentType || !contentId) {
+      respondValidationError(
+        res,
+        'Campos obrigatorios em hubContentRef: contentType, contentId.'
+      )
+      return
+    }
+
+    if (contentType.length > 80) {
+      respondValidationError(res, 'Campo hubContentRef.contentType excede 80 caracteres.')
+      return
+    }
+
+    if (!isObjectIdLike(contentId)) {
+      respondValidationError(res, 'Campo hubContentRef.contentId invalido.')
+      return
+    }
+
+    req.body.hubContentRef = {
+      contentType,
+      contentId,
+    }
+  }
+
+  req.body.title = title
+  req.body.content = content
+  if (imageUrl.value) {
+    req.body.imageUrl = imageUrl.value
+  }
+
+  next()
+}
+
+export const validateCommunityPostIdContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const id = validateRequiredRouteParam(req, res, 'id')
+  if (!id) return
+
+  if (!isObjectIdLike(id)) {
+    respondValidationError(res, 'Parametro id invalido.')
+    return
+  }
+
+  next()
+}
+
+export const validateCommunityCreateReplyContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const id = validateRequiredRouteParam(req, res, 'id')
+  if (!id) return
+
+  if (!isObjectIdLike(id)) {
+    respondValidationError(res, 'Parametro id invalido.')
+    return
+  }
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de criacao de resposta invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['content', 'parentReply'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado na resposta.`)
+      return
+    }
+  }
+
+  const content = validateRequiredNonEmptyString(req.body, 'content')
+  if (!content) {
+    respondValidationError(res, 'Campo content obrigatorio.')
+    return
+  }
+
+  if (content.length > 5000) {
+    respondValidationError(res, 'Campo content excede 5000 caracteres.')
+    return
+  }
+
+  const parentReply = validateOptionalString(req.body, 'parentReply')
+  if (!parentReply.valid) {
+    respondValidationError(res, 'Campo parentReply invalido.')
+    return
+  }
+
+  if (parentReply.value && !isObjectIdLike(parentReply.value)) {
+    respondValidationError(res, 'Campo parentReply invalido.')
+    return
+  }
+
+  req.body.content = content
+  if (parentReply.value) {
+    req.body.parentReply = parentReply.value
+  }
+
+  next()
+}
+
+export const validateCommunityVoteContract = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const id = validateRequiredRouteParam(req, res, 'id')
+  if (!id) return
+
+  if (!isObjectIdLike(id)) {
+    respondValidationError(res, 'Parametro id invalido.')
+    return
+  }
+
+  if (!isRecord(req.body)) {
+    respondValidationError(res, 'Payload de voto invalido.')
+    return
+  }
+
+  const allowedKeys = new Set(['direction'])
+  for (const key of Object.keys(req.body)) {
+    if (!allowedKeys.has(key)) {
+      respondValidationError(res, `Campo ${key} nao suportado no voto.`)
+      return
+    }
+  }
+
+  const directionRaw = validateRequiredNonEmptyString(req.body, 'direction')
+  if (!directionRaw) {
+    respondValidationError(res, 'Campo direction obrigatorio.')
+    return
+  }
+
+  if (!(COMMUNITY_VOTE_DIRECTIONS as readonly string[]).includes(directionRaw)) {
+    respondValidationError(
+      res,
+      `Campo direction invalido. Valores: ${COMMUNITY_VOTE_DIRECTIONS.join(', ')}.`
+    )
+    return
+  }
+
+  req.body.direction = directionRaw
   next()
 }
 

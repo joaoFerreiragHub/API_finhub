@@ -64,6 +64,8 @@ export interface IUser extends Document {
   accountStatus: UserAccountStatus
   legalAcceptance: ILegalAcceptance
   cookieConsent: ICookieConsent
+  allowAnalytics: boolean
+  lastDataExportAt?: Date
   statusReason?: string
   statusChangedAt?: Date
   statusChangedBy?: mongoose.Types.ObjectId
@@ -89,6 +91,7 @@ export interface IUser extends Document {
     instagram?: string
     youtube?: string
   }
+  onboardingCompleted: boolean
 
   // Premium
   subscriptionExpiry?: Date
@@ -202,6 +205,15 @@ const UserSchema = new Schema<IUser>(
         default: 'v1',
         maxlength: 50,
       },
+    },
+    allowAnalytics: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    lastDataExportAt: {
+      type: Date,
+      default: null,
     },
     accountStatus: {
       type: String,
@@ -353,6 +365,10 @@ const UserSchema = new Schema<IUser>(
       instagram: String,
       youtube: String,
     },
+    onboardingCompleted: {
+      type: Boolean,
+      default: false,
+    },
 
     // Premium
     subscriptionExpiry: {
@@ -381,6 +397,7 @@ UserSchema.index({ role: 1, adminReadOnly: 1 })
 UserSchema.index({ accountStatus: 1, role: 1 })
 UserSchema.index({ 'legalAcceptance.termsAcceptedAt': -1 })
 UserSchema.index({ 'cookieConsent.consentedAt': -1 })
+UserSchema.index({ allowAnalytics: 1 })
 UserSchema.index({ role: 1, 'creatorControls.creationBlocked': 1 })
 UserSchema.index({ role: 1, 'creatorControls.publishingBlocked': 1 })
 UserSchema.index({ role: 1, 'creatorControls.cooldownUntil': 1 })

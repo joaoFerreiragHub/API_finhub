@@ -41,14 +41,14 @@ const router = Router()
  * @desc    Criar nova conta
  * @access  Public
  */
-router.post('/register', rateLimiter.general, validateAuthRegisterContract, register)
+router.post('/register', rateLimiter.authRegister, validateAuthRegisterContract, register)
 
 /**
  * @route   POST /api/auth/login
  * @desc    Fazer login
  * @access  Public
  */
-router.post('/login', rateLimiter.general, validateAuthLoginContract, login)
+router.post('/login', rateLimiter.authLogin, validateAuthLoginContract, login)
 
 /**
  * @route   GET /api/auth/google/start
@@ -138,7 +138,7 @@ router.patch(
  * @desc    Renovar access token
  * @access  Public
  */
-router.post('/refresh', validateAuthRefreshContract, refresh)
+router.post('/refresh', rateLimiter.authRefresh, validateAuthRefreshContract, refresh)
 
 /**
  * @route   POST /api/auth/logout

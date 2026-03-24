@@ -1,9 +1,19 @@
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken'
 import { UserRole } from '../models/User'
 
-const JWT_SECRET: Secret = process.env.JWT_SECRET || 'your-super-secret-key-change-in-production'
+const JWT_SECRET_RAW = (process.env.JWT_SECRET ?? '').trim()
+if (!JWT_SECRET_RAW) {
+  throw new Error('JWT_SECRET is required')
+}
+const JWT_SECRET: Secret = JWT_SECRET_RAW
+
+const JWT_REFRESH_SECRET_RAW = (process.env.JWT_REFRESH_SECRET ?? '').trim()
+if (!JWT_REFRESH_SECRET_RAW) {
+  throw new Error('JWT_REFRESH_SECRET is required')
+}
+const JWT_REFRESH_SECRET: Secret = JWT_REFRESH_SECRET_RAW
+
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn']
-const JWT_REFRESH_SECRET: Secret = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret'
 const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN || '30d') as SignOptions['expiresIn']
 
 export interface TokenPayload {

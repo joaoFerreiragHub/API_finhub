@@ -4,6 +4,11 @@ import app from './app'
 import { Server } from 'http'
 import { initializeRateLimiter, shutdownRateLimiter } from './middlewares/rateLimiter'
 import { captureException, flushSentry, initializeSentry } from './observability/sentry'
+import { seedCommunityRooms } from './services/communityRoom.service'
+import {
+  startCommunityLeaderboardCron,
+  stopCommunityLeaderboardCron,
+} from './services/communityLeaderboardCron.service'
 import { uploadService } from './services/upload.service'
 import { logError, logInfo, patchConsoleWithStructuredLogger } from './utils/logger'
 import { getRuntimeSecuritySnapshot, validateRuntimeSecurityConfig } from './config/runtimeSecurity'
@@ -24,6 +29,8 @@ async function startServer() {
     initializeSentry()
     await initializeRateLimiter()
     await connectToDatabase()
+    await seedCommunityRooms()
+    startCommunityLeaderboardCron()
     logInfo('server_upload_storage_runtime', uploadService.getRuntimeState())
     server = app.listen(PORT, () => {
       logInfo('server_started', { port: PORT })
@@ -55,6 +62,7 @@ async function shutdown(reason: NodeJS.Signals | 'fatal_error', exitCode = 0) {
       })
     }
 
+    stopCommunityLeaderboardCron()
     await shutdownRateLimiter()
     await flushSentry(2000)
 

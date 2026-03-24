@@ -1,18 +1,26 @@
 import { Response } from 'express'
 import { Types } from 'mongoose'
+import { Article } from '../models/Article'
 import { ClaimRequest } from '../models/ClaimRequest'
+import { CommunityPost } from '../models/CommunityPost'
+import { CommunityReply } from '../models/CommunityReply'
 import { CreatorNotificationSubscription } from '../models/CreatorNotificationSubscription'
+import { Course } from '../models/Course'
 import { Favorite } from '../models/Favorite'
 import { Follow } from '../models/Follow'
 import { Notification } from '../models/Notification'
 import { ICreatorCardConfig, User } from '../models/User'
 import { UserPreferences } from '../models/UserPreferences'
 import { UserSubscription } from '../models/UserSubscription'
+import { UserXP } from '../models/UserXP'
+import { Video } from '../models/Video'
+import { xpService } from '../services/xp.service'
 import { AuthRequest } from '../types/auth'
 import { logControllerError } from '../utils/domainLogger'
 
 const CONTROLLER_DOMAIN = 'user_controller'
 const DELETE_ACCOUNT_CONFIRMATION_TEXT = 'ELIMINAR'
+const ACCOUNT_EXPORT_RATE_LIMIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
 type UserSocialLinkKey = 'website' | 'twitter' | 'linkedin' | 'instagram' | 'youtube'
 
@@ -151,18 +159,47 @@ const mapAuthenticatedUser = (user: NonNullable<AuthRequest['user']>) => ({
   favoriteTopics: user.topics ?? [],
   cardConfig: user.cardConfig,
   socialLinks: user.socialLinks,
+  onboardingCompleted: user.onboardingCompleted,
+  level: 1,
+  levelName: 'Novato Financeiro',
+  totalXp: 0,
+  badges: [] as Array<{ id: string; unlockedAt: string }>,
   role: user.role,
   accountStatus: user.accountStatus,
   adminReadOnly: user.adminReadOnly,
   adminScopes: user.adminScopes ?? [],
   legalAcceptance: user.legalAcceptance,
   cookieConsent: user.cookieConsent,
+  allowAnalytics: user.allowAnalytics !== false,
   followers: user.followers,
   following: user.following,
   lastLoginAt: user.lastLoginAt,
   lastActiveAt: user.lastActiveAt,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
+})
+
+type UserWithXpView = ReturnType<typeof mapAuthenticatedUser> & {
+  level: number
+  levelName: string
+  totalXp: number
+  badges: Array<{ id: string; unlockedAt: string }>
+}
+
+const withXpProfile = (
+  base: ReturnType<typeof mapAuthenticatedUser>,
+  xpProfile?: {
+    level: number
+    levelName: string
+    totalXp: number
+    badges: Array<{ id: string; unlockedAt: string }>
+  }
+): UserWithXpView => ({
+  ...base,
+  level: xpProfile?.level ?? 1,
+  levelName: xpProfile?.levelName ?? 'Novato Financeiro',
+  totalXp: xpProfile?.totalXp ?? 0,
+  badges: Array.isArray(xpProfile?.badges) ? xpProfile!.badges : [],
 })
 
 /**
@@ -178,6 +215,7 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
     }
 
     const payload = req.body as Record<string, unknown>
+    const wasOnboardingCompleted = Boolean(req.user.onboardingCompleted)
     let hasChanges = false
 
     if ('name' in payload) {
@@ -408,6 +446,37 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    if ('onboardingCompleted' in payload) {
+      if (typeof payload.onboardingCompleted !== 'boolean') {
+        return res.status(400).json({
+          error: 'Campo onboardingCompleted invalido.',
+        })
+      }
+
+      req.user.onboardingCompleted = payload.onboardingCompleted
+      hasChanges = true
+    }
+
+    if ('allowAnalytics' in payload) {
+      if (typeof payload.allowAnalytics !== 'boolean') {
+        return res.status(400).json({
+          error: 'Campo allowAnalytics invalido.',
+        })
+      }
+
+      req.user.allowAnalytics = payload.allowAnalytics
+
+      if (!payload.allowAnalytics) {
+        req.user.cookieConsent = {
+          ...req.user.cookieConsent,
+          essential: true,
+          analytics: false,
+        }
+      }
+
+      hasChanges = true
+    }
+
     if (!hasChanges) {
       return res.status(400).json({
         error: 'Sem alteracoes para atualizar.',
@@ -417,9 +486,22 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
     req.user.lastActiveAt = new Date()
     await req.user.save()
 
+    const onboardingJustCompleted = !wasOnboardingCompleted && req.user.onboardingCompleted
+    if (onboardingJustCompleted) {
+      try {
+        await xpService.awardXp(req.user.id, 'onboarding_completed', undefined, {
+          contentId: 'onboarding:completed',
+        })
+      } catch (xpError) {
+        logControllerError(CONTROLLER_DOMAIN, 'award_xp_onboarding_completed', xpError, req)
+      }
+    }
+
+    const xpProfile = await xpService.getUserXpPublicProfile(req.user.id)
+
     return res.status(200).json({
       message: 'Perfil atualizado com sucesso.',
-      user: mapAuthenticatedUser(req.user),
+      user: withXpProfile(mapAuthenticatedUser(req.user), xpProfile),
     })
   } catch (error: any) {
     logControllerError(CONTROLLER_DOMAIN, 'update_my_profile', error, req)
@@ -432,7 +514,7 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
 
 /**
  * GET /api/users/me/export
- * Exporta dados essenciais da conta autenticada em JSON.
+ * Exporta dados essenciais da conta autenticada em JSON (RGPD Art. 20).
  */
 export const exportMyData = async (req: AuthRequest, res: Response) => {
   try {
@@ -442,106 +524,195 @@ export const exportMyData = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const userId = req.user.id
+    const now = new Date()
+    const lastExportAt = req.user.lastDataExportAt ? new Date(req.user.lastDataExportAt) : null
+    if (
+      lastExportAt &&
+      Number.isFinite(lastExportAt.getTime()) &&
+      now.getTime() - lastExportAt.getTime() < ACCOUNT_EXPORT_RATE_LIMIT_WINDOW_MS
+    ) {
+      const nextAvailableAt = new Date(
+        lastExportAt.getTime() + ACCOUNT_EXPORT_RATE_LIMIT_WINDOW_MS
+      ).toISOString()
 
-    const [
-      favorites,
-      followingRelationships,
-      followerRelationships,
-      claimRequests,
-      userPreferences,
-      creatorSubscriptions,
-      userSubscription,
-    ] = await Promise.all([
-      Favorite.find({ user: userId }).select('targetType targetId createdAt').lean(),
-      Follow.find({ follower: userId }).select('following createdAt').lean(),
-      Follow.find({ following: userId }).select('follower createdAt').lean(),
-      ClaimRequest.find({ requestedBy: userId })
-        .select('targetType targetId status reason note evidenceLinks reviewedAt reviewNote createdAt updatedAt')
-        .lean(),
-      UserPreferences.findOne({ user: userId }).select('notificationPreferences').lean(),
-      CreatorNotificationSubscription.find({ user: userId })
-        .select('creator eventType isEnabled createdAt updatedAt')
-        .lean(),
-      UserSubscription.findOne({ user: userId })
-        .select(
-          'planCode planLabel billingCycle status entitlementActive currentPeriodStart currentPeriodEnd trialEndsAt canceledAt cancelAtPeriodEnd source createdAt updatedAt'
-        )
-        .lean(),
-    ])
-
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      formatVersion: 'v1',
-      user: mapAuthenticatedUser(req.user),
-      data: {
-        favorites: favorites.map((item: any) => ({
-          targetType: item.targetType,
-          targetId: String(item.targetId),
-          createdAt: item.createdAt,
-        })),
-        following: followingRelationships.map((item: any) => ({
-          userId: String(item.following),
-          createdAt: item.createdAt,
-        })),
-        followers: followerRelationships.map((item: any) => ({
-          userId: String(item.follower),
-          createdAt: item.createdAt,
-        })),
-        claimRequests: claimRequests.map((item: any) => ({
-          id: String(item._id),
-          targetType: item.targetType,
-          targetId: item.targetId,
-          status: item.status,
-          reason: item.reason,
-          note: item.note ?? null,
-          evidenceLinks: item.evidenceLinks ?? [],
-          reviewedAt: item.reviewedAt ?? null,
-          reviewNote: item.reviewNote ?? null,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        })),
-        notificationPreferences: userPreferences?.notificationPreferences ?? null,
-        creatorSubscriptions: creatorSubscriptions.map((item: any) => ({
-          creatorId: String(item.creator),
-          eventType: item.eventType,
-          isEnabled: item.isEnabled,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        })),
-        subscription:
-          userSubscription === null
-            ? null
-            : {
-                planCode: userSubscription.planCode,
-                planLabel: userSubscription.planLabel,
-                billingCycle: userSubscription.billingCycle,
-                status: userSubscription.status,
-                entitlementActive: userSubscription.entitlementActive,
-                currentPeriodStart: userSubscription.currentPeriodStart ?? null,
-                currentPeriodEnd: userSubscription.currentPeriodEnd ?? null,
-                trialEndsAt: userSubscription.trialEndsAt ?? null,
-                canceledAt: userSubscription.canceledAt ?? null,
-                cancelAtPeriodEnd: userSubscription.cancelAtPeriodEnd,
-                source: userSubscription.source,
-                createdAt: userSubscription.createdAt,
-                updatedAt: userSubscription.updatedAt,
-              },
-      },
-      summary: {
-        favoritesCount: favorites.length,
-        followingCount: followingRelationships.length,
-        followersCount: followerRelationships.length,
-        claimRequestsCount: claimRequests.length,
-        creatorSubscriptionsCount: creatorSubscriptions.length,
-      },
+      return res.status(429).json({
+        error: 'Exportacao disponivel no maximo 1 vez a cada 7 dias.',
+        nextAvailableAt,
+      })
     }
 
-    return res.status(200).json(payload)
+    const userObjectId = new Types.ObjectId(req.user.id)
+    const [articleDocs, courseDocs, videoDocs, postDocs, replyDocs, xpDoc] = await Promise.all([
+      Article.find({ creator: userObjectId }).select('_id').lean<Array<{ _id: unknown }>>(),
+      Course.find({ creator: userObjectId }).select('_id').lean<Array<{ _id: unknown }>>(),
+      Video.find({ creator: userObjectId }).select('_id').lean<Array<{ _id: unknown }>>(),
+      CommunityPost.find({ author: userObjectId }).select('_id').lean<Array<{ _id: unknown }>>(),
+      CommunityReply.find({ author: userObjectId }).select('_id').lean<Array<{ _id: unknown }>>(),
+      UserXP.findOne({ user: userObjectId })
+        .select('level totalXp badges')
+        .lean<{
+          level?: number
+          totalXp?: number
+          badges?: Array<{ id?: string; unlockedAt?: Date | string | null }>
+        } | null>(),
+    ])
+
+    const toIdList = (rows: Array<{ _id: unknown }>): string[] => rows.map((row) => String(row._id))
+    const xpBadges = (xpDoc?.badges ?? [])
+      .map((badge) => {
+        if (!badge || typeof badge !== 'object') return null
+        const id = typeof badge.id === 'string' ? badge.id : ''
+        if (!id) return null
+        const unlockedAt = badge.unlockedAt ? new Date(badge.unlockedAt) : null
+        return {
+          id,
+          unlockedAt:
+            unlockedAt && Number.isFinite(unlockedAt.getTime())
+              ? unlockedAt.toISOString()
+              : now.toISOString(),
+        }
+      })
+      .filter((badge): badge is { id: string; unlockedAt: string } => Boolean(badge))
+
+    req.user.lastDataExportAt = now
+    await req.user.save()
+
+    return res.status(200).json({
+      profile: {
+        name: req.user.name,
+        email: req.user.email,
+        bio: req.user.bio ?? null,
+        avatar: req.user.avatar ?? null,
+        topics: req.user.topics ?? [],
+        socialLinks: req.user.socialLinks ?? {},
+        createdAt: req.user.createdAt,
+      },
+      content: {
+        articles: toIdList(articleDocs),
+        courses: toIdList(courseDocs),
+        videos: toIdList(videoDocs),
+      },
+      community: {
+        posts: toIdList(postDocs),
+        replies: toIdList(replyDocs),
+        xp: {
+          level:
+            typeof xpDoc?.level === 'number' && Number.isFinite(xpDoc.level) ? xpDoc.level : 1,
+          totalXp:
+            typeof xpDoc?.totalXp === 'number' && Number.isFinite(xpDoc.totalXp)
+              ? xpDoc.totalXp
+              : 0,
+          badges: xpBadges,
+        },
+      },
+      analytics: {
+        allowAnalytics: req.user.allowAnalytics !== false,
+      },
+      exportedAt: now.toISOString(),
+    })
   } catch (error: any) {
     logControllerError(CONTROLLER_DOMAIN, 'export_my_data', error, req)
     return res.status(500).json({
       error: 'Erro ao exportar dados da conta.',
+      details: error.message,
+    })
+  }
+}
+
+/**
+ * GET /api/users/me
+ * Perfil autenticado com dados de progresso (XP/nivel/badges).
+ */
+export const getMyProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Nao autenticado.',
+      })
+    }
+
+    const [favoritesCount, followingCount, xpProfile] = await Promise.all([
+      Favorite.countDocuments({ user: req.user.id }),
+      Follow.countDocuments({ follower: req.user.id }),
+      xpService.getUserXpPublicProfile(req.user.id),
+    ])
+
+    return res.status(200).json({
+      user: {
+        ...withXpProfile(mapAuthenticatedUser(req.user), xpProfile),
+        favoritesCount,
+        followingCount,
+      },
+    })
+  } catch (error: any) {
+    logControllerError(CONTROLLER_DOMAIN, 'get_my_profile', error, req)
+    return res.status(500).json({
+      error: 'Erro ao obter perfil da conta autenticada.',
+      details: error.message,
+    })
+  }
+}
+
+/**
+ * GET /api/users/:username/public
+ * Perfil publico por username.
+ */
+export const getPublicProfileByUsername = async (req: AuthRequest, res: Response) => {
+  try {
+    const usernameRaw = typeof req.params.username === 'string' ? req.params.username : ''
+    const username = usernameRaw.trim().toLowerCase()
+    if (!username) {
+      return res.status(400).json({
+        error: 'Username invalido.',
+      })
+    }
+
+    const user = await User.findOne({ username, accountStatus: 'active' })
+      .select('name username avatar bio createdAt role')
+      .lean<{
+        _id: unknown
+        name?: string
+        username?: string
+        avatar?: string
+        bio?: string
+        createdAt?: Date
+        role?: string
+      } | null>()
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'Utilizador nao encontrado.',
+      })
+    }
+
+    const userId = String(user._id)
+    const [favoriteArticlesCount, followingCreatorsCount, xpProfile] = await Promise.all([
+      Favorite.countDocuments({ user: userId, targetType: 'article' }),
+      Follow.countDocuments({ follower: userId }),
+      xpService.getUserXpPublicProfile(userId),
+    ])
+
+    return res.status(200).json({
+      user: {
+        id: userId,
+        name: user.name ?? user.username ?? 'Utilizador',
+        username: user.username ?? username,
+        avatar: user.avatar ?? null,
+        bio: user.bio ?? null,
+        createdAt: user.createdAt ?? null,
+        role: user.role ?? 'free',
+        favoriteArticlesCount,
+        followingCreatorsCount,
+        totalXp: xpProfile.totalXp,
+        level: xpProfile.level,
+        levelName: xpProfile.levelName,
+        badges: xpProfile.badges,
+      },
+    })
+  } catch (error: any) {
+    logControllerError(CONTROLLER_DOMAIN, 'get_public_profile_by_username', error, req)
+    return res.status(500).json({
+      error: 'Erro ao carregar perfil publico.',
       details: error.message,
     })
   }
@@ -633,6 +804,8 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
       consentedAt: null,
       version: null,
     }
+    user.allowAnalytics = false
+    user.lastDataExportAt = undefined
     user.creatorControls = {
       creationBlocked: false,
       publishingBlocked: false,
@@ -642,6 +815,7 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
     user.followers = 0
     user.following = 0
     user.subscriptionExpiry = undefined
+    user.onboardingCompleted = false
     user.passwordResetTokenHash = undefined
     user.passwordResetTokenExpiresAt = undefined
     user.emailVerificationTokenHash = undefined

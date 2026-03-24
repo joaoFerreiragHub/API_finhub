@@ -1,5 +1,11 @@
 import { Router } from 'express'
-import { deleteMyAccount, exportMyData, updateMyProfile } from '../controllers/user.controller'
+import {
+  deleteMyAccount,
+  exportMyData,
+  getMyProfile,
+  getPublicProfileByUsername,
+  updateMyProfile,
+} from '../controllers/user.controller'
 import { authenticate } from '../middlewares/auth'
 import { rateLimiter } from '../middlewares/rateLimiter'
 import { validateUserDeleteMeContract, validateUserUpdateMeContract } from '../middlewares/requestContracts'
@@ -7,11 +13,18 @@ import { validateUserDeleteMeContract, validateUserUpdateMeContract } from '../m
 const router = Router()
 
 /**
+ * @route   GET /api/users/me
+ * @desc    Ler perfil da conta autenticada (inclui nivel/badges)
+ * @access  Private
+ */
+router.get('/me', authenticate, rateLimiter.general, getMyProfile)
+
+/**
  * @route   PATCH /api/users/me
  * @desc    Atualizar perfil do utilizador autenticado
  * @access  Private
  */
-router.patch('/me', authenticate, rateLimiter.general, validateUserUpdateMeContract, updateMyProfile)
+router.patch('/me', authenticate, rateLimiter.userProfilePatch, validateUserUpdateMeContract, updateMyProfile)
 
 /**
  * @route   GET /api/users/me/export
@@ -26,5 +39,19 @@ router.get('/me/export', authenticate, rateLimiter.general, exportMyData)
  * @access  Private
  */
 router.delete('/me', authenticate, rateLimiter.general, validateUserDeleteMeContract, deleteMyAccount)
+
+/**
+ * @route   GET /api/users/:username/public
+ * @desc    Ler perfil publico por username
+ * @access  Public
+ */
+router.get('/:username/public', rateLimiter.general, getPublicProfileByUsername)
+
+/**
+ * @route   GET /api/users/profile/:username
+ * @desc    Alias legado para perfil publico
+ * @access  Public
+ */
+router.get('/profile/:username', rateLimiter.general, getPublicProfileByUsername)
 
 export default router

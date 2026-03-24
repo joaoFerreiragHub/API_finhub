@@ -60,6 +60,7 @@ app.get('/metrics.json', (_req, res) => {
 app.use('/api', routes)
 
 app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const isDevEnvironment = (process.env.NODE_ENV ?? 'development') !== 'production'
   const statusCandidate =
     error && typeof error === 'object' && 'status' in error
       ? (error as { status?: unknown }).status
@@ -105,7 +106,16 @@ app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
         ? error.message
         : 'Pedido invalido.'
 
-  res.status(statusCode).json({
+  const responsePayload: {
+    success: false
+    error: {
+      code: string
+      message: string
+      stack?: string
+    }
+    requestId: string | undefined
+    timestamp: string
+  } = {
     success: false,
     error: {
       code: statusCode >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR',
@@ -113,7 +123,13 @@ app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
     },
     requestId: req.requestId,
     timestamp: new Date().toISOString(),
-  })
+  }
+
+  if (isDevEnvironment && error instanceof Error && typeof error.stack === 'string') {
+    responsePayload.error.stack = error.stack
+  }
+
+  res.status(statusCode).json(responsePayload)
 })
 
 export default app

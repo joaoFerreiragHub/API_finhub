@@ -31,6 +31,12 @@ type RateLimiterName =
   | 'adminMetricsDrilldown'
   | 'userReport'
   | 'brandIntegration'
+  | 'authRegister'
+  | 'authLogin'
+  | 'authRefresh'
+  | 'userProfilePatch'
+  | 'communityCreatePost'
+  | 'communityVote'
   | 'general'
 
 type LimiterKeyStrategy = 'requester' | 'integrationApiKey'
@@ -233,6 +239,60 @@ const limiterDefinitions: LimiterDefinition[] = [
     defaultWindowMs: 1 * 60 * 1000,
     defaultLimit: 120,
     message: 'Muitas requisicoes de integracao. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'authRegister',
+    envKey: 'AUTH_REGISTER',
+    keyPrefix: 'auth-register',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 5,
+    message: 'Muitos registos. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'authLogin',
+    envKey: 'AUTH_LOGIN',
+    keyPrefix: 'auth-login',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 10,
+    message: 'Muitas tentativas de login. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'authRefresh',
+    envKey: 'AUTH_REFRESH',
+    keyPrefix: 'auth-refresh',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 20,
+    message: 'Muitos pedidos de refresh. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'userProfilePatch',
+    envKey: 'USER_PROFILE_PATCH',
+    keyPrefix: 'user-profile-patch',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 30,
+    message: 'Muitas atualizacoes de perfil. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'communityCreatePost',
+    envKey: 'COMMUNITY_CREATE_POST',
+    keyPrefix: 'community-create-post',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 10,
+    message: 'Muitos posts criados. Tente novamente em 1 minuto.',
+  },
+  {
+    name: 'communityVote',
+    envKey: 'COMMUNITY_VOTE',
+    keyPrefix: 'community-vote',
+    keyStrategy: 'requester',
+    defaultWindowMs: 1 * 60 * 1000,
+    defaultLimit: 60,
+    message: 'Muitos votos enviados. Tente novamente em 1 minuto.',
   },
   {
     name: 'general',
@@ -528,6 +588,12 @@ export const rateLimiter: Record<RateLimiterName, RateLimitRequestHandler> = {
   adminMetricsDrilldown: buildLimiter('adminMetricsDrilldown'),
   userReport: buildLimiter('userReport'),
   brandIntegration: buildLimiter('brandIntegration'),
+  authRegister: buildLimiter('authRegister'),
+  authLogin: buildLimiter('authLogin'),
+  authRefresh: buildLimiter('authRefresh'),
+  userProfilePatch: buildLimiter('userProfilePatch'),
+  communityCreatePost: buildLimiter('communityCreatePost'),
+  communityVote: buildLimiter('communityVote'),
   general: buildLimiter('general'),
 }
 

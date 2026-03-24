@@ -16,6 +16,7 @@ import {
 import { AssistedSessionServiceError, assistedSessionService } from '../services/assistedSession.service'
 import { emailService } from '../services/email.service'
 import { captchaService, CaptchaServiceError } from '../services/captcha.service'
+import { xpService } from '../services/xp.service'
 import { logControllerError } from '../utils/domainLogger'
 
 interface GoogleOAuthStateEntry {
@@ -102,9 +103,14 @@ const mapAuthResponseUser = (user: {
   adminScopes?: string[]
   legalAcceptance?: AuthResponse['user']['legalAcceptance']
   cookieConsent?: AuthResponse['user']['cookieConsent']
+  allowAnalytics?: boolean
   creatorControls?: AuthResponse['user']['creatorControls']
   assistedSession?: AuthResponse['user']['assistedSession']
   favoriteTopics?: string[]
+  level?: number
+  levelName?: string
+  totalXp?: number
+  badges?: Array<{ id: string; unlockedAt: string }>
 }): AuthResponse['user'] => ({
   id: user.id,
   email: user.email,
@@ -118,9 +124,14 @@ const mapAuthResponseUser = (user: {
   adminScopes: Array.isArray(user.adminScopes) ? user.adminScopes : [],
   legalAcceptance: mapLegalAcceptance(user.legalAcceptance),
   cookieConsent: mapCookieConsent(user.cookieConsent),
+  allowAnalytics: user.allowAnalytics !== false,
   creatorControls: user.creatorControls ?? mapCreatorControls(undefined),
   assistedSession: user.assistedSession,
   favoriteTopics: Array.isArray(user.favoriteTopics) ? user.favoriteTopics : [],
+  level: Number.isFinite(user.level) ? Math.max(1, Math.floor(user.level!)) : 1,
+  levelName: typeof user.levelName === 'string' && user.levelName.trim() ? user.levelName : 'Novato Financeiro',
+  totalXp: Number.isFinite(user.totalXp) ? Math.max(0, Math.floor(user.totalXp!)) : 0,
+  badges: Array.isArray(user.badges) ? user.badges : [],
 })
 
 const buildAccountStatusError = (status: Exclude<UserAccountStatus, 'active'>) => ({
@@ -393,6 +404,7 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
       name,
       username,
       role: role || 'free',
+      allowAnalytics: Boolean(cookieConsent?.analytics),
       lastLoginAt: now,
       lastActiveAt: now,
       emailVerified: false,
@@ -560,6 +572,7 @@ export const googleOAuthCallback = async (req: Request, res: Response) => {
         username,
         avatar: avatarUrl,
         role: 'free',
+        allowAnalytics: false,
         emailVerified: true,
         lastLoginAt: now,
         lastActiveAt: now,
@@ -827,6 +840,7 @@ export const updateCookieConsent = async (
       consentedAt: now,
       version: req.body.version?.trim() || COOKIE_CONSENT_VERSION,
     }
+    user.allowAnalytics = Boolean(req.body.analytics)
 
     await user.save()
 
@@ -1151,6 +1165,8 @@ export const me = async (req: AuthRequest, res: Response) => {
       })
     }
 
+    const xpProfile = await xpService.getUserXpPublicProfile(req.user.id)
+
     return res.status(200).json({
       user: {
         id: req.user.id,
@@ -1172,6 +1188,10 @@ export const me = async (req: AuthRequest, res: Response) => {
         bio: req.user.bio,
         socialLinks: req.user.socialLinks,
         favoriteTopics: req.user.topics ?? [],
+        level: xpProfile.level,
+        levelName: xpProfile.levelName,
+        totalXp: xpProfile.totalXp,
+        badges: xpProfile.badges,
         followers: req.user.followers,
         following: req.user.following,
         lastLoginAt: req.user.lastLoginAt,

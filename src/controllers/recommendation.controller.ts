@@ -3,6 +3,7 @@ import { AuthRequest } from '../types/auth'
 import { recommendationService } from '../services/recommendation.service'
 import { userPreferenceService } from '../services/userPreference.service'
 import { resolveTargetMetadata } from '../services/social/targetMetadata.service'
+import { xpService } from '../services/xp.service'
 
 type RecommendationSignal =
   | 'content_viewed'
@@ -91,6 +92,22 @@ export const postRecommendationSignal = async (req: AuthRequest, res: Response) 
       tags: metadata.tags,
       weight: SIGNAL_WEIGHT[signal],
     })
+
+    if (signal === 'content_completed') {
+      try {
+        if (payload.contentType === 'article') {
+          await xpService.awardXp(req.user.id, 'article_completed', undefined, {
+            contentId: `article:${payload.contentId}`,
+          })
+        } else if (payload.contentType === 'course') {
+          await xpService.awardXp(req.user.id, 'course_completed', undefined, {
+            contentId: `course:${payload.contentId}`,
+          })
+        }
+      } catch (xpError) {
+        console.error('Award XP on content_completed error:', xpError)
+      }
+    }
 
     return res.status(200).json({
       success: true,

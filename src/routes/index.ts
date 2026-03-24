@@ -36,8 +36,10 @@ import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
 import feedRoutes from './feed.routes'
 import userRoutes from './user.routes'
+import accountRoutes from './account.routes'
 import recommendationRoutes from './recommendation.routes'
 import userSignalRoutes from './userSignal.routes'
+import communityRoutes from './community.routes'
 import portfolioRoutes from './portfolio.routes'
 import appealRoutes from './appeal.routes'
 import adsRoutes from './ads.routes'
@@ -75,7 +77,9 @@ router.get('/', (req, res) => {
         notifications: '/api/notifications',
       },
       users: '/api/users',
+      account: '/api/account',
       userSignals: '/api/user/signals',
+      community: '/api/community',
       portfolio: '/api/portfolio',
       feed: '/api/feed',
       recommendations: '/api/recommendations',
@@ -136,7 +140,9 @@ router.use('/favorites', favoriteRoutes)
 router.use('/notifications', notificationRoutes)
 router.use('/feed', feedRoutes)
 router.use('/users', userRoutes)
+router.use('/account', accountRoutes)
 router.use('/user', userSignalRoutes)
+router.use('/community', communityRoutes)
 router.use('/recommendations', recommendationRoutes)
 router.use('/portfolio', portfolioRoutes)
 

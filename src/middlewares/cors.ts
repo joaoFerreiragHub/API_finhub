@@ -9,19 +9,23 @@ const parseBoolean = (value: string | undefined, fallback: boolean): boolean => 
   return fallback
 }
 
+const allowedOriginsRaw = process.env.ALLOWED_ORIGINS ?? process.env.CORS_ALLOWED_ORIGINS ?? ''
+
 const configuredOrigins = [
   process.env.FRONTEND_URL,
-  ...(process.env.CORS_ALLOWED_ORIGINS ?? '')
+  ...allowedOriginsRaw
     .split(',')
     .map((value) => value.trim())
     .filter((value) => value.length > 0),
 ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
 
 const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000']
-const allowedOrigins = Array.from(new Set(configuredOrigins.length > 0 ? configuredOrigins : defaultOrigins))
+const isDevEnvironment = (process.env.NODE_ENV ?? 'development') !== 'production'
+const allowedOrigins = Array.from(
+  new Set(configuredOrigins.length > 0 ? configuredOrigins : isDevEnvironment ? defaultOrigins : [])
+)
 const allowAllOrigins = parseBoolean(process.env.CORS_ALLOW_ALL, false)
 const allowCredentials = parseBoolean(process.env.CORS_ALLOW_CREDENTIALS, true)
-const isDevEnvironment = (process.env.NODE_ENV ?? 'development') !== 'production'
 
 const isLocalDevOrigin = (origin: string): boolean => {
   if (!isDevEnvironment) return false

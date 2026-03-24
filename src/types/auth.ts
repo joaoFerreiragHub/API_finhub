@@ -74,9 +74,14 @@ export interface AuthResponse {
       consentedAt?: Date | null
       version?: string | null
     }
+    allowAnalytics?: boolean
     creatorControls: AuthCreatorControlsResponse
     assistedSession?: AssistedSessionTokenPayload
     favoriteTopics?: string[]
+    level?: number
+    levelName?: string
+    totalXp?: number
+    badges?: Array<{ id: string; unlockedAt: string }>
   }
   tokens: {
     accessToken: string
