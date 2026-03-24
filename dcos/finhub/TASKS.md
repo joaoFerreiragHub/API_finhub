@@ -453,6 +453,97 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 
 ---
 
+## 🤖 Ferramentas AI / Dev Workflow (para Claude — não Codex)
+
+> Tasks de exploração e integração de ferramentas AI no workflow FinHub.
+> **Executor: Claude directo** (não Codex — requerem julgamento e setup no ambiente de trabalho).
+> Investigação feita em 2026-03-24 com base em vídeo "Code Report" + research de repos GitHub.
+
+---
+
+### 🔴 CRÍTICO — Fazer antes da próxima sessão de frontend
+
+#### Impeccable — Design anti-slop para Claude Code
+> **GitHub:** https://github.com/pbakaus/impeccable
+> **Instalação:** `npx skills add pbakaus/impeccable` (detecta Claude Code automaticamente)
+> **Porquê é crítico:** FinHub é uma plataforma fintech onde a qualidade visual afecta directamente a confiança do utilizador. Sem isto, o Claude Code produz o típico "fintech dashboard genérico" (Inter font, gradiente purple-to-blue, nested cards) que destrói credibilidade. Com isto, cada sessão de frontend tem anti-patterns explícitos no contexto.
+
+| Task | Estado | Notas |
+|------|--------|-------|
+| **Instalar Impeccable no ambiente Claude Code** | ⏳ | `npx skills add pbakaus/impeccable` — 1 minuto |
+| **Correr `/teach-impeccable`** | ⏳ | Setup inicial: o comando recolhe contexto de design do projecto e grava em config. Fazer uma vez. |
+| **Aplicar `/audit` ao FIRE Simulator** | ⏳ | A11y, responsivo, edge cases — antes da release |
+| **Aplicar `/distill` à página de detalhes de post da Comunidade** | ⏳ | Remover complexidade visual desnecessária |
+| **Aplicar `/harden` aos formulários de criação de post e perfil** | ⏳ | Error handling, i18n, edge cases nos formulários — fintech precisa de robustez |
+| **Aplicar `/onboard` ao fluxo de onboarding** | ⏳ | Redesign orientado por UX do overlay de onboarding |
+| **Definir sessão dedicada com `/colorize` para identidade visual FinHub** | ⏳ | Distinguir do concorrente — aplicar brand colors estrategicamente no XP/badges/leaderboard |
+
+**Comandos disponíveis (20 total):**
+`/distill` · `/animate` · `/colorize` · `/delight` · `/overdrive` · `/audit` · `/polish` · `/typeset` · `/arrange` · `/harden` · `/onboard` · `/bolder` · `/quieter` · `/normalize` · `/critique` · `/clarify` · `/extract` · `/adapt` · `/optimize` · `/teach-impeccable`
+
+---
+
+### 🟡 ALTA PRIORIDADE — Antes da release pública
+
+#### Agency — Agentes especializados por role
+> **GitHub:** https://github.com/msitarzewski/agency-agents
+> **Instalação:** `install.sh` copia ficheiros Markdown para `.claude/` — sem código, sem infra
+> **Porquê:** Hoje o Codex é usado como "full-stack genérico". Com Agency, cada sessão tem um agente com role específico, workflows definidos e métricas de qualidade. 100+ agentes em 11 divisões.
+
+| Task | Estado | Notas |
+|------|--------|-------|
+| **Instalar Agency e explorar a divisão Engineering** | ⏳ | Identificar agentes mais relevantes: Security Engineer, Backend Architect, Frontend Developer, AI Engineer |
+| **Activar Security Engineer na próxima sessão de SEC/GDPR** | ⏳ | Agente já tem workflow de fintech security — JWT, rate limiting, PII |
+| **Explorar divisão Marketing para pós-launch** | ⏳ | Reddit Community Builder, SEO Specialist, LinkedIn Content Creator — úteis para crescimento da Comunidade FinHub |
+| **Documentar os 3-5 agentes mais úteis para o workflow FinHub** | ⏳ | Criar shortlist para usar por default em cada tipo de sessão |
+
+---
+
+#### Promptfoo — Red team de prompts e testes de segurança AI
+> **GitHub:** https://github.com/promptfoo/promptfoo (adquirido pela OpenAI em 2026)
+> **Instalação:** `npm install -g promptfoo` + config YAML
+> **Porquê:** Qualquer feature da FinHub que use LLM com input de utilizador (FIRE simulator, posts da Comunidade, recomendações) é vulnerável a prompt injection. Promptfoo testa isso automaticamente antes da release.
+
+| Task | Estado | Notas |
+|------|--------|-------|
+| **Instalar Promptfoo e explorar a documentação de red-teaming** | ⏳ | Perceber quais attack vectors cobrem casos FinHub |
+| **Mapear superfícies de ataque com input de utilizador** | ⏳ | Posts da Comunidade (markdown), campos de perfil (bio, nome), FIRE simulator inputs, search bar |
+| **Criar suite de testes de prompt injection para posts da Comunidade** | ⏳ | Posts com conteúdo malicioso que tentem escapar ao DOMPurify ou injectar em prompts de recomendação |
+| **Integrar Promptfoo no gate de segurança pré-release (SEC checklist)** | ⏳ | Adicionar ao `TASKS.md` secção 🟡 Segurança Gate |
+| **Definir threshold de pass/fail para CI** | ⏳ | Quando existirem features LLM-facing, Promptfoo deve correr em CI como `yarn test:security:prompts` |
+
+---
+
+### 🟢 PÓS-v1.0 — Avaliar quando existirem features AI para utilizadores
+
+#### OpenViking — Contexto de agente com tiered loading
+> **GitHub:** https://github.com/volcengine/OpenViking (ByteDance/Volcano Engine)
+> **Stack:** Python + `pip install openviking` (SDK principal é Python — não Node.js nativo)
+> **Porquê interessa:** Reduz consumo de tokens em ~95% vs vector search. Organiza memória em filesystem `viking://` com 3 tiers: L0 (50 tokens, relevance check), L1 (500 tokens, planning), L2 (5000 tokens, full content). Agentes escrevem as suas próprias skills em `viking://agent/skills/` — memória evolutiva.
+> **Limitação actual:** SDK primário é Python. Integrar com Node.js/MongoDB requer wrapper ou API bridge. Não é trivial.
+
+| Task | Estado | Notas |
+|------|--------|-------|
+| **Avaliar OpenViking para o sistema de recomendação (P10.5)** | ⏳ | O motor de recomendação já existe — OpenViking poderia gerir o contexto de preferências do utilizador com tiered loading em vez de carregar todo o histórico |
+| **Protótipo: estruturar MEMORY.md / PROMPTS_EXECUCAO.md como store OpenViking** | ⏳ | Explorar se a estrutura `viking://` substituiria o sistema manual de docs de contexto |
+| **Avaliar esforço de integração Node.js ↔ OpenViking** | ⏳ | Necessário antes de comprometer — pode exigir microserviço Python separado |
+| **Decidir: OpenViking vs continuar com sistema manual** | ⏳ | Só faz sentido quando houver features AI-facing para utilizadores com contexto persistente |
+
+---
+
+#### MiroFish — Simulação multi-agente para comportamento de mercado
+> **GitHub:** https://github.com/666ghj/MiroFish (fork EN: https://github.com/abhi6982/MiroFish-EN)
+> **Stack:** Node.js + Python/FastAPI + Zep Cloud para memória de agentes
+> **Porquê pode interessar pós-launch:** Simular como a comunidade FinHub reagiria a eventos de mercado (decisão BCE, choque imobiliário português) seeding agents com perfis de utilizador FinHub. Ou stress-test ao sistema XP/gamification sob evento de mercado. Feature potencial: "O que pensam os utilizadores FinHub sobre este activo?" via simulação.
+> **Limitação actual:** Projecto early-stage, principalmente em Chinês, requer infra separada e dados reais de utilizadores para ser útil. Não tem sentido antes de ter utilizadores reais.
+
+| Task | Estado | Notas |
+|------|--------|-------|
+| **Revisitar MiroFish após 3 meses de utilizadores reais** | ⏳ | Com dados comportamentais reais, a simulação tem valor. Antes disso é ficção científica. |
+| **Avaliar como feature premium: "Simulação de sentimento da comunidade"** | ⏳ | Diferenciador interessante — mostrar como agentes com perfis de investidor PT reagiriam a notícia X |
+
+---
+
 ## Sequência de Execução Actualizada
 
 > Última revisão: 2026-03-22
