@@ -5448,7 +5448,7 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 66. PROMPT TECH-DEBT-02  → Frontend: Vike navigate + react-day-picker@9        ✅ (Codex — 2026-03-24)
 67. PROMPT SEC-01        → Security backend: Helmet, CORS, JWT, logging        ✅ (Codex — 2026-03-24)
 68. PROMPT SEC-02        → Security frontend: VITE_, CSP, audit, infra         ✅ (Codex — 2026-03-24)
-69. PROMPT GDPR-01       → GDPR: cookie consent + opt-out + data export        ⏳ (Codex)
+69. PROMPT GDPR-01       → GDPR: cookie consent + opt-out + data export        ✅ (Codex — 2026-03-24)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.

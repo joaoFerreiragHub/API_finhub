@@ -1,7 +1,7 @@
 # FinHub — Backlog de Tasks
 
 > Fonte de verdade para o que está por fazer.
-> Última atualização: 2026-03-23
+> Última atualização: 2026-03-24
 
 **Legenda:** 🔴 Beta obrigatório | 🟡 v1.0 (pós-beta, pré-release pública) | 🟢 Pós-v1.0 (iterativo) | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
 
@@ -102,7 +102,7 @@ Items identificados em `dcos/agents/legal-compliance/GAPS_E_TIMELINE.md`. Bloque
 
 | Task | Estado | Esforço | Notas |
 |------|--------|---------|-------|
-| **Cookie banner: validar comportamento real + PostHog conditional init** | ⏳ | 4-6h | PostHog pode estar activo sem consentimento — VIOLAÇÃO RGPD Art 7 |
+| **Cookie banner: validar comportamento real + PostHog conditional init** | ✅ | 4-6h | GDPR-01 (Codex 2026-03-24, validado Claude 2026-03-24) — CookieBanner.tsx + analyticsProviders consent-gate + opt-out toggle + GET /api/account/export — typecheck+build PASS |
 | **DPIA documento (Data Protection Impact Assessment)** | ⏳ | 4-6h | RGPD Art 35 — document + aprovação fundador |
 | **Política de retenção de dados** (documento em `dcos/finhub/`) | ⏳ | 2-3h | RGPD Art 5(1)(e) — logs moderação 2a, acesso 1a, analytics 12m |
 | **Breach Response Plan** (documento + contatos CNPD) | ⏳ | 2-3h | RGPD Art 33 — notificação obrigatória 72h |
