@@ -172,18 +172,22 @@ Ver especificação completa em `COMMUNITY.md`.
 | **`window.location.href` em handlers nas páginas de comunidade** | `CommunityRoomDetailPage.tsx`, `CommunityPostDetailPage.tsx` | Frontend / Vike | ✅ | TECH-DEBT-02 | Auth gating declarativo com `<a href={loginRedirect}>` — sem redirect imperativo — 2026-03-24 |
 | **`react-day-picker@8` incompatível com `date-fns@4`** | `FinHub-Vite/package.json` | Peer dep | ✅ | TECH-DEBT-02 | Upgrade para `react-day-picker@^9.14.0` + `calendar.tsx` Chevron v9 API — 2026-03-24 |
 
-#### Features v1.0 sem prompt Codex definido
+#### Features v1.0 — Prompts Codex definidos
+| Feature | Estado | Prompt | Notas |
+|---------|--------|--------|-------|
+| **SecurityTab wired à API real** | ⏳ | V1.1 | Remove mockFormik; form real com authService.changePassword() |
+| **Feed personalizado `/feed` validado** | ⏳ | V1.2 | Backend + frontend existem; auditar shape + empty states |
+| **Pesquisa global funcional** | ⏳ | V1.2 | Backend MongoDB real existe; validar shape + navegação |
+| **Sitemap dinâmico (SEO-4)** | ⏳ | V1.3 | Backend endpoint JSON + Vike middleware XML |
+| **Upload de imagens real (Cloudinary)** | ⏳ | V1.4 | Avatar hoje é URL manual; upload real Cloudinary free tier |
+| **Export de dados (RGPD Art 20)** | ✅ | GDPR-01 | GET /api/account/export → JSON inline; rate limit 7 dias — 2026-03-24 |
+| **Analytics opt-out toggle** | ✅ | GDPR-01 | Toggle em /conta/definicoes + `allowAnalytics` no User model — 2026-03-24 |
+
+#### Features v1.0 — Bloqueadas ou pós-v1.0
 | Feature | Estado | Notas |
 |---------|--------|-------|
-| **Pagamentos / subscrições** | ⏳ | Stripe — bloqueado (infra externa) |
-| **Upload de imagens real (S3 ou Cloudinary)** | ⏳ | Avatar e covers hoje são URL manual |
-| **Notificações real-time (WebSocket)** | ⏳ | Hoje é polling; push melhora a experiência |
-| **Feed personalizado `/feed` validado** | ⏳ | Página e hooks existem; validar com dados reais |
-| **Pesquisa global funcional** | ⏳ | `GlobalSearchBar` existe mas pode não ter backend |
-| **SecurityTab wired à API real** | ⏳ | Hoje usa mockFormik para alterar palavra-passe |
-| **Sitemap dinâmico (SEO-4)** | ⏳ | Endpoint backend + conteúdo publicado (SEO.md) |
-| **Export de dados (RGPD Art 20)** | ✅ | GET /api/account/export → JSON inline; rate limit 7 dias — GDPR-01 2026-03-24 |
-| **Analytics opt-out toggle** | ✅ | Toggle em /conta/definicoes + `allowAnalytics` no User model — GDPR-01 2026-03-24 |
+| **Pagamentos / subscrições** | ⏳ | Stripe — bloqueado (precisa de conta Stripe + chaves antes de criar prompt) |
+| **Notificações real-time (WebSocket)** | ⏳ | Arquitectura grande; pós-v1.0 se o polling for suficiente para beta |
 | **MongoDB field encryption audit** | ⏳ | Confirmar se field-level encryption está activo; RGPD Art 32 |
 
 #### 🟡 Segurança — Gate Pré-Release Pública
