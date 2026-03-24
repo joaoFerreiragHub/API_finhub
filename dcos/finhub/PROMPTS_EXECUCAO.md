@@ -4935,7 +4935,7 @@ const AUTHENTICATED_MAIN_NAV_LINKS: MainNavLink[] = [
 
 ---
 
-## PROMPT TECH-DEBT-01 — Backend Quality: Vote Atomicity + TypeScript + Leaderboard Rank ⏳
+## PROMPT TECH-DEBT-01 — Backend Quality: Vote Atomicity + TypeScript + Leaderboard Rank ✅ VALIDADO 2026-03-24
 
 > **Executor: Codex**
 > **Pré-requisito:** P11.5 ✅
@@ -5026,7 +5026,7 @@ Combinar as 3 condições com `$or`.
 
 ---
 
-## PROMPT TECH-DEBT-02 — Frontend Quality: Vike Navigation + react-day-picker@9 ⏳
+## PROMPT TECH-DEBT-02 — Frontend Quality: Vike Navigation + react-day-picker@9 ✅ VALIDADO 2026-03-24
 
 > **Executor: Codex**
 > **Pré-requisito:** TECH-DEBT-01 ✅ (ou pode correr em paralelo — repos diferentes)
@@ -5094,7 +5094,7 @@ Remover todo o código de redirect imperativo. A lógica de construção do `log
 
 ---
 
-## PROMPT SEC-01 — Security Gate: Backend (Helmet, CORS, JWT, Logging, Env) ⏳
+## PROMPT SEC-01 — Security Gate: Backend (Helmet, CORS, JWT, Logging, Env) ✅ VALIDADO 2026-03-24
 
 > **Executor: Codex**
 > **Pré-requisito:** TECH-DEBT-01 ✅
@@ -5190,7 +5190,7 @@ app.use((err, req, res, next) => {
 
 ---
 
-## PROMPT SEC-02 — Security Gate: Frontend + Infra (VITE_, CSP, Audit, Env Prod) ⏳
+## PROMPT SEC-02 — Security Gate: Frontend + Infra (VITE_, CSP, Audit, Env Prod) ✅ VALIDADO 2026-03-24
 
 > **Executor: Codex**
 > **Pré-requisito:** TECH-DEBT-02 ✅ (ou paralelo com SEC-01 — repos diferentes)
@@ -5444,10 +5444,10 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 63. PROMPT COMMUNITY-FIX-01 → Comunidade: nav + bug clicar post (BC1+BC2)     ✅ (Codex — 2026-03-23)
 64. PROMPT COMMUNITY-FIX-02 → Comunidade: markdown editor + imagens (BC3+BC4) ✅ (Codex — 2026-03-23)
     ── Tech Debt + Security Gate + GDPR ──
-65. PROMPT TECH-DEBT-01  → Backend: vote atomicity + as any + rank             ⏳ (Codex)
-66. PROMPT TECH-DEBT-02  → Frontend: Vike navigate + react-day-picker@9        ⏳ (Codex)
-67. PROMPT SEC-01        → Security backend: Helmet, CORS, JWT, logging        ⏳ (Codex)
-68. PROMPT SEC-02        → Security frontend: VITE_, CSP, audit, infra         ⏳ (Codex)
+65. PROMPT TECH-DEBT-01  → Backend: vote atomicity + as any + rank             ✅ (Codex — 2026-03-24)
+66. PROMPT TECH-DEBT-02  → Frontend: Vike navigate + react-day-picker@9        ✅ (Codex — 2026-03-24)
+67. PROMPT SEC-01        → Security backend: Helmet, CORS, JWT, logging        ✅ (Codex — 2026-03-24)
+68. PROMPT SEC-02        → Security frontend: VITE_, CSP, audit, infra         ✅ (Codex — 2026-03-24)
 69. PROMPT GDPR-01       → GDPR: cookie consent + opt-out + data export        ⏳ (Codex)
 ```
 

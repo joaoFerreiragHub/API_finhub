@@ -165,12 +165,12 @@ Ver especificação completa em `COMMUNITY.md`.
 
 | Issue | Ficheiro(s) | Tipo | Estado | Prompt | Notas |
 |-------|------------|------|--------|--------|-------|
-| **Vote counter: leitura após update tem janela de timing** | `communityThread.service.ts` | Backend atomicidade | ⏳ | TECH-DEBT-01 | `readVoteCounters()` corre APÓS `updateVoteCounters()` em operações separadas — outra request pode votar entre as duas; fix: usar `findOneAndUpdate({ new: true })` para obter doc já actualizado |
-| **Vote: criação de CommunityVote + `$inc` no Post sem transacção** | `communityThread.service.ts`, `CommunityVote` | Backend atomicidade | ⏳ | TECH-DEBT-01 | Se a operação falhar a meio, o vote fica criado mas o contador não actualizado (ou vice-versa); fix: MongoDB session transaction |
-| **`as any` cast em pipeline de agregação MongoDB** | `xp.service.ts` linha 565 | TypeScript | ⏳ | TECH-DEBT-01 | Pipeline de `updateMany` com array de stages tipado como `as any`; fix: tipo explícito com `PipelineStage[]` do mongoose |
-| **Leaderboard rank off-by-1 em empate de `weeklyXp`** | `xp.service.ts` — `getWeeklyLeaderboard` | Lógica | ⏳ | TECH-DEBT-01 | `countActiveUsersAheadOfWeeklyXp` conta `weeklyXp >` mas sort usa desempate por `totalXp` e `_id`; rank pode estar errado em empate exacto; fix: usar aggregation com `$rank` ou incluir totalXp no count |
-| **`window.location.href` em handlers nas páginas de comunidade** | `CommunityRoomDetailPage.tsx`, `CommunityPostDetailPage.tsx` | Frontend / Vike | ⏳ | TECH-DEBT-02 | Padrão imperativo `window.location.href = loginRedirect` em handlers; padrão Vike correcto: renderizar `<a href={loginRedirect}>` condicional (declarativo) ou usar `navigate()` de `vike/client/router` |
-| **`react-day-picker@8` incompatível com `date-fns@4`** | `FinHub-Vite/package.json` | Peer dep | ⏳ | TECH-DEBT-02 | Peer dep pré-existente detectada 2026-03-23; `react-day-picker@8` suporta apenas `date-fns ^2\|\|^3`; `date-fns@4` instalada; fix: upgrade para `react-day-picker@9+` que suporta oficialmente `date-fns@4` |
+| **Vote counter: leitura após update tem janela de timing** | `communityThread.service.ts` | Backend atomicidade | ✅ | TECH-DEBT-01 | `findOneAndUpdate({ new: true })` resolve atomicidade — 2026-03-24 |
+| **Vote: criação de CommunityVote + `$inc` no Post sem transacção** | `communityThread.service.ts`, `CommunityVote` | Backend atomicidade | ✅ | TECH-DEBT-01 | `withTransaction` + fallback `isTransactionUnsupportedError` para standalone MongoDB — 2026-03-24 |
+| **`as any` cast em pipeline de agregação MongoDB** | `xp.service.ts` linha 565 | TypeScript | ✅ | TECH-DEBT-01 | `PipelineStage[]` explícito, sem `as any` — 2026-03-24 |
+| **Leaderboard rank off-by-1 em empate de `weeklyXp`** | `xp.service.ts` — `getWeeklyLeaderboard` | Lógica | ✅ | TECH-DEBT-01 | Desempate correcto: `weeklyXp DESC → totalXp DESC → _id ASC` — 2026-03-24 |
+| **`window.location.href` em handlers nas páginas de comunidade** | `CommunityRoomDetailPage.tsx`, `CommunityPostDetailPage.tsx` | Frontend / Vike | ✅ | TECH-DEBT-02 | Auth gating declarativo com `<a href={loginRedirect}>` — sem redirect imperativo — 2026-03-24 |
+| **`react-day-picker@8` incompatível com `date-fns@4`** | `FinHub-Vite/package.json` | Peer dep | ✅ | TECH-DEBT-02 | Upgrade para `react-day-picker@^9.14.0` + `calendar.tsx` Chevron v9 API — 2026-03-24 |
 
 #### Features v1.0 sem prompt Codex definido
 | Feature | Estado | Notas |
@@ -193,28 +193,28 @@ Ver especificação completa em `COMMUNITY.md`.
 ##### Dependências
 | Item | Repo | Estado | Notas |
 |------|------|--------|-------|
-| `npm audit` limpo na release | Ambos | ⏳ | Correr de novo em T-1 do lançamento — novas vulns podem surgir entretanto |
-| **Actualizar `react-day-picker@8` → `@9+`** | Frontend | ⏳ | Resolve peer dep pré-existente `date-fns@4` / `react-day-picker@8` (suporta apenas `^2\|\|^3`) — upgrade não breaking se API de calendário não for usada extensivamente |
+| `npm audit` limpo na release | Ambos | ✅ | `npm audit`: 0 vulns em ambos os repos — 2026-03-24 |
+| **Actualizar `react-day-picker@8` → `@9+`** | Frontend | ✅ | `react-day-picker@^9.14.0` instalado + `calendar.tsx` Chevron v9 API — TECH-DEBT-02 2026-03-24 |
 
 ##### Backend — API_finhub
 | Item | Estado | Notas |
 |------|--------|-------|
-| **Helmet.js activo e configurado** | ⏳ | Verificar headers: `X-Content-Type-Options`, `X-Frame-Options`, `Strict-Transport-Security`, `X-XSS-Protection` |
-| **CORS — whitelist explícita** | ⏳ | Confirmar que `origin` não está a `*` em produção — deve ser domínio FinHub apenas |
-| **Rate limiting em endpoints críticos** | ⏳ | `/api/auth/*`, `/api/users/me`, `/api/portfolio/*` — confirmar limites ajustados para prod |
-| **JWT secrets em variáveis de ambiente** | ⏳ | Confirmar `JWT_SECRET` e `JWT_REFRESH_SECRET` não têm fallback hardcoded no código |
-| **`.env` não committed** | ⏳ | Verificar `.gitignore` cobre `.env*` — confirmar histórico git limpo |
-| **Senhas/tokens não logados** | ⏳ | Audit rápido nos `console.log` e logger — sem `req.body.password`, `Authorization`, tokens em logs |
-| **Input validation em endpoints novos** | ⏳ | P10.x + P11.x — confirmar que todos os endpoints novos têm `requestContracts` aplicados |
-| **MongoDB não exposto publicamente** | ⏳ | `MONGODB_URI` deve ligar a instância com auth — não `localhost` sem password em prod |
+| **Helmet.js activo e configurado** | ✅ | Headers validados: `nosniff`, `SAMEORIGIN`, `X-XSS-Protection:0`, `HSTS`, `Referrer-Policy` — SEC-01 2026-03-24 |
+| **CORS — whitelist explícita** | ✅ | `ALLOWED_ORIGINS` env var; cai para `[]` (bloqueia tudo) em produção sem config — SEC-01 2026-03-24 |
+| **Rate limiting em endpoints críticos** | ✅ | 6 rate limiters: `authRegister`, `authLogin`, `authRefresh`, `userProfilePatch`, `communityCreatePost`, `communityVote` — SEC-01 2026-03-24 |
+| **JWT secrets em variáveis de ambiente** | ✅ | `jwt.ts` lança `Error` no boot se `JWT_SECRET`/`JWT_REFRESH_SECRET` ausentes — sem fallback hardcoded — SEC-01 2026-03-24 |
+| **`.env` não committed** | ✅ | `.gitignore` cobre `.env*`; histórico git sem `.env` confirmado — SEC-01 2026-03-24 |
+| **Senhas/tokens não logados** | ✅ | Error handler sem `error.stack` em produção — SEC-01 2026-03-24 |
+| **Input validation em endpoints novos** | ✅ | Todos P10.x + P11.x têm `requestContracts` aplicados (validado em P10-P11 reviews) |
+| **MongoDB não exposto publicamente** | ⏳ | Confirmar na infra de deploy — depende da configuração do servidor |
 
 ##### Frontend — FinHub-Vite
 | Item | Estado | Notas |
 |------|--------|-------|
-| **VITE_* vars — sem secrets no bundle** | ⏳ | Confirmar que nenhuma key privada (Stripe secret, DB uri, JWT secret) está em `VITE_*` — só keys públicas |
-| **`dangerouslySetInnerHTML` auditado** | ⏳ | Grep no código — qualquer uso deve ter sanitização (DOMPurify ou similar) |
-| **Content Security Policy** | ⏳ | Adicionar CSP header no servidor (ou meta tag) — bloquear inline scripts não autorizados |
-| **Dependências desactualizadas (major)** | ⏳ | `npm outdated` — identificar packages com major update pendente antes do lançamento |
+| **VITE_* vars — sem secrets no bundle** | ✅ | Auditado em SEC-02: sem keys privadas em `VITE_*` — 2026-03-24 |
+| **`dangerouslySetInnerHTML` auditado** | ✅ | 4 ocorrências — todas com DOMPurify ou renderer sanitizado — SEC-02 2026-03-24 |
+| **Content Security Policy** | ✅ | CSP global em `server/index.mjs`: `script-src 'self' 'unsafe-inline'` (JSON-LD), sem `unsafe-eval` — SEC-02 2026-03-24 |
+| **Dependências desactualizadas (major)** | ⏳ | `npm outdated` inventariado em SEC-02; majors pendentes (react-router-dom@7, vite@8, ts@6) — não blocking, backlog pós-v1.0 |
 
 ##### Infra / Deploy
 | Item | Estado | Notas |
