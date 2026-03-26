@@ -49,7 +49,15 @@
 ### O que o Claude deve validar
 - [ ] item específico a rever
 - [ ] outro item
+
+### FECHO DE CICLO — Codex executa ANTES do commit final (obrigatório)
+- [ ] `dcos/finhub/TASKS.md` — marcar a linha deste prompt como ✅ (ver secção indicada no prompt)
+- [ ] `dcos/finhub/PROMPTS_EXECUCAO.md` — alterar header deste prompt: `⏳` → `✅ VALIDADO [data]`
+- [ ] Se encontraste dívida técnica ou itens novos: adicionar ao TASKS.md (secção relevante) ANTES de fechar
+- [ ] Relatório acima preenchido com todos os campos
 ```
+
+> ⚠️ **Relatório sem FECHO DE CICLO preenchido = inválido.** O Claude rejeita e pede actualização antes de marcar como validado.
 
 ---
 
@@ -5275,7 +5283,7 @@ Para cada resultado anómalo: corrigir ou documentar justificação.
 
 ---
 
-## PROMPT GDPR-01 — GDPR: Cookie Consent, Analytics Opt-out, Data Export ⏳
+## PROMPT GDPR-01 — GDPR: Cookie Consent, Analytics Opt-out, Data Export ✅ VALIDADO 2026-03-24
 
 > **Executor: Codex**
 > **Pré-requisito:** SEC-01 ✅ e SEC-02 ✅
@@ -5450,9 +5458,9 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 68. PROMPT SEC-02        → Security frontend: VITE_, CSP, audit, infra         ✅ (Codex — 2026-03-24)
 69. PROMPT GDPR-01       → GDPR: cookie consent + opt-out + data export        ✅ (Codex — 2026-03-24)
     ── v1.0 Features — Pré-Release Pública ──
-70. PROMPT V1.1          → SecurityTab: alterar palavra-passe real                ⏳
-71. PROMPT V1.2          → Feed + Pesquisa global: validar end-to-end             ⏳
-72. PROMPT V1.3          → Sitemap dinâmico (backend XML + Vike middleware)       ⏳
+70. PROMPT V1.1          → SecurityTab: alterar palavra-passe real                ✅ (Codex — 2026-03-26)
+71. PROMPT V1.2          → Feed + Pesquisa global: validar end-to-end             ✅ (Codex — 2026-03-26)
+72. PROMPT V1.3          → Sitemap dinâmico (backend XML + Vike middleware)       ✅ (Codex — 2026-03-26)
 73. PROMPT V1.4          → Avatar upload real (Cloudinary)                        ⏳
 ```
 
@@ -5461,7 +5469,7 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 
 ---
 
-## PROMPT V1.1 — SecurityTab: Alterar palavra-passe real ⏳
+## PROMPT V1.1 — SecurityTab: Alterar palavra-passe real ✅ VALIDADO 2026-03-26
 
 > **Executor: Codex**
 > **Pré-requisito:** GDPR-01 ✅
@@ -5502,7 +5510,7 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 
 ---
 
-## PROMPT V1.2 — Feed + Pesquisa global: validar end-to-end ⏳
+## PROMPT V1.2 — Feed + Pesquisa global: validar end-to-end ✅ VALIDADO 2026-03-26
 
 > **Executor: Codex**
 > **Pré-requisito:** V1.1 ✅
@@ -5554,7 +5562,7 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 
 ---
 
-## PROMPT V1.3 — Sitemap dinâmico ⏳
+## PROMPT V1.3 — Sitemap dinâmico ✅ VALIDADO 2026-03-26
 
 > **Executor: Codex**
 > **Pré-requisito:** V1.2 ✅
@@ -5723,3 +5731,897 @@ uploadAvatar: async (file: File): Promise<{ avatar: string }> => {
 - [ ] `npm run build` (ambos) → PASS
 
 **Produzir relatório no formato do template.**
+
+---
+
+## PROMPT FIX-V1.3 — Sitemap: Adicionar Podcasts, Books e DirectoryEntry ✅ VALIDADO 2026-03-26
+
+> **Executor: Codex**
+> **Pré-requisito:** V1.3 executado (sitemap.service.ts já existe)
+> **Repos:** `API_finhub/` apenas
+> **Escopo:** O `sitemap.service.ts` existente só indexa Articles, Courses, Videos e Creators. Faltam 3 tipos com páginas públicas: Podcasts, Books e DirectoryEntry (recursos/marcas). Este prompt adiciona-os.
+
+**Contexto exacto:**
+
+- Ficheiro a editar: `src/services/sitemap.service.ts`
+- Imports actuais: `Article`, `Course`, `Video`, `User` — estão correctos, não os toques
+- Modelos a adicionar:
+  - `Podcast` — em `../models/Podcast` — tem `slug`, `status: 'draft' | 'published'`, `publishedAt`, `updatedAt`, `createdAt` — **não tem** `moderationStatus`
+  - `Book` — em `../models/Book` — mesmos campos que Podcast — **não tem** `moderationStatus`
+  - `DirectoryEntry` — em `../models/DirectoryEntry` — tem `slug`, `status: 'draft' | 'published' | 'archived'`, `isActive: boolean`, `publishedAt`, `updatedAt`, `createdAt` — **não tem** `moderationStatus`
+- URLs públicas (rotas Vike existentes, verificadas):
+  - Podcast → `/hub/podcasts/:slug`
+  - Book → `/hub/books/:slug`
+  - DirectoryEntry → `/directory/:slug`
+
+**Tarefas obrigatórias:**
+
+### 1. Adicionar imports dos 3 modelos
+
+No topo de `src/services/sitemap.service.ts`, a seguir aos imports existentes:
+```typescript
+import { Podcast } from '../models/Podcast'
+import { Book } from '../models/Book'
+import { DirectoryEntry } from '../models/DirectoryEntry'
+```
+
+### 2. Expandir o `Promise.all` no método `generateXml`
+
+O `Promise.all` actual tem 4 entradas. Expandir para 7 — as 4 originais intactas, mais 3 novas:
+```typescript
+const [articles, courses, videos, creators, podcasts, books, directories] = await Promise.all([
+  // --- existentes (não alterar) ---
+  Article.find({ status: 'published', moderationStatus: { $nin: ['hidden', 'restricted'] } })
+    .select('slug publishedAt updatedAt createdAt').lean<ContentProjection[]>(),
+  Course.find({ status: 'published', moderationStatus: { $nin: ['hidden', 'restricted'] } })
+    .select('slug publishedAt updatedAt createdAt').lean<ContentProjection[]>(),
+  Video.find({ status: 'published', moderationStatus: { $nin: ['hidden', 'restricted'] } })
+    .select('slug publishedAt updatedAt createdAt').lean<ContentProjection[]>(),
+  User.find({ role: 'creator', accountStatus: 'active' })
+    .select('username updatedAt createdAt').lean<CreatorProjection[]>(),
+  // --- novos ---
+  Podcast.find({ status: 'published' })
+    .select('slug publishedAt updatedAt createdAt').lean<ContentProjection[]>(),
+  Book.find({ status: 'published' })
+    .select('slug publishedAt updatedAt createdAt').lean<ContentProjection[]>(),
+  DirectoryEntry.find({ status: 'published', isActive: true })
+    .select('slug publishedAt updatedAt createdAt').lean<ContentProjection[]>(),
+])
+```
+
+### 3. Adicionar loops de URL para os 3 novos tipos
+
+Após o loop existente de `creators`, adicionar:
+```typescript
+for (const item of podcasts) {
+  const slug = item.slug?.trim()
+  if (!slug) continue
+  pushEntry({
+    path: `/hub/podcasts/${slug}`,
+    lastmod: toIsoDate(item.updatedAt, item.publishedAt, item.createdAt),
+    changefreq: 'weekly',
+    priority: '0.7',
+  })
+}
+
+for (const item of books) {
+  const slug = item.slug?.trim()
+  if (!slug) continue
+  pushEntry({
+    path: `/hub/books/${slug}`,
+    lastmod: toIsoDate(item.updatedAt, item.publishedAt, item.createdAt),
+    changefreq: 'monthly',
+    priority: '0.6',
+  })
+}
+
+for (const item of directories) {
+  const slug = item.slug?.trim()
+  if (!slug) continue
+  pushEntry({
+    path: `/directory/${slug}`,
+    lastmod: toIsoDate(item.updatedAt, item.publishedAt, item.createdAt),
+    changefreq: 'monthly',
+    priority: '0.6',
+  })
+}
+```
+
+**Não alterar mais nada** — o controller, as rotas, o `server/index.mjs` e o sitemap estático estão correctos e validados.
+
+**Critérios de conclusão:**
+- [ ] `src/services/sitemap.service.ts` importa `Podcast`, `Book`, `DirectoryEntry`
+- [ ] `Promise.all` desestrutura 7 variáveis (não 4)
+- [ ] Loop `/hub/podcasts/:slug` presente
+- [ ] Loop `/hub/books/:slug` presente
+- [ ] Loop `/directory/:slug` presente
+- [ ] `npm run typecheck` (back) → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT FIX-V1.4 — Avatar: File Picker Real em AccountDetailsTab ✅ VALIDADO [2026-03-26]
+
+> **Executor: Codex**
+> **Pré-requisito:** FIX-V1.3 ✅
+> **Repos:** `FinHub-Vite/` apenas
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** O backend de upload de avatar está completo e funcional. O frontend em `AccountDetailsTab.tsx` tem um `<Button>Alterar Imagem</Button>` estático que não faz absolutamente nada. Este prompt substitui-o por um file picker real ligado ao `authService.uploadMyAvatar()`.
+
+**Contexto exacto — ler antes de escrever qualquer código:**
+
+**Ficheiro a editar:** `src/features/auth/components/settings/AccountDetailsTab.tsx`
+
+**Estado actual do bloco a substituir** (linhas 17–24):
+```tsx
+<div className="flex items-center gap-4">
+  <img
+    src={user?.avatar || '/placeholder-user.svg'}
+    alt="Avatar"
+    className="w-16 h-16 rounded-full"
+  />
+  <Button variant="outline">Alterar Imagem</Button>
+</div>
+```
+
+**Props do componente:**
+```tsx
+interface Props {
+  user: User | null
+  onChange: (data: Partial<User>) => void  // actualizar avatar: onChange({ avatar: result.avatarUrl })
+  onSave: () => void
+}
+```
+
+**Serviço de upload — já existe, não criar:**
+- Método: `authService.uploadMyAvatar(file: File)`
+- Import: `import { authService } from '@/features/auth/services/authService'`
+- Resposta de sucesso: `{ message: string, avatarUrl: string, publicId?: string, user: ... }`
+- Após sucesso: `onChange({ avatar: result.avatarUrl })`
+
+**Utilitário de erro — já existe:**
+- `import { getErrorMessage } from '@/lib/api/client'`
+
+**Tarefas obrigatórias:**
+
+### 1. Adicionar imports necessários
+
+Verificar quais já existem antes de adicionar (evitar duplicados):
+```tsx
+import { useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react'
+import { authService } from '@/features/auth/services/authService'
+import { getErrorMessage } from '@/lib/api/client'
+```
+
+### 2. Adicionar estado e handler dentro do componente (antes do `return`)
+
+```tsx
+const fileInputRef = useRef<HTMLInputElement>(null)
+const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+const [avatarError, setAvatarError] = useState<string | null>(null)
+
+const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  event.target.value = ''  // reset para poder seleccionar o mesmo ficheiro novamente
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    setAvatarError('Formato inválido. Usa JPEG, PNG ou WebP.')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    setAvatarError('O ficheiro é demasiado grande. Máximo 5 MB.')
+    return
+  }
+
+  setAvatarError(null)
+  setIsUploadingAvatar(true)
+  try {
+    const result = await authService.uploadMyAvatar(file)
+    onChange({ avatar: result.avatarUrl })
+  } catch (error) {
+    setAvatarError(getErrorMessage(error))
+  } finally {
+    setIsUploadingAvatar(false)
+  }
+}
+```
+
+### 3. Substituir o bloco estático no JSX
+
+Substituir as linhas 17–24 por:
+```tsx
+<div className="flex items-center gap-4">
+  {/* Input escondido — activado pelo botão via ref */}
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept="image/jpeg,image/png,image/webp"
+    className="hidden"
+    onChange={handleAvatarFileChange}
+  />
+
+  {/* Avatar com overlay de loading */}
+  <div className="relative h-16 w-16 shrink-0">
+    <img
+      src={user?.avatar || '/placeholder-user.svg'}
+      alt="Avatar"
+      className="h-16 w-16 rounded-full object-cover"
+    />
+    {isUploadingAvatar && (
+      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+        <Loader2 className="h-5 w-5 animate-spin text-white" />
+      </div>
+    )}
+  </div>
+
+  {/* Botão + mensagem de erro */}
+  <div className="flex flex-col gap-1">
+    <Button
+      type="button"
+      variant="outline"
+      disabled={isUploadingAvatar}
+      onClick={() => fileInputRef.current?.click()}
+    >
+      {isUploadingAvatar ? 'A carregar...' : 'Alterar foto'}
+    </Button>
+    {avatarError && (
+      <p className="text-xs text-destructive">{avatarError}</p>
+    )}
+  </div>
+</div>
+```
+
+**Não alterar mais nada neste ficheiro.** Os campos username/nome/email/bio e o botão "Guardar Alterações" estão correctos. Não tocar em `AccountSettings.tsx` nem em nenhum outro ficheiro.
+
+**Critérios de conclusão:**
+- [ ] `AccountDetailsTab.tsx` tem `<input type="file" className="hidden" />` com `ref={fileInputRef}`
+- [ ] Clicar "Alterar foto" abre o seletor de ficheiros nativo do sistema operativo
+- [ ] Ficheiro > 5 MB → mensagem de erro visível abaixo do botão, sem chamada à API
+- [ ] Formato inválido (ex: `.gif`) → mensagem de erro visível, sem chamada à API
+- [ ] Durante upload: spinner sobre o avatar + botão desactivado com texto "A carregar..."
+- [ ] Após upload bem-sucedido: `onChange({ avatar: result.avatarUrl })` chamado → avatar actualizado na página
+- [ ] Após erro da API: mensagem de erro legível abaixo do botão
+- [ ] `npm run typecheck:p1` (front) → PASS
+- [ ] `npm run build` (front) → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT V1.5 — RGPD: UI de Exportação de Dados em /conta/definicoes ✅ VALIDADO [2026-03-26]
+
+> **Executor: Codex**
+> **Pré-requisito:** FIX-V1.4 marcado como concluído
+> **Repos:** `FinHub-Vite/` apenas
+> **Regras SSR obrigatórias** (ler antes de iniciar — ver topo do ficheiro).
+> **Escopo:** O backend `GET /api/account/export` está 100% funcional (rate limit 7 dias). `authService.exportMyData()` já existe. Falta um card em `/conta/definicoes` com o botão de exportar. A lógica de download (blob → anchor → click) já foi implementada em `src/features/user/pages/UserSettingsPage.tsx` linhas 290-308 — reutilizar esse padrão exactamente.
+
+**Ficheiro a editar:** `src/pages/conta/definicoes/+Page.tsx`
+
+**Estado actual do ficheiro:**
+- Já importa: `useMutation`, `Card, CardContent, CardDescription, CardHeader, CardTitle, Label, Switch`, `authService`, `useAuthStore`, `getErrorMessage`
+- Não importa ainda: `Button`, `Download` de `lucide-react`, `useToast`
+- Já tem card "Privacidade e analytics" com toggle `allowAnalytics`
+- Linha final do JSX antes de `</UserAccountShell>`: `<AccountSettings />`
+
+**Tarefas obrigatórias:**
+
+### 1. Adicionar imports em falta (verificar duplicados antes)
+```tsx
+import { Download } from 'lucide-react'
+import { Button } from '@/components/ui'
+import { useToast } from '@/shared/hooks/use-toast'
+```
+
+### 2. Adicionar hook e mutation dentro do componente Page()
+```tsx
+const { toastSuccess, toastError } = useToast()
+
+const exportMyDataMutation = useMutation({
+  mutationFn: () => authService.exportMyData(),
+  onSuccess: (result) => {
+    const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    const day = new Date().toISOString().split('T')[0]
+    anchor.href = url
+    anchor.download = `finhub-account-export-${user?.username ?? 'user'}-${day}.json`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+    toastSuccess('Export concluido. O ficheiro JSON foi descarregado.')
+  },
+  onError: (error) => {
+    toastError(getErrorMessage(error))
+  },
+})
+```
+
+### 3. Adicionar card "Os teus dados" ANTES de `<AccountSettings />`
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>Os teus dados</CardTitle>
+    <CardDescription>
+      Exporta todos os dados da tua conta em formato JSON. Podes fazer uma exportacao por semana.
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    <Button
+      variant="outline"
+      disabled={exportMyDataMutation.isPending}
+      onClick={() => exportMyDataMutation.mutate()}
+    >
+      {exportMyDataMutation.isPending ? (
+        <>A preparar...</>
+      ) : (
+        <>
+          <Download className="mr-2 h-4 w-4" />
+          Exportar os meus dados
+        </>
+      )}
+    </Button>
+  </CardContent>
+</Card>
+```
+
+**Nao alterar mais nada.** O toggle de analytics e o `<AccountSettings />` estao correctos.
+
+**Criterios de conclusao:**
+- [ ] Card "Os teus dados" visivel em `/conta/definicoes`
+- [ ] Clicar "Exportar os meus dados" desencadeia download `finhub-account-export-{username}-{data}.json`
+- [ ] Durante export: botao mostra "A preparar..." e esta desactivado
+- [ ] Apos sucesso: toast de confirmacao
+- [ ] Apos erro (rate limit 429 incluido): toast com mensagem do servidor
+- [ ] `npm run typecheck:p1` (front) → PASS
+- [ ] `npm run build` (front) → PASS
+
+**Produzir relatorio no formato do template.**
+
+---
+
+## PROMPT V1.6 — MongoDB: Auditoria de Field-Level Encryption ✅ VALIDADO [2026-03-26]
+
+> **Executor: Codex**
+> **Pre-requisito:** V1.5 marcado como concluido
+> **Repos:** `API_finhub/` apenas
+> **Escopo:** RGPD Art 32. Auditar o User model e a configuracao MongoDB. Identificar campos em risco. Produzir documento de auditoria. Nao alterar codigo de producao.
+
+**Campos no User model** (`src/models/User.ts`) para avaliar:
+- `password` — bcrypt hash, `select: false` — PROTEGIDO
+- `passwordResetTokenHash`, `emailVerificationTokenHash` — hashes — PROTEGIDOS
+- `email` — plaintext, indexado unique — EM RISCO (PII RGPD)
+- `name`, `lastName` — plaintext — PII moderada
+
+**Tarefas obrigatorias:**
+
+### 1. Verificar tipo de conexao MongoDB
+Ler o ficheiro de configuracao da base de dados (provavelmente `src/config/database.ts`):
+- Se URI contem `atlas.mongodb.com` ou `mongodb.net` → MongoDB Atlas → encryption at rest automatica (AES-256). Documentar no relatorio e ir para passo 3.
+- Se URI e `localhost`, `127.0.0.1` ou IP proprio → self-hosted → executar passo 2.
+
+### 2. Se self-hosted: criar `dcos/finhub/ENCRYPTION_AUDIT.md`
+```markdown
+# FinHub - Auditoria de Encriptacao
+
+**Data:** [data actual]
+
+## Campos sensiveis no User model
+
+| Campo | Protecao actual | Risco RGPD |
+|-------|----------------|------------|
+| password | bcrypt hash (select:false) | Protegido |
+| passwordResetTokenHash | hash | Protegido |
+| emailVerificationTokenHash | hash | Protegido |
+| email | plaintext (unique index) | Em risco — PII Art 5 |
+| name / lastName | plaintext | Em risco — PII moderada |
+
+## Configuracao MongoDB
+Tipo: self-hosted / localhost
+Encryption at rest: NAO CONFIGURADA
+
+## Risco
+Sem encryption at rest, exposicao da BD revela emails e nomes em plaintext.
+
+## Recomendacoes (por ordem de prioridade)
+1. Migrar para MongoDB Atlas M0 (free) — AES-256 automatico
+2. OS-level disk encryption (LUKS no Linux)
+3. Field-level encryption com mongoose-field-encryption (email, name)
+
+## Estado
+Pendente — decisao de infraestrutura necessaria
+```
+
+### 3. Verificar `API_finhub/.env.example`
+Confirmar que estas variaveis estao listadas SEM valores reais:
+- `MONGODB_URI=your-mongodb-uri`
+- `JWT_SECRET=your-jwt-secret`
+- `JWT_REFRESH_SECRET=your-jwt-refresh-secret`
+- `CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name`
+- `CLOUDINARY_API_KEY=your-cloudinary-api-key`
+- `CLOUDINARY_API_SECRET=your-cloudinary-api-secret`
+
+Adicionar qualquer variavel em falta com placeholder. Nao alterar valores existentes.
+
+### 4. Nao alterar codigo de producao
+Nenhum model, service ou controller deve ser modificado.
+
+**Criterios de conclusao:**
+- [ ] Tipo de conexao MongoDB identificado e documentado
+- [ ] Se self-hosted: `dcos/finhub/ENCRYPTION_AUDIT.md` criado
+- [ ] Se Atlas: relatorio confirma encryption at rest automatica
+- [ ] `API_finhub/.env.example` completo com todas as variaveis
+- [ ] `npm run typecheck` (back) → PASS
+
+**Produzir relatorio no formato do template.**
+
+---
+
+## PROMPT LEGAL-01 — TTL Indexes em Modelos de Log ✅ VALIDADO [2026-03-26]
+
+> **Executor: Codex**
+> **Pré-requisito:** V1.6 marcado como concluído
+> **Repos:** `API_finhub/` apenas
+> **Escopo:** RGPD Art. 5(1)(e) — limitação da conservação. Os modelos `AdminAuditLog` e `ContentModerationEvent` não têm TTL index. Os registos acumulam indefinidamente na base de dados. Esta tarefa adiciona `expireAfterSeconds` a ambos os modelos para que o MongoDB elimine automaticamente documentos antigos.
+
+**Contexto exacto — ler antes de escrever:**
+
+**Modelo 1: `src/models/AdminAuditLog.ts`**
+- Prazos definidos na Política de Retenção: **2 anos**
+- 2 anos em segundos: `63_072_000`
+- Índices actuais (não remover): `createdAt`, `actor + createdAt`, `action + createdAt`, `resourceType + createdAt`, `outcome + createdAt`
+- Schema usa `timestamps: { createdAt: true, updatedAt: false }` — o campo `createdAt` existe
+
+**Modelo 2: `src/models/ContentModerationEvent.ts`**
+- Prazos definidos na Política de Retenção: **1 ano**
+- 1 ano em segundos: `31_536_000`
+- Índices actuais (não remover): `createdAt`, `contentType + contentId + createdAt`, `actor + createdAt`, `action + createdAt`
+- Schema usa `timestamps: true` — o campo `createdAt` existe
+
+**Tarefas obrigatórias:**
+
+### 1. AdminAuditLog — adicionar TTL index
+
+No final de `src/models/AdminAuditLog.ts`, a seguir aos índices existentes, adicionar:
+```typescript
+// RGPD Art. 5(1)(e) — retencao maxima: 2 anos
+AdminAuditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 63_072_000 })
+```
+
+### 2. ContentModerationEvent — adicionar TTL index
+
+No final de `src/models/ContentModerationEvent.ts`, a seguir aos índices existentes, adicionar:
+```typescript
+// RGPD Art. 5(1)(e) — retencao maxima: 1 ano
+ContentModerationEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 31_536_000 })
+```
+
+### 3. Verificar outros modelos de log — só adicionar se o campo `createdAt` existir
+
+Verificar estes modelos e adicionar TTL de 90 dias (`expireAfterSeconds: 7_776_000`) se tiverem `createdAt` e não tiverem TTL:
+- `src/models/AgentActivityLog.ts`
+- `src/models/AdminWorkerRuntime.ts`
+- `src/models/AutomatedModerationSignal.ts`
+
+**Nao alterar** os índices existentes, a lógica de criação de documentos, nem qualquer outro ficheiro.
+
+**Critérios de conclusão:**
+- [ ] `AdminAuditLog.ts` tem `expireAfterSeconds: 63_072_000` no campo `createdAt`
+- [ ] `ContentModerationEvent.ts` tem `expireAfterSeconds: 31_536_000` no campo `createdAt`
+- [ ] Outros modelos de log verificados e TTL adicionado se aplicável
+- [ ] Nenhum índice existente foi removido
+- [ ] `npm run typecheck` (back) → PASS
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT LEGAL-02 — Documentos Legais com Texto Completo ✅ VALIDADO [2026-03-26]
+
+> **Executor: Codex**
+> **Pré-requisito:** LEGAL-01 marcado como concluído
+> **Repos:** `API_finhub/` apenas
+> **Escopo:** O ficheiro `src/services/legalDocument.service.ts` serve os documentos legais da plataforma (Política de Privacidade, Termos de Serviço, Política de Cookies, Aviso Legal Financeiro). Actualmente o campo `content` de cada documento tem apenas 1 linha de texto placeholder. Este prompt substitui esse placeholder por texto legal completo e adequado à plataforma.
+
+**Ficheiro a editar:** `src/services/legalDocument.service.ts`
+
+**Estrutura do ficheiro actual:**
+```typescript
+const legalDocuments: Record<LegalDocumentKey, LegalDocument> = {
+  terms: { key, title, version, lastUpdatedAt, requiredAtSignup, routePath, summary, content: 'uma linha' },
+  privacy: { ... content: 'uma linha' },
+  cookies: { ... content: 'uma linha' },
+  'financial-disclaimer': { ... content: 'uma linha' },
+}
+```
+
+**O campo `content` suporta HTML simples** (a página frontend renderiza via `dangerouslySetInnerHTML` ou texto puro — verificar `LegalDocumentPage.tsx` antes de escolher formato).
+
+**Tarefas obrigatórias:**
+
+### 1. Verificar como o frontend renderiza o content
+
+Ler `src/features/platform/components/LegalDocumentPage.tsx` (ou equivalente frontend):
+- Se renderiza HTML: usar tags `<h2>`, `<p>`, `<ul>`, `<li>`
+- Se renderiza texto puro: usar texto simples com parágrafos separados por `\n\n`
+
+### 2. Substituir os campos `content` com texto completo
+
+Substituir **exactamente** os campos `content` de cada documento pelo texto abaixo. Não alterar `title`, `version`, `lastUpdatedAt`, `summary`, `requiredAtSignup`, `routePath` nem qualquer outra coisa.
+
+---
+
+**TERMOS DE SERVIÇO (`terms.content`):**
+
+```
+<h2>1. Aceitação dos Termos</h2>
+<p>Ao criar uma conta na FinHub, aceitas os presentes Termos de Serviço. Se não concordares com algum dos termos, não deves utilizar a plataforma.</p>
+
+<h2>2. O Serviço</h2>
+<p>A FinHub é uma plataforma de educação financeira e ferramentas de gestão pessoal. Disponibilizamos conteúdo educativo (artigos, vídeos, podcasts, cursos, livros), ferramentas de simulação (FIRE, análise de ativos) e uma comunidade de utilizadores. O conteúdo tem fins exclusivamente informativos e educacionais — não constitui aconselhamento financeiro personalizado.</p>
+
+<h2>3. Conta de Utilizador</h2>
+<p>És responsável por manter a confidencialidade das credenciais da tua conta. Deves notificar-nos imediatamente em caso de uso não autorizado. A FinHub não se responsabiliza por perdas resultantes do uso não autorizado da tua conta por terceiros.</p>
+
+<h2>4. Regras de Conduta</h2>
+<p>Ao utilizar a plataforma, comprometes-te a não:</p>
+<ul>
+  <li>Publicar conteúdo falso, enganoso, difamatório, obsceno ou ilegal</li>
+  <li>Fazer-te passar por outra pessoa ou entidade</li>
+  <li>Tentar aceder a áreas restritas da plataforma</li>
+  <li>Utilizar a plataforma para spam ou comunicações não solicitadas</li>
+  <li>Publicar conteúdo que viole direitos de terceiros (propriedade intelectual, privacidade)</li>
+</ul>
+
+<h2>5. Conteúdo Gerado pelo Utilizador</h2>
+<p>Ao publicares conteúdo na FinHub (artigos, posts, comentários), concedes-nos uma licença não exclusiva para exibir esse conteúdo na plataforma. Manténs todos os direitos de propriedade intelectual sobre o teu conteúdo. Somos responsáveis por moderar conteúdo que viole estas regras.</p>
+
+<h2>6. Planos e Pagamentos</h2>
+<p>Alguns conteúdos e funcionalidades estão disponíveis apenas em planos pagos. Os preços, condições e políticas de cancelamento são descritos na página de preços. O acesso premium é válido pelo período contratado.</p>
+
+<h2>7. Limitação de Responsabilidade</h2>
+<p>A FinHub não garante que o serviço estará sempre disponível sem interrupções. Não somos responsáveis por perdas financeiras resultantes de decisões de investimento tomadas com base no conteúdo da plataforma. O conteúdo é educativo e informativo — consulta sempre um profissional financeiro certificado para aconselhamento personalizado.</p>
+
+<h2>8. Alterações aos Termos</h2>
+<p>Podemos actualizar estes termos periodicamente. Notificaremos os utilizadores sobre alterações significativas por email ou através da plataforma. A utilização continuada após a notificação constitui aceitação dos novos termos.</p>
+
+<h2>9. Lei Aplicável</h2>
+<p>Estes termos são regidos pela lei portuguesa. Para qualquer litígio, as partes submetem-se à jurisdição dos tribunais portugueses competentes.</p>
+
+<h2>10. Contacto</h2>
+<p>Para questões sobre estes termos, contacta-nos através do email disponível na página de contacto.</p>
+```
+
+---
+
+**POLÍTICA DE PRIVACIDADE (`privacy.content`):**
+
+```
+<h2>1. Responsável pelo Tratamento</h2>
+<p>A FinHub é responsável pelo tratamento dos teus dados pessoais, em conformidade com o Regulamento Geral sobre Proteção de Dados (RGPD) e a Lei n.º 58/2019.</p>
+
+<h2>2. Dados que Recolhemos</h2>
+<ul>
+  <li><strong>Dados de conta:</strong> email, nome, nome de utilizador, password (armazenada como hash irreversível)</li>
+  <li><strong>Dados de perfil (opcionais):</strong> bio, foto de perfil, tópicos de interesse, links de redes sociais</li>
+  <li><strong>Conteúdo gerado:</strong> artigos, posts, comentários, votos na comunidade</li>
+  <li><strong>Dados de ferramentas:</strong> simulações FIRE, watchlists de ativos (fornecidos voluntariamente)</li>
+  <li><strong>Dados de uso (com consentimento):</strong> eventos de navegação via PostHog Analytics</li>
+</ul>
+
+<h2>3. Finalidades e Bases Legais</h2>
+<ul>
+  <li><strong>Execução do contrato (Art. 6(1)(b)):</strong> autenticação, personalização do feed, funcionalidades da comunidade, ferramentas financeiras</li>
+  <li><strong>Consentimento (Art. 6(1)(a)):</strong> analytics de uso (PostHog) — podes revogar a qualquer momento</li>
+  <li><strong>Interesse legítimo (Art. 6(1)(f)):</strong> segurança da plataforma, prevenção de abuso, logs de moderação</li>
+</ul>
+
+<h2>4. Partilha de Dados</h2>
+<p>Não vendemos os teus dados a terceiros. Partilhamos dados apenas com:</p>
+<ul>
+  <li><strong>Cloudinary</strong> (EUA) — armazenamento de imagens de perfil, com garantias SCCs</li>
+  <li><strong>PostHog</strong> (instância europeia) — analytics, apenas com o teu consentimento</li>
+</ul>
+
+<h2>5. Os Teus Direitos (RGPD Arts. 15-22)</h2>
+<ul>
+  <li><strong>Acesso:</strong> podes ver todos os teus dados em <a href="/conta/definicoes">/conta/definicoes</a></li>
+  <li><strong>Portabilidade:</strong> podes exportar os teus dados em formato JSON em <a href="/conta/definicoes">/conta/definicoes</a></li>
+  <li><strong>Retificação:</strong> podes editar os teus dados de perfil a qualquer momento</li>
+  <li><strong>Eliminação:</strong> podes eliminar a tua conta e todos os dados associados em <a href="/conta/definicoes">/conta/definicoes</a></li>
+  <li><strong>Oposição ao analytics:</strong> podes desativar o analytics em <a href="/conta/definicoes">/conta/definicoes</a></li>
+</ul>
+
+<h2>6. Retenção de Dados</h2>
+<p>Os teus dados pessoais são conservados durante a vigência da conta. Após eliminação, os dados identificáveis são removidos de imediato. Logs de moderação são conservados 2 anos; logs de acesso, 90 dias. Consulta a nossa Política de Retenção completa para mais detalhes.</p>
+
+<h2>7. Segurança</h2>
+<p>Implementamos medidas técnicas e organizacionais adequadas: HTTPS obrigatório, passwords em hash bcrypt, tokens com expiração automática, rate limiting, headers de segurança (Helmet.js) e controlo de acesso por roles.</p>
+
+<h2>8. Contacto e Reclamações</h2>
+<p>Para exercer os teus direitos ou apresentar uma reclamação, contacta-nos pelo email disponível na página de contacto. Tens também o direito de apresentar reclamação junto da CNPD (Comissão Nacional de Proteção de Dados) em www.cnpd.pt.</p>
+```
+
+---
+
+**POLÍTICA DE COOKIES (`cookies.content`):**
+
+```
+<h2>1. O que são Cookies</h2>
+<p>Cookies são pequenos ficheiros de texto armazenados no teu dispositivo quando visitas um website. Usamos localStorage e cookies de sessão para o funcionamento da plataforma.</p>
+
+<h2>2. Cookies que Utilizamos</h2>
+<h3>Cookies Essenciais (sem necessidade de consentimento)</h3>
+<ul>
+  <li><strong>Sessão de autenticação:</strong> JWT token para manteres sessão iniciada — essencial para o funcionamento da conta</li>
+  <li><strong>Preferência de consentimento:</strong> registo da tua escolha sobre cookies (accept/reject) — necessário para cumprir RGPD</li>
+</ul>
+<h3>Cookies de Analytics (requerem consentimento)</h3>
+<ul>
+  <li><strong>PostHog:</strong> eventos de navegação e uso da plataforma — apenas activado se aceitares no banner de cookies. Podes revogar em <a href="/conta/definicoes">/conta/definicoes</a>.</li>
+</ul>
+
+<h2>3. Gestão de Consentimento</h2>
+<p>Quando visitas a FinHub pela primeira vez, apresentamos um banner de cookies com as opções "Aceitar" e "Recusar". A tua escolha é guardada e respeitada. Podes alterar a tua preferência a qualquer momento em <a href="/conta/definicoes">Definições da conta</a>.</p>
+
+<h2>4. Cookies de Terceiros</h2>
+<p>Não utilizamos cookies de publicidade ou rastreamento de terceiros. O PostHog é configurado na instância europeia e apenas activado com o teu consentimento explícito.</p>
+
+<h2>5. Como Recusar</h2>
+<p>Podes recusar cookies não essenciais no banner de consentimento ou nas definições da tua conta. Podes também configurar o teu browser para bloquear cookies, mas isso pode afectar o funcionamento de algumas funcionalidades.</p>
+```
+
+---
+
+**AVISO LEGAL FINANCEIRO (`financial-disclaimer.content`):**
+
+```
+<h2>Conteúdo Informativo e Educacional</h2>
+<p>Todo o conteúdo disponibilizado na FinHub — artigos, vídeos, podcasts, cursos, análises de ativos, simulações FIRE e posts da comunidade — tem fins exclusivamente informativos e educacionais.</p>
+
+<h2>Não Constitui Aconselhamento Financeiro</h2>
+<p>A FinHub não é uma instituição financeira nem um intermediário financeiro autorizado pela CMVM (Comissão do Mercado de Valores Mobiliários). O conteúdo da plataforma não constitui:</p>
+<ul>
+  <li>Recomendação personalizada de investimento</li>
+  <li>Aconselhamento financeiro, fiscal ou jurídico</li>
+  <li>Oferta ou solicitação de compra ou venda de qualquer instrumento financeiro</li>
+  <li>Previsão ou garantia de rendimentos futuros</li>
+</ul>
+
+<h2>Risco de Investimento</h2>
+<p>Investir em ativos financeiros (ações, ETFs, fundos, criptomoedas, imobiliário) envolve risco de perda, incluindo a possibilidade de perda total do capital investido. O desempenho passado não garante resultados futuros.</p>
+
+<h2>Simulações e Ferramentas</h2>
+<p>As ferramentas de simulação (FIRE calculator, análise de stocks) são baseadas em modelos matemáticos com pressupostos simplificados. Os resultados são estimativas ilustrativas e não devem ser tomados como previsões exactas.</p>
+
+<h2>Consulta de Profissional</h2>
+<p>Para decisões de investimento com impacto significativo no teu patrimônio, recomendamos consultar um consultor financeiro independente certificado e registado na CMVM.</p>
+```
+
+### 3. Não alterar mais nada
+
+Não alterar `title`, `version`, `lastUpdatedAt`, `summary`, `requiredAtSignup`, `routePath`, nem qualquer outra lógica do ficheiro. A única mudança é o campo `content` de cada documento.
+
+**Critérios de conclusão:**
+- [ ] `terms.content` tem texto completo com secções 1-10
+- [ ] `privacy.content` tem texto completo com secções 1-8
+- [ ] `cookies.content` tem texto completo com secções 1-5
+- [ ] `financial-disclaimer.content` tem texto completo com 5 secções
+- [ ] `npm run typecheck` (back) → PASS
+- [ ] `npm run build` (back) → PASS (se existir)
+
+**Produzir relatório no formato do template.**
+
+---
+
+## PROMPT CLEANUP-03 — Scripts PS1 de Fase Obsoletos ✅ VALIDADO 2026-03-25
+
+> **Executor: Codex**
+> **Pré-requisito:** Nenhum — tarefa independente e de baixo risco
+> **Repos:** `API_finhub/` apenas
+> **Princípio:** só mover para arquivo — zero alterações a código de produção. Se tiver dúvida, não apagar — mover para `dcos/archive/scripts/`.
+
+**Contexto:**
+Os seguintes 4 scripts em `API_finhub/scripts/` eram smoke tests de fases já encerradas (P1, P4-moderation, release específica, O3-audit). Foram identificados em `AUDIT_FICHEIROS.md` como "prioridade Baixa — confirmar se obsoletos". CLEANUP-02 cobriu as prioridades Alta e Média; esta tarefa fecha o item Baixa.
+
+**Ficheiros a verificar:**
+- `API_finhub/scripts/pre-p1-smoke.ps1`
+- `API_finhub/scripts/moderation-pre-release-smoke.ps1`
+- `API_finhub/scripts/release-e2e-required-flows.ps1`
+- `API_finhub/scripts/o3-final-audit.ps1`
+
+**Tarefas obrigatórias:**
+
+### 1. Verificar referências em `package.json`
+
+Ler `API_finhub/package.json` e procurar referências a cada script. Se algum aparecer como npm script, anotar e NÃO eliminar sem confirmar com o utilizador.
+
+### 2. Para cada script não referenciado: mover para `dcos/archive/scripts/`
+
+```bash
+cd API_finhub
+mkdir -p dcos/archive/scripts
+mv scripts/pre-p1-smoke.ps1 dcos/archive/scripts/
+mv scripts/moderation-pre-release-smoke.ps1 dcos/archive/scripts/
+mv scripts/release-e2e-required-flows.ps1 dcos/archive/scripts/
+mv scripts/o3-final-audit.ps1 dcos/archive/scripts/
+```
+
+### 3. Confirmar que `npm run typecheck` continua a passar
+
+**Critérios de conclusão:**
+- [ ] 4 scripts verificados no `package.json` — sem referências activas
+- [ ] Scripts movidos para `dcos/archive/scripts/` (ou mantidos com justificação)
+- [ ] `npm run typecheck` → PASS
+
+### FECHO DE CICLO (Codex — obrigatório antes do commit)
+
+**TASKS.md** — localizar a linha abaixo na secção "Secção 5 — Dívida Técnica" e actualizar:
+```
+ANTES: | **Scripts PS1 de fase obsoletos** ... | Baixo — confirmar se referenciados ... | CLEANUP-03 (Codex ...) |
+DEPOIS: | **Scripts PS1 de fase obsoletos** (`pre-p1-smoke.ps1`, `moderation-pre-release-smoke.ps1`, `release-e2e-required-flows.ps1`, `o3-final-audit.ps1`) | ✅ | CLEANUP-03 [data] — movidos para `dcos/archive/scripts/` |
+```
+
+**PROMPTS_EXECUCAO.md** — alterar header deste prompt:
+```
+ANTES: ## PROMPT CLEANUP-03 — Scripts PS1 de Fase Obsoletos ⏳
+DEPOIS: ## PROMPT CLEANUP-03 — Scripts PS1 de Fase Obsoletos ✅ VALIDADO [data]
+```
+
+**Produzir relatório no formato do template** (incluindo FECHO DE CICLO preenchido).
+
+---
+
+## PROMPT AN-8 — GDPR PostHog: Apagar Dados Analytics ao Encerrar Conta ✅ VALIDADO 2026-03-25
+
+> **Executor: Codex**
+> **Pré-requisito:** GDPR-01 ✅
+> **Repos:** `API_finhub/` apenas
+> **Escopo:** RGPD Art. 17 — quando utilizador elimina conta, os seus dados em PostHog devem também ser eliminados. Hoje `DELETE /api/account/me` apaga MongoDB mas não notifica PostHog.
+
+**Contexto técnico:**
+PostHog EU expõe endpoint de eliminação de person:
+```
+DELETE https://eu.posthog.com/api/projects/{PROJECT_ID}/persons/?distinct_id={userId}
+Authorization: Bearer {PERSONAL_API_KEY}
+```
+O `distinct_id` é o `_id` do utilizador MongoDB (string), que é o mesmo usado no frontend para `posthog.identify()`.
+
+**Ficheiros a ler antes de implementar:**
+- `API_finhub/src/controllers/user.controller.ts` — localizar handler `deleteMyAccount` (~linha 900)
+- `API_finhub/src/app.ts` — ver carregamento de variáveis de ambiente
+- `API_finhub/.env.example` — para adicionar as novas variáveis
+
+**Tarefas obrigatórias:**
+
+### 1. Adicionar variáveis ao `.env.example`
+
+```
+POSTHOG_PERSONAL_API_KEY=your-posthog-personal-api-key
+POSTHOG_PROJECT_ID=your-posthog-project-id
+```
+
+> Nota: Personal API Key ≠ Project API Key. Criar em PostHog → Settings → Personal API Keys, com permissão "Persons" write.
+
+### 2. Criar `src/lib/posthog.ts`
+
+```typescript
+/**
+ * Apaga todos os dados PostHog de um utilizador (RGPD Art. 17).
+ * Silencia erros — não bloqueia a eliminação da conta.
+ */
+export async function deletePostHogPerson(distinctId: string): Promise<void> {
+  const apiKey = process.env.POSTHOG_PERSONAL_API_KEY
+  const projectId = process.env.POSTHOG_PROJECT_ID
+
+  if (!apiKey || !projectId) return // skip silencioso em dev/staging sem config
+
+  try {
+    const url = `https://eu.posthog.com/api/projects/${projectId}/persons/?distinct_id=${encodeURIComponent(distinctId)}`
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${apiKey}` },
+    })
+    if (!res.ok && res.status !== 404) {
+      console.error(`[PostHog] Falha ao eliminar person ${distinctId}: ${res.status}`)
+    }
+  } catch (err) {
+    console.error(`[PostHog] Erro ao eliminar person ${distinctId}:`, err)
+  }
+}
+```
+
+### 3. Chamar `deletePostHogPerson` no handler de eliminação de conta
+
+Em `src/controllers/user.controller.ts`, no handler `deleteMyAccount`:
+```typescript
+import { deletePostHogPerson } from '@/lib/posthog'
+
+// fire-and-forget — RGPD Art. 17, não bloqueia resposta
+deletePostHogPerson(String(req.user._id)).catch(() => {})
+```
+Colocar antes do `res.json({ success: true })` final, após as operações MongoDB concluírem.
+
+**Critérios de conclusão:**
+- [ ] `src/lib/posthog.ts` criado com `deletePostHogPerson`
+- [ ] Chamada fire-and-forget no handler de eliminação de conta
+- [ ] `.env.example` tem `POSTHOG_PERSONAL_API_KEY` e `POSTHOG_PROJECT_ID`
+- [ ] `npm run typecheck` (back) → PASS
+
+### FECHO DE CICLO (Codex — obrigatório antes do commit)
+
+**TASKS.md** — localizar a linha abaixo na secção "Documentação & Acções Humanas Obrigatórias" e actualizar:
+```
+ANTES: | **AN-8 — GDPR PostHog: apagar dados analytics ao encerrar conta** | ⏳ | Codex — PROMPT AN-8 (ver PROMPTS_EXECUCAO.md) |
+DEPOIS: | **AN-8 — GDPR PostHog: apagar dados analytics ao encerrar conta** | ✅ | AN-8 [data] — `src/lib/posthog.ts` + `deletePostHogPerson` em `user.controller.ts` |
+```
+
+**PROMPTS_EXECUCAO.md** — alterar header deste prompt:
+```
+ANTES: ## PROMPT AN-8 — GDPR PostHog: Apagar Dados Analytics ao Encerrar Conta ⏳
+DEPOIS: ## PROMPT AN-8 — GDPR PostHog: Apagar Dados Analytics ao Encerrar Conta ✅ VALIDADO [data]
+```
+
+---
+
+## PROMPT CLEANUP-04 — Limpar Ficheiros OpenClaw da Raiz ✅ VALIDADO 2026-03-26
+
+> **Executor:** Codex
+> **Prioridade:** 🟡 Baixa (não bloqueia lançamento)
+> **Repo:** `API_finhub/`
+> **Tipo:** Limpeza / organização
+> **Duração estimada:** 10–15 min
+> **Dependências:** Nenhuma
+
+### Contexto
+
+Na raiz de `API_finhub/` existem 7 ficheiros residuais do sistema OpenClaw que não são código nem documentação activa do produto:
+
+```
+API_finhub/AGENTS.md
+API_finhub/HEARTBEAT.md
+API_finhub/IDENTITY.md
+API_finhub/SOUL.md
+API_finhub/TOOLS.md
+API_finhub/USER.md
+API_finhub/OPENCLAW_GATEWAY_SETUP.md
+```
+
+O sistema OpenClaw foi explorado e arquivado (ver `dcos/done/FinHub_OpenClaw_Masterplan.md`, `OPENCLAW_SETUP_LOG_V4_RECOMMENDED.md`). Estes ficheiros na raiz do projecto são ruído para qualquer developer ou agente que abra o repo.
+
+### O que fazer
+
+1. Criar pasta `API_finhub/dcos/done/openclaw/` se não existir.
+2. Mover os 7 ficheiros para `dcos/done/openclaw/`.
+3. Confirmar que nenhum dos 7 ficheiros é referenciado em `package.json`, `tsconfig.json`, `.gitignore` ou qualquer ficheiro de configuração da API.
+4. Commit com mensagem: `chore: mover ficheiros OpenClaw residuais para dcos/done/openclaw/`.
+
+### Critérios de conclusão
+
+- [ ] Nenhum dos 7 ficheiros existe na raiz de `API_finhub/`
+- [ ] Todos presentes em `dcos/done/openclaw/`
+- [ ] Nenhuma referência activa nos ficheiros de config
+- [ ] `npm run typecheck` (backend) → PASS
+
+### FECHO DE CICLO (Codex — obrigatório antes do commit)
+
+**TASKS.md** — localizar a linha da CLEANUP-04 na "Secção 5 — Dívida Técnica" e actualizar:
+```
+ANTES: | **Ficheiros OpenClaw na raiz de `API_finhub/`** ... | ⏳ | CLEANUP-04 — mover para `dcos/done/openclaw/` ou eliminar. Prompt pendente. |
+DEPOIS: | **Ficheiros OpenClaw na raiz de `API_finhub/`** ... | ✅ | CLEANUP-04 [data] — movidos para `dcos/done/openclaw/`. |
+```
+
+**PROMPTS_EXECUCAO.md** — alterar header deste prompt:
+```
+ANTES: ## PROMPT CLEANUP-04 — Limpar Ficheiros OpenClaw da Raiz ⏳
+DEPOIS: ## PROMPT CLEANUP-04 — Limpar Ficheiros OpenClaw da Raiz ✅ VALIDADO [data]
+```
+
+Produzir relatório no formato do template.
+
+**Produzir relatório no formato do template** (incluindo FECHO DE CICLO preenchido).

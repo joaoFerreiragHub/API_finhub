@@ -1,7 +1,7 @@
 # FinHub — Backlog de Tasks
 
 > Fonte de verdade para o que está por fazer.
-> Última atualização: 2026-03-24
+> Última atualização: 2026-03-26
 
 **Legenda:** 🔴 Beta obrigatório | 🟡 v1.0 (pós-beta, pré-release pública) | 🟢 Pós-v1.0 (iterativo) | 🔄 Em curso | ✅ Fechado | ⏳ Por iniciar
 
@@ -103,9 +103,11 @@ Items identificados em `dcos/agents/legal-compliance/GAPS_E_TIMELINE.md`. Bloque
 | Task | Estado | Esforço | Notas |
 |------|--------|---------|-------|
 | **Cookie banner: validar comportamento real + PostHog conditional init** | ✅ | 4-6h | GDPR-01 (Codex 2026-03-24, validado Claude 2026-03-24) — CookieBanner.tsx + analyticsProviders consent-gate + opt-out toggle + GET /api/account/export — typecheck+build PASS |
-| **DPIA documento (Data Protection Impact Assessment)** | ⏳ | 4-6h | RGPD Art 35 — document + aprovação fundador |
-| **Política de retenção de dados** (documento em `dcos/finhub/`) | ⏳ | 2-3h | RGPD Art 5(1)(e) — logs moderação 2a, acesso 1a, analytics 12m |
-| **Breach Response Plan** (documento + contatos CNPD) | ⏳ | 2-3h | RGPD Art 33 — notificação obrigatória 72h |
+| **DPIA documento (Data Protection Impact Assessment)** | ✅ | 4-6h | `dcos/finhub/legal/DPIA.md` — Claude 2026-03-25. **Requer aprovação do fundador** (assinar campos "Aprovado por"). |
+| **Política de retenção de dados** | ✅ | 2-3h | `docs/finhub/legal/POLITICA_RETENCAO_DADOS.md` — Claude 2026-03-25. |
+| **Breach Response Plan** (documento + contactos CNPD) | ✅ | 2-3h | `dcos/finhub/legal/BREACH_RESPONSE_PLAN.md` — Claude 2026-03-25. **Preencher telefone de emergência do fundador.** |
+| **TTL indexes em modelos de log** | ✅ | LEGAL-01 | AdminAuditLog (2a), ContentModerationEvent (1a), AgentActivityLog (90d) — LEGAL-01 2026-03-26. typecheck PASS |
+| **Documentos legais com texto completo** (/privacidade, /termos, /cookies) | ✅ | LEGAL-02 | `legalDocument.service.ts` — Termos (10 sec), Privacidade (8 sec), Cookies (5 sec), Aviso Legal — LEGAL-02 2026-03-26. typecheck PASS |
 
 ### 🟡 v1.0 — Release Pública (pós-beta, funcionalidade visível ao utilizador)
 Funcionalidades que fazem a diferença para o utilizador final. Entram na release pública.
@@ -156,7 +158,7 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Notificações de resposta** — ser notificado quando alguém responde ao teu post | ⏳ | Integrar com sistema de notificações existente |
 | **Crosspost entre salas** | ⏳ | Partilhar post de uma sala para outra |
 | **Feed da comunidade** (todos os posts de todas as salas seguidas) | ⏳ | Versão comunidade do `/feed` — posts recentes de salas onde participas |
-| **Dark mode no editor de posts** — contrast baixo no textarea em dark mode | ⏳ | CSS fix pontual |
+| **Dark mode no editor de posts** - contrast baixo no textarea em dark mode | ✅ | DARK-FIX-01 2026-03-26 - tokens bg-background/text-foreground aplicados no editor + inputs da comunidade |
 | **Reações aos posts** (além de upvote/downvote) | ⏳ | 🔥 ❤️ 💡 — tipo Discord reactions |
 
 #### 🟡 Tech Debt — Detectado em Revisão P11 (resolver antes da release)
@@ -175,20 +177,32 @@ Ver especificação completa em `COMMUNITY.md`.
 #### Features v1.0 — Prompts Codex definidos
 | Feature | Estado | Prompt | Notas |
 |---------|--------|--------|-------|
-| **SecurityTab wired à API real** | ⏳ | V1.1 | Remove mockFormik; form real com authService.changePassword() |
-| **Feed personalizado `/feed` validado** | ⏳ | V1.2 | Backend + frontend existem; auditar shape + empty states |
-| **Pesquisa global funcional** | ⏳ | V1.2 | Backend MongoDB real existe; validar shape + navegação |
-| **Sitemap dinâmico (SEO-4)** | ⏳ | V1.3 | Backend endpoint JSON + Vike middleware XML |
-| **Upload de imagens real (Cloudinary)** | ⏳ | V1.4 | Avatar hoje é URL manual; upload real Cloudinary free tier |
-| **Export de dados (RGPD Art 20)** | ✅ | GDPR-01 | GET /api/account/export → JSON inline; rate limit 7 dias — 2026-03-24 |
+| **SecurityTab wired à API real** | ✅ | V1.1 | Form real 3 campos + submit `authService.changePassword` + validação min 8 + toast sucesso/erro — validado 2026-03-26 |
+| **Feed personalizado `/feed` validado** | ✅ | V1.2 | Rota Vike `src/pages/feed/+Page.tsx` + `useActivityFeed` → `socialService.getActivityFeed` → `GET /api/feed` real (sem mocks), com loading/erro/empty state — validado 2026-03-26 |
+| **Pesquisa global funcional** | ✅ | V1.2 | `GlobalSearchBar` + `useGlobalSearch` com debounce 300ms e `min 2 chars` → `GET /api/search?q=` real, resultados agrupados por tipo e estados de erro/empty — validado 2026-03-26 |
+| **Sitemap dinâmico (SEO-4)** | ✅ | V1.3 | `src/controllers/sitemap.controller.ts` (+ `sitemap.service.ts` JSON) e middleware `server/index.mjs` geram XML dinâmico com fallback estático em `public/sitemap.xml` — validado 2026-03-26; podcasts/books/directory incluídos — FIX-V1.3 2026-03-26 |
+| **Upload de imagens real (Cloudinary)** | 🟡 | FIX-V1.4 | File picker real implementado em AccountDetailsTab (JPEG/PNG/WebP, limite 5MB, preview + spinner). Upload ao servidor pendente de conta Cloudinary. 2026-03-26 |
+| **Export de dados (RGPD Art 20)** | ✅ | V1.5 | UI em /conta/definicoes com botao "Exportar os meus dados" + GET /api/account/export (blob) + download JSON + guard SSR + toasts — 2026-03-26 |
 | **Analytics opt-out toggle** | ✅ | GDPR-01 | Toggle em /conta/definicoes + `allowAnalytics` no User model — 2026-03-24 |
+
+#### Fixes de validação — Detectados em 2026-03-25
+| Fix | Estado | Prompt | Notas |
+|-----|--------|--------|-------|
+| **Sitemap: Podcasts, Books, DirectoryEntry** | ✅ | FIX-V1.3 | OBSOLETO — já estava implementado no V1.3. Reconfirmado (sem code changes) em 2026-03-26 |
+| **Avatar: file picker em AccountDetailsTab** | ✅ | FIX-V1.4 | OBSOLETO — já estava implementado. Toasts + validação + spinner adicionados por Claude. 2026-03-25 |
+| **SecurityTab: success toast** | ✅ | — | `toastSuccess` adicionado por Claude. 2026-03-25 |
+
+#### Features v1.0 — Ainda pendentes (novos prompts)
+| Feature | Estado | Prompt | Notas |
+|---------|--------|--------|-------|
+| **RGPD: UI de exportação de dados** | ✅ | V1.5 | Card + botão "Exportar os meus dados" em /conta/definicoes — blob download JSON. Codex impl + Claude fix toast (react-toastify → useToast). 2026-03-25 |
+| **MongoDB: auditoria de field-level encryption** | ✅ | V1.6 | `dcos/finhub/ENCRYPTION_AUDIT.md` — auditoria RGPD Art. 32 (User model + tipo de ligação Mongo) e recomendação de infra. 2026-03-26 |
 
 #### Features v1.0 — Bloqueadas ou pós-v1.0
 | Feature | Estado | Notas |
 |---------|--------|-------|
 | **Pagamentos / subscrições** | ⏳ | Stripe — bloqueado (precisa de conta Stripe + chaves antes de criar prompt) |
 | **Notificações real-time (WebSocket)** | ⏳ | Arquitectura grande; pós-v1.0 se o polling for suficiente para beta |
-| **MongoDB field encryption audit** | ⏳ | Confirmar se field-level encryption está activo; RGPD Art 32 |
 
 #### 🟡 Segurança — Gate Pré-Release Pública
 
@@ -219,6 +233,7 @@ Ver especificação completa em `COMMUNITY.md`.
 | **`dangerouslySetInnerHTML` auditado** | ✅ | 4 ocorrências — todas com DOMPurify ou renderer sanitizado — SEC-02 2026-03-24 |
 | **Content Security Policy** | ✅ | CSP global em `server/index.mjs`: `script-src 'self' 'unsafe-inline'` (JSON-LD), sem `unsafe-eval` — SEC-02 2026-03-24 |
 | **Dependências desactualizadas (major)** | ⏳ | `npm outdated` inventariado em SEC-02; majors pendentes (react-router-dom@7, vite@8, ts@6) — não blocking, backlog pós-v1.0 |
+| **Vike navigation bug — `vikeNavigate` em Server Routing** | ✅ | `PageShell.tsx`: removido import `vike/client/router`, push/replace usam `window.location.assign/replace`. `VideoForm.tsx` + `ArticleForm.tsx`: migrados para `useNavigate` do compat layer. Claude 2026-03-25 |
 
 ##### Infra / Deploy
 | Item | Estado | Notas |
@@ -227,6 +242,15 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Variáveis de ambiente em prod configuradas** | ⏳ | Checklist no `RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md` |
 | **Backups MongoDB automatizados** | ⏳ | Confirmar snapshot policy antes de abrir ao público |
 | **Logs de erro em prod não expõem stack traces ao cliente** | ⏳ | Express error handler em prod deve devolver mensagem genérica, não `err.stack` |
+
+##### Documentação & Acções Humanas Obrigatórias (pré-release pública)
+| Item | Estado | Responsável |
+|------|--------|------------|
+| **Reescrever `RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md`** (referencia ficheiros movidos para `dcos/done/`) | ✅ | Claude 2026-03-26 — refs actualizadas (FINHUB_DOCUMENTACAO_CRITICA→MASTER_CONTEXT, B16 marcado ✅, CLEANUP-03/AN-8 marcados ✅) |
+| **DPIA — preencher e assinar "Aprovado por" + "Data de aprovação"** (`dcos/finhub/legal/DPIA.md` — secção 8) | ⏳ | João (humano) |
+| **BREACH_RESPONSE_PLAN — preencher número de telemóvel de emergência do fundador** (`dcos/finhub/legal/BREACH_RESPONSE_PLAN.md`) | ⏳ | João (humano) |
+| **DPIA + BREACH_RESPONSE_PLAN + POLITICA_RETENCAO_DADOS — preencher `[email do fundador]`** (múltiplos ficheiros em `dcos/finhub/legal/`) | ⏳ | João (humano) |
+| **AN-8 — GDPR PostHog: apagar dados analytics ao encerrar conta** | ✅ | AN-8 2026-03-25 — `src/lib/posthog.ts` + `deletePostHogPerson` em `user.controller.ts` |
 
 ---
 
@@ -248,6 +272,9 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 | **Agent Dashboard frontend** (/admin/agent-dashboard) | Backend 85% done (Sprint S0A); frontend 0% — 7 tasks (Timeline, Scorecard, Burndown views) |
 | **Directory pública `/recursos/*`** (9 páginas de marcas/entidades) | Backend done; 9 placeholder pages por implementar |
 | **Disclaimers por ferramenta auditados** | FIRE, Watchlist, REIT, ETF, Crypto — RGPD/Lei 34/88 |
+| **AN-2/AN-3 — Activar GA4 e GTM via runtime config** (admin insere IDs) | Quando houver plano de ads |
+| **AN-7 — Ads analytics** (impressões + CTR por slot) | Quando existirem slots de publicidade |
+| **AN-9 — Activar heatmaps PostHog** em páginas prioritárias | Após dados reais de utilizadores |
 
 ---
 
@@ -274,7 +301,7 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 | B13 | Sem alias `/marcas` → `/directory` — URLs de diretório públicas usam `/directory` mas marca-se `/marcas` noutros locais | `src/pages/` — faltam `marcas/+Page.tsx` e `marcas/@slug/+Page.tsx` | ✅ B-FIX-01 |
 | B14 | FIRE landing: `Link`/`NavLink`/`useInRouterContext` de `react-router-dom` — viola SSR rules, links não navegáveis | `FireLandingPage.tsx` + `FireToolNav.tsx` | ✅ Fix: `<a href>` nativo |
 | B15 | `/login` e `/registar` sem `+Page.tsx` Vike — rota não existe, página em branco ao navegar directamente | `src/pages/login/+Page.tsx` + `src/pages/registar/+Page.tsx` | 🟡 Fix criado — requer restart do dev server para activar |
-| B16 | `useAuthStore` em dev mode restaura sempre utilizador fake (`dev-admin-access-token`) — todas as chamadas API autenticadas falham com token inválido | `useAuthStore.ts` — `onRehydrateStorage` + SSR fallback | 🟡 Para resolver com login real via `/login` após B15 activado |
+| B16 | `useAuthStore` em dev mode restaura sempre utilizador fake (`dev-admin-access-token`) — todas as chamadas API autenticadas falham com token inválido | `useAuthStore.ts` — `onRehydrateStorage` + SSR fallback | ✅ \| B16-FIX 2026-03-26 — dev auth opt-in via `VITE_DEV_AUTO_LOGIN` |
 
 ---
 
@@ -454,6 +481,8 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 | `getRoutesByRole(CREATOR)` não inclui `regularRoutes` nem `creatorContentRoutes` | Sidebar creator incompleta | ✅ P8.8 |
 | Rota `/hub/counteudos/` com typo | Typo no filesystem | Cleanup menor |
 | 3 componentes órfãos: DashboardHeader, AdminHeader, AuthLayout (shared) | Dead code | Cleanup |
+| **Scripts PS1 de fase obsoletos** (`pre-p1-smoke.ps1`, `moderation-pre-release-smoke.ps1`, `release-e2e-required-flows.ps1`, `o3-final-audit.ps1`) | ✅ | CLEANUP-03 2026-03-25 — movidos para `dcos/archive/scripts/` — commit c7d437f. Entradas npm mantidas em `package.json` (referência histórica). |
+| **Ficheiros OpenClaw na raiz de `API_finhub/`** (`AGENTS.md`, `HEARTBEAT.md`, `IDENTITY.md`, `SOUL.md`, `TOOLS.md`, `USER.md`, `OPENCLAW_GATEWAY_SETUP.md`) | ✅ | CLEANUP-04 2026-03-26 — movidos para `dcos/done/openclaw/`. |
 
 ---
 
@@ -475,7 +504,7 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 | Task | Estado | Notas |
 |------|--------|-------|
 | **Instalar Impeccable no ambiente Claude Code** | ✅ | Instalado 2026-03-24 — 21 skills em `.agents/skills/`. Disponível em Claude Code, Codex, Cursor, Windsurf. Ver `dcos/finhub/IMPECCABLE.md` |
-| **Correr `/teach-impeccable`** | ⏳ | Setup inicial: o comando recolhe contexto de design do projecto e grava em config. Fazer uma vez. **PRÓXIMA sessão de frontend.** |
+| **Correr `/teach-impeccable`** | ✅ | Concluído 2026-03-24 — contexto FinHub gravado em `FinHub-Vite/.impeccable.md` (brand, audiência, princípios de design, referências). |
 | **Aplicar `/audit` ao FIRE Simulator** | ⏳ | A11y, responsivo, edge cases — antes da release |
 | **Aplicar `/distill` à página de detalhes de post da Comunidade** | ⏳ | Remover complexidade visual desnecessária |
 | **Aplicar `/harden` aos formulários de criação de post e perfil** | ⏳ | Error handling, i18n, edge cases nos formulários — fintech precisa de robustez |
@@ -548,58 +577,57 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 
 ---
 
-## Sequência de Execução Actualizada
+## Sequência de Execução — Estado Real
 
-> Última revisão: 2026-03-22
+> Última revisão: 2026-03-26 ← **ATUALIZADO** (anterior estava stale desde 2026-03-22)
 
 ```
-CONCLUÍDO
-  ✅ B1–B8 — Todos os bugs críticos resolvidos
-  ✅ P3 — Análise rápida (cobertura + badges + gate)
-  ✅ P4 — Editorial CMS + Moderation hardening + E2E
-  ✅ P8.1–P8.4 — Fundações de design + cards redesenhados
-  ✅ P5.1–P5.8 — Hub conteúdo + Creator dashboard + modal + card config
-  ✅ P5.6 — Páginas legais + footer funcional
-  ✅ B4 + ROUTING-CHECK — Fix navegação cards + auditoria routing
+TUDO CONCLUÍDO — P1 a P11 + todos os prompts de polish e fix
+  ✅ P1–P8     — Core da plataforma + fundações de design + layout consolidado
+  ✅ P9.1–P9.5 — Perfil editável, "Para Ti", admin métricas, /conta, /perfil auditado
+  ✅ P9-GATE   — Gate pós-beta + overlay fix + SSR null fix
+  ✅ P10.1–P10.5 — Nav fix, creator profile, SEO JSON-LD, analytics events, reco engine
+  ✅ P11.1–P11.5 — Comunidade: salas, posts, XP, badges, leaderboard
+  ✅ COMMUNITY-FIX-01/02 — Nav menu, post routing, imagens, markdown editor
+  ✅ TECH-DEBT-01/02 — Atomicidade votos, react-day-picker@9, window.location fixes
+  ✅ CLEANUP-01 — Dívida técnica B15 + dead code + typo /hub/counteudos
+  ✅ CLEANUP-02 — Ficheiros/pastas obsoletos eliminados
+  ✅ CLEANUP-03 — Scripts PS1 obsoletos arquivados
+  ✅ B1–B16    — Todos os bugs conhecidos resolvidos
+  ✅ DARK-FIX-01 — Dark mode comunidade (textarea contrast fix)
+  ✅ V1.1–V1.6 — SecurityTab, feed/pesquisa, sitemap, export RGPD, encryption audit
+  ✅ GDPR-01   — Cookie banner + PostHog consent-gate + opt-out toggle
+  ✅ AN-8      — PostHog forget-me ao encerrar conta
+  ✅ LEGAL-01  — TTL indexes AdminAuditLog, ContentModerationEvent, AgentActivityLog
+  ✅ LEGAL-02  — Legal docs com texto completo (termos, privacidade, cookies, disclaimer)
+  ✅ SEC-01/02 — Helmet, CORS, rate limiting, JWT env, VITE audit, CSP
+  ✅ CI-FIX-01 — shellConfig split + CI Node.js 20→22
+  ✅ B16-FIX   — Dev auth opt-in via VITE_DEV_AUTO_LOGIN
 
-CONCLUÍDO (layout consolidation completa ✅)
-  ✅ P8.7  — PageShell inteligente + fim header duplo (IC-1,4,5,6)
-  ✅ P8.8  — Creator sidebar unificada (IC-3)
-  ✅ P8.9  — Admin layout Vike + guard real + CommandPalette (IC-2)
-  ── IC-1 a IC-6 todos resolvidos ──
+PENDENTE TÉCNICO
+  🟡 V1.4     — Upload Cloudinary real (BLOQUEADO: aguarda conta Cloudinary de João)
 
-CONCLUÍDO (P5 fechado ✅)
-  ✅ P5.9  — Creator: criar/editar/publicar artigo
-  ✅ P5.10 — Creator: criar/editar/publicar vídeo
-  ✅ P5.11 — Páginas de marcas/entidades públicas (/directory + /marcas)
+PENDENTE HUMANO (João)
+  ⏳ DPIA — assinar campos "Aprovado por" + "Data de aprovação" (secção 8)
+  ⏳ BREACH_RESPONSE_PLAN — preencher telemóvel de emergência
+  ⏳ Legal (3 docs) — preencher [email do fundador]
 
-CONCLUÍDO (bugs backlog)
-  ✅ B-FIX-01 — B9+B10+B11+B12+B13 (ManageVideos Dialog/unpublish/encode + BrandDetail route + /marcas alias)
+PENDENTE INFRA / DEPLOY
+  ⏳ HTTPS enforced (HTTP → HTTPS redirect + HSTS activo)
+  ⏳ Variáveis de ambiente em produção configuradas
+  ⏳ Backups MongoDB automatizados
+  ⏳ MongoDB não exposto publicamente confirmado
 
-A SEGUIR (sequência completa pré-beta)
-  ✅ P3-GATE — Gate final análise rápida
-  ✅ P4-GATE — Gate editorial + moderation (16/16 E2E + 3/3 smoke)
-  ✅ P8.6   — FinHubScore hero treatment + snowflake radar (4 eixos)
-  ✅ P5-FIRE — FIRE: timeline chart + progress bar + seed mock (2 portfolios)
-  ✅ P8.5   — Header SSR-safe + redesign visual (lint 0 · typecheck PASS · build PASS · smoke 3/3)
-  ✅ P5-OB  — Onboarding first-time user (3 passos, localStorage · lint 0 · typecheck PASS · smoke 3/3)
-  ✅ P5-PRICE  — Página de preços/premium (3 planos, toggle anual/mensal, FAQ)
-  ✅ B-FIX-03  — ShellFooter: Precos link + todos os links legais funcionais
-  ✅ P8.7-PUB  — Perfil público de utilizador (/perfil/:username) + fix routeParams
-  ✅ P8.8-FIRE — FIRE landing redesign (hero + cards + tabela comparação)
-  ✅ BETA-GATE — Gate final pré-beta PASS (lint ✅ · typecheck ✅ · build ✅ · tests 48/227 ✅)
+PENDENTE CLAUDE / CODEX
+  ✅ Reescrever RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md — Claude 2026-03-26
+  ✅ CLEANUP-04 — Ficheiros OpenClaw na raiz de API_finhub/ (→ dcos/done/) — validado 2026-03-26
 
-EM CURSO — Bloco P9 (pós-beta)
-  ⏳ 44. P9.1      → Perfil editável (name/bio/avatar)
-  ⏳ 45. CLEANUP-01 → Dívida técnica (B15 + dead code + typo /hub/counteudos)
-  ⏳ 46. P9.2      → Homepage "Para Ti" (personalização por tópicos do onboarding)
-  ⏳ 47. P9.3      → Admin dashboard: métricas reais (ligar adminMetricsService)
-  ⏳ 48. P9-GATE   → Gate pós-beta
-
-MAIS TARDE (pós-P9-GATE)
-  ⏳ Pagamentos/subscrições (Stripe ou integração externa)
+MAIS TARDE (pós-release pública)
+  ⏳ Pagamentos/subscrições (Stripe — aguarda conta + chaves)
   ⏳ WebSocket notificações real-time
-  ⏳ SEO structured data (JSON-LD)
   ⏳ Lighthouse > 80
-  ⏳ Audit de acessibilidade
+  ⏳ Audit de acessibilidade completo
+  ⏳ i18n prep
+  ⏳ PWA / offline básico
 ```
+
