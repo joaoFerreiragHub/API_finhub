@@ -27,6 +27,7 @@ import etfRoutes from './etf.routes'
 import etfYahooRoutes from './etfYahoo.routes'
 import reitRoutes from './reit.routes'
 import adminRoutes from './admin.routes'
+import betaInviteRoutes from './betaInvite.routes'
 import editorialRoutes from './editorial.routes'
 import directoryRoutes from './directory.routes'
 import platformRoutes from './platform.routes'
@@ -34,6 +35,7 @@ import creatorRoutes from './creator.routes'
 import brandPortalRoutes from './brandPortal.routes'
 import externalContentRoutes from './externalContent.routes'
 import searchRoutes from './search.routes'
+import sitemapRoutes from './sitemap.routes'
 import feedRoutes from './feed.routes'
 import userRoutes from './user.routes'
 import accountRoutes from './account.routes'
@@ -109,6 +111,7 @@ router.get('/', (req, res) => {
       brandPortal: '/api/brand-portal',
       externalContent: '/api/external-content',
       search: '/api/search',
+      sitemap: '/api/sitemap',
       ads: '/api/ads',
       affiliates: '/api/affiliates',
       integrations: '/api/integrations/brand',
@@ -194,6 +197,7 @@ router.use(
 
 // Rotas administrativas
 router.use('/admin', adminRoutes)
+router.use('/admin/beta/invites', betaInviteRoutes)
 
 // Rotas editoriais publicas
 router.use('/editorial', editorialRoutes)
@@ -205,6 +209,7 @@ router.use('/creators', creatorRoutes)
 router.use('/brand-portal', brandPortalRoutes)
 router.use('/external-content', externalContentRoutes)
 router.use('/search', searchRoutes)
+router.use('/sitemap', sitemapRoutes)
 router.use('/ads', adsRoutes)
 router.use('/affiliates', affiliateRoutes)
 router.use('/integrations/brand', brandIntegrationRoutes)

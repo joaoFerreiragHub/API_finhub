@@ -181,7 +181,7 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Feed personalizado `/feed` validado** | ✅ | V1.2 | Rota Vike `src/pages/feed/+Page.tsx` + `useActivityFeed` → `socialService.getActivityFeed` → `GET /api/feed` real (sem mocks), com loading/erro/empty state — validado 2026-03-26 |
 | **Pesquisa global funcional** | ✅ | V1.2 | `GlobalSearchBar` + `useGlobalSearch` com debounce 300ms e `min 2 chars` → `GET /api/search?q=` real, resultados agrupados por tipo e estados de erro/empty — validado 2026-03-26 |
 | **Sitemap dinâmico (SEO-4)** | ✅ | V1.3 | `src/controllers/sitemap.controller.ts` (+ `sitemap.service.ts` JSON) e middleware `server/index.mjs` geram XML dinâmico com fallback estático em `public/sitemap.xml` — validado 2026-03-26; podcasts/books/directory incluídos — FIX-V1.3 2026-03-26 |
-| **Upload de imagens real (Cloudinary)** | 🟡 | FIX-V1.4 | File picker real implementado em AccountDetailsTab (JPEG/PNG/WebP, limite 5MB, preview + spinner). Upload ao servidor pendente de conta Cloudinary. 2026-03-26 |
+| **Upload de imagens real (Cloudinary)** | ✅ | V1.4 | Upload real ativo via backend (`POST /api/account/avatar` + alias `/api/users/me/avatar`), validação 5MB/JPEG-PNG-WebP, persistência Mongo e atualização frontend — V1.4 2026-03-26 |
 | **Export de dados (RGPD Art 20)** | ✅ | V1.5 | UI em /conta/definicoes com botao "Exportar os meus dados" + GET /api/account/export (blob) + download JSON + guard SSR + toasts — 2026-03-26 |
 | **Analytics opt-out toggle** | ✅ | GDPR-01 | Toggle em /conta/definicoes + `allowAnalytics` no User model — 2026-03-24 |
 
@@ -197,6 +197,13 @@ Ver especificação completa em `COMMUNITY.md`.
 |---------|--------|--------|-------|
 | **RGPD: UI de exportação de dados** | ✅ | V1.5 | Card + botão "Exportar os meus dados" em /conta/definicoes — blob download JSON. Codex impl + Claude fix toast (react-toastify → useToast). 2026-03-25 |
 | **MongoDB: auditoria de field-level encryption** | ✅ | V1.6 | `dcos/finhub/ENCRYPTION_AUDIT.md` — auditoria RGPD Art. 32 (User model + tipo de ligação Mongo) e recomendação de infra. 2026-03-26 |
+
+#### 🔴 Beta Fechado — Controlo de Acesso
+| Feature | Estado | Prompt | Notas |
+|---------|--------|--------|-------|
+| **Backend: BetaInvite model + middleware + admin endpoints** | ✅ | BETA-GATE-01 2026-03-26 | BetaInvite model, 3 endpoints admin (`POST/GET/DELETE /api/admin/beta/invites`), gate no register com `BETA_INVITE_REQUIRED`, convite marcado com `usedAt/usedBy`, `BETA_MODE=false` default, typecheck PASS. |
+| **Frontend: landing page /beta + gate global em PageShell** | ✅ | BETA-GATE-02 2026-03-26 | `/beta` criada com layout dark branded + 2 CTAs nativos; gate global SSR-safe no `PageShell` com `VITE_BETA_MODE` e whitelist de rotas isentas. `yarn typecheck:p1` + `yarn build` PASS. |
+| **Frontend SSR beta gate (cookie `betaSession`) no servidor** | ✅ | BETA-GATE-03 2026-03-26 | Middleware em `server/index.mjs` antes do render Vike com redirect `302 /beta`; `useAuthStore` passa a definir/remover cookie `betaSession`; `.env.example` com `BETA_MODE=false`. |
 
 #### Features v1.0 — Bloqueadas ou pós-v1.0
 | Feature | Estado | Notas |
@@ -483,6 +490,7 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 | 3 componentes órfãos: DashboardHeader, AdminHeader, AuthLayout (shared) | Dead code | Cleanup |
 | **Scripts PS1 de fase obsoletos** (`pre-p1-smoke.ps1`, `moderation-pre-release-smoke.ps1`, `release-e2e-required-flows.ps1`, `o3-final-audit.ps1`) | ✅ | CLEANUP-03 2026-03-25 — movidos para `dcos/archive/scripts/` — commit c7d437f. Entradas npm mantidas em `package.json` (referência histórica). |
 | **Ficheiros OpenClaw na raiz de `API_finhub/`** (`AGENTS.md`, `HEARTBEAT.md`, `IDENTITY.md`, `SOUL.md`, `TOOLS.md`, `USER.md`, `OPENCLAW_GATEWAY_SETUP.md`) | ✅ | CLEANUP-04 2026-03-26 — movidos para `dcos/done/openclaw/`. |
+| **Cloudinary cleanup** (`src/services/cloudinaryAvatar.service.ts` + `CLOUDINARY_URL` redundante no `.env.example`) | ✅ | CLEANUP-05 2026-03-26 — serviço sem imports removido e variável redundante eliminada. |
 
 ---
 
@@ -605,7 +613,7 @@ TUDO CONCLUÍDO — P1 a P11 + todos os prompts de polish e fix
   ✅ B16-FIX   — Dev auth opt-in via VITE_DEV_AUTO_LOGIN
 
 PENDENTE TÉCNICO
-  🟡 V1.4     — Upload Cloudinary real (BLOQUEADO: aguarda conta Cloudinary de João)
+  ✅ V1.4     — Upload Cloudinary real validado (endpoint `/api/account/avatar`) — 2026-03-26
 
 PENDENTE HUMANO (João)
   ⏳ DPIA — assinar campos "Aprovado por" + "Data de aprovação" (secção 8)
@@ -630,4 +638,3 @@ MAIS TARDE (pós-release pública)
   ⏳ i18n prep
   ⏳ PWA / offline básico
 ```
-

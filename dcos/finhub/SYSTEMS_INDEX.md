@@ -1,6 +1,6 @@
 # FinHub — Índice de Sistemas
 
-> **Data:** 2026-03-23
+> **Data:** 2026-03-26
 > **Propósito:** Ponto de entrada único para agentes e developers.
 > Antes de trabalhar em qualquer área da plataforma, lê este documento.
 > Para o panorama completo do projecto, consulta `MASTER_CONTEXT.md`.
@@ -16,10 +16,10 @@ dcos/
 │   │  CONTEXTO & PLANNING
 │   ├── MASTER_CONTEXT.md        ← panorama completo (lê primeiro)
 │   ├── SYSTEMS_INDEX.md         ← este ficheiro
+│   ├── AI_CONTEXT.md            ← estado actual para agentes (atualizado a cada ciclo)
 │   ├── ARCHITECTURE.md          ← modelo HUB/COMUNIDADE/PRIVADO, roles, nav
 │   ├── TASKS.md                 ← release map, backlog priorizado
 │   ├── PROMPTS_EXECUCAO.md      ← prompts Codex prontos a executar
-│   ├── ROADMAP.md               ← histórico de fases P0–P9
 │   │
 │   │  SISTEMAS DOCUMENTADOS
 │   ├── AUTH.md                  ← JWT, OAuth, roles, guards, refresh flow
@@ -32,25 +32,33 @@ dcos/
 │   ├── ANALYTICS.md             ← PostHog, Sentry, GA4, eventos
 │   │
 │   │  TECHNICAL REFERENCE
-│   ├── FINHUB_DOCUMENTACAO_CRITICA.md  ← stack, env vars, endpoints, modelos
-│   ├── DESIGN.md                ← design system, shadcn/ui, Tailwind
-│   ├── SSR_VIKE_FIXES.md        ← regras SSR obrigatórias, anti-patterns
-│   ├── LAYOUT_NAVIGATION_AUDIT.md ← auditoria de nav, problemas
-│   ├── AUDIT_FICHEIROS.md       ← auditoria de ficheiros
+│   ├── DESIGN.md                ← design system, shadcn/ui, Tailwind, Impeccable
+│   ├── IMPECCABLE.md            ← guia dos 21 comandos Impeccable para FinHub
 │   ├── SEED_GUIDE.md            ← como fazer seed da base de dados
 │   ├── RSS_SETUP.md             ← configuração feed RSS
 │   ├── DOC_STANDARD.md          ← standard de documentação (formato, naming, templates)
+│   ├── ENCRYPTION_AUDIT.md      ← auditoria RGPD Art.32 — field-level encryption
+│   │
+│   │  LEGAL
+│   ├── legal/DPIA.md            ← DPIA — ⚠️ requer assinatura do fundador
+│   ├── legal/BREACH_RESPONSE_PLAN.md  ← plano de resposta a incidentes
+│   ├── legal/POLITICA_RETENCAO_DADOS.md  ← política de retenção de dados
 │   │
 │   │  OPERATIONAL RUNBOOKS & RULES
 │   ├── RUNBOOK_MODERATION_CONTROL_PLANE.md  ← kill switches, bulk rollback, false positives
-│   ├── RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md  ← gate checklist de release
-│   ├── FINHUB_OPERATING_SYSTEM.md  ← context da empresa, missões dos agentes
+│   ├── RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md  ← gate checklist de release (⚠️ precisa de reescrita)
 │   ├── P6_LOG_EVENT_CATALOG.md  ← convenções de logging (domain_action_suffix)
 │   ├── P6_SECURITY_CHECKLIST.md ← validações de segurança para deploy
-│   └── regras.md                ← regras de colaboração Claude/Codex
+│   └── regras.md                ← regras de colaboração Claude/Codex (inclui FECHO DE CICLO)
 │
 ├── done/                    ← TRABALHO CONCLUÍDO (arquivo histórico)
-│   └── (P3-P8 planning docs, sprints, masterplans, etc.)
+│   ├── (P3-P11 planning docs, sprints, masterplans, etc.)
+│   ├── ROADMAP.md                      ← histórico fases P0–P9 (arquivado 2026-03-26)
+│   ├── SSR_VIKE_FIXES.md               ← log SSR fixes fase P8 (arquivado 2026-03-26)
+│   ├── FINHUB_DOCUMENTACAO_CRITICA.md  ← doc técnica v1 (supersedida por MASTER_CONTEXT)
+│   ├── FINHUB_OPERATING_SYSTEM.md      ← OS operacional v1 (supersedido por regras.md)
+│   ├── AUDIT_FICHEIROS.md              ← auditoria de ficheiros (CLEANUP-02 concluído)
+│   └── LAYOUT_NAVIGATION_AUDIT.md      ← auditoria de nav/layout (IC-1–IC-6 resolvidos)
 │
 ├── agents/                  ← OUTPUTS DE AGENTES ESPECIALIZADOS
 │   ├── data-quality/        ← auditoria FMP/AlphaVantage
@@ -103,37 +111,39 @@ UserSubscription model com histórico de alterações. Premium = `entitlementAct
 4 camadas: reportes → políticas → auto-hide → fila admin → apelos.
 Auto-hide com 3 reporters únicos de alto risco (scam/hate/sexual/violence). SLA de 48h nos apelos.
 
-### 6. Comunidade + Gamificação (`COMMUNITY.md`) 🟡
-**Nova feature — a implementar antes da full release.**
-Mix Reddit (threads) + Discord (salas). XP + 7 níveis + badges por literacia financeira.
+### 6. Comunidade + Gamificação (`COMMUNITY.md`) ✅
+Implementado (P11.x). Mix Reddit (threads) + Discord (salas). XP + 7 níveis + badges.
 Salas públicas (FREE) e salas premium. Integração com HUB e PRIVADO.
 
-### 7. Motor de Recomendação (`RECO_ENGINE.md`)
-Sistema "Para Ti" — 30 tags, sinais de actividade, afinidades por tag.
-Prompts R1–R5 em `RECO_ENGINE.md`. Foundation a implementar em P10.5.
+### 7. Motor de Recomendação (`RECO_ENGINE.md`) ✅
+Sistema "Para Ti" implementado (P10.5). Tags obrigatórias + endpoint recomendação real.
 
-### 8. SEO (`SEO.md`)
-Base sólida (react-helmet-async, sitemap.xml, robots.txt, OG tags, Twitter Cards).
-Maior gap: JSON-LD structured data (P10.3) e sitemap dinâmico.
+### 8. SEO (`SEO.md`) ✅
+Sitemap dinâmico (V1.3), JSON-LD (P10.3), react-helmet-async, OG, Twitter Cards activos.
 
-### 9. Analytics (`ANALYTICS.md`)
-PostHog e Sentry activos. GA4/GTM/Meta Pixel preparados.
-Eventos em falta a implementar em P10.4.
+### 9. Analytics (`ANALYTICS.md`) ✅
+PostHog e Sentry activos. Eventos completos (P10.4). GA4/GTM/Meta Pixel preparados (não activados).
 
 ---
 
 ## Estado de Desenvolvimento
 
+> Última revisão: 2026-03-26
+
 | Fase | Descrição | Estado |
 |------|-----------|--------|
-| P1–P8 | Core da plataforma + performance + SEO base | ✅ Completo |
-| P9.1–P9.5 | Profile edit, homepage "Para Ti", admin métricas, /conta, /perfil | ✅ Completo |
-| P9-GATE | Gate de qualidade + fixes overlay + SSR null | ✅ Completo |
-| CLEANUP-02 | Limpeza de ficheiros/pastas obsoletos | ✅ Completo |
-| Documentação sistemas | AUTH, NOTIFICATIONS, PAYMENTS, MODERATION, COMMUNITY | ✅ Completo |
-| **P10.1–P10.5** | Nav fix, creator profile, SEO JSON-LD, analytics, reco engine | ⏳ Próximos |
-| **P11.x** | Comunidade + Gamificação | ⏳ Após P10 |
-| **Beta Testing** | Grupo fechado de utilizadores reais | ⏳ Após P11 |
+| P1–P9 + P10.x + P11.x | Core + design + comunidade + gamificação + polish | ✅ Completo |
+| V1.1–V1.6 | SecurityTab, feed, pesquisa, sitemap, export RGPD, encryption audit | ✅ Completo |
+| GDPR-01, LEGAL-01, LEGAL-02 | Cookie consent, TTL indexes, legal docs texto completo | ✅ Completo |
+| SEC-01, SEC-02 | Helmet, CORS, rate limiting, JWT env, VITE audit, CSP | ✅ Completo |
+| CLEANUP-01–03 + AN-8 | Dead code, ficheiros PS1, PostHog forget-me | ✅ Completo |
+| B1–B16 + COMMUNITY-FIX + TECH-DEBT | Todos os bugs e dívida técnica conhecidos | ✅ Completo |
+| **V1.4** | Upload real Cloudinary | 🟡 Bloqueado — aguarda conta Cloudinary |
+| **RUNBOOK rewrite** | `RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md` (refs desactualizadas) | ⏳ Claude |
+| **CLEANUP-04** | Ficheiros OpenClaw na raiz de `API_finhub/` | ⏳ Codex |
+| **Acções humanas** | DPIA assinar, email fundador, telemóvel emergência | ⏳ João |
+| **Infra / Deploy** | HTTPS, MongoDB, backups, env vars prod | ⏳ João + infra |
+| **Beta Testing** | Grupo fechado de utilizadores reais | ⏳ Após infra |
 | **Full Release** | Abertura pública + Stripe | ⏳ Após beta |
 | **Android / iOS** | App móvel | ⏳ Pós-release |
 

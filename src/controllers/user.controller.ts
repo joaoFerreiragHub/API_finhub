@@ -14,6 +14,8 @@ import { UserPreferences } from '../models/UserPreferences'
 import { UserSubscription } from '../models/UserSubscription'
 import { UserXP } from '../models/UserXP'
 import { Video } from '../models/Video'
+import { cloudinary } from '../lib/cloudinary'
+import { deletePostHogPerson } from '../lib/posthog'
 import { xpService } from '../services/xp.service'
 import { AuthRequest } from '../types/auth'
 import { logControllerError } from '../utils/domainLogger'
@@ -513,6 +515,92 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
 }
 
 /**
+ * POST /api/users/me/avatar
+ * Upload real de avatar para Cloudinary.
+ */
+export const uploadMyAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Nao autenticado.',
+      })
+    }
+
+    const cloudinaryCloudName = (process.env.CLOUDINARY_CLOUD_NAME ?? '').trim()
+    if (!cloudinaryCloudName) {
+      return res.status(503).json({
+        error: 'Upload de avatar nao configurado neste ambiente.',
+      })
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'Ficheiro de avatar em falta. Usa multipart/form-data com campo "avatar".',
+      })
+    }
+    const avatarFile = req.file
+
+    const uploadResult = await new Promise<{ secure_url: string; public_id?: string }>(
+      (resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: 'finhub/avatars',
+            public_id: req.user!.id,
+            overwrite: true,
+            invalidate: true,
+            transformation: [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }],
+          },
+          (error, result) => {
+            if (error) {
+              reject(error)
+              return
+            }
+
+            const secureUrl = typeof result?.secure_url === 'string' ? result.secure_url.trim() : ''
+            if (!secureUrl) {
+              reject(new Error('Cloudinary nao devolveu secure_url para o avatar.'))
+              return
+            }
+
+            resolve({
+              secure_url: secureUrl,
+              public_id: typeof result?.public_id === 'string' ? result.public_id : undefined,
+            })
+          }
+        )
+
+        uploadStream.on('error', (streamError: unknown) => {
+          reject(streamError)
+        })
+
+        uploadStream.end(avatarFile.buffer)
+      }
+    )
+
+    req.user.avatar = uploadResult.secure_url
+    req.user.lastActiveAt = new Date()
+    await req.user.save()
+
+    const xpProfile = await xpService.getUserXpPublicProfile(req.user.id)
+    const normalizedUser = withXpProfile(mapAuthenticatedUser(req.user), xpProfile)
+
+    return res.status(200).json({
+      message: 'Avatar atualizado com sucesso.',
+      avatar: uploadResult.secure_url,
+      avatarUrl: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      user: normalizedUser,
+    })
+  } catch (error: any) {
+    logControllerError(CONTROLLER_DOMAIN, 'upload_my_avatar', error, req)
+    return res.status(500).json({
+      error: 'Erro ao fazer upload do avatar.',
+      details: error?.message,
+    })
+  }
+}
+
+/**
  * GET /api/users/me/export
  * Exporta dados essenciais da conta autenticada em JSON (RGPD Art. 20).
  */
@@ -867,6 +955,9 @@ export const deleteMyAccount = async (req: AuthRequest, res: Response) => {
     } catch (cleanupError: any) {
       logControllerError(CONTROLLER_DOMAIN, 'delete_my_account_cleanup', cleanupError, req)
     }
+
+    // RGPD Art. 17 - fire-and-forget, nao bloqueia resposta
+    deletePostHogPerson(userId).catch(() => {})
 
     return res.status(200).json({
       message: 'Conta eliminada com sucesso. Os dados pessoais foram removidos/anonimizados.',

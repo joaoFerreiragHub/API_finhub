@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import crypto from 'crypto'
 import { User, UserAccountStatus } from '../models/User'
+import { BetaInvite } from '../models/BetaInvite'
 import { generateTokens, verifyRefreshToken } from '../utils/jwt'
 import {
   AuthRequest,
@@ -384,6 +385,16 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
       })
     }
 
+    if (process.env.BETA_MODE === 'true') {
+      const invite = await BetaInvite.findOne({ email }).select('_id').lean()
+      if (!invite) {
+        return res.status(403).json({
+          error: 'Este email nao esta na lista de beta testers. Pede um convite ao administrador.',
+          code: 'BETA_INVITE_REQUIRED',
+        })
+      }
+    }
+
     const existingUsername = await User.findOne({ username })
     if (existingUsername) {
       return res.status(400).json({
@@ -425,6 +436,22 @@ export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response)
         version: cookieConsent?.version?.trim() || COOKIE_CONSENT_VERSION,
       },
     })
+
+    if (process.env.BETA_MODE === 'true') {
+      try {
+        await BetaInvite.updateOne(
+          { email: user.email },
+          {
+            $set: {
+              usedAt: new Date(),
+              usedBy: user.id,
+            },
+          }
+        )
+      } catch (betaInviteError: unknown) {
+        logControllerError(CONTROLLER_DOMAIN, 'register_mark_beta_invite_used', betaInviteError, req)
+      }
+    }
 
     const tokens = generateTokens({
       userId: user.id,

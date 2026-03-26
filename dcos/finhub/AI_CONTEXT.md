@@ -3,7 +3,7 @@
 > **Para qualquer AI que continue este projeto:**
 > Lê este ficheiro do início ao fim antes de fazer qualquer coisa.
 > É a fonte de verdade do estado actual, decisões tomadas, regras críticas e próximos passos.
-> Última actualização: 2026-03-24
+> Última actualização: 2026-03-25
 
 ---
 
@@ -15,7 +15,7 @@ Plataforma portuguesa de literacia financeira. Agrega conteúdo educativo (artig
 
 **Audiência:** Investidores portugueses, todos os níveis. O funil de valor está nos mais experientes.
 
-**Estado actual:** Pré-beta fechado. Todas as features planeadas (69 prompts Codex) estão implementadas. A aguardar: validação GDPR-01, documentos legais, e itens v1.0 sem prompt definido.
+**Estado actual:** Praticamente fechado para lançamento. Todos os 69 prompts Codex + V1.x features + GDPR completo + documentos legais criados. A aguardar: configuração de infra/deploy e acções humanas obrigatórias (DPIA assinatura João).
 
 ---
 
@@ -220,63 +220,66 @@ Tipos: `feat`, `fix`, `design`, `refactor`, `docs`, `chore`, `security`
 
 ## 7. ESTADO ACTUAL — O QUE FOI FEITO
 
-### Backend (API_finhub) — COMPLETO
+### Backend (API_finhub) — COMPLETO ✅
 - Auth (JWT, refresh, roles: visitor/free/premium/creator/brand_manager/admin)
 - Hub de conteúdo (artigos, vídeos, cursos, podcasts, livros)
 - Criadores (perfil público, dashboard, topics, redes sociais)
 - Admin (editorial CMS, moderation, métricas reais DAU/utilizadores)
 - Ferramentas (stocks análise rápida, FIRE, ETF overlap, watchlist, crypto)
 - Comunidade completa (salas, posts, replies, votos, XP, níveis, badges, leaderboard)
-- Segurança (Helmet, CORS, rate limiting, JWT env, sem secrets em logs)
-- GDPR-01: cookie consent + analytics opt-out + data export endpoint (**pendente validação Claude**)
+- Segurança (Helmet, CORS, rate limiting, JWT env, 0 vulns `npm audit`)
+- GDPR-01: cookie consent + analytics opt-out + data export endpoint ✅ validado 2026-03-24
+- V1.1–V1.6: SecurityTab, feed/pesquisa, sitemap, Cloudinary avatar, export RGPD UI, field-level encryption audit ✅
+- TTL indexes em AdminAuditLog, ContentModerationEvent, AgentActivityLog ✅
+- Documentos legais: DPIA.md, BREACH_RESPONSE_PLAN.md, POLITICA_RETENCAO_DADOS.md ✅ (pendentes assinatura humana)
 
-### Frontend (FinHub-Vite) — COMPLETO
+### Frontend (FinHub-Vite) — COMPLETO ✅
 - Todas as páginas públicas e autenticadas
-- Onboarding (3 passos)
-- Página de preços (estática)
-- SEO (JSON-LD, structured data)
-- Analytics (PostHog, eventos AN-1)
+- Onboarding (3 passos), página de preços (estática)
+- SEO (JSON-LD, structured data, sitemap dinâmico)
+- Analytics (PostHog consent-gated, eventos AN-1, opt-out toggle em /conta/definicoes)
 - Comunidade UI (rooms, posts Reddit-style, leaderboard, XP)
-- Design system aplicado (brand indigo, dark mode fix, homepage redesenhada)
-- GDPR-01: CookieBanner.tsx + analytics conditional init (**pendente validação Claude**)
+- Design system aplicado (brand indigo, dark mode, homepage redesenhada, ContentCard unificado)
+- GDPR-01: CookieBanner.tsx + analytics conditional init ✅
 
 ---
 
 ## 8. O QUE ESTÁ PENDENTE
 
-### 🔴 Beta Obrigatório (fazer primeiro)
+### ⚠️ Acções Humanas Obrigatórias (João — não são código)
 
-| Item | Tipo | Detalhes |
-|------|------|----------|
-| **Validar GDPR-01** | Revisão código | Codex implementou em 2026-03-24. Claude ainda não validou. Ver PROMPTS_EXECUCAO.md prompt GDPR-01 |
-| **Cookie banner: testar PostHog conditional init** | Teste | PostHog só deve iniciar após consentimento — VIOLAÇÃO RGPD Art 7 se não estiver correcto |
-| **DPIA documento** | Documento | RGPD Art 35 — não é código, é documentação interna |
-| **Política de retenção de dados** | Documento | RGPD Art 5(1)(e) |
-| **Breach Response Plan** | Documento | RGPD Art 33 — notificação CNPD 72h |
+| Item | Ficheiro |
+|------|----------|
+| **Assinar DPIA** — preencher "Aprovado por" + "Data de aprovação" (secção 8) | `dcos/finhub/legal/DPIA.md` |
+| **Preencher número de telemóvel de emergência** | `dcos/finhub/legal/BREACH_RESPONSE_PLAN.md` |
+| **Preencher `[email do fundador]`** em múltiplos ficheiros legais | `dcos/finhub/legal/` — 3 ficheiros |
 
-### 🟡 v1.0 — Features sem prompt Codex definido (escrever novos prompts)
-
-| Feature | Notas |
-|---------|-------|
-| **Pagamentos / subscrições (Stripe)** | Bloqueado por infra externa — criar conta Stripe primeiro |
-| **Upload de imagens real (S3 ou Cloudinary)** | Avatar e covers hoje são URL manual |
-| **Notificações real-time (WebSocket)** | Hoje é polling |
-| **Feed personalizado `/feed` validado** | Página existe, validar com dados reais |
-| **Pesquisa global funcional** | `GlobalSearchBar` existe, backend pode não estar ligado |
-| **SecurityTab wired à API real** | Hoje usa mockFormik para alterar password |
-| **Sitemap dinâmico (SEO-4)** | Endpoint backend + conteúdo publicado |
-| **Export de dados (RGPD Art 20)** | Endpoint existe (GDPR-01), falta UI em /conta |
-| **Analytics opt-out toggle** | UI em /conta/definicoes + flag `allowAnalytics` no User model |
-| **MongoDB field encryption audit** | Confirmar field-level encryption RGPD Art 32 |
-
-### 🟡 Segurança — Infra/Deploy (antes de abrir ao público)
+### 🟡 Infra/Deploy (antes de abrir ao público)
 
 | Item | Detalhes |
 |------|----------|
 | MongoDB não exposto publicamente | Confirmar na infra de deploy |
-| HTTPS enforced | Redirect HTTP → HTTPS |
-| Variáveis de ambiente em prod | Ver RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md |
-| Backups MongoDB automatizados | Snapshot policy |
+| HTTPS enforced | Redirect HTTP → HTTPS; HSTS activo |
+| Variáveis de ambiente em prod configuradas | Ver `RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md` (necessita reescrita) |
+| Backups MongoDB automatizados | Snapshot policy antes de release pública |
+| Logs de erro em prod sem stack traces | Express error handler em prod devolve mensagem genérica |
+
+### 🟡 Opcional pré-release (Codex)
+
+| Item | Prompt |
+|------|--------|
+| **CLEANUP-03** — Remover scripts PS1 de fases obsoletas | `PROMPTS_EXECUCAO.md` → PROMPT CLEANUP-03 |
+| **AN-8** — GDPR PostHog: apagar dados analytics ao encerrar conta | `PROMPTS_EXECUCAO.md` → PROMPT AN-8 |
+
+### 🟢 Pós-v1.0
+
+| Item | Notas |
+|------|-------|
+| Pagamentos / subscrições (Stripe) | Bloqueado por conta Stripe |
+| Notificações real-time (WebSocket) | Hoje é polling |
+| Lighthouse > 80 | Performance optimization |
+| ~285 erros TS pré-existentes | Gradual, não bloqueia build |
+| GA4/GTM, ads analytics, heatmaps PostHog | AN-2, AN-3, AN-7, AN-9 |
 
 ---
 

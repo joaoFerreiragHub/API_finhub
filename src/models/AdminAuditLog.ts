@@ -116,5 +116,7 @@ AdminAuditLogSchema.index({ actor: 1, createdAt: -1 })
 AdminAuditLogSchema.index({ action: 1, createdAt: -1 })
 AdminAuditLogSchema.index({ resourceType: 1, createdAt: -1 })
 AdminAuditLogSchema.index({ outcome: 1, createdAt: -1 })
+// RGPD Art. 5(1)(e) — retencao maxima: 2 anos
+AdminAuditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 63_072_000 })
 
 export const AdminAuditLog = mongoose.model<IAdminAuditLog>('AdminAuditLog', AdminAuditLogSchema)

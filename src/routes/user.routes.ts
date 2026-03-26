@@ -4,9 +4,11 @@ import {
   exportMyData,
   getMyProfile,
   getPublicProfileByUsername,
+  uploadMyAvatar,
   updateMyProfile,
 } from '../controllers/user.controller'
 import { authenticate } from '../middlewares/auth'
+import { handleAvatarUpload } from '../middlewares/upload'
 import { rateLimiter } from '../middlewares/rateLimiter'
 import { validateUserDeleteMeContract, validateUserUpdateMeContract } from '../middlewares/requestContracts'
 
@@ -18,6 +20,15 @@ const router = Router()
  * @access  Private
  */
 router.get('/me', authenticate, rateLimiter.general, getMyProfile)
+
+/**
+ * @route   POST /api/users/me/avatar
+ * @desc    Upload de avatar para Cloudinary
+ * @access  Private
+ * @form    multipart/form-data com campo 'avatar'
+ * @limits  5MB, tipos: jpeg, png, webp
+ */
+router.post('/me/avatar', authenticate, rateLimiter.userProfilePatch, handleAvatarUpload, uploadMyAvatar)
 
 /**
  * @route   PATCH /api/users/me

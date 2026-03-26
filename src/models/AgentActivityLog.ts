@@ -118,6 +118,8 @@ const AgentActivityLogSchema = new Schema<IAgentActivityLog>(
 
 AgentActivityLogSchema.index({ agentId: 1, taskId: 1, startedAt: 1 }, { unique: true })
 AgentActivityLogSchema.index({ createdAt: -1 })
+// RGPD Art. 5(1)(e) — retencao maxima: 90 dias
+AgentActivityLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7_776_000 })
 
 export const AgentActivityLog =
   mongoose.models.AgentActivityLog ||

@@ -20,24 +20,32 @@ Antes de iniciar qualquer tarefa, ler esta secao e executar sem excecoes:
 9. Nao reverter nem apagar alteracoes do utilizador sem confirmacao explicita.
 10. Em handoff, reportar obrigatoriamente: entregue, ficheiros, validacoes, commit e proximo passo.
 11. Atualizar sempre o bloco `Checkpoint de Retoma` deste ficheiro no fim de cada ciclo com commit/push.
+12. FECHO DE CICLO — Codex (obrigatorio no mesmo commit do prompt):
+    a. `TASKS.md`: marcar a task deste prompt como ✅ na linha correcta; registar novas pendencias descobertas.
+    b. `PROMPTS_EXECUCAO.md`: alterar header do prompt executado de ⏳ para `✅ VALIDADO [data]`.
+    c. Nao fechar o ciclo sem estes dois ficheiros actualizados. Relatorio sem FECHO DE CICLO e invalido.
+13. FECHO DE CICLO — Claude (apos validar o relatorio do Codex):
+    a. `AI_CONTEXT.md`: actualizar seccoes 7/8 se o estado mudou significativamente.
+    b. `regras.md` Checkpoint de Retoma: actualizar data, estado git e proximo passo.
+    c. Se o Codex registou itens novos em TASKS.md: verificar que estao no lugar certo e sao accionaveis.
 
 ## Checkpoint de Retoma (ATUALIZAR EM TODO O FECHO)
 
-Ultima atualizacao: 2026-03-23
+Ultima atualizacao: 2026-03-26
 
-- Estado git: `API_finhub/main` — ciclo de documentacao e reorganizacao da dcos/ concluido.
+- Estado git: `API_finhub/main` — todos os prompts Codex executados; features P1–P11 + V1.x + LEGAL + SEC + COMMUNITY fechados.
 - Onde ficamos:
-  - Fases P1–P9 totalmente concluidas (auth, conteudo, social, admin, layout, P9.x polish).
-  - Documentacao reorganizada: `dcos/finhub/` e a fonte de verdade activa; `dcos/done/` tem 25+ ficheiros arquivados de fases passadas (P3–P8).
-  - Sistemas documentados: AUTH.md, NOTIFICATIONS.md, PAYMENTS.md, MODERATION.md, COMMUNITY.md, MASTER_CONTEXT.md, SYSTEMS_INDEX.md, DOC_STANDARD.md criados/actualizados neste ciclo.
-  - SCOPE FREEZE declarado: nenhuma nova feature ate a full release publica (2026-03-23).
-  - Fluxo de release: Desenvolver P10.x + P11.x → Beta Testing → Melhorias → Full Release → Android/iOS.
-  - IC-1 a IC-6 (layout inconsistencies) todos resolvidos em P8.7–P8.9.
-  - GDPR tasks criticas adicionadas ao TASKS.md (cookie banner, DPIA, breach response plan, retencao de dados).
+  - **PRATICAMENTE FECHADO PARA LANCAMENTO.** Todas as features e bugs conhecidos resolvidos.
+  - Docs reorganizados 2026-03-26: ROADMAP.md, SSR_VIKE_FIXES.md, FINHUB_DOCUMENTACAO_CRITICA.md, FINHUB_OPERATING_SYSTEM.md movidos para `dcos/done/`.
+  - SYSTEMS_INDEX.md atualizado (removidos refs a docs arquivados; estado de desenvolvimento correcto).
+  - TASKS.md: "Sequencia de Execucao" reescrita com estado real — P9.x/CLEANUP/V1.x todos mostrados como concluidos.
+  - CLEANUP-04 adicionado: ficheiros OpenClaw na raiz de API_finhub/ (pendente).
+  - RUNBOOK precisa de reescrita (refs a ficheiros movidos para done/).
 - Proximo passo recomendado:
-  - Executar P10.1 (nav fix: Mercados/Ferramentas → user menu) via Codex.
-  - Resolver GDPR tasks beta-criticas antes de abrir beta (cookie banner + DPIA + breach response).
-  - Apos P10.x completo, iniciar P11.x (Comunidade + Gamificacao).
+  - **Accoes humanas obrigatorias (Joao):** assinar DPIA (seccao 8), preencher telemovel de emergencia em BREACH_RESPONSE_PLAN.md, preencher [email do fundador] nos 3 documentos legais.
+  - **Infra/deploy:** MongoDB nao exposto, HTTPS enforced, variaveis de ambiente em prod, backups MongoDB.
+  - **Claude:** reescrever RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md + executar CLEANUP-04.
+  - **V1.4 bloqueado:** aguarda conta Cloudinary (Joao).
 
 Regra operacional obrigatoria deste bloco:
 1. No fim de cada ponto com commit/push, atualizar este bloco no mesmo ciclo.

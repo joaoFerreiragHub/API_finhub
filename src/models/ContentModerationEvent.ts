@@ -77,6 +77,8 @@ ContentModerationEventSchema.index({ createdAt: -1 })
 ContentModerationEventSchema.index({ contentType: 1, contentId: 1, createdAt: -1 })
 ContentModerationEventSchema.index({ actor: 1, createdAt: -1 })
 ContentModerationEventSchema.index({ action: 1, createdAt: -1 })
+// RGPD Art. 5(1)(e) — retencao maxima: 1 ano
+ContentModerationEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 31_536_000 })
 
 export const ContentModerationEvent = mongoose.model<IContentModerationEvent>(
   'ContentModerationEvent',

@@ -5461,7 +5461,7 @@ Banner chama `initAnalytics()` após o utilizador aceitar.
 70. PROMPT V1.1          → SecurityTab: alterar palavra-passe real                ✅ (Codex — 2026-03-26)
 71. PROMPT V1.2          → Feed + Pesquisa global: validar end-to-end             ✅ (Codex — 2026-03-26)
 72. PROMPT V1.3          → Sitemap dinâmico (backend XML + Vike middleware)       ✅ (Codex — 2026-03-26)
-73. PROMPT V1.4          → Avatar upload real (Cloudinary)                        ⏳
+73. PROMPT V1.4          → Avatar upload real (Cloudinary)                        ✅ (Codex — 2026-03-26)
 ```
 
 > Cada prompt depende do anterior ser validado pelo Claude antes de avançar.
@@ -5627,7 +5627,7 @@ Manter como fallback mínimo com só URLs estáticas + comentário: `<!-- fallba
 
 ---
 
-## PROMPT V1.4 — Avatar upload real (Cloudinary) ⏳
+## PROMPT V1.4 — Avatar upload real (Cloudinary) ✅ VALIDADO 2026-03-26
 
 > **Executor: Codex**
 > **Pré-requisito:** V1.3 ✅
@@ -6477,6 +6477,10 @@ DEPOIS: ## PROMPT CLEANUP-03 — Scripts PS1 de Fase Obsoletos ✅ VALIDADO [dat
 
 ---
 
+## PROMPT CLEANUP-05 — Cloudinary: remover dead code + `CLOUDINARY_URL` redundante ✅ VALIDADO 2026-03-26
+
+---
+
 ## PROMPT AN-8 — GDPR PostHog: Apagar Dados Analytics ao Encerrar Conta ✅ VALIDADO 2026-03-25
 
 > **Executor: Codex**
@@ -6625,3 +6629,281 @@ DEPOIS: ## PROMPT CLEANUP-04 — Limpar Ficheiros OpenClaw da Raiz ✅ VALIDADO 
 Produzir relatório no formato do template.
 
 **Produzir relatório no formato do template** (incluindo FECHO DE CICLO preenchido).
+
+---
+
+## PROMPT BETA-GATE-01 — Backend: Beta Fechado (BetaInvite + Middleware + Admin endpoints) ✅ VALIDADO 2026-03-26
+
+> **Executor:** Codex
+> **Prioridade:** 🔴 Beta obrigatório
+> **Repo:** `API_finhub/`
+> **Tipo:** Feature nova — backend
+> **Duração estimada:** 45–60 min
+> **Dependências:** Nenhuma
+
+### Contexto
+
+O FinHub vai lançar um beta privado. Apenas utilizadores com email pré-aprovado pelo admin devem conseguir registar-se. O switch é controlado pela variável de ambiente `BETA_MODE=true|false` — quando `false`, o comportamento é idêntico ao actual (registo aberto).
+
+Padrão de referência: `src/models/AdminAuditLog.ts` para o modelo. `src/middlewares/authenticate.ts` para o padrão de middleware. `src/controllers/adminAudit.controller.ts` para o padrão de controllers admin.
+
+---
+
+### 1. Criar `src/models/BetaInvite.ts`
+
+Schema:
+- `email`: String, required, unique, lowercase, trim
+- `createdBy`: ObjectId ref User, required
+- `usedAt`: Date, opcional
+- `usedBy`: ObjectId ref User, opcional
+- timestamps: true
+- Index em `email`
+
+---
+
+### 2. Modificar `src/controllers/auth.controller.ts` — função `register`
+
+Após a verificação de email duplicado (bloco `if (existingEmail)`), adicionar verificação beta ANTES de criar o utilizador:
+
+```typescript
+if (process.env.BETA_MODE === 'true') {
+  const { BetaInvite } = await import('../models/BetaInvite')
+  const invite = await BetaInvite.findOne({ email })
+  if (!invite) {
+    return res.status(403).json({
+      error: 'Este email nao esta na lista de beta testers. Pede um convite ao administrador.',
+      code: 'BETA_INVITE_REQUIRED',
+    })
+  }
+}
+```
+
+Após `await newUser.save()` com sucesso, marcar convite como usado:
+
+```typescript
+if (process.env.BETA_MODE === 'true') {
+  try {
+    const { BetaInvite } = await import('../models/BetaInvite')
+    await BetaInvite.updateOne(
+      { email: newUser.email },
+      { usedAt: new Date(), usedBy: newUser._id }
+    )
+  } catch { /* nao bloqueia registo se falhar */ }
+}
+```
+
+---
+
+### 3. Criar `src/controllers/betaInvite.controller.ts`
+
+Tres handlers (todos requerem ADMIN):
+
+**addBetaInvites** — POST /api/admin/beta/invites
+- Body: `{ emails: string[] }` (array, max 100)
+- Normalizar: lowercase + trim
+- Validar formato com regex basico
+- `BetaInvite.insertMany(mapped, { ordered: false })` — ignora duplicados sem falhar o resto
+- Resposta: `{ added: number, skipped: number, total: number }`
+
+**listBetaInvites** — GET /api/admin/beta/invites
+- Query: `?used=true|false`, `?page=1&limit=50`
+- Ordenar `createdAt DESC`
+- Resposta: `{ invites: [], total: number, page: number }`
+
+**deleteBetaInvite** — DELETE /api/admin/beta/invites/:id
+- Se `usedAt` preenchido: retornar 400 "Convite ja foi utilizado. Nao pode ser removido."
+- `findByIdAndDelete(id)`
+- Resposta: `{ success: true }`
+
+---
+
+### 4. Criar `src/routes/betaInvite.routes.ts`
+
+Router com as 3 rotas, todas com `authenticate` + `requireRole('ADMIN')` (usar o middleware equivalente existente no projecto).
+
+---
+
+### 5. Registar rota no servidor principal
+
+No ficheiro de bootstrap (server.ts ou app.ts):
+```typescript
+app.use('/api/admin/beta/invites', betaInviteRoutes)
+```
+
+---
+
+### 6. Actualizar `API_finhub/.env.example`
+
+Adicionar:
+```
+BETA_MODE=false
+```
+
+---
+
+### Criterios de conclusao
+
+- [ ] `src/models/BetaInvite.ts` criado com schema e index correctos
+- [ ] `register` verifica `BETA_MODE` e rejeita com `BETA_INVITE_REQUIRED`
+- [ ] Apos registo com sucesso, convite marcado com `usedAt` e `usedBy`
+- [ ] `POST /api/admin/beta/invites` aceita array, ignora duplicados
+- [ ] `GET /api/admin/beta/invites` com filtro e paginacao
+- [ ] `DELETE /api/admin/beta/invites/:id` rejeita remocao de convites usados
+- [ ] Rota registada no servidor
+- [ ] `.env.example` actualizado com `BETA_MODE=false`
+- [ ] Com `BETA_MODE=false` (default): registo funciona exactamente como antes
+- [ ] `npm run typecheck` PASS
+
+### FECHO DE CICLO (Codex — obrigatorio no mesmo commit)
+
+TASKS.md — linha BETA-GATE-01 na seccao "Beta Fechado — Controlo de Acesso":
+```
+ANTES: | **Backend: BetaInvite model + middleware + admin endpoints** | ⏳ | BETA-GATE-01 |
+DEPOIS: | **Backend: BetaInvite model + middleware + admin endpoints** | ✅ | BETA-GATE-01 [data] — BetaInvite model, 3 endpoints admin, typecheck PASS |
+```
+
+PROMPTS_EXECUCAO.md — header deste prompt:
+```
+ANTES: ## PROMPT BETA-GATE-01 — Backend: Beta Fechado ... ⏳
+DEPOIS: ## PROMPT BETA-GATE-01 — Backend: Beta Fechado ... ✅ VALIDADO [data]
+```
+
+Produzir relatorio no formato do template.
+
+---
+
+## PROMPT BETA-GATE-03 — Frontend SSR Gate com cookie `betaSession` ✅ VALIDADO 2026-03-26
+
+---
+
+## PROMPT BETA-GATE-02 — Frontend: Landing Page Beta + Gate Global ✅ VALIDADO 2026-03-26
+
+> **Executor:** Codex
+> **Prioridade:** 🔴 Beta obrigatorio
+> **Repo:** `FinHub-Vite/`
+> **Tipo:** Feature nova — frontend
+> **Duracao estimada:** 45–60 min
+> **Dependencias:** BETA-GATE-01 para os endpoints admin; a pagina pode ser implementada independentemente
+
+### Contexto
+
+Quando `VITE_BETA_MODE=true`, toda a plataforma deve ser inacessivel a utilizadores nao autenticados — sao redirecionados para `/beta`. A pagina `/beta` e uma landing page de beta fechado com design FinHub branded e dark.
+
+Padrao de referencia para SSR-safe redirect: `src/renderer/PageShell.tsx` — ja usa o padrao `mounted + useEffect + window.location.replace`. Seguir exactamente este padrao.
+
+Padrao de referencia para paginas Vike: ficheiro `+Page.tsx` na pasta da rota (`src/pages/beta/+Page.tsx`).
+
+Design system: shadcn/ui + Tailwind CSS v4. `--brand` e indigo (#6366F1). Consultar `FinHub-Vite/.impeccable.md` para contexto de design.
+
+REGRA SSR OBRIGATORIO: sem `window.*`, `document.*`, `localStorage.*` no render. Apenas em `useEffect` com guard `typeof window !== 'undefined'`.
+
+---
+
+### 1. Criar `src/pages/beta/+Page.tsx`
+
+Pagina React SSR-safe. Layout:
+- `min-h-screen` com `bg-[#09090B]` (forcar dark independente do tema)
+- Centrada: `flex flex-col items-center justify-center px-6`
+- Container max-width 480px
+
+Conteudo de cima para baixo:
+
+**Logo:** texto "FinHub" — `text-3xl font-bold text-[#6366F1]`
+
+**Badge:** pill "Beta Fechado":
+```tsx
+<span className="mt-6 inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-400 ring-1 ring-inset ring-indigo-500/20">
+  Beta Fechado
+</span>
+```
+
+**Titulo h1:** "A plataforma portuguesa de literacia financeira"
+- `mt-6 text-center text-2xl font-semibold tracking-tight text-white`
+
+**Subtitulo p:** "Estamos em fase de beta fechado. Se recebeste um convite, podes criar conta. Caso contrario, entra com a tua conta existente."
+- `mt-3 text-center text-sm text-zinc-400`
+
+**CTAs** (`mt-8 flex flex-col gap-3 w-full max-w-xs`):
+```tsx
+<a href="/login" className="inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors">
+  Entrar na minha conta
+</a>
+<a href="/registar" className="inline-flex w-full items-center justify-center rounded-md border border-zinc-700 bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800 transition-colors">
+  Criar conta com convite
+</a>
+```
+
+**Footer:** `<p className="mt-12 text-center text-xs text-zinc-600">© 2026 FinHub</p>`
+
+SEM imports de react-router-dom. Usar apenas `<a href>` nativos.
+
+---
+
+### 2. Modificar `src/renderer/PageShell.tsx` — Beta gate
+
+Dentro do componente `PageShell`, apos os useEffects existentes para `setMounted` e `pageContext.user`, adicionar:
+
+```typescript
+const BETA_MODE = import.meta.env.VITE_BETA_MODE === 'true'
+const BETA_EXEMPT = ['/beta', '/login', '/registar', '/privacidade', '/termos', '/cookies', '/aviso-legal', '/faq', '/sobre', '/contacto']
+
+React.useEffect(() => {
+  if (!mounted) return
+  if (!BETA_MODE) return
+  if (isAuthenticated) return
+
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname
+  const isExempt = BETA_EXEMPT.some(p => currentPath === p || currentPath.startsWith(p + '/'))
+
+  if (!isExempt) {
+    window.location.replace('/beta')
+  }
+}, [mounted, isAuthenticated, pathname])
+```
+
+As constantes `BETA_MODE` e `BETA_EXEMPT` podem ser declaradas fora do componente (module-level) — `import.meta.env` e avaliado em build time.
+
+---
+
+### 3. Actualizar `FinHub-Vite/.env.example`
+
+Adicionar:
+```
+VITE_BETA_MODE=false
+```
+
+---
+
+### 4. Verificar que `/beta` nao aparece na navegacao
+
+Confirmar que a rota `/beta` nao esta listada como link de navegacao em `shellConfig.ts` nem em nenhum menu de navegacao.
+
+---
+
+### Criterios de conclusao
+
+- [ ] `src/pages/beta/+Page.tsx` existe com design especificado (dark, branded, 2 CTAs)
+- [ ] Pagina SSR-safe: sem `window.*` no render (apenas em useEffect se necessario)
+- [ ] `PageShell.tsx` tem beta gate com `useEffect` + `mounted` check
+- [ ] Com `VITE_BETA_MODE=false` (default): zero redirects — comportamento identico ao actual
+- [ ] Com `VITE_BETA_MODE=true`: url sem auth -> redirect para `/beta`
+- [ ] `/beta`, `/login`, `/registar` sao isentos (sem loop)
+- [ ] `.env.example` actualizado com `VITE_BETA_MODE=false`
+- [ ] `yarn typecheck:p1` PASS
+- [ ] `yarn build` PASS
+
+### FECHO DE CICLO (Codex — obrigatorio no mesmo commit)
+
+TASKS.md — linha BETA-GATE-02 na seccao "Beta Fechado — Controlo de Acesso":
+```
+ANTES: | **Frontend: landing page /beta + gate global em PageShell** | ⏳ | BETA-GATE-02 |
+DEPOIS: | **Frontend: landing page /beta + gate global em PageShell** | ✅ | BETA-GATE-02 [data] — /beta page + gate SSR-safe em PageShell. typecheck+build PASS |
+```
+
+PROMPTS_EXECUCAO.md — header deste prompt:
+```
+ANTES: ## PROMPT BETA-GATE-02 — Frontend: Landing Page Beta + Gate Global ⏳
+DEPOIS: ## PROMPT BETA-GATE-02 — Frontend: Landing Page Beta + Gate Global ✅ VALIDADO [data]
+```
+
+Produzir relatorio no formato do template.
