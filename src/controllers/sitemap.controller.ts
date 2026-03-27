@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { sitemapService } from '../services/sitemap.service'
+import { buildInternalErrorPayload } from '../utils/httpError'
 
 /**
  * GET /api/sitemap
@@ -11,11 +12,8 @@ export const getSitemap = async (_req: Request, res: Response) => {
     return res.status(200).json(payload)
   } catch (error: unknown) {
     console.error('Sitemap data error:', error)
-
-    const details = error instanceof Error ? error.message : undefined
-    return res.status(500).json({
-      error: 'Erro ao obter dados de sitemap.',
-      details,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao obter dados de sitemap.', error))
   }
 }

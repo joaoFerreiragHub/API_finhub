@@ -32,28 +32,28 @@ const router = Router()
  * @desc  XP/nivel do utilizador autenticado
  * @access Private
  */
-router.get('/me/xp', authenticate, getCommunityMyXp)
+router.get('/me/xp', authenticate, rateLimiter.general, getCommunityMyXp)
 
 /**
  * @route GET /api/community/leaderboard
  * @desc  Leaderboard semanal da comunidade (top 10)
  * @access Public (com auth opcional para incluir posicao do utilizador)
  */
-router.get('/leaderboard', optionalAuth, getCommunityLeaderboard)
+router.get('/leaderboard', optionalAuth, rateLimiter.general, getCommunityLeaderboard)
 
 /**
  * @route GET /api/community/rooms
  * @desc  Lista salas da comunidade (publicas e premium)
  * @access Public
  */
-router.get('/rooms', validateCommunityRoomsListContract, listCommunityRooms)
+router.get('/rooms', rateLimiter.general, validateCommunityRoomsListContract, listCommunityRooms)
 
 /**
  * @route GET /api/community/rooms/:slug
  * @desc  Detalhe de sala da comunidade por slug
  * @access Public
  */
-router.get('/rooms/:slug', validateCommunityRoomSlugContract, getCommunityRoomBySlug)
+router.get('/rooms/:slug', rateLimiter.general, validateCommunityRoomSlugContract, getCommunityRoomBySlug)
 
 /**
  * @route GET /api/community/rooms/:slug/posts
@@ -63,6 +63,7 @@ router.get('/rooms/:slug', validateCommunityRoomSlugContract, getCommunityRoomBy
 router.get(
   '/rooms/:slug/posts',
   optionalAuth,
+  rateLimiter.general,
   validateCommunityRoomPostsListContract,
   listCommunityRoomPosts
 )
@@ -85,7 +86,7 @@ router.post(
  * @desc  Detalhe de post + replies
  * @access Public (com auth opcional para viewerVote)
  */
-router.get('/posts/:id', optionalAuth, validateCommunityPostIdContract, getCommunityPostDetail)
+router.get('/posts/:id', optionalAuth, rateLimiter.general, validateCommunityPostIdContract, getCommunityPostDetail)
 
 /**
  * @route POST /api/community/posts/:id/replies
@@ -95,6 +96,7 @@ router.get('/posts/:id', optionalAuth, validateCommunityPostIdContract, getCommu
 router.post(
   '/posts/:id/replies',
   authenticate,
+  rateLimiter.communityCreatePost,
   validateCommunityCreateReplyContract,
   createCommunityPostReply
 )

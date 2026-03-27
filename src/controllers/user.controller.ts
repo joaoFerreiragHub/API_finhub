@@ -19,6 +19,7 @@ import { deletePostHogPerson } from '../lib/posthog'
 import { xpService } from '../services/xp.service'
 import { AuthRequest } from '../types/auth'
 import { logControllerError } from '../utils/domainLogger'
+import { buildInternalErrorPayload } from '../utils/httpError'
 
 const CONTROLLER_DOMAIN = 'user_controller'
 const DELETE_ACCOUNT_CONFIRMATION_TEXT = 'ELIMINAR'
@@ -505,12 +506,11 @@ export const updateMyProfile = async (req: AuthRequest, res: Response) => {
       message: 'Perfil atualizado com sucesso.',
       user: withXpProfile(mapAuthenticatedUser(req.user), xpProfile),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     logControllerError(CONTROLLER_DOMAIN, 'update_my_profile', error, req)
-    return res.status(500).json({
-      error: 'Erro ao atualizar perfil.',
-      details: error.message,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao atualizar perfil.', error))
   }
 }
 
@@ -591,12 +591,11 @@ export const uploadMyAvatar = async (req: AuthRequest, res: Response) => {
       publicId: uploadResult.public_id,
       user: normalizedUser,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     logControllerError(CONTROLLER_DOMAIN, 'upload_my_avatar', error, req)
-    return res.status(500).json({
-      error: 'Erro ao fazer upload do avatar.',
-      details: error?.message,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao fazer upload do avatar.', error))
   }
 }
 
@@ -698,12 +697,11 @@ export const exportMyData = async (req: AuthRequest, res: Response) => {
       },
       exportedAt: now.toISOString(),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     logControllerError(CONTROLLER_DOMAIN, 'export_my_data', error, req)
-    return res.status(500).json({
-      error: 'Erro ao exportar dados da conta.',
-      details: error.message,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao exportar dados da conta.', error))
   }
 }
 

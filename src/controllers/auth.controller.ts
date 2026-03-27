@@ -19,6 +19,7 @@ import { emailService } from '../services/email.service'
 import { captchaService, CaptchaServiceError } from '../services/captcha.service'
 import { xpService } from '../services/xp.service'
 import { logControllerError } from '../utils/domainLogger'
+import { buildInternalErrorPayload } from '../utils/httpError'
 
 interface GoogleOAuthStateEntry {
   redirectPath: string
@@ -1000,12 +1001,11 @@ export const changePassword = async (
     return res.status(200).json({
       message: 'Password alterada com sucesso. Inicia sessao novamente.',
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     logControllerError(CONTROLLER_DOMAIN, 'change_password', error, req)
-    return res.status(500).json({
-      error: 'Erro ao alterar password.',
-      details: error.message,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao alterar password.', error))
   }
 }
 

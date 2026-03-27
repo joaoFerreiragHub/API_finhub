@@ -4,6 +4,7 @@ import { recommendationService } from '../services/recommendation.service'
 import { userPreferenceService } from '../services/userPreference.service'
 import { resolveTargetMetadata } from '../services/social/targetMetadata.service'
 import { xpService } from '../services/xp.service'
+import { buildInternalErrorPayload } from '../utils/httpError'
 
 type RecommendationSignal =
   | 'content_viewed'
@@ -52,12 +53,11 @@ export const getRecommendations = async (req: AuthRequest, res: Response) => {
 
     const recommendations = await recommendationService.getRecommendations(userId, { limit })
     return res.status(200).json(recommendations)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get recommendations error:', error)
-    return res.status(500).json({
-      error: 'Erro ao obter recomendacoes.',
-      details: error.message,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao obter recomendacoes.', error))
   }
 }
 
@@ -115,11 +115,10 @@ export const postRecommendationSignal = async (req: AuthRequest, res: Response) 
       contentId: payload.contentId,
       contentType: payload.contentType,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Post recommendation signal error:', error)
-    return res.status(500).json({
-      error: 'Erro ao registar sinal de recomendacao.',
-      details: error.message,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao registar sinal de recomendacao.', error))
   }
 }

@@ -6,6 +6,7 @@ import {
 import { AuthRequest } from '../types/auth'
 import { CommunityVoteDirection } from '../models/CommunityVote'
 import { xpService } from '../services/xp.service'
+import { buildInternalErrorPayload } from '../utils/httpError'
 
 const parsePositiveIntegerQuery = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -24,11 +25,7 @@ const respondServiceError = (res: Response, error: unknown, fallbackMessage: str
     return res.status(error.statusCode).json({ error: error.message })
   }
 
-  const details = error instanceof Error ? error.message : undefined
-  return res.status(500).json({
-    error: fallbackMessage,
-    details,
-  })
+  return res.status(500).json(buildInternalErrorPayload(fallbackMessage, error))
 }
 
 /**
@@ -179,11 +176,9 @@ export const getCommunityMyXp = async (req: AuthRequest, res: Response) => {
     return res.status(200).json(result)
   } catch (error) {
     console.error('Get my community xp error:', error)
-    const details = error instanceof Error ? error.message : undefined
-    return res.status(500).json({
-      error: 'Erro ao carregar progresso de XP.',
-      details,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao carregar progresso de XP.', error))
   }
 }
 
@@ -196,10 +191,8 @@ export const getCommunityLeaderboard = async (req: AuthRequest, res: Response) =
     return res.status(200).json(result)
   } catch (error) {
     console.error('Get community leaderboard error:', error)
-    const details = error instanceof Error ? error.message : undefined
-    return res.status(500).json({
-      error: 'Erro ao carregar leaderboard semanal.',
-      details,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao carregar leaderboard semanal.', error))
   }
 }

@@ -250,9 +250,9 @@ Ver especificação completa em `COMMUNITY.md`.
 | **HTTPS enforced** | ⏳ | Redirect HTTP → HTTPS; HSTS activo |
 | **Variáveis de ambiente em prod configuradas** | ✅ | Railway (beta) — `FRONTEND_URL`, `VITE_API_URL`, `VITE_BETA_MODE`, `BETA_MODE`, `CAPTCHA_PROVIDER=disabled` configurados em ambos os serviços — 2026-03-27 |
 | **Railway deploy beta funcional** | ✅ | 2026-03-27 — CORS (`FRONTEND_URL`), CSP (Google Fonts + PostHog), `captchaToken` strip, API URL fallback prod (`/api`), hydration race condition PageShell corrigido. Frontend: `finhubfront-production.up.railway.app` · Backend: `finhubback-production-6d29.up.railway.app` |
-| **Rate limiters + error handler audit (prod)** | ⏳ | PROD-01 — auditar endpoints P10.x/P11.x/V1.x sem rate limiter + confirmar error handler não expõe `err.stack` ao cliente |
+| **Rate limiters + error handler audit (prod)** | ✅ | PROD-01 2026-03-27 — rate limiter aplicado nos endpoints P11 sem proteção (`GET /community/me/xp`, `GET /community/leaderboard`, `GET /community/rooms`, `GET /community/rooms/:slug`, `GET /community/rooms/:slug/posts`, `GET /community/posts/:id`, `POST /community/posts/:id/replies`) e audit confirmado para P10/V1 |
 | **Backups MongoDB automatizados** | ⏳ | Confirmar snapshot policy antes de abrir ao público |
-| **Logs de erro em prod não expõem stack traces ao cliente** | ⏳ | Express error handler em prod deve devolver mensagem genérica, não `err.stack` |
+| **Logs de erro em prod não expõem stack traces ao cliente** | ✅ | Confirmado em `src/app.ts`: em produção o payload devolve mensagem genérica e não inclui `err.stack`; controllers P10/P11/V1 ajustados para não expor `details` em produção |
 
 ##### Documentação & Acções Humanas Obrigatórias (pré-release pública)
 | Item | Estado | Responsável |

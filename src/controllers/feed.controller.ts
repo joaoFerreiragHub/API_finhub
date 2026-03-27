@@ -1,6 +1,7 @@
-﻿import { Response } from 'express'
-import { AuthRequest } from '../types/auth'
+import { Response } from 'express'
 import { feedService } from '../services/feed.service'
+import { AuthRequest } from '../types/auth'
+import { buildInternalErrorPayload } from '../utils/httpError'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -36,11 +37,8 @@ export const getFeed = async (req: AuthRequest, res: Response) => {
     })
 
     return res.status(200).json(result)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get feed error:', error)
-    return res.status(500).json({
-      error: 'Erro ao obter feed.',
-      details: error.message,
-    })
+    return res.status(500).json(buildInternalErrorPayload('Erro ao obter feed.', error))
   }
 }

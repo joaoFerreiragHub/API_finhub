@@ -1,5 +1,6 @@
-﻿import { Request, Response } from 'express'
+import { Request, Response } from 'express'
 import { searchService } from '../services/search.service'
+import { buildInternalErrorPayload } from '../utils/httpError'
 
 const parsePositiveInt = (value: unknown): number | undefined => {
   if (typeof value !== 'string') return undefined
@@ -38,11 +39,8 @@ export const globalSearch = async (req: Request, res: Response) => {
     return res.status(200).json(result)
   } catch (error: unknown) {
     console.error('Global search error:', error)
-
-    const details = error instanceof Error ? error.message : undefined
-    return res.status(500).json({
-      error: 'Erro ao executar pesquisa global.',
-      details,
-    })
+    return res
+      .status(500)
+      .json(buildInternalErrorPayload('Erro ao executar pesquisa global.', error))
   }
 }
