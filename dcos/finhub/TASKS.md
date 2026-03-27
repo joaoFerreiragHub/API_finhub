@@ -204,6 +204,8 @@ Ver especificação completa em `COMMUNITY.md`.
 | **Backend: BetaInvite model + middleware + admin endpoints** | ✅ | BETA-GATE-01 2026-03-26 | BetaInvite model, 3 endpoints admin (`POST/GET/DELETE /api/admin/beta/invites`), gate no register com `BETA_INVITE_REQUIRED`, convite marcado com `usedAt/usedBy`, `BETA_MODE=false` default, typecheck PASS. |
 | **Frontend: landing page /beta + gate global em PageShell** | ✅ | BETA-GATE-02 2026-03-26 | `/beta` criada com layout dark branded + 2 CTAs nativos; gate global SSR-safe no `PageShell` com `VITE_BETA_MODE` e whitelist de rotas isentas. `yarn typecheck:p1` + `yarn build` PASS. |
 | **Frontend SSR beta gate (cookie `betaSession`) no servidor** | ✅ | BETA-GATE-03 2026-03-26 | Middleware em `server/index.mjs` antes do render Vike com redirect `302 /beta`; `useAuthStore` passa a definir/remover cookie `betaSession`; `.env.example` com `BETA_MODE=false`. |
+| **BETA-GATE-FIX-01: race condition PageShell** | ✅ | BETA-GATE-FIX-01 2026-03-27 | `hydrated` de `useAuthStore` adicionado ao beta gate `useEffect` e a `useAuthShell`; gate só dispara após Zustand rehydratar localStorage; `hideHeader` removido de `<PublicShell>` (estava a esconder header em todas as páginas públicas). Claude 2026-03-27. |
+| **Bootstrap BD produção + admin@finhub.com** | ✅ | 2026-03-27 | `admin@finhub.com` / `Finhub2026!` registado via fetch direto ao backend Railway; `role` promovido para `admin` via terminal Node.js → MongoDB Atlas. Claude 2026-03-27. |
 
 #### Features v1.0 — Bloqueadas ou pós-v1.0
 | Feature | Estado | Notas |
@@ -246,7 +248,8 @@ Ver especificação completa em `COMMUNITY.md`.
 | Item | Estado | Notas |
 |------|--------|-------|
 | **HTTPS enforced** | ⏳ | Redirect HTTP → HTTPS; HSTS activo |
-| **Variáveis de ambiente em prod configuradas** | ⏳ | Checklist no `RUNBOOK_RELEASE_PRE_RELEASE_CONSOLIDADO.md` |
+| **Variáveis de ambiente em prod configuradas** | ✅ | Railway (beta) — `FRONTEND_URL`, `VITE_API_URL`, `VITE_BETA_MODE`, `BETA_MODE`, `CAPTCHA_PROVIDER=disabled` configurados em ambos os serviços — 2026-03-27 |
+| **Railway deploy beta funcional** | ✅ | 2026-03-27 — CORS (`FRONTEND_URL`), CSP (Google Fonts + PostHog), `captchaToken` strip, API URL fallback prod (`/api`), hydration race condition PageShell corrigido. Frontend: `finhubfront-production.up.railway.app` · Backend: `finhubback-production-6d29.up.railway.app` |
 | **Backups MongoDB automatizados** | ⏳ | Confirmar snapshot policy antes de abrir ao público |
 | **Logs de erro em prod não expõem stack traces ao cliente** | ⏳ | Express error handler em prod deve devolver mensagem genérica, não `err.stack` |
 
