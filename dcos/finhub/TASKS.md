@@ -250,6 +250,7 @@ Ver especificação completa em `COMMUNITY.md`.
 | **HTTPS enforced** | ⏳ | Redirect HTTP → HTTPS; HSTS activo |
 | **Variáveis de ambiente em prod configuradas** | ✅ | Railway (beta) — `FRONTEND_URL`, `VITE_API_URL`, `VITE_BETA_MODE`, `BETA_MODE`, `CAPTCHA_PROVIDER=disabled` configurados em ambos os serviços — 2026-03-27 |
 | **Railway deploy beta funcional** | ✅ | 2026-03-27 — CORS (`FRONTEND_URL`), CSP (Google Fonts + PostHog), `captchaToken` strip, API URL fallback prod (`/api`), hydration race condition PageShell corrigido. Frontend: `finhubfront-production.up.railway.app` · Backend: `finhubback-production-6d29.up.railway.app` |
+| **Rate limiters + error handler audit (prod)** | ⏳ | PROD-01 — auditar endpoints P10.x/P11.x/V1.x sem rate limiter + confirmar error handler não expõe `err.stack` ao cliente |
 | **Backups MongoDB automatizados** | ⏳ | Confirmar snapshot policy antes de abrir ao público |
 | **Logs de erro em prod não expõem stack traces ao cliente** | ⏳ | Express error handler em prod deve devolver mensagem genérica, não `err.stack` |
 
@@ -269,7 +270,7 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 
 | Feature | Notas |
 |---------|-------|
-| Lighthouse > 80 | Performance optimization, lazy loading, image CDN |
+| **Lighthouse > 80 / Code splitting** | ⏳ PERF-01 — lazy loading páginas admin + libs pesadas (TipTap, DOMPurify) + `loading="lazy"` em imagens |
 | Audit de acessibilidade (a11y) | ARIA, focus management, contraste |
 | i18n prep | Só se houver expansão internacional |
 | PWA / offline básico | Service worker + manifest |
@@ -278,10 +279,10 @@ Não bloqueiam lançamento. Entram quando houver capacidade ou feedback de utili
 | Widget de feedback | Canny ou form simples |
 | Excesso de libs UI (PrimeReact + Mantine) | Cleanup gradual ao redesenhar |
 | Tipagem TS — ~285 erros pré-existentes | Gradual, não bloqueia build |
-| **UI/UX elevação** (Inter font, dark mode tokens, DataTable, KPI cards) | Spec em dcos/done/P8_UI_UX_IMPLEMENTACAO_TECNICA.md + P8_ADMIN_UI_PILOT.md |
-| **Agent Dashboard frontend** (/admin/agent-dashboard) | Backend 85% done (Sprint S0A); frontend 0% — 7 tasks (Timeline, Scorecard, Burndown views) |
-| **Directory pública `/recursos/*`** (9 páginas de marcas/entidades) | Backend done; 9 placeholder pages por implementar |
-| **Disclaimers por ferramenta auditados** | FIRE, Watchlist, REIT, ETF, Crypto — RGPD/Lei 34/88 |
+| **UI/UX elevação** (Inter font, dark mode tokens, DataTable, KPI cards) | ⏳ P8-UI-01 — Inter font global + tabular-nums + dark mode tokens semânticos + cards HUB uniformes. Spec em dcos/done/P8_UI_UX_IMPLEMENTACAO_TECNICA.md |
+| **Agent Dashboard frontend** (/admin/agent-dashboard) | ⏳ DASH-01 — `/admin/agent-dashboard` com 3 tabs (Progresso, Métricas, Timeline). Backend 85% done (Sprint S0A); frontend 0% |
+| **Directory pública `/recursos/*`** (9 páginas de marcas/entidades) | Backend done; páginas existem mas podem ser placeholder — verificar BrandsVerticalPage implementada |
+| **Disclaimers por ferramenta auditados** | ⏳ DISC-01 — componente `<ToolDisclaimer>` + integração em FIRE/Watchlist/REIT/ETF/Crypto. RGPD/Lei 34/88 |
 | **AN-2/AN-3 — Activar GA4 e GTM via runtime config** (admin insere IDs) | Quando houver plano de ads |
 | **AN-7 — Ads analytics** (impressões + CTR por slot) | Quando existirem slots de publicidade |
 | **AN-9 — Activar heatmaps PostHog** em páginas prioritárias | Após dados reais de utilizadores |

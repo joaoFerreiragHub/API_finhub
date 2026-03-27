@@ -6907,3 +6907,283 @@ DEPOIS: ## PROMPT BETA-GATE-02 — Frontend: Landing Page Beta + Gate Global ✅
 ```
 
 Produzir relatorio no formato do template.
+
+
+---
+
+## PROMPT PROD-01 — Rate Limiters + Error Handler: Audit de Segurança Pós-Beta ⏳
+
+**Contexto:**
+- Repo backend: `C:\Users\User\Desktop\HUB Backups\Janeiro - 2025\Riquinho\api\Front\Comunidade\Finhub_Back`
+- O `src/app.ts` tem error handler com guard `isDevEnvironment` (só expõe `err.stack` em dev) — confirmar que está correcto
+- Endpoints adicionados desde SEC-01 (P10.x motor de recomendação, P11.x community/XP/leaderboard, V1.x feed/search/sitemap/avatar/export) podem não ter rate limiter
+- Padrão actual: rate limiters para auth/profile/community já definidos em `src/app.ts`
+
+**Ficheiros de referência:**
+- `src/app.ts` — error handler + rate limiters existentes
+- `src/routes/` — todos os routers activos
+
+**Tarefa:**
+1. Auditar `src/app.ts` — confirmar que o error handler nunca retorna `err.stack` nem dados internos ao cliente em `NODE_ENV=production`
+2. Listar todos os routers sem rate limiter (foco em endpoints públicos e autenticados que aceitam input do utilizador adicionados em P10.x/P11.x/V1.x)
+3. Adicionar `rateLimiter` (usando o padrão já existente em `src/app.ts`) aos endpoints que faltam
+4. Não alterar endpoints que já têm limiter
+
+**Critérios de conclusão:**
+- [ ] Error handler de produção auditado e confirmado seguro
+- [ ] Lista de endpoints auditados documentada no relatório
+- [ ] Rate limiters adicionados onde faltavam
+- [ ] Sem regressões nos endpoints existentes
+
+**Gates obrigatórios:**
+```
+npm run typecheck — PASS
+npm run build — PASS
+```
+
+### FECHO DE CICLO (Codex — obrigatório no mesmo commit)
+
+TASKS.md — linha `Rate limiters + error handler audit (prod)` em Infra/Deploy:
+```
+ANTES: | **Rate limiters + error handler audit (prod)** | ⏳ | PROD-01 ...
+DEPOIS: | **Rate limiters + error handler audit (prod)** | ✅ | PROD-01 [data] — X endpoints auditados, Y limiters adicionados. typecheck+build PASS |
+```
+
+PROMPTS_EXECUCAO.md — header deste prompt:
+```
+ANTES: ## PROMPT PROD-01 — Rate Limiters + Error Handler: Audit de Segurança Pós-Beta ⏳
+DEPOIS: ## PROMPT PROD-01 — Rate Limiters + Error Handler: Audit de Segurança Pós-Beta ✅ VALIDADO [data]
+```
+
+Produzir relatório no formato do template.
+
+---
+
+## PROMPT DISC-01 — Disclaimers Legais nas Páginas de Ferramentas ⏳
+
+**Contexto:**
+- Repo frontend: `C:\Users\User\Desktop\HUB Backups\Janeiro - 2025\Riquinho\api\Front\Comunidade\FinhubFront`
+- A Lei 34/88 proíbe que qualquer ferramenta pareça dar recomendações de investimento
+- Existe `src/pages/FinancialDisclaimerPage.tsx` (página global) mas não há disclaimer inline por ferramenta
+- Ferramentas em causa: FIRE, Watchlist, REIT toolkit, ETF Overlap, Crypto
+
+**Ficheiros de referência:**
+- `src/features/fire/pages/FireLandingPage.tsx`
+- `src/features/fire/pages/FireSimulatorPage.tsx`
+- `src/features/fire/pages/FireDashboardPage.tsx`
+- `src/features/fire/pages/FirePortfolioPage.tsx`
+- `src/pages/mercados/reits/+Page.tsx`
+- `src/pages/mercados/etfs/+Page.tsx`
+- `src/pages/mercados/watchlist/+Page.tsx`
+- `src/pages/FinancialDisclaimerPage.tsx` — não duplicar, complementar
+
+**Tarefa:**
+1. Criar `src/shared/components/ToolDisclaimer.tsx` com prop `variant: 'fire' | 'watchlist' | 'reit' | 'etf' | 'crypto'`
+   - Estilo: `bg-muted rounded-lg px-4 py-2 text-xs text-muted-foreground flex items-center gap-2`
+   - Ícone `Info` de lucide-react no início
+   - Texto por variante:
+     - `fire`: "Simulação para fins educativos. Não constitui aconselhamento financeiro ou fiscal."
+     - `watchlist`: "Dados de mercado com possível atraso. Verificar junto da fonte antes de tomar decisões."
+     - `reit`: "Dados com possível atraso. Rentabilidade passada não garante rentabilidade futura."
+     - `etf`: "Dados simulados/estimados. Não constitui aconselhamento de investimento."
+     - `crypto`: "Criptomoedas são activos de elevada volatilidade. Ferramenta meramente informativa."
+2. Integrar `<ToolDisclaimer variant="...">` no topo da área de conteúdo principal (abaixo do header, antes dos dados) nas páginas acima
+3. SSR-safe — sem `window.*` no render
+
+**Critérios de conclusão:**
+- [ ] `ToolDisclaimer.tsx` criado e exportado de `src/shared/components/`
+- [ ] Visível em todas as 7+ páginas de ferramentas
+- [ ] Estilo consistente, não quebra layout
+
+**Gates obrigatórios:**
+```
+yarn typecheck:p1 — PASS
+yarn build — PASS
+```
+
+### FECHO DE CICLO (Codex — obrigatório no mesmo commit)
+
+TASKS.md — linha `Disclaimers por ferramenta auditados` em Pós-v1.0:
+```
+ANTES: | **Disclaimers por ferramenta auditados** | ⏳ DISC-01 ...
+DEPOIS: | **Disclaimers por ferramenta auditados** | ✅ | DISC-01 [data] — ToolDisclaimer.tsx + 7 páginas integradas. typecheck+build PASS |
+```
+
+PROMPTS_EXECUCAO.md — header deste prompt:
+```
+ANTES: ## PROMPT DISC-01 — Disclaimers Legais nas Páginas de Ferramentas ⏳
+DEPOIS: ## PROMPT DISC-01 — Disclaimers Legais nas Páginas de Ferramentas ✅ VALIDADO [data]
+```
+
+Produzir relatório no formato do template.
+
+---
+
+## PROMPT P8-UI-01 — UI Polish: Tipografia + Dark Mode + Consistência Visual ⏳
+
+**Contexto:**
+- Repo frontend: `C:\Users\User\Desktop\HUB Backups\Janeiro - 2025\Riquinho\api\Front\Comunidade\FinhubFront`
+- Spec completa em `dcos/done/P8_UI_UX_IMPLEMENTACAO_TECNICA.md`
+- Inter font já no CSP (`server/index.mjs` — `fonts.googleapis.com` + `fonts.gstatic.com`)
+- Regra inviolável: verde/vermelho são semânticas de mercado financeiro — NÃO alterar
+
+**Ficheiros de referência:**
+- `dcos/done/P8_UI_UX_IMPLEMENTACAO_TECNICA.md` — spec P8 completa
+- `tailwind.config.ts` — tokens e fontes
+- `src/styles/index.css` (ou equivalente) — CSS global
+- `src/features/hub/` — ArticleCard, VideoCard, CourseCard, BookCard
+
+**Tarefa:**
+1. **Inter font:** Adicionar `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap')` ao CSS global + `fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] }` no `tailwind.config.ts`
+2. **`tabular-nums`:** Adicionar `.tabular-nums { font-variant-numeric: tabular-nums; }` ao CSS global + aplicar nos números financeiros (quick analysis cards, leaderboard XP, KPI cards admin, preços)
+3. **Dark mode tokens:** Substituir `gray-100/200/700/800/900` hardcoded nas páginas principais (hub, homepage, perfil, comunidade) por tokens semânticos: `bg-background`, `bg-card`, `bg-muted`, `text-muted-foreground`, `border-border`
+4. **Cards HUB:** Uniformizar `ArticleCard`, `VideoCard`, `CourseCard`, `BookCard` com `rounded-xl border border-border/60 bg-card`, padding `p-4`/`p-5` consistente, `hover:shadow-sm transition-shadow`
+
+**Critérios de conclusão:**
+- [ ] Inter visível no browser (DevTools > Fonts)
+- [ ] `tabular-nums` nos números financeiros
+- [ ] Zero `gray-*` hardcoded nas páginas principais
+- [ ] Cards HUB com espaçamento uniforme
+- [ ] Nenhuma cor verde/vermelho de performance alterada
+
+**Gates obrigatórios:**
+```
+yarn typecheck:p1 — PASS
+yarn lint — PASS
+yarn build — PASS
+```
+
+### FECHO DE CICLO (Codex — obrigatório no mesmo commit)
+
+TASKS.md — linha `UI/UX elevação` em Pós-v1.0:
+```
+ANTES: | **UI/UX elevação** ... | ⏳ P8-UI-01 ...
+DEPOIS: | **UI/UX elevação** ... | ✅ | P8-UI-01 [data] — Inter font + tabular-nums + dark mode tokens + cards HUB. typecheck+lint+build PASS |
+```
+
+PROMPTS_EXECUCAO.md — header deste prompt:
+```
+ANTES: ## PROMPT P8-UI-01 — UI Polish: Tipografia + Dark Mode + Consistência Visual ⏳
+DEPOIS: ## PROMPT P8-UI-01 — UI Polish: Tipografia + Dark Mode + Consistência Visual ✅ VALIDADO [data]
+```
+
+Produzir relatório no formato do template.
+
+---
+
+## PROMPT PERF-01 — Code Splitting + Lazy Loading (Lighthouse >= 80) ⏳
+
+**Contexto:**
+- Repo frontend: `C:\Users\User\Desktop\HUB Backups\Janeiro - 2025\Riquinho\api\Front\Comunidade\FinhubFront`
+- Vike SSR + Vite 6 — code splitting via `import()` dinâmico
+- Páginas admin e ferramentas pesadas provavelmente no bundle principal
+- CRÍTICO SSR: `React.lazy()` só pode ser usado em componentes que NÃO renderizam no servidor, ou com guard `typeof window !== 'undefined'`
+
+**Ficheiros de referência:**
+- `vite.config.ts`
+- `src/pages/admin/` — rotas admin (não são SSR-críticas)
+- `src/renderer/PageShell.tsx` — padrão SSR-safe de referência
+- `src/features/fire/` e `src/features/stocks/` — componentes pesados
+
+**Tarefa:**
+1. Instalar `rollup-plugin-visualizer` como devDependency; adicionar ao `vite.config.ts` para gerar `stats.html`. Documentar os 5 maiores chunks no relatório.
+2. Lazy load páginas admin: `React.lazy()` + `<Suspense fallback={<div className="animate-pulse h-screen" />}>` nos componentes de página `/admin/*`. Verificar que o wrapper Vike `+Page.tsx` faz o lazy load correctamente.
+3. Lazy load libs pesadas (client-side only): TipTap editor, DOMPurify (confirmar que não está no SSR bundle)
+4. `loading="lazy"` em `<img>` abaixo do fold: avatares em listas, thumbnails de vídeo, cover images de artigos em listagens, logos de brands. NÃO aplicar em imagens above-the-fold.
+5. Verificar sem regressões SSR: `yarn build` sem erros SSR nos logs.
+
+**Critérios de conclusão:**
+- [ ] `stats.html` gerado + 5 maiores chunks documentados no relatório
+- [ ] Páginas admin carregam lazy (confirmar no Network tab)
+- [ ] `loading="lazy"` nas imagens de listagem
+- [ ] Bundle main chunk reduzido face ao baseline
+- [ ] Sem erros SSR no build
+
+**Gates obrigatórios:**
+```
+yarn typecheck:p1 — PASS
+yarn build — PASS (sem erros SSR)
+```
+
+### FECHO DE CICLO (Codex — obrigatório no mesmo commit)
+
+TASKS.md — linha `Lighthouse > 80 / Code splitting` em Pós-v1.0:
+```
+ANTES: | **Lighthouse > 80 / Code splitting** | ⏳ PERF-01 ...
+DEPOIS: | **Lighthouse > 80 / Code splitting** | ✅ | PERF-01 [data] — lazy admin + loading=lazy imgs + bundle Xkb→Ykb. typecheck+build PASS |
+```
+
+PROMPTS_EXECUCAO.md — header deste prompt:
+```
+ANTES: ## PROMPT PERF-01 — Code Splitting + Lazy Loading (Lighthouse >= 80) ⏳
+DEPOIS: ## PROMPT PERF-01 — Code Splitting + Lazy Loading (Lighthouse >= 80) ✅ VALIDADO [data]
+```
+
+Produzir relatório no formato do template.
+
+---
+
+## PROMPT DASH-01 — Agent Dashboard Frontend /admin/agent-dashboard ⏳
+
+**Contexto:**
+- Repo frontend: `C:\Users\User\Desktop\HUB Backups\Janeiro - 2025\Riquinho\api\Front\Comunidade\FinhubFront`
+- Não existe `/admin/agent-dashboard` no frontend
+- Útil para o fundador acompanhar progresso das tasks Codex durante o beta
+- Dados são estáticos (derivados do TASKS.md) — não precisa de nova API
+- Seguir padrão de páginas admin existentes
+
+**Ficheiros de referência:**
+- `src/pages/admin/+Page.tsx` — padrão de página admin Vike
+- `src/features/admin/` — componentes, layout, sidebar
+- `API_finhub/dcos/finhub/TASKS.md` — fonte dos dados de progresso (ler para popular os dados hardcoded)
+
+**Tarefa:**
+1. Criar `src/pages/admin/agent-dashboard/+Page.tsx` com wrapper admin existente (RBAC: só `admin`)
+2. Criar `src/features/admin/pages/AgentDashboardPage.tsx` com 3 tabs (shadcn/ui Tabs):
+
+   **Tab "Progresso"** — tabela de features por fase:
+   - Colunas: Fase | Feature | Estado (Badge ✅/🔄/⏳) | Prompt ID
+   - Dados hardcoded das fases: Beta (P1–P11, V1.x), v1.0 pendente, Pós-v1.0
+   - Filtro por estado (tudo / concluído / pendente)
+
+   **Tab "Métricas"** — KPI cards:
+   - Prompts concluídos vs total (derivado do TASKS.md)
+   - % por fase (Beta: 100%, v1.0: ~85%, Pós-v1.0: 0%)
+   - Bugs resolvidos vs total (Secção 0 do TASKS.md)
+   - Último deploy: "2026-03-27 — Railway beta"
+
+   **Tab "Timeline"** — lista cronológica de entregas (mais recente no topo):
+   - data | Prompt ID | Descrição curta | Estado
+   - Últimas 20 entregas dos prompts validados no PROMPTS_EXECUCAO.md
+
+3. Adicionar link "Agent Dashboard" ao AdminSidebar (ou equivalente), visível só para `role: admin`
+4. SSR-safe — dados estáticos, sem `window.*` no render inicial
+
+**Critérios de conclusão:**
+- [ ] `/admin/agent-dashboard` acessível para admin
+- [ ] 3 tabs funcionais com dados reais do projecto
+- [ ] Link no sidebar admin (só admin)
+- [ ] Sem erros SSR
+- [ ] Segue design system admin existente (não inventar novo estilo)
+
+**Gates obrigatórios:**
+```
+yarn typecheck:p1 — PASS
+yarn build — PASS
+```
+
+### FECHO DE CICLO (Codex — obrigatório no mesmo commit)
+
+TASKS.md — linha `Agent Dashboard frontend` em Pós-v1.0:
+```
+ANTES: | **Agent Dashboard frontend** (/admin/agent-dashboard) | ⏳ DASH-01 ...
+DEPOIS: | **Agent Dashboard frontend** (/admin/agent-dashboard) | ✅ | DASH-01 [data] — 3 tabs (Progresso/Métricas/Timeline) + sidebar link. typecheck+build PASS |
+```
+
+PROMPTS_EXECUCAO.md — header deste prompt:
+```
+ANTES: ## PROMPT DASH-01 — Agent Dashboard Frontend /admin/agent-dashboard ⏳
+DEPOIS: ## PROMPT DASH-01 — Agent Dashboard Frontend /admin/agent-dashboard ✅ VALIDADO [data]
+```
+
+Produzir relatório no formato do template.
